@@ -9,6 +9,7 @@ import {
 } from "./bootstrap.js";
 import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 import type { GuestMediaConfig } from "./media-config.js";
+import type { GuestDisplayConfig } from "./display-config.js";
 import type {
   DesktopRecordingConfig,
   DesktopRecordingMetadata,
@@ -31,6 +32,7 @@ export interface GuestRuntimeOptions {
     initialUrl?: string,
     media?: GuestMediaConfig,
     recording?: DesktopRecordingConfig,
+    display?: GuestDisplayConfig,
   ): Promise<GuestRuntimeDesktop>;
 }
 
@@ -123,6 +125,7 @@ export async function runGuestRuntime(
       reader.initialUrl,
       reader.media,
       reader.recording,
+      reader.display,
     );
     desktop = await Promise.race([
       preparing,

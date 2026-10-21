@@ -109,7 +109,12 @@ Later participant actions and observations do not use this startup wait.
 - Loopback HTTP(S) app URLs on explicit ports above 1023. Each participant can
   reach its selected app port, its assigned captured inbox when declared, and public destinations over ordinary TCP/UDP.
   Other private host/LAN destinations and cloud metadata are blocked.
-- Chromium at 960×720, 2 vCPUs and 2 GiB guest RAM per participant. Docker's
+- Chromium at 960×720 by default, 2 vCPUs and 2 GiB guest RAM per participant. A device
+  preset or `execution.desktop.resolution` sets each participant's screen, from 500 to 1920
+  pixels wide and 480 to 1200 high, and `execution.desktop.fidelity.mobileEmulation` emulates
+  phones as on hosted desktops. A local mobile participant's bundle records the emulation it
+  applied without the page's own read-back. A runtime installed before humanish 0.140.0
+  starts every participant at 960×720; `humanish runtime setup` installs the current one. Docker's
   enclosing limit is 3 GiB and 2 CPUs per desktop; the memory limit sets how many
   participants run at once. See [How many participants fit](#how-many-participants-fit).
 - Typing works only while the study's original tab is the browser's only tab. With a
@@ -122,8 +127,8 @@ Later participant actions and observations do not use this startup wait.
   Real email receiving remains unsupported on the local route.
 - A 20-minute default and maximum participant session budget, within the runtime
   image's 30-minute process lifetime. A shorter `execution.timeoutMs` is supported.
-- Codex participants currently use `gpt-6-astra` at low effort. Hosted templates,
-  device presets and hosted sandbox timeouts do not apply.
+- Codex participants currently use `gpt-6-astra` at low effort. Hosted templates and
+  hosted sandbox timeouts do not apply.
 
 Normal close and cooperative startup cancellation remove the owned container
 and its private state volume. After a desktop connects, controller death

@@ -1,5 +1,5 @@
 import path from "node:path";
-import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
+import { isLocalBrowserStudy, localStudySetsScreens } from "../substrates/local/runtime-config.js";
 import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local/runtime.js";
 import {
   capacityShortfall,
@@ -349,10 +349,14 @@ async function localBrowserChecks(
           config.execution?.desktop?.recording !== undefined,
       }))
   )();
+  const screens =
+    runtime.installed && runtime.assets?.displaySizes !== true && localStudySetsScreens(config)
+      ? "The installed local runtime starts every participant at 960×720, and this study sets other screen sizes. Omit device and resolution, use a hosted desktop, or set HUMANISH_LOCAL_RUNTIME_IMAGE to a runtime built from current source."
+      : undefined;
   checks.push({
     name: "local browser runtime",
-    ok: runtime.ok,
-    message: runtime.message,
+    ok: runtime.ok && screens === undefined,
+    message: screens ?? runtime.message,
     ...(runtime.ok && !runtime.installed ? { status: "note" as const } : {}),
   });
   if (runtime.capacity !== undefined && desktopsAtOnce !== undefined)
@@ -370,7 +374,9 @@ async function localBrowserChecks(
   }
   return {
     checks,
-    ...(runtime.ok && runtime.installed ? {} : { next: runtime.message }),
+    ...(runtime.ok && runtime.installed && screens === undefined
+      ? {}
+      : { next: screens ?? runtime.message }),
   };
 }
 

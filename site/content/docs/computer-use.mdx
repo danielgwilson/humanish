@@ -102,7 +102,8 @@ image data only); any other frame counts as raw.
 
 ## Device presets
 
-`execution.desktop.device` picks the hosted desktop screen size:
+`execution.desktop.device` picks the desktop screen size, on hosted desktops and in a
+[local browser](/docs/local-browser) study:
 `mobile` (414×896), `small-mobile` (360×740), `narrow-mobile` (320×700), `tablet`
 (820×1180), `desktop` (1440×950, default), or `wide` (1920×1080). Fidelity: on the computer-use / E2B-desktop
 route width/height size the virtual display and browser outer window. The actual page
@@ -117,7 +118,7 @@ route. Set `device` on a `participants` entry to override the study preset for t
 
 ## Mobile emulation
 
-`execution.desktop.fidelity: { mobileEmulation: true }` gives every hosted
+`execution.desktop.fidelity: { mobileEmulation: true }` gives every hosted or local
 Chrome/Chromium computer-use participant on a mobile preset (`mobile`, `small-mobile`, `narrow-mobile`)
 a mobile-emulated browser before its first action, and leaves desktop, tablet and
 wide participants in the same run untouched: the participant's preset width/height become the CSS viewport (414 px for `mobile`, where the

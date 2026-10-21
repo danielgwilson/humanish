@@ -136,7 +136,8 @@ the pinned runtime; a live local run also prepares it automatically. The normal
 See [the complete example and limits](https://humanish.dev/docs/local-browser).
 
 Local browsers currently require a loopback app URL with an explicit port above
-1023 and use a 960×720 Chromium desktop. For email-gated local apps, start
+1023 and use a 960×720 Chromium desktop unless a device preset or
+`execution.desktop.resolution` sets each participant's screen. For email-gated local apps, start
 `humanish comms catch`, point the app's email sends at it, and declare
 `comms.email.external.catchBaseUrl`. Use `doctor --study` to check its recipient
 routes. This captures app sends without mailbox-provider credentials; it does

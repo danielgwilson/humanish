@@ -107,3 +107,20 @@ describe("Lima interrupted desktop startup", () => {
     },
   );
 });
+
+describe("a participant screen on an older runtime", () => {
+  it("refuses before any VM starts when the runtime cannot size its screen", async () => {
+    await expect(
+      createLocalFirecrackerDesktop({
+        assets: { image: "synthetic-runtime", runtimeRevision: "guest-api1-synthetic" },
+        appUrl: "http://127.0.0.1:3000/",
+        outputRoot: output,
+        display: { width: 820, height: 1180 },
+      }),
+    ).rejects.toThrow(
+      "This local runtime starts every participant at 960×720, so it cannot start the 820×1180 screen this participant needs.",
+    );
+    expect(state.containers).toEqual(new Set(["unrelated"]));
+    expect(state.remoteDirectory).toBe(false);
+  });
+});

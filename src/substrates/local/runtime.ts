@@ -230,6 +230,7 @@ async function engineStatus(
       image: image.Id,
       runtimeRevision: revision,
       ...(labels["to.humanish.runtime.media"] === "1" ? { media: true } : {}),
+      ...(labels["to.humanish.runtime.display-sizes"] === "1" ? { displaySizes: true } : {}),
     },
   };
 }

@@ -1,5 +1,16 @@
 import type { StudyConfig } from "../../study/types.js";
 import { participantList } from "../../study/study-fields.js";
+import {
+  DEVICE_PRESET_NAMES,
+  resolveParticipantDevice,
+  type DevicePreset,
+} from "../../study/device-presets.js";
+import { participantMobileEmulation } from "../../study/mobile-emulation.js";
+import {
+  DEFAULT_GUEST_SCREEN,
+  GUEST_SCREEN_LIMITS,
+  type GuestDisplayConfig,
+} from "../../guest/display-config.js";
 
 // The runtime image enforces a 30-minute lifetime; reserve setup/teardown room.
 export const LOCAL_BROWSER_LIFETIME_MS = 30 * 60_000;
@@ -29,7 +40,16 @@ export function localBrowserDefaults(config: StudyConfig): StudyConfig {
       timeoutMs: config.execution?.timeoutMs ?? MAX_SESSION_MS,
       desktop: {
         ...config.execution?.desktop,
-        resolution: config.execution?.desktop?.resolution ?? [960, 720],
+        // A named device governs the screen when the study sets one; resolution would override it.
+        ...(config.execution?.desktop?.device !== undefined ||
+        participantList(config)?.some((entry) => entry.device !== undefined)
+          ? {}
+          : {
+              resolution: config.execution?.desktop?.resolution ?? [
+                DEFAULT_GUEST_SCREEN.width,
+                DEFAULT_GUEST_SCREEN.height,
+              ],
+            }),
       },
     },
   };
@@ -48,23 +68,21 @@ export function localBrowserUnsupportedReason(config: StudyConfig): string | und
     return "Local browser studies support only Codex local-agent or openai-computer-use participants.";
   }
   if (
-    desktop?.resolution?.[0] !== 960 ||
-    desktop.resolution[1] !== 720 ||
-    desktop.device !== undefined ||
-    (desktop.browser !== undefined && !["default", "chromium"].includes(desktop.browser)) ||
-    participantList(config)?.some((entry) => entry.device !== undefined) ||
-    desktop.template !== undefined ||
-    desktop.sandboxTimeoutMs !== undefined
+    (desktop?.browser !== undefined && !["default", "chromium"].includes(desktop.browser)) ||
+    desktop?.template !== undefined ||
+    desktop?.sandboxTimeoutMs !== undefined
   ) {
-    return "The local browser runtime currently uses a 960×720 Chromium desktop. Omit hosted templates, device presets and sandboxTimeoutMs.";
+    return "The local browser runtime runs Chromium and has no hosted templates or sandboxTimeoutMs. Remove execution.desktop.browser, template and sandboxTimeoutMs, or use a hosted desktop.";
   }
+  const screenReason = localScreenReason(config);
+  if (screenReason) return screenReason;
   if (
     config.comms !== undefined &&
     (config.comms.email?.kind !== "fake" || !config.comms.email.external)
   ) {
     return "Local browser inboxes require captured email with comms.email.external.catchBaseUrl. Run humanish comms catch and point your app's email sends at it. Real receiving requires a supported hosted route.";
   }
-  if (desktop.media?.camera !== undefined && desktop.media.camera.source !== "synthetic") {
+  if (desktop?.media?.camera !== undefined && desktop.media.camera.source !== "synthetic") {
     return "Local cameras currently use source: synthetic. Camera files remain supported on hosted desktops.";
   }
   if (
@@ -100,4 +118,54 @@ export function localBrowserUnsupportedReason(config: StudyConfig): string | und
       return "Local browser targets must use localhost or 127.0.0.1 on a port above 1023.";
   }
   return undefined;
+}
+
+/** Why a participant's screen does not fit the local guest, or undefined. */
+function localScreenReason(config: StudyConfig): string | undefined {
+  const limits = GUEST_SCREEN_LIMITS;
+  for (const entry of participantList(config) ?? [{}]) {
+    const [width, height] = resolveParticipantDevice(config, entry.device).resolution;
+    if (
+      width < limits.minWidth ||
+      width > limits.maxWidth ||
+      height < limits.minHeight ||
+      height > limits.maxHeight
+    )
+      return `Local browser desktops support screens up to ${limits.maxWidth}×${limits.maxHeight} and at least ${limits.minHeight} pixels high; this study asks for ${width}×${height}. Use a device preset (${DEVICE_PRESET_NAMES.join(", ")}), a resolution within those bounds, or a hosted desktop.`;
+  }
+  const userAgent = config.execution?.desktop?.fidelity?.userAgent;
+  if (userAgent !== undefined && !/^[\x20-\x7e]{1,512}$/.test(userAgent))
+    return "Local browser desktops take an execution.desktop.fidelity.userAgent of at most 512 printable ASCII characters. Shorten it or remove non-ASCII characters.";
+  return undefined;
+}
+
+/**
+ * The screen a local participant's guest starts, with mobile emulation where hosted desktops apply
+ * it. Undefined is the guest's 960×720 default, which every installed runtime supports.
+ */
+export function localGuestDisplay(
+  config: StudyConfig,
+  device: { preset: DevicePreset; resolution: readonly [number, number] },
+): GuestDisplayConfig | undefined {
+  const mobileEmulation = participantMobileEmulation(
+    config.execution?.desktop?.fidelity,
+    device.preset,
+  );
+  const [width, height] = device.resolution;
+  if (
+    mobileEmulation === undefined &&
+    width === DEFAULT_GUEST_SCREEN.width &&
+    height === DEFAULT_GUEST_SCREEN.height
+  )
+    return undefined;
+  return { width, height, ...(mobileEmulation === undefined ? {} : { mobileEmulation }) };
+}
+
+/** Whether any participant of a local study needs a screen other than the guest's default. */
+export function localStudySetsScreens(config: StudyConfig): boolean {
+  const study = localBrowserDefaults(config);
+  return (participantList(study) ?? [{}]).some(
+    (entry) =>
+      localGuestDisplay(study, resolveParticipantDevice(study, entry.device)) !== undefined,
+  );
 }

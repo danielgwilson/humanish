@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const state = vi.hoisted(() => ({
   installed: false,
   media: false,
+  displaySizes: false,
   daemon: true,
   kvm: true,
   endpoint: "unix:///var/run/docker.sock",
@@ -94,6 +95,7 @@ vi.mock("node:child_process", async () => {
                 "to.humanish.runtime.api": "1",
                 "to.humanish.runtime.revision": "guest-api1-" + "b".repeat(64),
                 ...(state.media ? { "to.humanish.runtime.media": "1" } : {}),
+                ...(state.displaySizes ? { "to.humanish.runtime.display-sizes": "1" } : {}),
               },
             },
           },
@@ -119,6 +121,7 @@ describe("local runtime preparation", () => {
     Object.assign(state, {
       installed: false,
       media: false,
+      displaySizes: false,
       daemon: true,
       kvm: true,
       endpoint: "unix:///var/run/docker.sock",
@@ -272,6 +275,12 @@ describe("local runtime preparation", () => {
     });
     expect(fetch).not.toHaveBeenCalled();
     expect(state.loads).toBe(0);
+  });
+  it("reports whether the installed image sizes each participant's screen", async () => {
+    state.installed = true;
+    expect((await prepareLocalRuntime(options)).displaySizes).toBeUndefined();
+    state.displaySizes = true;
+    expect(await prepareLocalRuntime(options)).toMatchObject({ displaySizes: true });
   });
   it("uses a separate explicit media image without changing the ordinary browser override", async () => {
     state.installed = true;

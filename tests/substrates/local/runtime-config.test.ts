@@ -114,9 +114,46 @@ describe("local browser lab configuration", () => {
     expect(hosted.config.execution?.desktop).toBeUndefined();
     expect(await liveKeys(hosted.config)).toEqual(["E2B_API_KEY"]);
   });
+  it("admits a phone, a tablet and a desktop participant in one local study", () => {
+    const parsed = parseStudy({
+      ...base,
+      participants: [
+        { id: "phone-01", device: "mobile" },
+        { id: "tablet-01", device: "tablet" },
+        { id: "desktop-01", device: "desktop" },
+      ],
+      execution: { target: "local", desktop: { fidelity: { mobileEmulation: true } } },
+    });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    // A device governs each participant's screen, so no default resolution is filled in.
+    expect(parsed.config.execution?.desktop?.resolution).toBeUndefined();
+  });
+  it.each([{ desktop: { device: "wide" } }, { desktop: { resolution: [1280, 800] } }])(
+    "admits a run-wide device or resolution within the local bounds: %j",
+    (change) => {
+      expect(parseStudy({ ...base, execution: { target: "local", ...change } }).ok).toBe(true);
+    },
+  );
+  it.each([
+    [[2560, 1440], "2560×1440"],
+    [[1024, 400], "1024×400"],
+  ])("names the bounds when a resolution is out of them: %j", (resolution, size) => {
+    const parsed = parseStudy({ ...base, execution: { target: "local", desktop: { resolution } } });
+    expect(parsed.ok).toBe(false);
+    expect(!parsed.ok && parsed.error.message).toBe(
+      `Local browser desktops support screens up to 1920×1200 and at least 480 pixels high; this study asks for ${size}. Use a device preset (mobile, small-mobile, narrow-mobile, tablet, desktop, wide), a resolution within those bounds, or a hosted desktop.`,
+    );
+  });
   it.each([
     { execution: { target: "local", timeoutMs: 20 * 60_000 + 1 } },
-    { execution: { target: "local", desktop: { resolution: [1440, 950] } } },
+    { execution: { target: "local", desktop: { template: "custom-template" } } },
+    { execution: { target: "local", desktop: { sandboxTimeoutMs: 60_000 } } },
+    {
+      execution: {
+        target: "local",
+        desktop: { fidelity: { mobileEmulation: true, userAgent: "Phone\u00e9" } },
+      },
+    },
     { subject: { source: "app-url", appUrl: "http://localhost/" } },
     { actor: { type: "local-agent", localAgent: "claude" } },
   ])("refuses unsupported local declarations before a run", (change) => {

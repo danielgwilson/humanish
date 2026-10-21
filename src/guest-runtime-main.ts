@@ -28,13 +28,14 @@ try {
     marker: (value) => {
       if (writeSync(Number(markerFd), value) !== 1) throw new Error();
     },
-    createDesktop: (signal, onTerminal, initialUrl, media, recording) =>
+    createDesktop: (signal, onTerminal, initialUrl, media, recording, display) =>
       createGuestRuntimeDesktop({
         signal,
         onTerminal,
         ...(initialUrl === undefined ? {} : { initialUrl }),
         ...(media === undefined ? {} : { media }),
         ...(recording === undefined ? {} : { recording }),
+        ...(display === undefined ? {} : { display }),
       }),
   });
   const result = await runtime.closed;

@@ -207,6 +207,28 @@ describe("one guest runtime lifecycle", () => {
     const runtime = await running;
     await runtime.close();
   });
+  it("starts the desktop at the screen the bootstrap names", async () => {
+    const f = fixture();
+    const createDesktop = vi.fn(
+      async (..._args: Parameters<GuestRuntimeOptions["createDesktop"]>) => f.desktop,
+    );
+    const running = runGuestRuntime({
+      transport: f.right,
+      revision: identity.runtimeRevision,
+      signal: f.owner.signal,
+      marker: f.marker,
+      createDesktop,
+    });
+    const ready = new GuestBootstrapReader(f.left, identity.runtimeRevision, f.owner.signal, true);
+    const display = { width: 820, height: 1180 };
+    f.left.write(encodeGuestBootstrap(identity, false, undefined, undefined, undefined, display));
+    await ready.identity;
+    ready.handoff();
+    expect(createDesktop.mock.calls[0]?.[5]).toEqual(display);
+    const runtime = await running;
+    f.left.destroy();
+    await runtime.closed;
+  });
   it("never acknowledges an initial navigation failure", async () => {
     const f = fixture();
     const running = runGuestRuntime({

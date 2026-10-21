@@ -15,4 +15,5 @@ ENV HUMANISH_RUNTIME_MEDIA=${MEDIA}
 LABEL org.opencontainers.image.source="https://github.com/danielgwilson/humanish" \
       to.humanish.runtime.api="1" \
       to.humanish.runtime.revision="${RUNTIME_REVISION}" \
-      to.humanish.runtime.media="${MEDIA}"
+      to.humanish.runtime.media="${MEDIA}" \
+      to.humanish.runtime.display-sizes="1"
