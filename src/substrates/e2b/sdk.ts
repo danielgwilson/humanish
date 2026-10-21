@@ -41,6 +41,12 @@ export interface E2BDesktopModule {
      * (2.38 and later) returns a paginator.
      */
     list?(options?: E2BSandboxListOptions): E2BSandboxPaginator;
+    /**
+     * A handle on a sandbox that exists, by exact id, with the same calls a create returns. Throws
+     * a SandboxNotFoundError-shaped error when the id is gone. A process that did not create the
+     * sandbox uses it to run commands there and reach its ports.
+     */
+    connect?(sandboxId: string, options?: E2BRequestOptions): Promise<E2BDesktopSandbox>;
   };
 }
 
@@ -96,6 +102,18 @@ export interface E2BNetworkOptions {
    *  outbound request's values. These may contain secrets: never persist or log this object.
    *  This is a structural subset of the installed SDK's SandboxNetworkRules contract. */
   rules?: Record<string, { transform?: { headers?: Record<string, string> } }[]>;
+  /**
+   * False makes every URL `getHost` gives answer only requests that carry the sandbox's traffic
+   * access token. E2B's own default is true.
+   */
+  allowPublicTraffic?: boolean;
+}
+
+/** A URL that reaches a port inside a sandbox, and the headers the provider requires on each request. */
+export interface SandboxPortAccess {
+  url: string;
+  /** Credentials: never persist or log them. */
+  headers: Record<string, string>;
 }
 
 /**
@@ -184,6 +202,11 @@ export interface E2BDesktopSandbox {
    * the concurrent backend fails closed when it is absent rather than calling a missing method.
    */
   getHost?(port: number): string;
+  /**
+   * The URL and credential headers that reach `port`, for a sandbox whose provider authenticates
+   * port traffic: an E2B sandbox created with `allowPublicTraffic: false`, or any Modal sandbox.
+   */
+  portAccess?(port: number): Promise<SandboxPortAccess>;
   screenshot(format?: "bytes"): Promise<Uint8Array>;
   wait(ms: number): Promise<void>;
   // Mouse and keyboard input, as @e2b/desktop's Sandbox declares them. They make the sandbox an
@@ -211,8 +234,13 @@ export interface E2BDesktopSandbox {
 }
 
 export async function loadE2BDesktopModule(): Promise<E2BDesktopModule> {
+  return guardDesktopSandboxCreate(await importE2BDesktop());
+}
+
+/** The optional @e2b/desktop peer as it is, or an error that says how to install it. */
+export async function importE2BDesktop(): Promise<E2BDesktopModule> {
   try {
-    return guardDesktopSandboxCreate((await import("@e2b/desktop")) as unknown as E2BDesktopModule);
+    return (await import("@e2b/desktop")) as unknown as E2BDesktopModule;
   } catch (error) {
     if (isMissingE2BDesktopDependency(error)) {
       const { where, advice } = desktopPeerAdvice(humanishInstall());

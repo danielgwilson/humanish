@@ -107,6 +107,13 @@ function localModalSandbox(sandboxId = "fake-sb-local"): ModalSandbox & { execs:
     wait: async () => 137,
     getTags: async () => ({}),
     tunnels: async () => ({}),
+    // Modal's proxy URL for the port, and a token it requires as a bearer credential.
+    async createConnectToken({ port = 8080 } = {}) {
+      return {
+        url: `https://${this.sandboxId}-${port}.connect.invalid`,
+        token: `synthetic-connect-token-${port}`,
+      };
+    },
   };
 }
 
@@ -367,6 +374,32 @@ describe("creating a Modal sandbox", () => {
       }),
     ).rejects.toMatchObject({ name: "ModalUnsupportedError" });
     expect(created).toEqual([]);
+  });
+});
+
+describe("connecting to a Modal sandbox by id", () => {
+  it("runs commands in the same sandbox and reaches its ports with a bearer credential", async () => {
+    const { client } = fakeClient();
+    const module = modalSandboxModule(client, connection, profile);
+    const { sandboxId } = await module.Sandbox.create({ apiKey: "" });
+    const again = await module.Sandbox.connect!(sandboxId);
+    expect(again.sandboxId).toBe(sandboxId);
+    expect((await again.commands.run("echo here")).stdout).toBe("here\n");
+    await expect(again.portAccess!(7000)).resolves.toEqual({
+      url: `https://${sandboxId}-7000.connect.invalid`,
+      headers: { Authorization: `Bearer ${"synthetic-connect-token-7000"}` },
+    });
+  });
+
+  it("reports a terminated or unknown sandbox gone", async () => {
+    const { client } = fakeClient();
+    const module = modalSandboxModule(client, connection, profile);
+    const { sandboxId } = await module.Sandbox.create({ apiKey: "" });
+    await modalSandboxes(client, connection).kill(sandboxId);
+    for (const id of [sandboxId, "fake-sb-unknown"])
+      await expect(module.Sandbox.connect!(id)).rejects.toMatchObject({
+        name: "SandboxNotFoundError",
+      });
   });
 });
 
