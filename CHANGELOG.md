@@ -8,42 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-Analysis runs on `gpt-6.1-sol` ($2 / $10 per 1M tokens) and `gpt-6-luna` ($0.10 / $0.50) as well
-as the default `gpt-6-astra` ($10 / $50). Pass `humanish analyze --model gpt-6-luna` or set
-`review.analysis.model`; admission, the cost cap and the recorded cost use each model's own rates
-and image-token sizing. `analyze --help` lists the accepted models. The default is unchanged.
+## 0.142.0: Remote runs, Gemini and GPT-6 analysis models, and a view-only live stream (2026-10-21)
 
-Study analysis can run on Google's Gemini API. `humanish keys set gemini` stores
-`GEMINI_API_KEY` (`GOOGLE_API_KEY` is read when it is unset), and `review.analysis.provider:
-gemini` or `humanish analyze --provider gemini` sends the evidence packet and captures to Google
-on `gemini-3.8-flash`. Admission, the cost cap and priced usage work as on OpenAI, and a
-missing Gemini key never falls back to OpenAI. Key discovery now treats a key's second spelling
-as the same key: a project's `.humanish/local/provider.env` no longer fills `GITHUB_TOKEN` beside
-an exported `GH_TOKEN`. An analysis that ends in an HTTP error now names
-the status code in its warnings.
+humanish 0.142.0 can run a study remotely: `humanish run <study> --remote` puts the study's own
+process in a sandbox, so a long study keeps going after this machine sleeps, and `observe --run
+<id>` reconnects to it. Study analysis can run on `gpt-6.1-sol` and `gpt-6-luna` as well as the
+default `gpt-6-astra`, and on Google's Gemini API with `humanish keys set gemini`. A hosted
+desktop's live stream is now view-only on the VNC server itself: before, anyone holding a
+participant's stream URL could type into that desktop.
 
-### Added
-
-- `humanish run <study> --remote` (and `watch --remote`) runs the study's own process in a
-  sandbox on its participants' provider, so a long study keeps going when this machine sleeps or
-  its terminal closes. The command plans the study here, installs this humanish in the runner,
-  serves the run's live Observer on 127.0.0.1 through the provider's port authentication, and
-  copies the finished run back, each file checked against its digest. Ctrl-C stops the run and
-  reclaims its sandboxes; after a closed terminal, `humanish reclaim --run <id>` stops the runner
-  and every participant, found by the run's tags. The runner receives only the keys the study's
-  plan reads. It takes computer-use studies on `e2b-desktop` or `modal-desktop` with a model API
-  key and a public `app-url` subject, and refuses others before creating anything.
-- `humanish observe --run <id>` on a remote run that has not been copied back reconnects to its
-  runner: it serves the live Observer again, follows the run to its end, copies it back and stops
-  the runner, as the launching command would have.
-
-### Fixed
-
-- A hosted desktop's live stream is view-only on the VNC server itself. E2B and Modal started
-  x11vnc without `-viewonly`, and the stream URL's `view_only` setting applied only to the noVNC
-  page, so anyone holding a participant's stream URL could type into or click on that desktop.
-  humanish now switches the server to view-only after the stream starts and confirms it; if the
-  server does not confirm, the run continues with screenshots and no live stream.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.142.0)
 
 ## 0.141.0: A run says when it is writing findings, and email links no longer open a dialog (2026-10-21)
 
