@@ -264,22 +264,60 @@ export function parseDigests(output: string): RemoteFile[] {
   return files;
 }
 
+/**
+ * The screenshots and recordings of the runner's run that have not changed for `settledSeconds`,
+ * with their sizes. A run writes each of them once, so one that has settled can be copied while
+ * the run goes on; files whose name starts with a dot are still being written.
+ */
+export async function listSettledEvidence(
+  runner: Runner,
+  runId: string,
+  settledSeconds: number,
+): Promise<{ path: string; size: number }[]> {
+  const dir = `${RUNNER_PROJECT}/.humanish/runs/${runId}`;
+  const listed = await runner.shell.run(
+    `cd ${shellQuote(dir)} 2>/dev/null && find screenshots recordings -type f ! -name '.*' ! -newermt '${settledSeconds} seconds ago' -printf '%p\\t%s\\n' 2>/dev/null`,
+    { timeoutMs: 120_000 },
+  );
+  return parseSizes(listed.stdout);
+}
+
+/** `find -printf '%p\t%s\n'` lines as paths and sizes; a path that leaves the directory is dropped. */
+export function parseSizes(output: string): { path: string; size: number }[] {
+  const files: { path: string; size: number }[] = [];
+  for (const line of output.split("\n")) {
+    const match = /^((?:screenshots|recordings)\/[^\t]+)\t(\d+)$/.exec(line);
+    if (match === null || match[1]!.split("/").includes("..")) continue;
+    files.push({ path: match[1]!, size: Number(match[2]) });
+  }
+  return files;
+}
+
+/** The bytes of one file of the runner's run directory, as they are now. */
+export async function readRemoteBytes(
+  runner: Runner,
+  runId: string,
+  file: string,
+): Promise<Uint8Array> {
+  const read = runner.sandbox.files.read;
+  if (read === undefined) throw new Error("This sandbox cannot read files back.");
+  const stream = await read.call(
+    runner.sandbox.files,
+    `${RUNNER_PROJECT}/.humanish/runs/${runId}/${file}`,
+    { format: "stream", requestTimeoutMs: 300_000 },
+  );
+  const parts: Uint8Array[] = [];
+  for await (const chunk of stream) parts.push(chunk);
+  return Buffer.concat(parts);
+}
+
 /** The bytes of one file of the runner's run directory, checked against its listed digest. */
 export async function readRemoteFile(
   runner: Runner,
   runId: string,
   file: RemoteFile,
 ): Promise<Uint8Array> {
-  const read = runner.sandbox.files.read;
-  if (read === undefined) throw new Error("This sandbox cannot read files back.");
-  const stream = await read.call(
-    runner.sandbox.files,
-    `${RUNNER_PROJECT}/.humanish/runs/${runId}/${file.path}`,
-    { format: "stream", requestTimeoutMs: 300_000 },
-  );
-  const parts: Uint8Array[] = [];
-  for await (const chunk of stream) parts.push(chunk);
-  const bytes = Buffer.concat(parts);
+  const bytes = await readRemoteBytes(runner, runId, file.path);
   const digest = createHash("sha256").update(bytes).digest("hex");
   if (digest !== file.sha256)
     throw new Error(`${file.path} changed or arrived damaged while it was copied from the runner.`);

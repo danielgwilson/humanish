@@ -5,7 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { joinJournals } from "../../src/remote/launch.js";
-import { parseDigests, uploadProject, type Runner } from "../../src/remote/runner.js";
+import { parseDigests, parseSizes, uploadProject, type Runner } from "../../src/remote/runner.js";
 
 const HASH = "a".repeat(64);
 
@@ -30,6 +30,10 @@ describe("joining this machine's sandbox journal with the runner's", () => {
       '{"runner":1}\n{"participant":1}\n',
     );
     expect(joinJournals("", "")).toBe("");
+    // A copy that runs again adds nothing it already added.
+    expect(joinJournals('{"runner":1}\n{"participant":1}\n', '{"participant":1}\n')).toBe(
+      '{"runner":1}\n{"participant":1}\n',
+    );
   });
 });
 
@@ -73,5 +77,18 @@ describe("uploading a study to the runner", () => {
       await rm(path.join(cwd, "..", path.basename(cwd) + "-secret"), { force: true });
       await rm(cwd, { recursive: true, force: true });
     }
+  });
+});
+
+describe("the runner's settled evidence listing", () => {
+  it("reads screenshot and recording paths with sizes, and drops anything else", () => {
+    expect(
+      parseSizes(
+        "screenshots/p01/0001.png\t104857\nrecordings/p01/desktop.mp4\t2097152\nrun.json\t10\nscreenshots/../escape\t1\n",
+      ),
+    ).toEqual([
+      { path: "screenshots/p01/0001.png", size: 104857 },
+      { path: "recordings/p01/desktop.mp4", size: 2097152 },
+    ]);
   });
 });
