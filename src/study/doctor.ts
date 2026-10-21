@@ -20,6 +20,7 @@ import {
   protocolAdditionsWarning,
   protocolIncompatibilityMessage,
 } from "../actors/codex/protocol-compat.js";
+import { operatorInstructionsWarning } from "../actors/codex/operator-instructions.js";
 import type { DoctorCheckDraft } from "../cli/doctor.js";
 import { admissionRule } from "../analysis/admission.js";
 import { automaticAnalysisBudget } from "../analysis/automatic-config.js";
@@ -96,6 +97,7 @@ async function codexAccountReadiness(env: NodeJS.ProcessEnv): Promise<CodexReadi
 /** What doctor's hosted Codex participant check found: a readiness result and what it admitted. */
 type HostedCodexReadiness = CodexReadiness & {
   cliVersion?: string;
+  operatorInstructionFiles?: readonly string[];
   resolvedModel?: string;
   authentication?: "chatgpt-account" | "api-key";
 };
@@ -186,10 +188,7 @@ function codexRecovery(readiness: CodexReadiness, fallback: string): string {
 /** What the refused setting is and how to change it; the fallback when no reason was recorded. */
 function unsafeConfigurationRecovery(reason: string | undefined, fallback: string): string {
   if (reason === undefined) return fallback;
-  const stopped = `humanish stopped the Codex launch because ${reason}.`;
-  if (reason.startsWith("Codex loaded instructions from"))
-    return `${stopped} Codex reads AGENTS.md from its home directory (CODEX_HOME, or ~/.codex) into every thread, and a hosted participant starts from the persona's instructions only. Rename or move that file while the study runs, then rerun doctor.`;
-  return `${stopped} Remove or change that setting in the Codex config (~/.codex/config.toml, a profile, or a system config), then rerun doctor.`;
+  return `humanish stopped the Codex launch because ${reason}. Change that setting in the Codex config (~/.codex/config.toml, a profile, or a system config) if you want hosted participants to use it, then rerun doctor.`;
 }
 
 /** Shared read-only Codex account check for local participants in doctor and the TUI. */
@@ -471,6 +470,7 @@ async function hostedCodexParticipantCheck(
   const readiness: HostedCodexReadiness = await (
     args.codexParticipantReadiness ?? hostedCodexReadiness
   )(args.env, declared).catch(() => ({ ready: false, errorCode: "codex_unavailable" }));
+  const operatorNote = operatorInstructionsWarning(readiness.operatorInstructionFiles);
   const account =
     readiness.authentication === "api-key"
       ? "an API key, which bills its usage to that key"
@@ -480,7 +480,7 @@ async function hostedCodexParticipantCheck(
     ok: readiness.ready,
     message: readiness.ready
       ? readyMessage(
-          `Codex CLI ${readiness.cliVersion ?? "(unknown release)"} passed the operator handshake without a turn (initialize, config/read, account/read and an ephemeral thread/start): model ${readiness.resolvedModel ?? "(not reported)"} on ${account}. E2B supplies the desktop; no OpenAI API key is required for this participant.`,
+          `Codex CLI ${readiness.cliVersion ?? "(unknown release)"} passed the operator handshake without a turn (initialize, config/read, account/read and an ephemeral thread/start): model ${readiness.resolvedModel ?? "(not reported)"} on ${account}. E2B supplies the desktop; no OpenAI API key is required for this participant.${operatorNote === undefined ? "" : ` ${operatorNote}`}`,
           readiness,
         )
       : `Hosted Codex participant setup is unavailable (${readiness.errorCode}). ${codexRecovery(readiness, "Check `codex login status` and the operator's Codex configuration, then rerun doctor.")} No API fallback is used.`,

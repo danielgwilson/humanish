@@ -10,12 +10,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
-- `codex_unsafe_configuration` now says what it refused. `humanish doctor --study` and a hosted Codex
-  participant's run warnings name the setting by its config key (never its value), for example
-  `features.shell_tool is not the value humanish sets` or `skills.config is set`, or say that Codex
-  loaded `AGENTS.md`. Codex reads `AGENTS.md` from its home directory (`CODEX_HOME`, or `~/.codex`)
-  into every thread with no setting to skip it, and a hosted participant starts from the persona's
-  instructions only, so doctor says to rename or move that file while the study runs.
+- A hosted Codex participant works when the Codex home (`CODEX_HOME`, or `~/.codex`) has an
+  `AGENTS.md` or `AGENTS.override.md`. Codex adds that file to every thread with no setting to skip
+  it, and humanish refused the launch as `codex_unsafe_configuration`. humanish now admits that one
+  file, leaves it unchanged, and says in `doctor --study` and the run's warnings that the
+  participant also received it. Any other instruction file is still refused.
+- `codex_unsafe_configuration` now says what it refused. `doctor --study` and a hosted Codex
+  participant's run warnings name the setting by its config key, never its value, for example
+  `features.shell_tool is not the value humanish sets` or `skills.config is set`.
 
 ## 0.139.0: Computer-use studies can run on Modal desktops (2026-10-19)
 

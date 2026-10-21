@@ -164,10 +164,10 @@ describe("restricted launch admission", () => {
 
   it("admits the captured thread with its model and id, and refuses a model it did not select", () => {
     expect(admitThread(thread, threadExpected)).toEqual({
-      value: { model: "gpt-6-astra", threadId: "thread-synthetic" },
+      value: { model: "gpt-6-astra", threadId: "thread-synthetic", instructionFiles: [] },
     });
     expect(admitThread(thread, { ...threadExpected, selectedModel: undefined })).toEqual({
-      value: { model: "gpt-6-astra", threadId: "thread-synthetic" },
+      value: { model: "gpt-6-astra", threadId: "thread-synthetic", instructionFiles: [] },
     });
     const refused = { refusal: "codex_unsafe_configuration" };
     expect(admitThread(thread, { ...threadExpected, selectedModel: "other" })).toEqual(refused);
@@ -220,6 +220,26 @@ describe("restricted launch refusal reasons", () => {
     expect(admitThread(loaded, threadExpected)).toEqual({
       refusal: "codex_unsafe_configuration",
       reason: "Codex loaded instructions from AGENTS.md",
+    });
+  });
+
+  it("admits the operator's own Codex home instruction file and reports it by name", () => {
+    const operatorHomes = ["/private/operator/.codex"];
+    const loaded = { ...thread, instructionSources: ["/private/operator/.codex/AGENTS.md"] };
+    expect(admitThread(loaded, { ...threadExpected, operatorHomes })).toEqual({
+      value: {
+        model: "gpt-6-astra",
+        threadId: "thread-synthetic",
+        instructionFiles: ["AGENTS.md"],
+      },
+    });
+    const elsewhere = { ...thread, instructionSources: ["/private/operator/project/AGENTS.md"] };
+    expect(admitThread(elsewhere, { ...threadExpected, operatorHomes })).toMatchObject({
+      refusal: "codex_unsafe_configuration",
+    });
+    const otherName = { ...thread, instructionSources: ["/private/operator/.codex/notes.md"] };
+    expect(admitThread(otherName, { ...threadExpected, operatorHomes })).toMatchObject({
+      refusal: "codex_unsafe_configuration",
     });
   });
 });

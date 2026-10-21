@@ -84,6 +84,8 @@ export interface LaunchState {
   protocolAdditions: string[] | undefined;
   /** What in the operator's Codex setup a refusal objects to, without paths or values. */
   refusalReason: string | undefined;
+  /** The instruction file names Codex added from the operator's Codex home (operator auth). */
+  operatorInstructionFiles: string[] | undefined;
 }
 
 /** An admitted value, or the refusal a launch stops with. */
@@ -241,15 +243,26 @@ export function admitThread(
     cwd: string;
     reasoningEffort: ReasoningEffort;
     cliVersion: string;
+    /** Operator auth: the Codex home directories whose own instruction file is admitted. */
+    operatorHomes?: readonly string[];
   },
-): Admission<{ model: string; threadId: string }> {
-  const sources = reply.instructionSources;
-  // Codex reads the instruction file in its home with no setting to skip it, and a participant must
-  // start from humanish's instructions only. Basenames keep the operator's paths out of the run.
-  if (Array.isArray(sources) && sources.length > 0)
+): Admission<{ model: string; threadId: string; instructionFiles: string[] }> {
+  const sources: unknown[] = Array.isArray(reply.instructionSources)
+    ? reply.instructionSources
+    : [];
+  // Codex adds the instruction file in its home to every thread, with no setting to skip it, and
+  // humanish never edits the operator's files. An operator-auth launch admits that one file and
+  // reports it; anything else stays refused. Basenames keep the operator's paths out of the run.
+  const homes = expected.operatorHomes ?? [];
+  const homeFile = (source: unknown): source is string =>
+    typeof source === "string" &&
+    homes.includes(path.dirname(source)) &&
+    ["AGENTS.md", "AGENTS.override.md"].includes(path.basename(source));
+  const other = sources.filter((source) => !homeFile(source));
+  if (other.length > 0)
     return {
       refusal: "codex_unsafe_configuration",
-      reason: `Codex loaded instructions from ${sources
+      reason: `Codex loaded instructions from ${other
         .map((source) => (typeof source === "string" ? path.basename(source) : "a file"))
         .join(", ")}`,
     };
@@ -260,7 +273,7 @@ export function admitThread(
     returnedModel.length > 200 ||
     (expected.selectedModel !== undefined && returnedModel !== expected.selectedModel) ||
     !admitsRestrictedCodexThread(
-      reply,
+      { ...reply, instructionSources: [] },
       returnedModel,
       expected.cwd,
       expected.reasoningEffort,
@@ -268,7 +281,25 @@ export function admitThread(
     )
   )
     return { refusal: "codex_unsafe_configuration" };
-  return { value: { model: returnedModel, threadId: String(codexRecord(reply.thread).id) } };
+  return {
+    value: {
+      model: returnedModel,
+      threadId: String(codexRecord(reply.thread).id),
+      instructionFiles: sources.filter(homeFile).map((source) => path.basename(source)),
+    },
+  };
+}
+
+/** The operator's Codex home as configured and as resolved, for matching its instruction file. */
+async function operatorCodexHomes(
+  options: LaunchOptions,
+  sourceEnv: NodeJS.ProcessEnv,
+): Promise<string[]> {
+  const configured =
+    options.authHome ?? sourceEnv.CODEX_HOME ?? path.join(sourceEnv.HOME ?? homedir(), ".codex");
+  if (!path.isAbsolute(configured)) return [];
+  const resolved = await realpath(configured).catch(() => configured);
+  return [...new Set([configured, resolved])];
 }
 
 /** mcpServerStatus/list (isolated auth): no MCP server is running for the thread. */
@@ -450,10 +481,13 @@ export async function launchAdmittedAppServer(
       cwd: state.cwd,
       reasoningEffort,
       cliVersion: state.cliVersion!,
+      ...(operatorAuth ? { operatorHomes: await operatorCodexHomes(options, sourceEnv) } : {}),
     }),
     state,
   );
   state.resolvedModel = started.model;
+  if (started.instructionFiles.length > 0)
+    state.operatorInstructionFiles = started.instructionFiles;
   state.threadId = started.threadId;
   if (!operatorAuth) {
     enter("mcpServerStatus/list");

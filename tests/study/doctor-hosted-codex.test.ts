@@ -132,7 +132,7 @@ describe("doctor's hosted Codex participant check", () => {
     expect(row.message).toContain("the operator's Codex configuration");
   });
 
-  it("names the refused setting and how to change it when the launch recorded one", async () => {
+  it("names a refused setting, and notes an admitted Codex home instruction file", async () => {
     const setting = await participantRow(hostedLab(), async () => ({
       ready: false,
       errorCode: "codex_unsafe_configuration",
@@ -143,12 +143,14 @@ describe("doctor's hosted Codex participant check", () => {
     );
     expect(setting.message).toContain("~/.codex/config.toml");
     const instructions = await participantRow(hostedLab(), async () => ({
-      ready: false,
-      errorCode: "codex_unsafe_configuration",
-      refusalReason: "Codex loaded instructions from AGENTS.md",
+      ready: true,
+      errorCode: null,
+      cliVersion: "0.163.0",
+      resolvedModel: "gpt-6-astra",
+      operatorInstructionFiles: ["AGENTS.md"],
     }));
-    expect(instructions.message).toContain("Codex loaded instructions from AGENTS.md");
-    expect(instructions.message).toContain("Rename or move that file");
+    expect(instructions.ok).toBe(true);
+    expect(instructions.message).toContain("Codex also gave this participant AGENTS.md");
   });
 
   it("keeps the sign-in row for a signed-out Codex and skips the handshake", async () => {

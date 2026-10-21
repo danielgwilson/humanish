@@ -38,6 +38,7 @@ import {
   parseParticipantFinal,
 } from "./restricted-participant-policy.js";
 import { truncatedFrameWarning, unknownNotificationsWarning } from "./restricted-notifications.js";
+import { operatorInstructionsWarning } from "./operator-instructions.js";
 import { protocolAdditionsWarning, protocolIncompatibilityMessage } from "./protocol-compat.js";
 
 export type ParticipantProviderCloseResult = {
@@ -334,6 +335,8 @@ export interface ParticipantReadiness {
   protocolAdditions?: readonly string[];
   /** What in the operator's Codex setup the launch refused, without paths or values. */
   refusalReason?: string;
+  /** The instruction file names Codex added from the operator's Codex home. */
+  operatorInstructionFiles?: readonly string[];
   /** The model thread/start resolved from the operator's configuration or the declared model. */
   resolvedModel?: string;
   authentication?: "chatgpt-account" | "api-key";
@@ -386,6 +389,9 @@ export async function checkRestrictedCodexParticipantReadiness(options: {
       ? {}
       : { protocolAdditions: session.protocolAdditions }),
     ...(session.refusalReason === undefined ? {} : { refusalReason: session.refusalReason }),
+    ...(session.operatorInstructionFiles === undefined
+      ? {}
+      : { operatorInstructionFiles: session.operatorInstructionFiles }),
     ...(session.resolvedModel === undefined ? {} : { resolvedModel: session.resolvedModel }),
     ...(session.authentication === undefined ? {} : { authentication: session.authentication }),
   };
@@ -511,6 +517,7 @@ function sessionReport(
     session.refusalReason === undefined
       ? undefined
       : `humanish stopped the Codex launch because ${session.refusalReason}.`,
+    operatorInstructionsWarning(session.operatorInstructionFiles),
     unknownNotificationsWarning(session.unknownNotifications, session.cliVersion),
     truncatedFrameWarning(session.truncatedFrameBytes),
   ].filter((warning) => warning !== undefined);
