@@ -21,14 +21,21 @@ export function interruptActive(): void {
 export function runCli(
   cliPath: string,
   args: readonly string[],
-  options: { logFile: string; timeoutMs: number; nodeArgs?: readonly string[] },
+  options: {
+    logFile: string;
+    timeoutMs: number;
+    nodeArgs?: readonly string[];
+    /** Its own process group: a Ctrl-C at the terminal does not reach it, and interruptActive skips it. */
+    detached?: boolean;
+  },
 ): Promise<CliResult> {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [...(options.nodeArgs ?? []), cliPath, ...args], {
       env: { ...process.env, DO_NOT_TRACK: "1", HUMANISH_TELEMETRY_DISABLED: "1" },
       stdio: ["ignore", "pipe", "pipe"],
+      detached: options.detached === true,
     });
-    active = child;
+    if (!options.detached) active = child;
     let stdout = "";
     let timedOut = false;
     child.stdout.setEncoding("utf8");
@@ -44,7 +51,7 @@ export function runCli(
     }, options.timeoutMs);
     child.on("close", (code) => {
       clearTimeout(timer);
-      active = null;
+      if (active === child) active = null;
       appendFileSync(options.logFile, `\n[bench] exit ${code ?? "signal"} for: ${args[0] ?? ""}\n`);
       resolve({ code, json: parseJson(stdout), timedOut });
     });

@@ -2,13 +2,14 @@
 // docs/evidence/benchmark/README.md explains the flags, the scores and the budget rules.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { parseArgs } from "node:util";
 
-import { analyzeWithinBudget } from "./lib/analyze.js";
+import { DEFAULT_ANALYSIS_MODEL } from "../src/analysis/automatic-config.js";
+import { admissionFor, analyzeWithinBudget } from "./lib/analyze.js";
 import { readJson, readRunBundle, runCosts } from "./lib/bundle.js";
 import {
   interruptActive,
@@ -17,15 +18,20 @@ import {
   runCli,
   stringField,
 } from "./lib/humanish-cli.js";
+import { parseAnalysisSpecs, refusedSpecs, runAnalysisMatrix } from "./lib/matrix.js";
 import {
   BRAINS,
+  analysisCostFor,
   canStartParticipant,
+  SpendLedger,
   capThatFits,
   isBrainId,
   participantBoundUsd,
   planRuns,
+  projectAnalyses,
   projectBrain,
   round,
+  type AnalysisCost,
   type BrainId,
   type BudgetSettings,
 } from "./lib/plan.js";
@@ -35,7 +41,9 @@ import {
   analysisRefusalLines,
   buildResult,
   summaryMarkdown,
+  type AnalysisSpec,
   type Manifest,
+  type MatrixAnalysis,
   type RunRecord,
 } from "./lib/report.js";
 import { MISSIONS, type MissionId } from "./taskly/missions.js";
@@ -57,6 +65,10 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
   --work-dir <dir>         where the throwaway project and bundles go (default: a new temp dir)
   --out <dir>              where the results JSON and summary go (default: the work dir)
   --rescore <work-dir>     score an earlier invocation's bundles again; no spend
+  --analysis-models <list> analyze every recorded run once per model: model or provider:model, comma-separated
+  --analysis-repeats <n>   analyses of each run per model (default 1)
+  --analysis-concurrency <n> analyses in flight at once across the models (default 4)
+  --reanalyze <work-dir>   run only the analysis models on an earlier invocation's recordings; no participant spend
 `;
 
 const RUN_TIMEOUT_MS = 40 * 60_000;
@@ -90,6 +102,10 @@ const { values } = parseArgs({
     "work-dir": { type: "string" },
     out: { type: "string" },
     rescore: { type: "string" },
+    "analysis-models": { type: "string" },
+    "analysis-repeats": { type: "string" },
+    "analysis-concurrency": { type: "string", default: "4" },
+    reanalyze: { type: "string" },
     help: { type: "boolean", default: false },
   },
 });
@@ -101,7 +117,9 @@ if (values.help) {
 
 function writeResults(projectDir: string, manifest: Manifest, outDir: string): void {
   const result = buildResult(projectDir, manifest);
-  const stem = `${result.createdAt.slice(0, 10)}-${result.humanish.version}-${manifest.mission}-${manifest.brains.join("+")}`;
+  const stem =
+    `${result.createdAt.slice(0, 10)}-${result.humanish.version}-${manifest.mission}-${manifest.brains.join("+")}` +
+    (manifest.analysisMatrix ? "-analysis-models" : "");
   mkdirSync(outDir, { recursive: true });
   const jsonPath = path.join(outDir, `${stem}.json`);
   writeFileSync(jsonPath, `${JSON.stringify(result, null, 2)}\n`);
@@ -116,14 +134,189 @@ function writeResults(projectDir: string, manifest: Manifest, outDir: string): v
         `invented on clean ${brain.summary.report.invented.clean} (reports) and ${brain.summary.analysis.invented.clean} (analyses), ` +
         `estimated spend $${brain.spentUsd.total.toFixed(2)}\n`,
     );
+    for (const model of brain.analysisModels ?? []) {
+      const recall = model.summary.recall.total;
+      process.stdout.write(
+        `${brain.brain} ${model.spec}: analysis recall ${recall.hits}/${recall.of}, invented on clean ${model.summary.invented.clean}, ` +
+          `estimated spend $${model.spentUsd.total.toFixed(2)} over ${model.analyses.length} analyses, ` +
+          `wall time ${Math.round(model.wallMs.total / 1000)} s\n`,
+      );
+    }
   }
   process.stdout.write(`Results: ${jsonPath}\nSummary: ${mdPath}\n`);
 }
 
+if (values.rescore !== undefined && values.reanalyze !== undefined) {
+  fail("--rescore scores recorded analyses and --reanalyze makes new ones. Pass one of them.");
+}
 if (values.rescore !== undefined) {
   const workDir = path.resolve(values.rescore);
   const manifest = readJson<Manifest>(path.join(workDir, "manifest.json"));
   writeResults(path.join(workDir, "project"), manifest, path.resolve(values.out ?? workDir));
+  process.exit(0);
+}
+
+const cliPath = path.resolve(values.cli);
+if (!existsSync(cliPath)) fail(`No humanish CLI at ${cliPath}. Run pnpm build, or pass --cli.`);
+const version = execFileSync(process.execPath, [cliPath, "--version"], { encoding: "utf8" }).trim();
+const source =
+  cliPath === path.join(REPO_ROOT, "dist", "cli.js") ? `this checkout at ${gitState()}` : `${cliPath}`;
+const dryRun = values["dry-run"];
+const dotenvArgs = values.dotenv ? ["--dotenv", path.resolve(values.dotenv)] : [];
+// `humanish analyze` takes no --dotenv, so Node loads the same file into that child's environment.
+const analyzeNodeArgs = values.dotenv ? [`--env-file=${path.resolve(values.dotenv)}`] : [];
+const analysisLimits = {
+  analysisMaxUsd: values["analysis-max-usd"] === undefined
+    ? Math.min(1000, positiveNumber(values["max-usd"], "--max-usd"))
+    : positiveNumber(values["analysis-max-usd"], "--analysis-max-usd"),
+  analysisAutoCap: values["analysis-max-usd"] === undefined,
+};
+
+// The analysis matrix: each recorded run analyzed by every model, `repeats` times.
+const matrixMode =
+  values["analysis-models"] !== undefined || values["analysis-repeats"] !== undefined || values.reanalyze !== undefined;
+if (matrixMode && values["no-analysis"]) fail("--no-analysis turns analysis off; the analysis model flags turn it on. Pass one or the other.");
+let specs: AnalysisSpec[] = [{ label: DEFAULT_ANALYSIS_MODEL, provider: null, model: DEFAULT_ANALYSIS_MODEL }];
+if (values["analysis-models"] !== undefined) {
+  try {
+    specs = parseAnalysisSpecs(values["analysis-models"]);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+}
+const repeats = Number(values["analysis-repeats"] ?? "1");
+if (!Number.isSafeInteger(repeats) || repeats < 1) fail(`--analysis-repeats must be a whole number of at least 1.`);
+const concurrency = Number(values["analysis-concurrency"]);
+if (!Number.isSafeInteger(concurrency) || concurrency < 1) {
+  fail(`--analysis-concurrency must be a whole number of at least 1.`);
+}
+
+/** Replace the manifest whole, so a reader or a crash never sees a partly written file. */
+function writeManifest(file: string, manifest: Manifest): void {
+  writeFileSync(`${file}.tmp`, `${JSON.stringify(manifest, null, 2)}\n`);
+  renameSync(`${file}.tmp`, file);
+}
+
+/** The first Ctrl-C stops new analyses; detached analyses in flight finish and are recorded. */
+function onInterrupt(stop: () => void): void {
+  process.on("SIGINT", () => {
+    stop();
+    interruptActive();
+    process.stdout.write("Interrupted: no new run or analysis starts; analyses in flight finish and are recorded.\n");
+  });
+}
+
+const SPEC_REFUSED =
+  "Remove the refused analysis models, or pass --cli with a humanish build that supports them. Nothing was spent.";
+
+/** Print each analysis model the CLI refuses; true when there is one. */
+async function anySpecRefused(projectDir: string, logFile: string): Promise<boolean> {
+  const refusals = await refusedSpecs(specs, { cliPath, projectDir, logFile });
+  for (const refusal of refusals) {
+    process.stdout.write(`${refusal.spec}: humanish ${version} refuses this analyst. ${refusal.message}\n`);
+  }
+  return refusals.length > 0;
+}
+
+/** The dry-run projection for each analysis model, from per-analysis cost estimates. */
+function printModelProjections(
+  costs: (spec: AnalysisSpec) => AnalysisCost[] | null,
+  planned: number,
+  basis: string,
+  capUsd: number,
+): void {
+  for (const spec of specs) {
+    const known = costs(spec);
+    if (known === null) {
+      process.stdout.write(
+        `${spec.label}: ${planned} analyses planned. This checkout has no rate for ${spec.model}, so the dry run cannot project ` +
+          `its spend. Each analysis still starts only when the worst case analyze --dry-run reports fits under $${capUsd}.\n`,
+      );
+      continue;
+    }
+    const projection = projectAnalyses(known, capUsd);
+    const refused = planned - known.length;
+    process.stdout.write(
+      `${spec.label}: ${planned} analyses planned${refused > 0 ? `, ${refused} refused by analyze --dry-run` : ""}. ` +
+        `At ${basis}, ${projection.fit} fit under $${capUsd}, about $${projection.typicalUsd.toFixed(2)}. ` +
+        `If each wrote its whole output allowance, ${projection.worstCaseFit} would fit, $${projection.worstCaseUsd.toFixed(2)}.\n`,
+    );
+    process.stdout.write(
+      projection.fit < projection.analyses
+        ? `  The plan does not fit $${capUsd}: every analysis starts at --max-usd ${projection.capThatFits}, or lower the runs or --analysis-repeats.\n`
+        : `  Every planned analysis fits under $${capUsd}.\n`,
+    );
+  }
+}
+
+/** Analyze the manifest's recorded runs with every model, saving the manifest after each one. */
+async function runMatrix(
+  manifest: Manifest,
+  budget: BudgetSettings,
+  paths: { projectDir: string; logFile: string },
+  save: () => void,
+  stopped: () => boolean,
+): Promise<void> {
+  const runOf = (analysis: MatrixAnalysis): RunRecord | undefined =>
+    manifest.runs.find((run) => run.runId === analysis.runId);
+  await runAnalysisMatrix(manifest, {
+    specs, repeats, concurrency, budget, cliPath, cliVersion: version, ...paths, analyzeNodeArgs, stopped,
+    onRecord: (analysis, spentUsd) => {
+      save();
+      const run = runOf(analysis);
+      process.stdout.write(
+        `${analysis.spec} ${run ? `${run.arm} ${run.index}` : analysis.runId} repeat ${analysis.repeat}: ` +
+          `analysis ${analysis.state}${analysis.error ? ` (${analysis.error})` : ""}, spent $${spentUsd.toFixed(2)}\n`,
+      );
+    },
+  });
+}
+
+let interrupted = false;
+
+if (values.reanalyze !== undefined) {
+  const workDir = path.resolve(values.reanalyze);
+  const manifestPath = path.join(workDir, "manifest.json");
+  if (!existsSync(manifestPath)) fail(`No manifest.json in ${workDir}. Pass the --work-dir of an earlier pnpm bench.`);
+  const manifest = readJson<Manifest>(manifestPath);
+  const projectDir = path.join(workDir, "project");
+  const logFile = path.join(workDir, "cli.log");
+  const budget: BudgetSettings = {
+    ...manifest.budget,
+    maxUsdPerBrain: positiveNumber(values["max-usd"], "--max-usd"),
+    ...analysisLimits,
+    analysis: true,
+  };
+  const recorded = manifest.runs.flatMap((run) => (run.runId === null ? [] : [run.runId]));
+  process.stdout.write(
+    `humanish ${version} (${source}) analyzing ${recorded.length} recorded runs from ${workDir}, ` +
+      `${repeats} analys${repeats === 1 ? "is" : "es"} of each per model, cap $${budget.maxUsdPerBrain} per model\n`,
+  );
+  if (await anySpecRefused(projectDir, logFile)) fail(SPEC_REFUSED);
+  if (dryRun) {
+    // Admission on each recorded run is the CLI's own estimate for that run and analyst.
+    const admitted = new Map<string, AnalysisCost[]>();
+    for (const spec of specs) {
+      const costs: AnalysisCost[] = [];
+      for (const runId of recorded) {
+        const admission = await admissionFor({ runId, budget, cliPath, projectDir, logFile, spec });
+        if (admission.ok && admission.admissionUsd !== null && admission.worstCaseUsd !== null) {
+          costs.push({ typicalUsd: admission.admissionUsd, worstCaseUsd: admission.worstCaseUsd });
+        }
+      }
+      admitted.set(spec.label, Array.from({ length: repeats }, () => costs).flat());
+    }
+    printModelProjections((spec) => admitted.get(spec.label) ?? [], recorded.length * repeats, "the expected cost analyze --dry-run reports", budget.maxUsdPerBrain);
+    process.stdout.write("Dry run: no analysis ran and nothing was spent.\n");
+    process.exit(0);
+  }
+  onInterrupt(() => {
+    interrupted = true;
+  });
+  const save = (): void => writeManifest(manifestPath, manifest);
+  await runMatrix(manifest, budget, { projectDir, logFile }, save, () => interrupted);
+  save();
+  writeResults(projectDir, manifest, path.resolve(values.out ?? workDir));
   process.exit(0);
 }
 
@@ -136,11 +329,6 @@ const runsPerArm = Number(values.runs);
 if (!Number.isSafeInteger(runsPerArm) || runsPerArm < 1) fail(`--runs must be a whole number of at least 1.`);
 if (values.mission !== "neutral" && values.mission !== "walked") fail(`--mission must be neutral or walked.`);
 const mission = MISSIONS[values.mission as MissionId];
-const cliPath = path.resolve(values.cli);
-if (!existsSync(cliPath)) fail(`No humanish CLI at ${cliPath}. Run pnpm build, or pass --cli.`);
-const version = execFileSync(process.execPath, [cliPath, "--version"], { encoding: "utf8" }).trim();
-const source =
-  cliPath === path.join(REPO_ROOT, "dist", "cli.js") ? `this checkout at ${gitState()}` : `${cliPath}`;
 
 /** The checkout's commit, and the commit that last changed src/, which is what the build measures. */
 function gitState(): string {
@@ -156,7 +344,6 @@ function gitState(): string {
   }
 }
 
-const dryRun = values["dry-run"];
 const workDir = path.resolve(values["work-dir"] ?? mkdtempSync(path.join(os.tmpdir(), "humanish-bench-")));
 const projectDir = path.join(workDir, "project");
 const logFile = path.join(workDir, "cli.log");
@@ -187,22 +374,23 @@ for (const brain of brains) {
 const budget: BudgetSettings = {
   maxUsdPerBrain: positiveNumber(values["max-usd"], "--max-usd"),
   participantCapUsd: positiveNumber(values["participant-cap"], "--participant-cap"),
-  analysisMaxUsd: values["analysis-max-usd"] === undefined
-    ? Math.min(1000, positiveNumber(values["max-usd"], "--max-usd"))
-    : positiveNumber(values["analysis-max-usd"], "--analysis-max-usd"),
-  analysisAutoCap: values["analysis-max-usd"] === undefined,
+  ...analysisLimits,
   worstCaseDesktopMinutes,
-  analysis: !values["no-analysis"],
+  // With the analysis matrix, the matrix analyzes each run after every participant has run.
+  analysis: !values["no-analysis"] && !matrixMode,
 };
 
 process.stdout.write(
-  `humanish ${version} (${source}), mission ${mission.id}, ${runsPerArm} run${runsPerArm === 1 ? "" : "s"} per arm, cap $${budget.maxUsdPerBrain} per brain\n`,
+  `humanish ${version} (${source}), mission ${mission.id}, ${runsPerArm} run${runsPerArm === 1 ? "" : "s"} per arm, cap $${budget.maxUsdPerBrain} per brain` +
+    (matrixMode
+      ? ` and per analysis model, ${repeats} analys${repeats === 1 ? "is" : "es"} of each run per model after every participant has run\n`
+      : "\n"),
 );
 for (const brain of brains) {
   const projection = projectBrain(BRAINS[brain], runsPerArm * 2, budget);
   process.stdout.write(
-    `${brain}: ${projection.runs} runs planned. At typical spend, ${projection.participantsFit} runs and ` +
-      `${projection.analysesFit} analyses fit under $${budget.maxUsdPerBrain}, about $${projection.typicalUsd.toFixed(2)}. ` +
+    `${brain}: ${projection.runs} runs planned. At typical spend, ${projection.participantsFit} runs` +
+      `${budget.analysis ? ` and ${projection.analysesFit} analyses` : ""} fit under $${budget.maxUsdPerBrain}, about $${projection.typicalUsd.toFixed(2)}. ` +
       `Worst case for the whole plan: $${projection.boundUsd.toFixed(2)}.` +
       `${BRAINS[brain].priced ? "" : " Participant model spend is unpriced and not bounded by the cap."}\n`,
   );
@@ -216,11 +404,26 @@ for (const brain of brains) {
   }
 }
 
+const specRefused = matrixMode && (await anySpecRefused(projectDir, logFile));
+if (matrixMode) {
+  const planned = runsPerArm * 2 * brains.length * repeats;
+  printModelProjections(
+    (spec) => {
+      const cost = analysisCostFor(spec.model);
+      return cost === null ? null : Array.from({ length: planned }, () => cost);
+    },
+    planned,
+    "typical spend",
+    budget.maxUsdPerBrain,
+  );
+}
+
 if (dryRun) {
   if (values["work-dir"] === undefined) rmSync(workDir, { recursive: true, force: true });
   process.stdout.write("Dry run: no participant ran and nothing was spent.\n");
-  process.exit(0);
+  process.exit(specRefused ? 2 : 0);
 }
+if (specRefused) fail(SPEC_REFUSED);
 
 const manifest: Manifest = {
   schema: MANIFEST_SCHEMA,
@@ -235,19 +438,14 @@ const manifest: Manifest = {
   runs: [],
 };
 const saveManifest = (): void =>
-  writeFileSync(path.join(workDir, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+  writeManifest(path.join(workDir, "manifest.json"), manifest);
 saveManifest();
 process.stdout.write(`Work dir: ${workDir}\n`);
 
-let interrupted = false;
-process.on("SIGINT", () => {
+onInterrupt(() => {
   interrupted = true;
-  interruptActive();
 });
 
-const dotenvArgs = values.dotenv ? ["--dotenv", path.resolve(values.dotenv)] : [];
-// `humanish analyze` takes no --dotenv, so Node loads the same file into that child's environment.
-const analyzeNodeArgs = values.dotenv ? [`--env-file=${path.resolve(values.dotenv)}`] : [];
 const spent: Partial<Record<BrainId, number>> = {};
 const consecutiveFailures: Partial<Record<BrainId, number>> = {};
 let lastStart = 0;
@@ -339,7 +537,7 @@ for (const planned of planRuns(brains, runsPerArm)) {
   else if (interrupted) record.analysis.state = "not_run";
   else {
     const { analysis, chargeUsd } = await analyzeWithinBudget({
-      runId: record.runId, spentUsd: afterRun, budget, cliPath, projectDir, logFile, analyzeNodeArgs,
+      runId: record.runId, ledger: new SpendLedger(budget, afterRun), budget, cliPath, projectDir, logFile, analyzeNodeArgs,
     });
     record.analysis = analysis;
     spent[planned.brain] = round(afterRun + chargeUsd);
@@ -351,5 +549,9 @@ for (const planned of planRuns(brains, runsPerArm)) {
   );
 }
 
+saveManifest();
+if (matrixMode && !interrupted) {
+  await runMatrix(manifest, { ...budget, analysis: true }, { projectDir, logFile }, saveManifest, () => interrupted);
+}
 saveManifest();
 writeResults(projectDir, manifest, outDir);
