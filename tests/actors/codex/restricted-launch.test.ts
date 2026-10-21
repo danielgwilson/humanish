@@ -88,23 +88,6 @@ describe("restricted launch admission", () => {
     });
   });
 
-  it("names the operator setting a hosted launch refuses, never its value", () => {
-    const operator = { operatorAuth: true };
-    const value = structuredClone(effective) as { config: Record<string, Record<string, unknown>> };
-    value.config.features!.js_repl_tools = true;
-    value.config.skills = { bundled: { enabled: false }, config: [{ path: "/secret/skill" }] };
-    const refused = admitEffectiveConfig(value, "/unused", undefined, operator);
-    expect(refused).toEqual({
-      refusal: "codex_unsafe_configuration",
-      reason: "in the effective Codex config, skills.config is set",
-    });
-    value.config.features!.shell_tool = true;
-    expect(admitEffectiveConfig(value, "/unused", undefined, operator)).toEqual({
-      refusal: "codex_unsafe_configuration",
-      reason: "in the effective Codex config, features.shell_tool is not the value humanish sets",
-    });
-  });
-
   it("admits a ChatGPT account, an API key only with operator auth, and refuses the rest", () => {
     expect(admitAccount(account, false)).toEqual({ value: "chatgpt-account" });
     const apiKey = { account: { type: "apiKey" }, requiresOpenaiAuth: true };
@@ -193,14 +176,6 @@ describe("restricted launch admission", () => {
     expect(admitThread(noModel, threadExpected)).toEqual(refused);
   });
 
-  it("refuses a thread that loaded an instruction file and names the file without its path", () => {
-    const loaded = { ...thread, instructionSources: ["/Users/someone/.codex/AGENTS.md"] };
-    expect(admitThread(loaded, threadExpected)).toEqual({
-      refusal: "codex_unsafe_configuration",
-      reason: "Codex loaded instructions from AGENTS.md",
-    });
-  });
-
   it("admits an empty MCP status page and refuses a running server or another page", () => {
     expect(admitMcpStatus(mcp)).toEqual({ value: undefined });
     expect(admitMcpStatus({ data: [{}], nextCursor: null })).toEqual({
@@ -219,5 +194,32 @@ describe("restricted launch admission", () => {
       "-c",
       "features.x=false",
     ]);
+  });
+});
+
+describe("restricted launch refusal reasons", () => {
+  it("names the operator setting a hosted launch refuses, never its value", () => {
+    const operator = { operatorAuth: true };
+    const value = structuredClone(effective) as { config: Record<string, Record<string, unknown>> };
+    value.config.features!.js_repl_tools = true;
+    value.config.skills = { bundled: { enabled: false }, config: [{ path: "/secret/skill" }] };
+    const refused = admitEffectiveConfig(value, "/unused", undefined, operator);
+    expect(refused).toEqual({
+      refusal: "codex_unsafe_configuration",
+      reason: "in the effective Codex config, skills.config is set",
+    });
+    value.config.features!.shell_tool = true;
+    expect(admitEffectiveConfig(value, "/unused", undefined, operator)).toEqual({
+      refusal: "codex_unsafe_configuration",
+      reason: "in the effective Codex config, features.shell_tool is not the value humanish sets",
+    });
+  });
+
+  it("refuses a thread that loaded an instruction file and names the file without its path", () => {
+    const loaded = { ...thread, instructionSources: ["/Users/someone/.codex/AGENTS.md"] };
+    expect(admitThread(loaded, threadExpected)).toEqual({
+      refusal: "codex_unsafe_configuration",
+      reason: "Codex loaded instructions from AGENTS.md",
+    });
   });
 });
