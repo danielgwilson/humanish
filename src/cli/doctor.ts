@@ -145,6 +145,8 @@ export async function doctor(
     keyDeps?: KeyResolutionDeps;
     /** The hosted Codex participant's operator handshake; tests replace it. */
     codexParticipantReadiness?: StudySetupCheckArgs["codexParticipantReadiness"];
+    /** The Codex account analyst's setup check; tests replace it. */
+    codexAnalysisReadiness?: StudySetupCheckArgs["codexAnalysisReadiness"];
     /** What `--dotenv` loaded, so a key row names the file that supplied it. */
     dotenv?: DotenvLoad;
   } = {},
@@ -193,6 +195,9 @@ export async function doctor(
         ...(options.codexParticipantReadiness === undefined
           ? {}
           : { codexParticipantReadiness: options.codexParticipantReadiness }),
+        ...(options.codexAnalysisReadiness === undefined
+          ? {}
+          : { codexAnalysisReadiness: options.codexAnalysisReadiness }),
       })
     : undefined;
   // Without --study, each key row names the studies that need it instead of failing.

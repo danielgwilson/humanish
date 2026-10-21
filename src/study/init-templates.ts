@@ -85,6 +85,7 @@ Studies:
 - private or machine-local studies live in ignored .humanish/studies/*.yaml or
   .humanish/local/studies/*.yaml;
 - run a study with \`${command} run <study>\`, or \`${command} watch <study>\` to stay attached;
+- a live run ends with findings from a separate analyst; \`${command} review --run latest\` shows them;
 - files under humanish/labs/ move there with \`${command} migrate\`.
 
 Format standard:
@@ -105,12 +106,18 @@ type StarterActor = "openai-computer-use" | "local-agent";
  */
 function tryLiveStudy(actor: StarterActor, localAgent: LocalAgentId = "codex"): StarterFile {
   const account = actor === "local-agent";
+  const analyst =
+    localAgent === "codex"
+      ? `The analysis after the run uses the same Codex account. Set review.analysis: false to skip
+  it.`
+      : `When OPENAI_API_KEY is set, the analysis after the run bills it: humanish refuses that request
+  before it starts if its estimate is over $${DEFAULT_ANALYSIS_MAX_COST_USD}. With Codex also signed
+  in, review.analysis.provider: codex has its account analyze the run instead. Set
+  review.analysis: false to skip it.`;
   const needs = account
     ? `  Needs E2B_API_KEY and the coding agent signed in on this machine. Cost: one small task, a few
   E2B desktop minutes and the agent's account usage. humanish cannot put a dollar cap on account
-  usage, so the ten-minute session limit below bounds the run. When OPENAI_API_KEY is set, the
-  analysis after the run bills it: humanish refuses that request before it starts if its estimate
-  is over $${DEFAULT_ANALYSIS_MAX_COST_USD}. Set review.analysis: false to skip it.`
+  usage, so the ten-minute session limit below bounds the run. ${analyst}`
     : `  Needs E2B_API_KEY and OPENAI_API_KEY. Cost: one small task with a $2 cap on estimated model
   spend. The run stops before its next model request once the estimate passes $2, so the last
   request can go slightly over, and hosted desktop time is billed separately. The analysis after

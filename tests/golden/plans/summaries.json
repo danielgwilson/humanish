@@ -4,14 +4,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 2,
           "expectedCostUsd": {
             "low": 0.8032,
-            "high": 2.88079
+            "high": 3.8392
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.80 to $2.88 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.80 to $3.84 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "comms-email-demo",
@@ -37,14 +37,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
             "low": 0.7532,
-            "high": 2.83079
+            "high": 3.7892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "detect-taskly-clean",
@@ -68,14 +68,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
             "low": 0.7532,
-            "high": 2.83079
+            "high": 3.7892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "detect-taskly-planted",
@@ -99,14 +99,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
             "low": 0.7532,
-            "high": 2.83079
+            "high": 3.7892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "detect-todomvc",
@@ -130,14 +130,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
             "low": 0.7532,
-            "high": 2.83079
+            "high": 3.7892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "dwell-window-todomvc",
@@ -162,14 +162,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 2,
           "expectedCostUsd": {
             "low": 0.8032,
-            "high": 2.88079
+            "high": 3.8392
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.80 to $2.88 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.80 to $3.84 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "effort-contrast-demo",
@@ -193,14 +193,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 4,
           "expectedCostUsd": {
             "low": 0.9032,
-            "high": 2.98079
+            "high": 3.9392
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.90 to $2.98 for 4 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.90 to $3.94 for 4 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "fanout-demo",
@@ -263,14 +263,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
             "low": 0.7532,
-            "high": 2.83079
+            "high": 3.7892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "handed-a-human-surface",
@@ -308,14 +308,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
             "low": 0.7532,
-            "high": 2.83079
+            "high": 3.7892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "later-tab-emulation",
@@ -340,14 +340,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 3,
           "expectedCostUsd": {
             "low": 0.8532,
-            "high": 2.93079
+            "high": 3.8892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.85 to $2.93 for 3 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.85 to $3.89 for 3 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "lobby-trivia-3player",
@@ -377,14 +377,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
             "low": 0.7532,
-            "high": 2.83079
+            "high": 3.7892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "participant-camera",
@@ -409,14 +409,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 2,
           "expectedCostUsd": {
             "low": 0.8032,
-            "high": 2.88079
+            "high": 3.8392
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.80 to $2.88 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.80 to $3.84 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "persona-contrast-demo",
@@ -461,14 +461,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 3,
           "expectedCostUsd": {
             "low": 0.8532,
-            "high": 2.93079
+            "high": 3.8892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.85 to $2.93 for 3 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.85 to $3.89 for 3 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "shared-world-concurrent-demo",
@@ -498,14 +498,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 3,
           "expectedCostUsd": {
             "low": 0.8532,
-            "high": 2.93079
+            "high": 3.8892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.85 to $2.93 for 3 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.85 to $3.89 for 3 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "shared-world-concurrent-live",
@@ -535,14 +535,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 2,
           "expectedCostUsd": {
             "low": 0.8032,
-            "high": 2.88079
+            "high": 3.8392
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.80 to $2.88 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.80 to $3.84 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "signup-email-verify",
@@ -571,14 +571,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
             "low": 0.7532,
-            "high": 2.83079
+            "high": 3.7892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "terminal-product-demo",
@@ -599,14 +599,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
             "low": 0.7532,
-            "high": 2.83079
+            "high": 3.7892
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "tui-self-study",
@@ -633,14 +633,14 @@
         "summary": {
           "analysis": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "trigger": "default",
             "participants": 1,
             "expectedCostUsd": {
               "low": 0.7532,
-              "high": 2.83079
+              "high": 3.7892
             },
-            "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+            "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "cua-browser",
@@ -677,8 +677,8 @@
             "billing": "account-unknown",
             "model": "gpt-6-astra",
             "maxCostUsd": null,
-            "trigger": "explicit",
-            "line": "After live runs: Codex account analysis · gpt-6-astra · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable."
+            "trigger": "default",
+            "line": "After live runs: default Codex account analysis · gpt-6-astra · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable."
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "local-browser",
@@ -700,14 +700,14 @@
         "summary": {
           "analysis": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "trigger": "default",
             "participants": 1,
             "expectedCostUsd": {
               "low": 0.7532,
-              "high": 2.83079
+              "high": 3.7892
             },
-            "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+            "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "try-live",
@@ -733,14 +733,14 @@
         "summary": {
           "analysis": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "trigger": "default",
             "participants": 1,
             "expectedCostUsd": {
               "low": 0.7532,
-              "high": 2.83079
+              "high": 3.7892
             },
-            "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+            "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "cua-browser",
@@ -777,8 +777,8 @@
             "billing": "account-unknown",
             "model": "gpt-6-astra",
             "maxCostUsd": null,
-            "trigger": "explicit",
-            "line": "After live runs: Codex account analysis · gpt-6-astra · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable."
+            "trigger": "default",
+            "line": "After live runs: default Codex account analysis · gpt-6-astra · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable."
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "local-browser",
@@ -799,15 +799,12 @@
       "try-live": {
         "summary": {
           "analysis": {
+            "provider": "codex",
+            "billing": "account-unknown",
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": null,
             "trigger": "default",
-            "participants": 1,
-            "expectedCostUsd": {
-              "low": 0.7532,
-              "high": 2.83079
-            },
-            "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+            "line": "After live runs: default Codex account analysis · gpt-6-astra · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable."
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "try-live",
@@ -831,14 +828,14 @@
         "summary": {
           "analysis": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "trigger": "default",
             "participants": 1,
             "expectedCostUsd": {
               "low": 0.7532,
-              "high": 2.83079
+              "high": 3.7892
             },
-            "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+            "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "cua-browser",
@@ -875,8 +872,8 @@
             "billing": "account-unknown",
             "model": "gpt-6-astra",
             "maxCostUsd": null,
-            "trigger": "explicit",
-            "line": "After live runs: Codex account analysis · gpt-6-astra · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable."
+            "trigger": "default",
+            "line": "After live runs: default Codex account analysis · gpt-6-astra · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable."
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "local-browser",
@@ -898,14 +895,14 @@
         "summary": {
           "analysis": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "trigger": "default",
             "participants": 1,
             "expectedCostUsd": {
               "low": 0.7532,
-              "high": 2.83079
+              "high": 3.7892
             },
-            "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+            "line": "After live runs: default analysis · gpt-6-astra · expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
           },
           "schema": "humanish.study-summary.v1",
           "studyId": "try-live",
@@ -930,14 +927,14 @@
       "summary": {
         "analysis": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "trigger": "default",
           "participants": 4,
           "expectedCostUsd": {
             "low": 0.9032,
-            "high": 2.98079
+            "high": 3.9392
           },
-          "line": "After live runs: default analysis · gpt-6-astra · expected $0.90 to $2.98 for 4 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap. Set review.analysis: false to disable."
+          "line": "After live runs: default analysis · gpt-6-astra · expected $0.90 to $3.94 for 4 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
         "schema": "humanish.study-summary.v1",
         "studyId": "mixed-participants",

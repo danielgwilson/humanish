@@ -54,7 +54,7 @@ describe("automatic analysis admission and producer boundary", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("defaults use a separate three-dollar admission budget and false opts out", () => {
+  it("defaults use a separate ten-dollar admission budget and false opts out", () => {
     expect(config).toEqual({
       model: "gpt-6-astra",
       maxCostUsd: 5,
@@ -64,7 +64,7 @@ describe("automatic analysis admission and producer boundary", () => {
     });
     expect(resolveAutomaticAnalysis(undefined)).toEqual({
       ok: true,
-      config: { ...config, maxCostUsd: 3 },
+      config: { ...config, maxCostUsd: 10 },
       preferLargerOutput: true,
     });
     expect(resolveAutomaticAnalysis({ maxCostUsd: 3, maxOutputTokens: 16384 })).not.toHaveProperty(
@@ -111,11 +111,44 @@ describe("automatic analysis admission and producer boundary", () => {
     if (parsed.ok) expect(parsed.config.review?.analysis).toBe(false);
   });
   it.each(fixtures)("only describes defaults for routes with participants: $name", ({ config }) => {
-    const route = routeOf(libraryConfig(config));
-    expect(automaticAnalysisBudget(undefined, route)).toEqual(
-      route === "preview" ? undefined : { model: "gpt-6-astra", maxCostUsd: 3, trigger: "default" },
+    const study = libraryConfig(config);
+    const route = routeOf(study);
+    const codex = study.actor?.type === "local-agent";
+    expect(automaticAnalysisBudget(undefined, route, undefined, study.actor)).toEqual(
+      route === "preview"
+        ? undefined
+        : codex
+          ? {
+              provider: "codex",
+              billing: "account-unknown",
+              model: "gpt-6-astra",
+              maxCostUsd: null,
+              trigger: "default",
+            }
+          : { model: "gpt-6-astra", maxCostUsd: 10, trigger: "default" },
     );
     expect(automaticAnalysisBudget(false, route)).toBeUndefined();
+  });
+  it.each([
+    [{ type: "local-agent" }, "codex"],
+    [{ type: "local-agent", localAgent: "codex" }, "codex"],
+    [{ type: "local-agent", localAgent: "claude" }, "openai"],
+    [{ type: "openai-computer-use" }, "openai"],
+    [undefined, "openai"],
+  ] as const)("a %j participant's undeclared analyst is %s", (actor, provider) => {
+    const resolved = resolveAutomaticAnalysis(undefined, actor);
+    if (!resolved.ok || !resolved.config) throw new Error("no default analysis");
+    expect(resolved.config.provider ?? "openai").toBe(provider);
+    expect(resolved.config.maxCostUsd).toBe(provider === "codex" ? null : 10);
+    expect(automaticAnalysisBudget(undefined, "computer-use", 1, actor)).toMatchObject({
+      trigger: "default",
+      maxCostUsd: provider === "codex" ? null : 10,
+    });
+    // A declared analyst is kept whatever the participant.
+    expect(resolveAutomaticAnalysis({ maxCostUsd: 4 }, actor)).toMatchObject({
+      config: { maxCostUsd: 4 },
+    });
+    expect(resolveAutomaticAnalysis(false, actor)).toEqual({ ok: true, config: undefined });
   });
   it("starts no analysis and prints no analysis line for a run a signal interrupted", async () => {
     await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
@@ -321,7 +354,7 @@ describe("automatic analysis admission and producer boundary", () => {
           `expected $${low.toFixed(2)} to $${high.toFixed(2)} for 1 participant`,
         );
         expect(stdout).toContain(
-          `refused before it starts if both its worst case and its expected cost plus a 10% margin are over $${typeof setting === "object" ? setting.maxCostUsd : 3}; this is not a billing cap`,
+          `refused before it starts if both its worst case and its expected cost plus a 10% margin are over $${typeof setting === "object" ? setting.maxCostUsd : 10}; this is not a billing cap`,
         );
       }
     },
@@ -755,7 +788,7 @@ describe("automatic analysis admission and producer boundary", () => {
         "taken-run",
       ]);
       expect(stderr).toMatch(
-        /default analysis · gpt-6-astra · expected \$\d+\.\d\d to \$\d+\.\d\d for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over \$3; this is not a billing cap/,
+        /default analysis · gpt-6-astra · expected \$\d+\.\d\d to \$\d+\.\d\d for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over \$10; this is not a billing cap/,
       );
       expect(stderr).not.toContain("preparing analysis");
       expect(JSON.parse(stdout)).toMatchObject({
@@ -802,7 +835,10 @@ describe("automatic analysis admission and producer boundary", () => {
       expect(result.automaticAnalysis).toEqual({
         state: "skipped",
         reason: "AUTOMATIC_ANALYSIS_DRY_RUN",
+        message: "The automatic analysis was skipped for dry runs.",
+        nextCommand: null,
       });
+      expect(result).not.toHaveProperty("findings");
       expect(result.ok).toBe(result.runOk);
       expect(exit).toBe(result.ok ? 0 : 2);
       expect(stderr).not.toContain("preparing analysis");

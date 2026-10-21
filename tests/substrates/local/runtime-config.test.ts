@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { automaticAnalysisBudget } from "../../../src/analysis/automatic-config.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { planCliRun } from "../../../src/study/doctor.js";
 import { requiredKeys } from "../../../src/study/requirements.js";
@@ -28,10 +29,16 @@ describe("local browser lab configuration", () => {
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) throw new Error(parsed.error.message);
     expect(parsed.config.actor).toMatchObject({ model: "gpt-6-astra", reasoningEffort: "low" });
-    expect(parsed.config).toMatchObject({
-      review: { analysis: { provider: "codex" } },
-      execution: { desktop: { resolution: [960, 720] } },
-    });
+    expect(parsed.config).toMatchObject({ execution: { desktop: { resolution: [960, 720] } } });
+    // The study declares no analysis, so its Codex participant's account analyzes the run.
+    expect(
+      automaticAnalysisBudget(
+        parsed.config.review?.analysis,
+        "computer-use",
+        2,
+        parsed.config.actor,
+      ),
+    ).toMatchObject({ provider: "codex", trigger: "default" });
     expect(await liveKeys(parsed.config)).toEqual([]);
   });
   it("requires only the model API key for local API participants", async () => {

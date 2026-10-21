@@ -90,7 +90,7 @@ export function planTerminalStudy(
     config.execution?.target === "modal-terminal" ? "modal" : "e2b";
   const modal = sandboxProvider === "modal" ? modalRefusal(config) : undefined;
   if (modal !== undefined) return refuse(modal.code, modal.message);
-  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis, config.actor);
   if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);

@@ -172,6 +172,7 @@ export async function runStudyCommand(args: {
           config.review?.analysis,
           route,
           computerUseParticipantCount(config),
+          config.actor,
         );
         if (analysisBudget && resolveStudyDryRun(config, args.options.dryRun, true) === false) {
           args.io.writeErr(`${formatAutomaticAnalysisBudget(analysisBudget)}\n`);

@@ -415,7 +415,7 @@ describe("selected lab setup without paid dispatch", () => {
     });
   });
 
-  it("does not require an API key for an authenticated local participant, and explicitly skips analysis", async () => {
+  it("does not require an API key for an authenticated local participant, whose Codex account analyzes the run", async () => {
     await project(lab("local-agent"), async (cwd) => {
       const result = await doctor(cwd, {
         study: "preview",
@@ -430,15 +430,16 @@ describe("selected lab setup without paid dispatch", () => {
           }),
         },
         codexParticipantReadiness: async () => hostedReady,
+        codexAnalysisReadiness: async () => ({ ready: true, errorCode: null }),
       });
       expect(result.ok).toBe(true);
       expect(
         result.checks.find((check) => check.name === "local participant authentication")?.ok,
       ).toBe(true);
+      // A hosted Codex participant's run is analyzed by the same account, with no OpenAI key.
       expect(result.checks.find((check) => check.name === "post-run analysis")).toMatchObject({
         ok: true,
-        status: "note",
-        message: expect.stringContaining("no automatic findings report"),
+        message: expect.stringContaining("Codex CLI and ChatGPT account login are ready"),
       });
       expect(JSON.stringify(result)).not.toMatch(/synthetic-desktop-marker|private-account-marker/);
     });
@@ -495,38 +496,48 @@ describe("selected lab setup without paid dispatch", () => {
         localAgents: noAgents,
       });
       expect(result.checks.find((check) => check.name === "post-run analysis")?.message).toContain(
-        "refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3; this is not a billing cap.",
+        "refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap.",
       );
     });
   });
 
   it.each([
-    ["without a scorer", "", "present (process env), not used by this study"],
+    [
+      "without a scorer",
+      "",
+      "present (process env), not used by this study",
+      "present (process env), not used by this study",
+    ],
     [
       "with a declared scorer, whose code may read any key",
       "\nreview:\n  scorer:\n    ref: humanish/scorers/judge.mjs\n",
       "supplied by process env; presence only, validity not tested",
+      "supplied by process env; presence only, validity not tested",
     ],
-  ])("says when a present key is one the lab does not read, %s", async (_name, extra, codexRow) => {
-    await project(lab("local-agent") + extra, async (cwd) => {
-      const result = await doctor(cwd, {
-        study: "preview",
-        env: {
-          ...keyless,
-          OPENAI_API_KEY: "synthetic-model",
-          E2B_API_KEY: "synthetic-desktop",
-          CODEX_API_KEY: "synthetic-codex",
-        },
-        localAgents: noAgents,
+  ])(
+    "says when a present key is one the lab does not read, %s",
+    async (_name, extra, codexRow, openaiRow) => {
+      await project(lab("local-agent") + extra, async (cwd) => {
+        const result = await doctor(cwd, {
+          study: "preview",
+          env: {
+            ...keyless,
+            OPENAI_API_KEY: "synthetic-model",
+            E2B_API_KEY: "synthetic-desktop",
+            CODEX_API_KEY: "synthetic-codex",
+          },
+          localAgents: noAgents,
+        });
+        const message = (name: string) =>
+          result.checks.find((check) => check.name === `key ${name}`)?.message;
+        expect(message("CODEX_API_KEY")).toBe(codexRow);
+        // E2B_API_KEY is required. A Codex participant's default analyst is its Codex account, so
+        // only a scorer can read OPENAI_API_KEY.
+        expect(message("E2B_API_KEY")).toContain("supplied by process env");
+        expect(message("OPENAI_API_KEY")).toBe(openaiRow);
       });
-      const message = (name: string) =>
-        result.checks.find((check) => check.name === `key ${name}`)?.message;
-      expect(message("CODEX_API_KEY")).toBe(codexRow);
-      // E2B_API_KEY is required, and the default automatic analysis reads OPENAI_API_KEY.
-      expect(message("E2B_API_KEY")).toContain("supplied by process env");
-      expect(message("OPENAI_API_KEY")).toContain("supplied by process env");
-    });
-  });
+    },
+  );
 
   it("does not claim the library-only local-app route can run through the CLI", async () => {
     await project(

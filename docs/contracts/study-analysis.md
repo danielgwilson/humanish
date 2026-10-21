@@ -3,15 +3,16 @@
 Study analysis is an independent interpretation of retained participant evidence.
 It is separate from the participant's account, recorded outcome, and the run's
 deterministic review verdict. Opening an Observer never starts a provider request.
-Supported live runs request analysis on completion by default, with a separate
-$3 cap on its expected cost. Set `review.analysis: false` to disable that request;
-see [automatic analysis](../product/automatic-analysis.md).
+Supported live runs request analysis on completion by default. A study that declares no analyst
+gets the Codex account analyst when its participant is a Codex `local-agent`, and the OpenAI
+analyst with a separate $10 cap on its expected cost otherwise. Set `review.analysis: false` to
+disable that request; see [automatic analysis](../product/automatic-analysis.md).
 
 ## Invocation
 
 ```bash
-humanish analyze --run latest --max-cost 3 --dry-run --json
-humanish analyze --run latest --max-cost 3 --json
+humanish analyze --run latest --max-cost 10 --dry-run --json
+humanish analyze --run latest --max-cost 10 --json
 humanish observe --run latest
 humanish analyze list --run latest --json
 humanish analyze show --run latest --json
@@ -116,9 +117,11 @@ the current merge instructions, billed $1.92, most of its input served from the
 provider's prompt cache, and each of its 466 citations resolved. Two runs do not
 calibrate the merge request's estimate.
 
-## Explicit Codex account analysis
+## Codex account analysis
 
-An existing completed recording can use a separate restricted Codex analyst:
+A study whose participant is a Codex `local-agent` uses this analyst unless it declares another,
+and any study can select it with `review.analysis.provider: codex`. An existing completed
+recording can use it too:
 
 ```bash
 humanish analyze --run latest --provider codex --dry-run --json
@@ -486,7 +489,10 @@ The states without findings:
 - `skipped`: the automatic analysis was skipped or refused, for example without
   `OPENAI_API_KEY`, or the run's study file sets `review.analysis: false`
   (`AUTOMATIC_ANALYSIS_DISABLED`, read from the file when the view is built). `next` is
-  `analyze --max-cost 3`, which runs an analysis anyway. For an analysis refused for its
+  `analyze --max-cost 10`, which runs an analysis anyway. For a skip without `OPENAI_API_KEY`
+  on a machine where Codex is signed in with a ChatGPT account (read when the view is built),
+  `next` is `analyze --provider codex` and the message names `review.analysis.provider: codex`
+  in the run's study file; otherwise the message says to set the key. For an analysis refused for its
   cost, the message gives the expected cost, the worst case and the cap, and `next` sets
   `--max-cost` to the worst case rounded up.
 - `failed`: the latest attempt failed or was cancelled and no usable version exists. `next`

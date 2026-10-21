@@ -1,14 +1,13 @@
-// A run's analysis findings for `review`, `analyze show` and the end of a live `run`: the
-// `humanish.analysis-findings.v1` projection, read from the run. findings-text.ts prints it. The
+// A run's analysis findings for `review`, `analyze show` and the end of a live `run`
+// (run-findings.ts): the `humanish.analysis-findings.v1` projection, read from the run.
+// findings-text.ts prints it. The
 // analysis artifact stays the record; this reads the version `analyze show` selects and never
 // starts an analysis.
 
 import path from "node:path";
-import type { Command } from "commander";
 import { costRefusal } from "../analysis/admission.js";
 import { DEFAULT_ANALYSIS_MAX_COST_USD } from "../analysis/automatic-config.js";
 import { bySeverity } from "../analysis/finding-lead.js";
-import type { AutomaticAnalysisOutcome } from "../analysis/job.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { projectShareCheckedAnalysis } from "../analysis/sharing.js";
 import type { AnalysisArtifact, LoadedAnalysis } from "../analysis/types.js";
@@ -19,8 +18,7 @@ import { resolveStudyManifest } from "../study/discover.js";
 import { routeOf } from "../study/routing.js";
 import { plural } from "../run/text.js";
 import { shellQuote } from "../substrates/shell.js";
-import { analysisOutcomeText, type CliIo, wantsJson } from "./io.js";
-import { formatFindingsSummary } from "./findings-text.js";
+import { analysisOutcomeText } from "./io.js";
 import { cli } from "./invocation.js";
 
 export const ANALYSIS_FINDINGS_SCHEMA = "humanish.analysis-findings.v1";
@@ -147,6 +145,13 @@ interface FindingsSource {
   analysisOffIn?: string;
   /** For a dry run, the study a live run can start from, read when the view is built. */
   liveStudy?: LiveStudy;
+  /** The run's study, from its bundle. */
+  study?: Pick<RunStudyProvenance, "id" | "path">;
+  /**
+   * Whether Codex is signed in with a ChatGPT account on this machine, read only for an analysis
+   * skipped for a missing OpenAI key, whose next step it picks.
+   */
+  codexSignedIn?: boolean;
 }
 
 /** A study `run` can start live after a dry run. */
@@ -160,7 +165,7 @@ interface LiveStudy {
 }
 
 /** ` --cwd <dir>`, or "" when `cwd` is the current directory. */
-function cwdFlag(cwd: string): string {
+export function cwdFlag(cwd: string): string {
   if (path.resolve(cwd) === process.cwd()) return "";
   return ` --cwd ${/^[\w@%+=:,./-]+$/.test(cwd) ? cwd : shellQuote(cwd)}`;
 }
@@ -330,6 +335,31 @@ function dryRunFindings(source: FindingsSource): AnalysisFindings {
   );
 }
 
+/**
+ * An analysis skipped because OPENAI_API_KEY is not set. With Codex signed in, the next step is the
+ * Codex account analyst, named as an opt-in: the study chose the OpenAI analyst, and switching
+ * the account that pays for it is the operator's choice.
+ */
+function missingKeyFindings(source: FindingsSource, reason: string): AnalysisFindings {
+  const opening = "The automatic analysis was skipped because OPENAI_API_KEY is not set.";
+  if (source.codexSignedIn !== true)
+    return withoutFindings(
+      source,
+      "skipped",
+      reason,
+      `${opening} Set it with ${cli("keys set openai")}, then run the next command.`,
+      analyzeCommand(source, undefined),
+    );
+  const file = source.study?.path === undefined ? "the study file" : source.study.path;
+  return withoutFindings(
+    source,
+    "skipped",
+    reason,
+    `${opening} Codex is signed in on this machine, so its ChatGPT account can analyze the run instead, sending the evidence to OpenAI under that account. The next command does it once; review.analysis.provider: codex in ${file} makes it this study's analyst.`,
+    analyzeCommand(source, "codex"),
+  );
+}
+
 /** The findings view of a run's selected analysis, or why it has none. */
 export function analysisFindings(source: FindingsSource): AnalysisFindings {
   if (source.mode !== undefined && source.mode !== "live") return dryRunFindings(source);
@@ -412,6 +442,8 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       refusal.command,
     );
   }
+  if (job?.state === "skipped" && job.reason === "AUTOMATIC_ANALYSIS_KEY_MISSING")
+    return missingKeyFindings(source, job.reason);
   if (job?.state === "skipped") {
     const refused = job.reason === "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED";
     return withoutFindings(
@@ -502,6 +534,7 @@ export async function readRunAnalysis(
   cwd: string,
   run: string,
   analysisId?: string,
+  deps: FindingsDeps = {},
 ): Promise<FindingsSource | null> {
   const physical = await resolvePhysicalCwd(cwd);
   const prepared = await resolveRunPath(physical, run).catch(() => null);
@@ -512,15 +545,39 @@ export async function readRunAnalysis(
   const analysisOffIn = mode === "live" ? await studyAnalysisOff(physical, study) : undefined;
   const liveStudy =
     mode !== undefined && mode !== "live" ? await liveStudyAfterDryRun(physical, study) : undefined;
+  const loaded = await loadAnalysis(prepared, analysisId);
+  const codexSignedIn =
+    loaded.automatic?.reason === "AUTOMATIC_ANALYSIS_KEY_MISSING"
+      ? await (deps.codexSignedIn ?? codexSignedInHere)().catch(() => false)
+      : undefined;
   return {
     runId: runIdOf(prepared),
     mode,
     runRoot: prepared.relativeRunRoot,
-    loaded: await loadAnalysis(prepared, analysisId),
+    loaded,
     cwdFlag: cwdFlag(cwd),
     ...(analysisOffIn === undefined ? {} : { analysisOffIn }),
     ...(liveStudy === undefined ? {} : { liveStudy }),
+    ...(study === undefined
+      ? {}
+      : { study: { id: study.id, ...(study.path === undefined ? {} : { path: study.path }) } }),
+    ...(codexSignedIn === undefined ? {} : { codexSignedIn }),
   };
+}
+
+/** What reading a run's findings needs from this machine; tests replace it. */
+export interface FindingsDeps {
+  /** Whether Codex is signed in with a ChatGPT account. */
+  codexSignedIn?: () => Promise<boolean>;
+}
+
+async function codexSignedInHere(): Promise<boolean> {
+  const { detectLocalAgents } = await import("../actors/local-agent/cli.js");
+  const agents = await detectLocalAgents({ only: "codex" });
+  // The Codex analyst refuses an API-key login, so only a ChatGPT login counts.
+  return agents.some(
+    (agent) => agent.authStatus === "authenticated" && agent.billing === "account-unknown",
+  );
 }
 
 /** The view of a run that could not be found. */
@@ -546,36 +603,8 @@ export async function readRunFindings(
   cwd: string,
   run: string,
   analysisId?: string,
+  deps: FindingsDeps = {},
 ): Promise<AnalysisFindings> {
-  const source = await readRunAnalysis(cwd, run, analysisId);
+  const source = await readRunAnalysis(cwd, run, analysisId, deps);
   return source ? analysisFindings(source) : missingRunFindings(cwd, run);
-}
-
-/**
- * The end of a live run's human output, after its `analysis:` line: the findings of the analysis
- * the run just completed. Prints nothing for --json, or when the run's analysis did not complete,
- * since that line already says why.
- */
-export async function writeRunFindings(
-  command: Command,
-  io: CliIo,
-  cwd: string,
-  result: { runId?: string; automaticAnalysis?: AutomaticAnalysisOutcome },
-): Promise<void> {
-  const outcome = result.automaticAnalysis;
-  const analysisId = outcome?.result?.analysisId;
-  if (
-    wantsJson(command) ||
-    result.runId === undefined ||
-    analysisId === undefined ||
-    (outcome?.state !== "complete" && outcome?.state !== "partial")
-  )
-    return;
-  try {
-    const view = await readRunFindings(cwd, result.runId, analysisId);
-    const full = cli(`review --run ${view.runId}${cwdFlag(cwd)}`);
-    io.writeOut(`${formatFindingsSummary(view, full).join("\n")}\n`);
-  } catch {
-    // The run's own result is already printed; review reads the same record later.
-  }
 }

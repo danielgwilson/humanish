@@ -66,6 +66,21 @@ const ALLOWED: readonly { file: string; path: string; reason: string }[] = [
     reason: "the key table stops at review.analysis; resolveAutomaticAnalysis checks its keys",
   },
   {
+    file: "src/cli/findings.ts",
+    path: "review.analysis.provider",
+    reason: "the key table stops at review.analysis; resolveAutomaticAnalysis checks its keys",
+  },
+  {
+    file: "src/study/init-templates.ts",
+    path: "review.analysis.provider",
+    reason: "the key table stops at review.analysis; resolveAutomaticAnalysis checks its keys",
+  },
+  {
+    file: "src/study/doctor.ts",
+    path: "review.analysis.provider",
+    reason: "the key table stops at review.analysis; resolveAutomaticAnalysis checks its keys",
+  },
+  {
     file: "src/observer/library.ts",
     path: "id.className",
     reason: `${NOT_STUDY}: a DOM element in the page script`,

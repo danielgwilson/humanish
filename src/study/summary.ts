@@ -208,6 +208,7 @@ export async function readStudySummary(
     inspected.config.review?.analysis,
     route,
     computerUseParticipantCount(inspected.config),
+    inspected.config.actor,
   );
   const subject = subjectOf(config);
   const participants = participantsOf(inspected.config);

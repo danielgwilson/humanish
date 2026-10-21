@@ -95,10 +95,13 @@ exact returned path, not a basename that could resolve to another manifest.
 
 ## Choosing a findings analyst
 
-Analysis is separate from the participant. Hosted and manual defaults use the
-OpenAI API with its own admission budget. An explicitly local browser study with
-a Codex participant defaults to a separate Codex account analyst. To select that
-restricted Codex ChatGPT account analyst on other supported studies,
+Analysis is separate from the participant. A study that declares no analyst
+gets one from its participant: a Codex `local-agent` participant, local or
+hosted, defaults to a separate Codex account analyst; every other participant,
+Claude Code included, defaults to the OpenAI API with a $10 admission budget.
+Without `OPENAI_API_KEY` that OpenAI analysis is skipped, and the run output
+names the next command: `analyze --provider codex` when Codex is signed in. To
+select the restricted Codex ChatGPT account analyst on any supported study,
 set `review.analysis.provider: codex` or pass `analyze --provider codex` on a
 completed recording. This uses remote inference and the qualified CLI/login,
 not local inference or the participant's existing conversation. See
@@ -419,14 +422,15 @@ credits, or claim product behavior proof from a dry run.
 When the target app can run locally, prove a known browser path with a
 scripted-browser study after starting the app on loopback. The study replays a
 `browser.steps` scenario (see above) on a desktop surface, plus a mobile one
-with `count: 2`. The scripted steps make no model requests. Post-run analysis
-still runs by default when `OPENAI_API_KEY` is set, with a $3 cap; keep
-`review.analysis: false` to skip it. Copy the shape of
+with `count: 2`. The scripted steps make no model requests; the analysis after
+the run does, and it is what produces findings. Copy the shape of
 [`humanish/studies/scripted-demo.yaml`](https://github.com/danielgwilson/humanish/blob/main/humanish/studies/scripted-demo.yaml)
 or the example in the
-[study file reference](https://humanish.dev/docs/study-files#scripted-browser-scenarios):
-set `subject.appUrl` to the loopback URL, `scenario` to the scenario id,
-and `mode: live`. Without `mode: live` the study is a dry run that opens
+[study file reference](https://humanish.dev/docs/study-files#scripted-browser-scenarios),
+leaving out the demo's `review.analysis: false`, which keeps that zero-spend
+demo from requesting analysis: set `subject.appUrl` to the loopback URL,
+`scenario` to the scenario id, and `mode: live`. Set `review.analysis: false`
+only when the user has chosen a run with no findings. Without `mode: live` the study is a dry run that opens
 no browser.
 
 ```bash
@@ -440,6 +444,32 @@ npx humanish observe --run <id> --open   # for a person; at their terminal it se
 Do not use `humanish watch --count ...` as a substitute for a scripted-browser
 study. `watch` without a study starts a preview run for the Observer; a live scripted-browser
 study captures desktop and mobile browser evidence against a running app.
+
+## After a Live Run, Read and Report Its Findings
+
+A live run ends with a separate analysis of its evidence, and `run --json`
+carries what that analysis left. `findings.count` is how many findings it made;
+`findings.top` holds at most five, each with its `title`, `headline`, `impact`,
+`confidence` and the ids of the `participants` it affected; `findings.review` is
+the command that prints every finding with its evidence; `findings.observer` is
+the Observer page that opens on the findings. When the analysis left no
+findings, `findings` is absent, `automaticAnalysis.message` says why, and
+`automaticAnalysis.nextCommand` is the command that gets them (null when no
+command can). Run that command, or tell the user to.
+
+Read the full findings before reporting anything else:
+
+```bash
+npx humanish review --run <id>          # the verdict, then each analysis finding
+npx humanish review --run <id> --json   # the same; findings are under `analysis`
+```
+
+Report each finding to the user: its title, impact, confidence and recovery, the participants it
+affected, and the capture files it cites. These come from the post-run analysis of the evidence.
+Label the participant's own report in the review summary as the participant's account. When
+`analysis.state` is not `ready`, report `analysis.message` and the `analysis.next` command in
+place of findings; `analysis.next` is null when no command can produce them. `latest` moves with
+every run, including dry runs, so use the run id the run printed.
 
 ## Optional Live E2B Study
 
@@ -473,21 +503,9 @@ publish their names, screenshots, logs, source snippets, or operational details.
 
 ## Reporting Back
 
-After a live run, read its findings before anything else:
-
-```bash
-npx humanish review --run <id>          # the verdict, then each analysis finding
-npx humanish review --run <id> --json   # the same; findings are under `analysis`
-```
-
-Report each finding to the user: its title, impact, confidence and recovery, the participants it
-affected, and the capture files it cites. These come from the post-run analysis of the evidence.
-Label the participant's own report in the review summary as the participant's account. When
-`analysis.state` is not `ready`, report `analysis.message` and the `analysis.next` command in
-place of findings; `analysis.next` is null when no command can produce them. `latest` moves with
-every run, including dry runs, so use the run id the run printed.
-
-Then report:
+Report a live run's findings first, as
+[After a Live Run, Read and Report Its Findings](#after-a-live-run-read-and-report-its-findings)
+describes. Then report:
 
 - files changed in the target repo;
 - exact proof commands run;
