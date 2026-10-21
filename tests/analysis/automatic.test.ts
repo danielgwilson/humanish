@@ -20,7 +20,8 @@ import {
   readAutomaticAnalysis,
   requestAutomaticAnalysisCancellation,
 } from "../../src/analysis/automatic.js";
-import { analyzeRun, withAnalysisLock } from "../../src/analysis/service.js";
+import { analyzeRun } from "../../src/analysis/service.js";
+import { withAnalysisLock } from "../../src/analysis/analysis-lock.js";
 import * as analysisService from "../../src/analysis/service.js";
 import {
   claimAutomaticAnalysis,

@@ -12,7 +12,7 @@ import {
 } from "../../run/reclaim.js";
 import type { ReviewSummary } from "../../run/bundle.js";
 import type { RunsResult } from "../../run/stored-runs.js";
-import { runDisplay, type RunDisplay } from "../../run/display.js";
+import { analysisPhaseLabel, runDisplay, type RunDisplay } from "../../run/display.js";
 import type { VerifyResult } from "../../verify/verify.js";
 import { addRunOptions, handleRun, type RunOptions } from "./run-command.js";
 import {
@@ -389,6 +389,10 @@ function formatReclaimHuman(result: ReclaimResult, cwd: string, preflight: boole
       `  sandbox ${outcome.sandboxIdDigest} (${outcome.laneId}, from ${outcome.source}): ${outcome.state}${outcome.detail ? `: ${outcome.detail}` : ""}`,
     );
   }
+  if (result.markedInterrupted === true)
+    lines.push(
+      "Its status.json had stopped updating while it still said running, so the run is now recorded as interrupted.",
+    );
   for (const warning of result.warnings) lines.push(`  warning: ${warning}`);
   if (result.error === undefined && result.state !== "clean")
     lines.push(
@@ -548,10 +552,11 @@ function formatRunsHuman(result: RunsResult): HumanOutput {
   return (
     [
       `latest: ${result.latest ?? "none"}`,
-      ...result.runs.map(
-        (run) =>
-          `- ${run.runId} ${run.mode ?? "unknown"} ${run.display?.label ?? "unreadable"} ${run.createdAt ?? "unknown"} ${run.path}`,
-      ),
+      ...result.runs.map((run) => {
+        const analysis = analysisPhaseLabel(run.analysis);
+        const label = `${run.display?.label ?? "unreadable"}${analysis === undefined ? "" : `, ${analysis}`}`;
+        return `- ${run.runId} ${run.mode ?? "unknown"} ${label} ${run.createdAt ?? "unknown"} ${run.path}`;
+      }),
     ].join("\n") + "\n"
   );
 }

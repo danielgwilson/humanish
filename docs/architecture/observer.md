@@ -159,9 +159,13 @@ allowlist, contained file reads, read-only routes and no-store security headers.
 Served data may also include `runtime` with `state`, `observedAt`, and
 `source: "local-run-status"`. This is a current observation of a contained,
 matching `status.json`; it never changes the run's recorded verdict or participant
-outcomes. A fresh heartbeat means running, an explicitly finalized record means
-finished, a record the CLI's signal handler wrote means interrupted, and stale or
-invalid timing means unknown. Missing, malformed, or mismatched records omit the
+outcomes. A fresh heartbeat means running, a record its process wrote as `finished` means
+finished, a record written as `interrupted` (by the CLI's signal handler, by a run that ended
+without publishing, or by `humanish reclaim`) means interrupted, and stale or
+invalid timing means unknown. While the run's own process analyzes it after the run ended,
+`runtime.analysis` is `{ startedAt }`: the status band reads **Writing findings** and the
+Findings view shows the analysis as pending, with how long ago it started, before the analysis
+job exists. Missing, malformed, or mismatched records omit the
 observation. A stale heartbeat alone does not prove interruption, and stored PIDs
 are neither probed nor returned. Static rendering and export do not create this
 served-only observation.

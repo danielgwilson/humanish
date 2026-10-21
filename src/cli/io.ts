@@ -460,6 +460,7 @@ const ANALYSIS_REASON_TEXT: Readonly<Record<string, string>> = {
     "outcome unknown: a cancellation could not be recorded",
   AUTOMATIC_ANALYSIS_STORAGE_UNAVAILABLE: "outcome unknown: analysis storage is unavailable",
   AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN: "outcome unknown",
+  AUTOMATIC_ANALYSIS_STOPPED: "outcome unknown: the process running it stopped before it finished",
 };
 
 export function analysisOutcomeText(analysis: { state: string; reason: string | null }): string {

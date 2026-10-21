@@ -302,7 +302,7 @@ async function runPlane(
       await ctx.receiving?.finish();
     } catch {
       ctx.warnings.push(
-        "Email finalization could not complete. Inspect humanish comms recover; provider cleanup remains unresolved.",
+        "Email cleanup could not complete. Inspect humanish comms recover; provider cleanup remains unresolved.",
       );
     }
     // Stop the participants' flush timer on every exit, before the final write.

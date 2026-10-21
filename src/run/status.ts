@@ -11,6 +11,7 @@
 // prints), the mode, a local pid and timestamps. It holds no hostname or user/path identity: an
 // operator may share the run directory, so a share-safety gate must have nothing to strip here.
 
+import type { AutomaticAnalysisOutcome } from "../analysis/job.js";
 import type { RunBundle } from "./bundle.js";
 import { isProvenanceField, studyFields, type RunStudyProvenance } from "./study-provenance.js";
 import { writeContainedOutputFile, type PreparedOutputRoot } from "./contained-output.js";
@@ -32,12 +33,30 @@ export const RUN_STATUS_TOUCH_MS = 5_000;
 
 /**
  * A `running` record whose `updatedAt` is older than this is interrupted, not alive: the process
- * died without finalizing (a dropped SSH, a killed terminal, a crash). Three touch intervals of
+ * died before the run ended (a dropped SSH, a killed terminal, a crash). Three touch intervals of
  * slack so an ordinary scheduling hiccup or a slow disk never mislabels a healthy run.
  */
 export const RUN_STATUS_STALE_MS = RUN_STATUS_TOUCH_MS * 3;
 
 type RunStatusState = "running" | "finished" | "interrupted";
+
+/**
+ * Why a run is `interrupted` without a signal. `no-publish`: its process left the run without
+ * publishing a bundle, as a route that throws or returns a refusal after the run started does.
+ * `reclaimed`: `humanish reclaim` found its heartbeat stale and stopped its sandboxes.
+ */
+type RunInterruptReason = "no-publish" | "reclaimed";
+
+/** How automatic analysis ended, as its job records it. */
+type RunAnalysisEndState = AutomaticAnalysisOutcome["state"];
+
+/** Automatic analysis in the run's own process, after the run ended. */
+interface RunStatusAnalysis {
+  startedAt: string;
+  /** Absent while it runs, and on the record of a process that stopped during it. */
+  endedAt?: string;
+  state?: RunAnalysisEndState;
+}
 
 /** The signals the CLI's run handler records when it stops a run. */
 export type RunInterruptSignal = "SIGINT" | "SIGTERM" | "SIGHUP";
@@ -119,7 +138,14 @@ export interface RunStatusRecord {
   completedAt?: string;
   /** The signal that stopped the run, on an `interrupted` record. */
   signal?: RunInterruptSignal;
+  /** Why an `interrupted` record has no signal. */
+  reason?: RunInterruptReason;
   outcome?: RunStatusOutcome;
+  /**
+   * Set on a `finished` record when automatic analysis starts in the same process. While it
+   * runs, the heartbeat keeps `updatedAt` fresh; `completedAt` stays when the participants ended.
+   */
+  analysis?: RunStatusAnalysis;
 }
 
 export interface RunStatusHandle {
@@ -128,7 +154,8 @@ export interface RunStatusHandle {
    *  it before a route can acquire a sandbox, so a run killed after its sandbox receipt lands
    *  still has a record to classify. */
   readonly started: Promise<void>;
-  /** Finalize: state `finished`, `completedAt`, and the derived outcome. Stops the cadence.
+  /** The run ended with a published bundle: state `finished`, `completedAt`, and the derived
+   *  outcome. Stops the cadence.
    *  Idempotent: a second call is a no-op, so a route with several exit paths is safe. */
   finish(outcome?: RunStatusOutcome): Promise<void>;
   /** After finish, replace the finished record's outcome with one read from a rewritten run.json,
@@ -141,6 +168,15 @@ export interface RunStatusHandle {
   interrupt(signal: RunInterruptSignal): Promise<boolean>;
   /** True from the moment `interrupt` accepts a signal, before its write lands. */
   readonly interrupted: boolean;
+  /** The run's scope closed without a publish: state `interrupted` with reason `no-publish`. A
+   *  no-op after finish or an interrupt, so it never overwrites a record that says more. */
+  abandon(): Promise<void>;
+  /**
+   * After finish, automatic analysis starts: `analysis.startedAt` is written and the heartbeat
+   * runs again until the returned function records the end and its state. Before finish or after
+   * an interrupt it writes nothing, and neither does the returned function.
+   */
+  beginAnalysis(): Promise<(state: RunAnalysisEndState) => Promise<void>>;
   /** The host suspensions the cadence saw until now, or until it stopped. */
   suspensions(): readonly HostSuspension[];
 }
@@ -246,6 +282,44 @@ export function beginRunStatus(
     get interrupted() {
       return interrupted;
     },
+    async abandon() {
+      if (finished) return;
+      finished = true;
+      heartbeat.stop();
+      const completedAt = iso();
+      await write({
+        ...base,
+        state: "interrupted",
+        updatedAt: completedAt,
+        completedAt,
+        reason: "no-publish",
+      });
+    },
+    async beginAnalysis() {
+      const ended = async (): Promise<void> => {};
+      if (finishedRecord === undefined || interrupted) return ended;
+      const startedAt = iso();
+      finishedRecord = { ...finishedRecord, updatedAt: startedAt, analysis: { startedAt } };
+      await write(finishedRecord);
+      const analysisHeartbeat = startHeartbeat(clock, RUN_STATUS_TOUCH_MS, () => {
+        if (finishedRecord === undefined) return;
+        finishedRecord = { ...finishedRecord, updatedAt: iso() };
+        void write(finishedRecord);
+      });
+      let done = false;
+      return async (state) => {
+        if (done || finishedRecord?.analysis === undefined) return;
+        done = true;
+        analysisHeartbeat.stop();
+        const endedAt = iso();
+        finishedRecord = {
+          ...finishedRecord,
+          updatedAt: endedAt,
+          analysis: { ...finishedRecord.analysis, endedAt, state },
+        };
+        await write(finishedRecord);
+      };
+    },
     suspensions: () => heartbeat.suspensions(),
   };
   return handle;
@@ -269,6 +343,61 @@ export function classifyRunStatus(
   const updated = Date.parse(record.updatedAt);
   if (!Number.isFinite(updated)) return "interrupted";
   return nowMs - updated <= staleMs ? "running" : "interrupted";
+}
+
+/** Automatic analysis as a status record shows it: running, ended, or stopped with its process. */
+export type RunAnalysisPhase =
+  | { state: "running" | "stopped"; startedAt: string }
+  | { state: "ended"; startedAt: string; endedAt: string; outcome?: RunAnalysisEndState };
+
+/**
+ * The record's automatic analysis. `stopped` is an analysis with no end whose heartbeat went
+ * stale: the process ended during it. Undefined when the record has none, or one this version
+ * cannot read.
+ */
+export function runAnalysisPhase(
+  record: Pick<RunStatusRecord, "updatedAt" | "analysis">,
+  nowMs: number,
+): RunAnalysisPhase | undefined {
+  const analysis: unknown = record.analysis;
+  if (analysis === null || typeof analysis !== "object") return undefined;
+  const { startedAt, endedAt, state } = analysis as Record<string, unknown>;
+  if (typeof startedAt !== "string" || !Number.isFinite(Date.parse(startedAt))) return undefined;
+  if (typeof endedAt === "string")
+    return {
+      state: "ended",
+      startedAt,
+      endedAt,
+      ...(typeof state === "string" ? { outcome: state as RunAnalysisEndState } : {}),
+    };
+  const updated = Date.parse(record.updatedAt);
+  return Number.isFinite(updated) && nowMs - updated <= RUN_STATUS_STALE_MS
+    ? { state: "running", startedAt }
+    : { state: "stopped", startedAt };
+}
+
+/** Whether `pid` names a process on this host. EPERM means one exists that this user cannot signal. */
+function processRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/**
+ * A `running` record whose heartbeat is stale and whose pid no process on this host holds: its
+ * owner is gone, so the run cannot still be writing. A live pid proves nothing either way (pids
+ * are reused), so such a record stays unconfirmed.
+ */
+export function runOwnerGone(
+  record: Pick<RunStatusRecord, "state" | "pid" | "updatedAt">,
+  nowMs: number,
+  running: (pid: number) => boolean = processRunning,
+): boolean {
+  if (record.state !== "running" || classifyRunStatus(record, nowMs) === "running") return false;
+  return record.pid !== process.pid && !running(record.pid);
 }
 
 /** Shape guard for a record read off disk. Unknown extra fields are tolerated (additive contract). */

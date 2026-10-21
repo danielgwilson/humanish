@@ -20,7 +20,12 @@ import { EVIDENCE_LIMITS } from "./analysis-limits.js";
  */
 export class AnalysisSourceRefusedError extends Error {
   constructor(
-    code: "ANALYSIS_SOURCE_TOO_LARGE" | "ANALYSIS_SOURCE_INVALID",
+    code:
+      | "ANALYSIS_SOURCE_TOO_LARGE"
+      | "ANALYSIS_SOURCE_INVALID"
+      | "ANALYSIS_RUN_ACTIVE"
+      | "ANALYSIS_RUN_INCOMPLETE"
+      | "ANALYSIS_RUN_UNCONFIRMED",
     readonly reason: string,
   ) {
     super(code);

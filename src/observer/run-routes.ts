@@ -39,6 +39,7 @@ import { analysisCostOf, runCost, runCostLabel, type RunAnalysisCost } from "../
 import {
   RUN_STATUS_FILE,
   RUN_STATUS_STALE_MS,
+  runAnalysisPhase,
   isRunStatusRecord,
   type RunStatusRecord,
 } from "../run/status.js";
@@ -165,7 +166,8 @@ export async function serveRunPath(
   const derivedLeaf = path.posix.basename(cleanedRelativePath);
   // Local-only files (raw sandbox ids, the recording pid) are read in process, never served.
   if (
-    derivedRoot === ".analysis-lock" ||
+    // `.analysis-lock-stale-*` is a lock whose dead owner's next writer moved it aside.
+    derivedRoot?.startsWith(".analysis-lock") === true ||
     derivedLeaf.startsWith(".humanish-write-") ||
     isAnalysisRecordPath(cleanedRelativePath) ||
     isLocalOnlyRunFile(cleanedRelativePath)
@@ -491,9 +493,16 @@ function withLocalRunStatus(
       state = "running";
     }
   }
+  // The run's own process analyzes it after the run ended; the bundle outcome does not say so.
+  const analysis = timestampsValid ? runAnalysisPhase(record, now) : undefined;
   return {
     ...data,
-    runtime: { state, observedAt: new Date(now).toISOString(), source: "local-run-status" },
+    runtime: {
+      state,
+      observedAt: new Date(now).toISOString(),
+      source: "local-run-status",
+      ...(analysis?.state === "running" ? { analysis: { startedAt: analysis.startedAt } } : {}),
+    },
   };
 }
 

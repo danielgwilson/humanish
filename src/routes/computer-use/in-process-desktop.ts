@@ -20,14 +20,14 @@ export function createInProcessDesktop(deps: InProcessDesktopDeps): ParticipantD
     async prepare() {
       if (preparationStarted || finalization)
         throw new Error(
-          "Participant desktop preparation can only start once, before finalization.",
+          "Participant desktop preparation can only start once, before the desktop is released.",
         );
       preparationStarted = true;
     },
     async openSession(): Promise<ReadyParticipantDesktop> {
       if (!preparationStarted || opened || finalization)
         throw new Error(
-          "The participant desktop must be prepared and may only be opened once, before finalization.",
+          "The participant desktop must be prepared and may only be opened once, before the desktop is released.",
         );
       opened = true;
       if (deps.inProcessExecutor === undefined)

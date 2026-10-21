@@ -24,7 +24,12 @@ import {
   type DisplayedBundle,
   type RunDisplay,
 } from "./display.js";
-import { RUN_STATUS_FILE } from "./status.js";
+import {
+  isRunStatusRecord,
+  RUN_STATUS_FILE,
+  runAnalysisPhase,
+  type RunAnalysisPhase,
+} from "./status.js";
 import { readLatest, readRunJsonIfExists, resolveRunPath, runJsonValue } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
 import { displayedTraces, loadStreamTraces } from "./stream-trace.js";
@@ -48,6 +53,8 @@ export interface RunsResult {
     path: string;
     /** How the run reads (runDisplay in src/run/display.ts); absent when it has no readable run.json. */
     display?: RunDisplay;
+    /** The automatic analysis its own process started after the run ended, from status.json. */
+    analysis?: RunAnalysisPhase;
   }>;
   latest: string | null;
   error?: {
@@ -154,14 +161,21 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
 async function listedRunDisplay(
   runPaths: PreparedRunArtifactPaths,
   bundle: unknown,
-): Promise<{ display?: RunDisplay }> {
+): Promise<{ display?: RunDisplay; analysis?: RunAnalysisPhase }> {
   const displayed = displayedBundle(bundle);
   if (displayed === undefined) return {};
-  const status =
-    displayed.outcome === undefined
-      ? runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE))
+  const status = runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE));
+  const analysis =
+    isRunStatusRecord(status) && status.runId === displayed.runId
+      ? runAnalysisPhase(status, Date.now())
       : undefined;
-  return { display: runDisplay(bundleDisplayFacts(displayed, status)) };
+  return {
+    // A bundle with an outcome decides how the run ended; status.json only adds its analysis.
+    display: runDisplay(
+      bundleDisplayFacts(displayed, displayed.outcome === undefined ? status : undefined),
+    ),
+    ...(analysis === undefined ? {} : { analysis }),
+  };
 }
 
 /** The fields runDisplay reads from an unchecked run.json; none when it does not name a run. */

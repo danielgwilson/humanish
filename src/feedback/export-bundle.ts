@@ -97,7 +97,7 @@ function omittedReason(relative: string): string | undefined {
     return "automatic execution intent and liveness do not transfer to a derivative";
   if (isAnalysisRecordPath(relative))
     return "analysis records bind original evidence hashes; reanalyze the derivative";
-  if (relative.startsWith(".analysis-lock/")) return "local analysis execution lock";
+  if (relative.startsWith(".analysis-lock")) return "local analysis execution lock";
   return (
     OMITTED.get(relative) ??
     (["feedback/draft.json", "feedback/issue.md"].includes(relative)

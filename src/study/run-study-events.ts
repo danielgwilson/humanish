@@ -24,7 +24,8 @@ export type SetupTarget =
   | { readonly kind: "participant"; readonly participant: ParticipantRef };
 
 /**
- * What a run reports while it runs. `plan` comes from computer use only; the other routes run from
+ * What a run reports while it runs. `run-started` comes from every route that records a run, once
+ * its run id exists. `plan` comes from computer use only; the other routes run from
  * the study plan but do not emit it. `subject-phase` comes from computer use (participant target)
  * and shared world (subject target).
  */
@@ -48,6 +49,8 @@ export type StudyEvent =
       ok?: boolean;
       durationMs?: number;
     }
+  /** The run's directory and status.json exist: `runId` names it from here on. */
+  | { type: "run-started"; runId: string }
   | { type: "analysis-started" }
   | { type: "analysis-finished" };
 

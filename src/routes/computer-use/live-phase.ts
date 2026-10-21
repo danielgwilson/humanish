@@ -121,7 +121,7 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
       await receiving?.finish();
     } catch {
       receivingWarnings.push(
-        "Email finalization could not complete. Inspect humanish comms recover; provider cleanup remains unresolved.",
+        "Email cleanup could not complete. Inspect humanish comms recover; provider cleanup remains unresolved.",
       );
     }
     // Stop the flush timer on every exit, including a throw from the participants.

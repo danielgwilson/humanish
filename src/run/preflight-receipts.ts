@@ -3,12 +3,16 @@
 // removes the journal. A journal that stays means the probe's sandbox may still be running, and
 // `humanish reclaim --preflight` kills it by the recorded id once it is safe to.
 import { randomBytes } from "node:crypto";
-import { existsSync, readFileSync, readlinkSync } from "node:fs";
 import { readdir, rmdir, unlink } from "node:fs/promises";
-import { hostname } from "node:os";
 import path from "node:path";
 
 import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "./sandbox-receipts.js";
+import {
+  currentProcessOwner,
+  processOwnerGone,
+  processOwnerOf,
+  type ProcessOwner,
+} from "./process-owner.js";
 import {
   assertPreparedSelectedOutputDirectory,
   bindExistingManagedHumanishOutputDirectory,
@@ -27,18 +31,8 @@ const ABANDONED_MARKER = "abandoned";
 const OWNER_FILE = "owner.json";
 const JOURNAL_NAME = /^preflight-\d+-[a-z0-9-]+$/;
 
-/**
- * Who opened a journal. A pid means nothing outside its host and pid namespace (a probe in a
- * container writing to a bind-mounted checkout has a pid the host cannot see), so reclaim trusts
- * a dead pid only when both match its own.
- */
-interface PreflightOwner {
-  hostname: string;
-  /** `pid:[inode]` from /proc/self/ns/pid, where the platform has one. */
-  pidNamespace?: string;
-  pid: number;
-  /** Start time in clock ticks since boot (/proc/<pid>/stat), which tells a reused pid apart. */
-  startTicks?: string;
+/** Who opened a journal (src/run/process-owner.ts), when, and for how long. */
+interface PreflightOwner extends ProcessOwner {
   createdAt: string;
   /** The probe's server-side timeout. */
   leaseMs: number;
@@ -51,28 +45,6 @@ export interface PreflightJournal {
   owner?: PreflightOwner;
 }
 
-function ownerContext(): Pick<PreflightOwner, "hostname" | "pidNamespace"> {
-  let pidNamespace: string | undefined;
-  try {
-    pidNamespace = readlinkSync("/proc/self/ns/pid");
-  } catch {
-    // No procfs: this platform has no pid namespaces to tell apart.
-  }
-  return { hostname: hostname(), ...(pidNamespace === undefined ? {} : { pidNamespace }) };
-}
-
-/** The process's start ticks; null when procfs says it is gone; undefined without procfs. */
-function startTicks(pid: number): string | null | undefined {
-  if (!existsSync("/proc/self/stat")) return undefined;
-  try {
-    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
-    // Field 22; the command name before it is parenthesized and may contain spaces.
-    return stat.slice(stat.lastIndexOf(")") + 2).split(" ")[19] ?? null;
-  } catch {
-    return null;
-  }
-}
-
 /** Create this process's journal directory for one probe with the given lease. */
 export async function openPreflightJournal(
   cwd: string,
@@ -81,11 +53,8 @@ export async function openPreflightJournal(
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").toLowerCase();
   const id = `preflight-${process.pid}-${stamp}-${randomBytes(4).toString("hex")}`;
   const root = await prepareManagedHumanishOutputDirectory(cwd, PREFLIGHT_DIR, id);
-  const ticks = startTicks(process.pid);
   const owner: PreflightOwner = {
-    ...ownerContext(),
-    pid: process.pid,
-    ...(typeof ticks === "string" ? { startTicks: ticks } : {}),
+    ...currentProcessOwner(),
     createdAt: new Date().toISOString(),
     leaseMs,
   };
@@ -97,22 +66,15 @@ export async function openPreflightJournal(
 function parseOwner(read: ContainedRead): PreflightOwner | undefined {
   if (read.status !== "read") return undefined;
   try {
-    const value = JSON.parse(read.bytes.toString("utf8")) as Partial<PreflightOwner>;
+    const value = JSON.parse(read.bytes.toString("utf8")) as Record<string, unknown>;
+    const owner = processOwnerOf(value);
     if (
-      typeof value.hostname !== "string" ||
-      typeof value.pid !== "number" ||
+      owner === undefined ||
       typeof value.createdAt !== "string" ||
       typeof value.leaseMs !== "number"
     )
       return undefined;
-    return {
-      hostname: value.hostname,
-      ...(typeof value.pidNamespace === "string" ? { pidNamespace: value.pidNamespace } : {}),
-      pid: value.pid,
-      ...(typeof value.startTicks === "string" ? { startTicks: value.startTicks } : {}),
-      createdAt: value.createdAt,
-      leaseMs: value.leaseMs,
-    };
+    return { ...owner, createdAt: value.createdAt, leaseMs: value.leaseMs };
   } catch {
     return undefined;
   }
@@ -187,31 +149,8 @@ export async function preflightReclaimDecision(
   const owner = journal.owner;
   if (owner === undefined)
     return { reclaim: false, reason: `its owner record is missing or unreadable${until}` };
-  const here = ownerContext();
-  if (owner.hostname !== here.hostname || owner.pidNamespace !== here.pidNamespace)
-    return {
-      reclaim: false,
-      reason: `it was opened on host ${owner.hostname} in another host or pid namespace, where this process cannot see whether it is still running${until}`,
-    };
-  const running = `process ${owner.pid} is still running${until}`;
-  if (owner.pid === process.pid) return { reclaim: false, reason: running };
-  const ticks = startTicks(owner.pid);
-  if (ticks === null) return { reclaim: true };
-  if (typeof ticks === "string") {
-    // The pid now belongs to a different process: the owner is gone.
-    return owner.startTicks !== undefined && ticks !== owner.startTicks
-      ? { reclaim: true }
-      : { reclaim: false, reason: running };
-  }
-  try {
-    process.kill(owner.pid, 0);
-    return { reclaim: false, reason: running };
-  } catch (error) {
-    // EPERM: the process exists but belongs to someone else.
-    return (error as NodeJS.ErrnoException).code === "EPERM"
-      ? { reclaim: false, reason: running }
-      : { reclaim: true };
-  }
+  const gone = processOwnerGone(owner);
+  return gone.gone ? { reclaim: true } : { reclaim: false, reason: `${gone.reason}${until}` };
 }
 
 /**

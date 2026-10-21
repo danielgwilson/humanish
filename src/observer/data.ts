@@ -49,6 +49,8 @@ export interface ObserverData {
     state: "running" | "finished" | "interrupted" | "unknown";
     observedAt: string;
     source: "local-run-status";
+    /** Present while the run's own process analyzes it after the run ended: when it started. */
+    analysis?: { startedAt: string };
   };
   run: {
     runId: string;

@@ -790,6 +790,11 @@
         "succeeded": true,
         "failures": []
       }
+    },
+    "analysis": {
+      "startedAt": "[ts]",
+      "endedAt": "[ts]",
+      "state": "skipped"
     }
   }
 }

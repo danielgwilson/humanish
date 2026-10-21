@@ -1844,7 +1844,7 @@ describe("scripted run lifetime on the provisioned clone route", () => {
 
     expect(fakeE2B.killed).toEqual(["fake-subject-001"]);
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8"));
-    expect(status.state).toBe("finished");
+    expect(status).toMatchObject({ state: "interrupted", reason: "no-publish" });
     expect(status).not.toHaveProperty("outcome");
     await expect(stat(path.join(runDir, "run.json"))).rejects.toMatchObject({ code: "ENOENT" });
     expect(analysis).not.toHaveBeenCalled();

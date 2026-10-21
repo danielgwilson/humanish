@@ -84,7 +84,8 @@ The top band separates the run's current status from evidence freshness. A
 finished study never uses its execution mode (`live`, as opposed to `dry-run`)
 as a claim that it is still running. When updates fail, the last usable evidence
 stays visible, the band reports the failure, and **Retry** requests another
-snapshot. A stale process heartbeat does not prove that the process died.
+snapshot. A stale process heartbeat does not prove that the process died: the band reads
+**Run status unconfirmed** until a record says the run ended.
 
 A player's **Live desktop** label identifies what it displays. An iframe loading
 is not a connection-health signal: the provider owns that connection. **Reload
@@ -229,8 +230,11 @@ Participants and Findings share one Observer workspace. The participant grid,
 recordings and original feedback remain available while you review ranked
 observations and follow their evidence links.
 
-Supported live studies request analysis by default when the recording finishes;
-`review.analysis: false` in the study turns it off.
+Supported live studies request analysis by default when the run ends;
+`review.analysis: false` in the study turns it off. Analysis usually takes 1 to 4 minutes
+after the last participant ends. Until it finishes, the served Observer's status band reads
+**Writing findings** and the Findings view shows the analysis as pending, with how long ago it
+started; participant recordings stay open to review meanwhile.
 [Automatic analysis](repo:docs/product/automatic-analysis.md)
 has the analyst a study gets (the Codex account for a Codex participant, otherwise OpenAI with a
 $10 admission limit) and the failure behavior. For an existing

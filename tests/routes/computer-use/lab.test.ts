@@ -7085,7 +7085,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     const runsRoot = path.join(cwd, ".humanish", "runs");
     const [runId] = (await readdir(runsRoot)).filter((entry) => entry !== "latest.json");
     const status = JSON.parse(await readFile(path.join(runsRoot, runId!, "status.json"), "utf8"));
-    expect(status.state).toBe("finished");
+    expect(status).toMatchObject({ state: "interrupted", reason: "no-publish" });
     expect(status).not.toHaveProperty("outcome");
   });
 

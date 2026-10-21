@@ -141,7 +141,11 @@ export function isObserverData(value: unknown): value is ObserverData {
       !strings(runtime, ["state", "observedAt", "source"]) ||
       !["running", "finished", "interrupted", "unknown"].includes(runtime.state as string) ||
       runtime.source !== "local-run-status" ||
-      !Number.isFinite(Date.parse(runtime.observedAt as string)))
+      !Number.isFinite(Date.parse(runtime.observedAt as string)) ||
+      (runtime.analysis !== undefined &&
+        (!object(runtime.analysis) ||
+          !strings(runtime.analysis, ["startedAt"]) ||
+          !Number.isFinite(Date.parse(runtime.analysis.startedAt as string)))))
   )
     return false;
   const ids = (value.streams as Array<Record<string, unknown>>).map(

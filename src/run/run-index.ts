@@ -12,6 +12,8 @@ import {
   RUN_STATUS_FILE,
   classifyRunStatus,
   isRunStatusRecord,
+  runAnalysisPhase,
+  type RunAnalysisPhase,
   type RunLiveness,
   type RunStatusRecord,
 } from "./status.js";
@@ -56,6 +58,8 @@ export interface RunIndexEntry {
   analysisCost?: RunAnalysisCost;
   /** Wall-clock span when both ends are known; used for per-study medians. */
   durationMs?: number;
+  /** The automatic analysis the run's own process started after the run ended, from status.json. */
+  analysis?: RunAnalysisPhase;
 }
 
 export interface RunIndexResult {
@@ -136,6 +140,7 @@ async function readJson(file: string): Promise<unknown> {
 function entryFromStatus(record: RunStatusRecord, nowMs: number): RunIndexEntry {
   const started = Date.parse(record.startedAt);
   const ended = record.completedAt === undefined ? Number.NaN : Date.parse(record.completedAt);
+  const analysis = runAnalysisPhase(record, nowMs);
   return {
     runId: record.runId,
     derivedFrom: "status",
@@ -161,6 +166,7 @@ function entryFromStatus(record: RunStatusRecord, nowMs: number): RunIndexEntry 
       ? { estimatedCostComplete: record.outcome.estimatedCostComplete }
       : {}),
     ...(Number.isFinite(started) && Number.isFinite(ended) ? { durationMs: ended - started } : {}),
+    ...(analysis === undefined ? {} : { analysis }),
   };
 }
 
@@ -292,16 +298,7 @@ async function readEntry(
   const [statusKey, bundleKey] = await Promise.all([statKey(statusFile), statKey(bundleFile)]);
   const key = JSON.stringify([statusKey, bundleKey]);
   const cached = cache?.get(runId, key);
-  if (cached !== undefined) {
-    return cached.derivedFrom === "status" &&
-      cached.updatedAt !== undefined &&
-      cached.completedAt === undefined
-      ? {
-          ...cached,
-          liveness: classifyRunStatus({ state: "running", updatedAt: cached.updatedAt }, nowMs),
-        }
-      : cached;
-  }
+  if (cached !== undefined) return withCurrentLiveness(cached, nowMs);
   const [status, raw] = await Promise.all([
     statusKey === null ? undefined : readJson(statusFile),
     bundleKey === null ? undefined : readJson(bundleFile),
@@ -320,6 +317,7 @@ async function readEntry(
             updatedAt: metadata.updatedAt,
             ...(metadata.completedAt === undefined ? {} : { completedAt: metadata.completedAt }),
             ...(metadata.durationMs === undefined ? {} : { durationMs: metadata.durationMs }),
+            ...(metadata.analysis === undefined ? {} : { analysis: metadata.analysis }),
             ...studyEntry(metadata.study),
           }),
       ...entryFromBundle(runId, bundle),
@@ -335,6 +333,25 @@ async function readEntry(
   }
   cache?.set(runId, key, entry);
   return entry;
+}
+
+/**
+ * A cached entry read again at `nowMs`. Its file has not changed, but a live run or a running
+ * analysis goes stale with time alone, so both are classified again from the cached heartbeat.
+ */
+function withCurrentLiveness(cached: RunIndexEntry, nowMs: number): RunIndexEntry {
+  if (cached.updatedAt === undefined) return cached;
+  if (cached.derivedFrom === "status" && cached.completedAt === undefined)
+    return {
+      ...cached,
+      liveness: classifyRunStatus({ state: "running", updatedAt: cached.updatedAt }, nowMs),
+    };
+  if (cached.analysis === undefined || cached.analysis.state === "ended") return cached;
+  const analysis = runAnalysisPhase(
+    { updatedAt: cached.updatedAt, analysis: { startedAt: cached.analysis.startedAt } },
+    nowMs,
+  );
+  return analysis === undefined ? cached : { ...cached, analysis };
 }
 
 /** Newest-first ordering: the most recent thing known about a run, else its id's own timestamp. */

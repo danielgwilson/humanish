@@ -11,6 +11,7 @@ export function AutomaticAnalysisStatus({
   runId,
   separateAnalysis = false,
   resultAvailable = false,
+  startedAt,
 }: {
   automatic: AutomaticAnalysisView;
   snapshot: boolean;
@@ -19,8 +20,10 @@ export function AutomaticAnalysisStatus({
   runId?: string;
   separateAnalysis?: boolean;
   resultAvailable?: boolean;
+  /** When the run's process started the analysis, from the served runtime observation. */
+  startedAt?: string | undefined;
 }) {
-  const notice = automaticAnalysisNotice(automatic, snapshot, now, runId);
+  const notice = automaticAnalysisNotice(automatic, snapshot, now, runId, startedAt);
   const reason = parseAutomaticAnalysis(automatic)?.reason;
   return (
     <>

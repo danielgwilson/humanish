@@ -230,12 +230,12 @@ const issueKey = Symbol("FinishedRun");
 export class FinishedRun {
   readonly #observer: ObserverTarget | undefined;
   readonly #recordFailure: (failure: ExecutionFailure) => Promise<RecordedOutcome>;
-  readonly #interrupted: () => boolean;
   #outcome: RecordedOutcome;
   readonly runId: string;
   /** The paths created by startRun and validated at the start of `finish`. */
   readonly paths: PreparedRunArtifactPaths;
   readonly #participantsRan: () => boolean;
+  readonly #status: Pick<RunStatusHandle, "interrupted" | "beginAnalysis">;
 
   constructor(
     key: typeof issueKey,
@@ -244,17 +244,17 @@ export class FinishedRun {
     observer: ObserverTarget | undefined,
     outcome: RecordedOutcome,
     recordFailure: (failure: ExecutionFailure) => Promise<RecordedOutcome>,
-    interrupted: () => boolean,
+    status: Pick<RunStatusHandle, "interrupted" | "beginAnalysis">,
     participantsRan: () => boolean,
   ) {
     if (key !== issueKey) throw new Error("Only Run.finish issues a FinishedRun.");
     this.runId = runId;
     this.paths = paths;
     this.#participantsRan = participantsRan;
+    this.#status = status;
     this.#observer = observer;
     this.#outcome = outcome;
     this.#recordFailure = recordFailure;
-    this.#interrupted = interrupted;
   }
 
   /**
@@ -262,12 +262,21 @@ export class FinishedRun {
    * when asked, since the signal can arrive after the bundle was published.
    */
   get interrupted(): boolean {
-    return this.#interrupted();
+    return this.#status.interrupted;
   }
 
   /** The route reported a participant's session started (Run.participantStarted). */
   get participantsRan(): boolean {
     return this.#participantsRan();
+  }
+
+  /**
+   * Automatic analysis of this run starts in this process: status.json records when, and its
+   * heartbeat runs again, so every surface can say the run is analyzing. Call the returned
+   * function with the analysis outcome's state when it ends. After an interrupt both do nothing.
+   */
+  beginAnalysis(): ReturnType<RunStatusHandle["beginAnalysis"]> {
+    return this.#status.beginAnalysis();
   }
 
   static isIssued(value: unknown): value is FinishedRun {
@@ -537,7 +546,7 @@ function runPublisher(args: {
       observer,
       current,
       recordFailure,
-      () => runStatus.interrupted,
+      runStatus,
       participantsRan,
     );
   };
@@ -568,13 +577,18 @@ function runPublisher(args: {
 /**
  * Run `fn` as the lifetime of at most one run. When `fn` settles the scope closes synchronously,
  * so the scope and its run admit no further calls, even through references `fn` leaked into
- * timers or callbacks. It then waits for the calls it admitted and, unless the run finished,
- * finishes status.json with no outcome. The close cannot replace `fn`'s exception: admitted calls
- * are awaited settled and the status finish swallows its own write errors. `finished` is set only
+ * timers or callbacks. It then waits for the calls it admitted and, unless the run published,
+ * records status.json `interrupted` with reason `no-publish`: a run with no published bundle did
+ * not finish, so no surface shows it as passed or counts it in a study's durations. The close cannot replace `fn`'s exception: admitted calls
+ * are awaited settled and the status write swallows its own errors. `finished` is set only
  * when `Run.finish` resolved inside the scope, so a refusal cannot hand analysis another run.
  */
 export async function runScope<T>(
   fn: (scope: RunScope) => Promise<T>,
+  hooks: {
+    /** The run exists: its directory and first status.json write landed. A throw is ignored. */
+    onStart?: (runId: string) => void;
+  } = {},
 ): Promise<{ result: T; finished: FinishedRun | undefined }> {
   let closed = false;
   let started = false;
@@ -620,6 +634,11 @@ export async function runScope<T>(
           },
         });
         await runStatus.started;
+        try {
+          hooks.onStart?.(runId);
+        } catch {
+          // An announcement cannot stop the run it announces.
+        }
         const run = openRun(options, runId, created.paths, runStatus);
         interruptBundle = run.interrupt;
         return { ok: true as const, run: run.run };
@@ -707,7 +726,7 @@ export async function runScope<T>(
     try {
       await Promise.allSettled(admitted);
     } finally {
-      if (finished === undefined) await status?.finish();
+      if (finished === undefined) await status?.abandon();
       unregister?.();
     }
   }

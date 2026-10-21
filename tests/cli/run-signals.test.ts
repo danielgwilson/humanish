@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { cliAnalysisOptions } from "../../src/cli/commands/analysis-signals.js";
+import { cliRunEventOptions } from "../../src/cli/commands/analysis-signals.js";
 import {
   beginRunSignalPhase,
   handOverRunSignals,
@@ -596,7 +596,7 @@ describe("the run command's signal handler at shutdown edges", () => {
     const before = new Map(signals.map((signal) => [signal, process.listeners(signal)]));
     const phase = beginRunSignalPhase({ writeErr: () => undefined }, { exit });
     cleanups.push(phase.end);
-    const analysis = cliAnalysisOptions({ writeErr: () => undefined });
+    const analysis = cliRunEventOptions({ writeErr: () => undefined });
     void analysis.onEvent?.({ type: "analysis-started" });
     // Only the analysis listener is new: the run's handlers left when analysis started. Calling
     // the listeners directly keeps the test runner's own signal handling out of it.

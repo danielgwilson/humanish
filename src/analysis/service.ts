@@ -5,7 +5,7 @@ import {
 import { validCodexAnalysisConfig } from "./codex-config.js";
 import type { AnalysisFetch, AnalysisProvider } from "./provider.js";
 import { randomUUID } from "node:crypto";
-import { lstat, mkdir, realpath, rmdir } from "node:fs/promises";
+import { realpath } from "node:fs/promises";
 import path from "node:path";
 import { renderObserver } from "../observer/render.js";
 import { containsSensitive } from "../evidence/redaction.js";
@@ -20,7 +20,9 @@ import {
   validatePreparedRunRootIdentity,
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
-import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
+import { isRunStatusRecord, RUN_STATUS_FILE, type RunStatusRecord } from "../run/status.js";
+import { assertRecordingEnded } from "./recording-ended.js";
+import { withAnalysisLock } from "./analysis-lock.js";
 import { captureEvidence, EVIDENCE_LIMITS } from "./evidence.js";
 import { AnalysisSourceRefusedError, runFileTooLarge, throwAsAnalysisRefusal } from "./source.js";
 import { pathMissing, readBoundedFile, readBoundedFileResult } from "../run/evidence-files.js";
@@ -123,7 +125,8 @@ export async function resolveAnalysisRun(
 const messages: Record<string, string> = {
   ANALYSIS_RUN_NOT_FOUND: "The selected run is unavailable or its storage is unsafe.",
   ANALYSIS_VERIFY_FAILED: "The run must pass verification before analysis.",
-  ANALYSIS_RUN_ACTIVE: "Analysis requires a completed recording. Wait for the study to finish.",
+  ANALYSIS_RUN_ACTIVE:
+    "This run's status.json is missing, unreadable or names another run, so humanish cannot tell whether its recording has ended. `humanish verify` checks the run's files.",
   ANALYSIS_NO_PARTICIPANTS: "This run contains no participant evidence to analyze.",
   ANALYSIS_REQUIRES_LIVE_RUN:
     "A dry run has no participant behavior to analyze. Select a completed live run.",
@@ -131,7 +134,7 @@ const messages: Record<string, string> = {
   ANALYSIS_SOURCE_CHANGED:
     "The source recording changed during analysis. The result cannot be published against different evidence.",
   ANALYSIS_BUSY:
-    "Another analysis holds this run's .analysis-lock directory. If it was interrupted, confirm it has stopped before removing that empty directory.",
+    "Another analysis holds this run's .analysis-lock directory, and its process is still running or humanish cannot check it (another host, or a lock written by humanish 0.139.1 or earlier). Wait for it to finish; if no humanish process is running for this run, remove that directory.",
   ANALYSIS_HISTORY_UNAVAILABLE:
     "Analysis history is unavailable or full. No request was sent. Inspect this run's analysis and analysis-attempts storage before retrying.",
   ANALYSIS_CONFIG_INVALID:
@@ -218,45 +221,7 @@ export async function refreshObserver(
   }
 }
 
-/** One analysis or correction writer per run. Never steal a lock based on an untrusted PID. */
-export async function withAnalysisLock<T>(
-  prepared: PreparedRunArtifactPaths,
-  action: () => Promise<T>,
-): Promise<T> {
-  await validatePreparedRunRootIdentity(prepared);
-  const target = path.join(prepared.physicalRunRoot, ".analysis-lock");
-  try {
-    await mkdir(target, { mode: 0o700 });
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new Error("ANALYSIS_BUSY");
-    throw new Error("ANALYSIS_UNAVAILABLE");
-  }
-  const identity = await lstat(target, { bigint: true });
-  try {
-    await validatePreparedRunRootIdentity(prepared);
-    if (!identity.isDirectory() || identity.isSymbolicLink())
-      throw new Error("ANALYSIS_UNAVAILABLE");
-    return await action();
-  } finally {
-    // Only remove our empty, unchanged directory. No recursive deletion and no replacement authority.
-    try {
-      await validatePreparedRunRootIdentity(prepared);
-      const current = await lstat(target, { bigint: true });
-      if (
-        current.isDirectory() &&
-        !current.isSymbolicLink() &&
-        current.dev === identity.dev &&
-        current.ino === identity.ino &&
-        current.birthtimeNs === identity.birthtimeNs
-      )
-        await rmdir(target);
-    } catch {
-      /* Leave ambiguous storage in place for explicit operator inspection. */
-    }
-  }
-}
-
-/** The completion gate: the run verifies, is live and finished, and has participants. */
+/** The completion gate: the run verifies, is live, its recording ended, and it has participants. */
 export async function readCompletedAnalysisSource(
   cwd: string,
   prepared: PreparedRunArtifactPaths,
@@ -280,25 +245,22 @@ export async function readCompletedAnalysisSource(
     );
     if (!missing) throw new Error("ANALYSIS_RUN_ACTIVE");
   }
+  let status: RunStatusRecord | undefined;
   if (statusBytes) {
-    const status: unknown = JSON.parse(statusBytes.toString("utf8"));
-    // An old heartbeat is unknown, not proof that a process stopped writing evidence.
-    if (
-      !isRunStatusRecord(status) ||
-      status.runId !== loaded.bundle.runId ||
-      status.state !== "finished"
-    ) {
+    const record: unknown = JSON.parse(statusBytes.toString("utf8"));
+    if (!isRunStatusRecord(record) || record.runId !== loaded.bundle.runId)
       throw new Error("ANALYSIS_RUN_ACTIVE");
-    }
+    status = record;
   }
-  if (
-    loaded.bundle.streams.some(
+  assertRecordingEnded({
+    runId: loaded.bundle.runId,
+    status,
+    runningStreams: loaded.bundle.streams.filter(
       (stream) =>
         !TERMINAL_SIMULATION_STATUSES.has(stream.status) || stream.liveActor !== undefined,
-    )
-  ) {
-    throw new Error("ANALYSIS_RUN_ACTIVE");
-  }
+    ).length,
+    streams: loaded.bundle.streams.length,
+  });
   return bytes;
 }
 
@@ -553,7 +515,12 @@ export async function analyzeRun(
     if (!prepared) return fail(run, dryRun, "ANALYSIS_RUN_NOT_FOUND");
     if (deps.expectedRun !== undefined) cwd = physicalCwdOf(prepared);
     const execute = () => executeAnalysis({ cwd, run, prepared, config, options, deps, dryRun });
-    return dryRun ? await execute() : await withAnalysisLock(prepared, execute);
+    if (dryRun) return await execute();
+    const tookOver: string[] = [];
+    const result = await withAnalysisLock(prepared, execute, (warning) => tookOver.push(warning));
+    return tookOver.length === 0
+      ? result
+      : { ...result, warnings: [...tookOver, ...result.warnings] };
   } catch (error) {
     if (error instanceof AnalysisSourceRefusedError)
       return fail(run, dryRun, error.message, `${error.reason} No request was sent.`);

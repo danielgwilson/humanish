@@ -5,7 +5,7 @@
 
 import type { RunOutcome } from "./bundle.js";
 import type { ExecutionFailure } from "./judge.js";
-import { type RunLiveness } from "./status.js";
+import { type RunAnalysisPhase, type RunLiveness } from "./status.js";
 import { runLiveness } from "./liveness.js";
 import { plural } from "./text.js";
 
@@ -97,6 +97,16 @@ export function runDisplay(facts: RunDisplayFacts): RunDisplay {
   if (facts.verdict === "contract_proof_only")
     return shown(facts.mode === "dry-run" ? "dry_run" : "no_verdict");
   return shown("unknown");
+}
+
+/**
+ * What a surface shows after a run's display while its automatic analysis runs, or once that
+ * analysis's process stopped without an end: the run's own result stays its participants'.
+ */
+export function analysisPhaseLabel(phase: RunAnalysisPhase | undefined): string | undefined {
+  if (phase?.state === "running") return "analyzing";
+  if (phase?.state === "stopped") return "analysis stopped";
+  return undefined;
 }
 
 /** A state in words: "passed", "timed out", "no verdict". */

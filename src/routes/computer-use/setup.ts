@@ -376,8 +376,8 @@ export async function startCuaRun(
   const { cwd, descriptor, participantRuns, participantPlan, publicRepo } = admitted;
   const { appUrl } = admitted;
   // The run's status record exists from here on, so anything watching the runs directory can
-  // tell which study this is and that it is alive. The fail-closed returns below leave it finished
-  // with no outcome when the scope closes; a crash leaves it stale, which reads as interrupted.
+  // tell which study this is and that it is alive. The fail-closed returns below leave it
+  // interrupted with no outcome when the scope closes; a killed process leaves it stale.
   const started = await scope.startRun(plan, input, {
     cwd,
     prefix: "cua",

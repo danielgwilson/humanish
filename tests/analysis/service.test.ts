@@ -4,12 +4,8 @@ import os from "node:os";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import { createProgram } from "../../src/cli/program.js";
-import {
-  analyzeRun,
-  correctAnalysis,
-  showAnalysis,
-  withAnalysisLock,
-} from "../../src/analysis/service.js";
+import { analyzeRun, correctAnalysis, showAnalysis } from "../../src/analysis/service.js";
+import { withAnalysisLock } from "../../src/analysis/analysis-lock.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import { listAnalyses, writeAnalysis } from "../../src/analysis/store.js";
 import { listAnalysisExecutions } from "../../src/analysis/store-executions.js";
@@ -318,8 +314,9 @@ describe("ordinary study analysis flow", () => {
     bundle.mode = "live";
     bundle.streams[0]!.status = "running";
     await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle));
+    // With no status record nothing says the run is alive, so a running stream is a cut-off one.
     expect((await analyzeRun(cwd, "analysis-flow", { config }, { fetch })).error?.code).toBe(
-      "ANALYSIS_RUN_ACTIVE",
+      "ANALYSIS_RUN_INCOMPLETE",
     );
     expect(fetch).not.toHaveBeenCalled();
   });

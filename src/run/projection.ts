@@ -125,7 +125,7 @@ export function expectationFor(
     .filter((value): value is number => value !== undefined)
     .sort((a, b) => a - b);
   // A cost is unknown whether it was declared absent (`null`) or never recorded at all
-  // (`undefined`: every fail-closed exit finalized with no outcome). Counting only the first
+  // (`undefined`, as earlier versions left a run closed without a bundle). Counting only the first
   // reports "~$1.20 median · 3 runs" for a sample where two runs were never priced, which claims a
   // denominator the figure does not have.
   const costUnknown = finished.filter(

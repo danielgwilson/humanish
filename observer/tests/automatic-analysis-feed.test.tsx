@@ -19,6 +19,8 @@ import { decodeInMicrotasks } from "./microtask-gunzip";
 // UI/transport fixtures only. These tests do not claim an automatic provider dispatch.
 const data = fixtures.fixture();
 let container: HTMLDivElement, root: Root, remote: LoadedAnalysis;
+/** What observer-feed.json serves. */
+let served: typeof data;
 
 decodeInMicrotasks();
 const job = (state: AutomaticAnalysisView["state"]): AutomaticAnalysisView => ({
@@ -71,9 +73,10 @@ beforeEach(() => {
   document.body.append(container);
   root = createRoot(container);
   remote = { ...NO_ANALYSIS, automatic: job("queued") };
+  served = data;
   vi.spyOn(window, "fetch").mockImplementation(async (input) =>
     String(input) === "observer-feed.json"
-      ? new Response(feed(data))
+      ? new Response(feed(served))
       : String(input) === "study-analysis.json"
         ? new Response(JSON.stringify(remote))
         : new Response(null, { status: 404 }),
@@ -113,6 +116,26 @@ describe("automatic analysis within the existing study shell", () => {
     expect(container.querySelector(".study-viewbar")).toBe(nav);
     expect(window.location.hash).toBe("#/report");
     expect(container.querySelector("[data-automatic-analysis-state]")).toBeNull();
+  });
+  it("shows the findings view pending from the moment the run's process starts analysis", async () => {
+    const analyzing = {
+      ...data,
+      runtime: {
+        state: "finished" as const,
+        observedAt: new Date().toISOString(),
+        source: "local-run-status" as const,
+        analysis: { startedAt: new Date(Date.now() - 80_000).toISOString() },
+      },
+    };
+    remote = NO_ANALYSIS;
+    served = analyzing;
+    await mount(<App data={analyzing} analysis={remote} />);
+    expect(container.querySelector(".run-status")?.textContent).toContain("Writing findings");
+    await click('.study-views a[href="#/report"]');
+    const notice = container.querySelector("[data-automatic-analysis-state]");
+    expect(notice?.getAttribute("data-automatic-analysis-state")).toBe("queued");
+    expect(notice?.textContent).toContain("this usually takes 1 to 4 minutes");
+    expect(notice?.textContent).toContain("Started 1m ago");
   });
   it("does not navigate away from a selected recording when results arrive", async () => {
     await mount();

@@ -85,6 +85,8 @@ const reasons = [
   "AUTOMATIC_ANALYSIS_ACTOR_CANCELLED",
   "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE",
   "AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED",
+  // Only a read sets it, for a queued or running job whose owner stopped refreshing it.
+  "AUTOMATIC_ANALYSIS_STOPPED",
 ] as const;
 
 /** A route's reason not to analyze a run it recorded, persisted as the job's skip reason. */
@@ -240,9 +242,11 @@ export async function readAutomaticAnalysisPrepared(
       ...(record.admission === undefined ? {} : { admission: record.admission }),
     };
     const updated = Date.parse(record.updatedAt);
-    if (updated > now || (pending(record.state) && now - updated > AUTOMATIC_ANALYSIS_STALE_MS)) {
+    if (updated > now)
       return { ...view, state: "unknown", reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" };
-    }
+    // A job its owner stopped refreshing: the process most likely ended during the analysis.
+    if (pending(record.state) && now - updated > AUTOMATIC_ANALYSIS_STALE_MS)
+      return { ...view, state: "unknown", reason: "AUTOMATIC_ANALYSIS_STOPPED" };
     if (!(await terminalResultMatches(prepared, record)))
       return { ...view, state: "unknown", reason: "AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN" };
     return view;

@@ -18,7 +18,7 @@ import type { ObserverData, ObserverStream } from "./lib/observer-data";
 import { participantLabels } from "./lib/participant-label";
 import { projectStudyAnalysis, type LoadedAnalysis } from "./lib/study-analysis";
 import { useObserverFeed } from "./lib/use-observer-feed";
-import { automaticAnalysisNotice } from "./lib/automatic-analysis";
+import { automaticAnalysisNotice, shownAutomaticAnalysis } from "./lib/automatic-analysis";
 import {
   useStudyPlayback,
   type StudyPlayback as StudyPlaybackState,
@@ -58,14 +58,13 @@ export function App({
     () => suppliedReport ?? (data ? projectStudyAnalysis(analysis, data) : undefined),
     [suppliedReport, analysis, data],
   );
+  const automatic = shownAutomaticAnalysis(analysis.automatic, data?.runtime);
   const hasFindingsView =
-    !!report || !!analysis.automatic || runNotes.notes.length > 0 || runNotes.unreadable;
+    !!report || !!automatic || runNotes.notes.length > 0 || runNotes.unreadable;
   const runId = data?.run.runId ?? "";
   const grid = useGridPreferences(initialData?.run.runId, runId);
   const [now, setNow] = useState(Date.now);
-  const automaticNotice = analysis.automatic
-    ? automaticAnalysisNotice(analysis.automatic, snapshot, now)
-    : undefined;
+  const automaticNotice = automatic ? automaticAnalysisNotice(automatic, snapshot, now) : undefined;
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
@@ -135,7 +134,7 @@ export function App({
           <FindingsView
             data={data}
             report={report}
-            automatic={analysis.automatic}
+            automatic={automatic}
             snapshot={snapshot}
             now={now}
             navigation={navigation}
