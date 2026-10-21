@@ -4,7 +4,7 @@ import path from "node:path";
 
 import type { Command } from "commander";
 
-import { launchRemoteRun } from "../../remote/launch.js";
+import { launchRemoteRun, type RemoteOutcome } from "../../remote/launch.js";
 import { planRemoteRun } from "../../remote/plan.js";
 import type { RunResult } from "../../run/results.js";
 import { planStudy } from "../../study/plan.js";
@@ -100,31 +100,7 @@ export async function runRemoteStudy(args: {
     refuse("HUMANISH_REMOTE_FAILED", error instanceof Error ? error.message : String(error));
     return;
   }
-  if (outcome.detached === true) {
-    io.writeErr(
-      `The terminal closed, so run ${outcome.runId} goes on in its runner without this machine. Stop it and its sandboxes with: humanish reclaim --run ${outcome.runId}\n`,
-    );
-    return;
-  }
-  if (outcome.result === undefined || typeof outcome.result !== "object") {
-    refuse(
-      "HUMANISH_REMOTE_FAILED",
-      `Run ${outcome.runId} ${outcome.error ?? "ended without a result"}.`,
-      outcome.runId,
-    );
-    io.setExitCode(outcome.exitCode === 0 ? 2 : outcome.exitCode);
-    return;
-  }
-  const result = { ...(outcome.result as RunResult), cwd };
-  if (outcome.error !== undefined) result.warnings = [...(result.warnings ?? []), outcome.error];
-  if (wantsJson(args.command)) io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
-  else {
-    if (outcome.error !== undefined) io.writeErr(`warning: ${outcome.error}\n`);
-    io.writeErr(
-      `Run ${outcome.runId} ${result.ok && outcome.exitCode === 0 ? "passed" : "did not pass"}; its evidence (${outcome.files ?? 0} files) is in .humanish/runs/${outcome.runId}. Next: humanish review --run ${outcome.runId}\n`,
-    );
-  }
-  io.setExitCode(outcome.exitCode);
+  reportRemoteOutcome(args.command, io, cwd, outcome);
 }
 
 /** The run options a remote run does not carry to the runner yet. */
@@ -138,4 +114,45 @@ function localOnlyFlags(options: StudyCommandOptions): string[] {
       ? ["--expose"]
       : [],
   ].flat();
+}
+
+/** The command's result and exit code for a remote run that ended, stopped or detached. */
+export function reportRemoteOutcome(
+  command: Command,
+  io: CliIo,
+  cwd: string,
+  outcome: RemoteOutcome,
+): void {
+  if (outcome.detached === true) {
+    io.writeErr(
+      `The terminal closed, so run ${outcome.runId} goes on in its runner without this machine. Watch it again with humanish observe --run ${outcome.runId}, or stop it and its sandboxes with humanish reclaim --run ${outcome.runId}\n`,
+    );
+    return;
+  }
+  if (outcome.result === undefined || typeof outcome.result !== "object") {
+    const failed: RunResult = {
+      schema: "humanish.run-result.v1",
+      ok: false,
+      cwd,
+      runId: outcome.runId,
+      warnings: [],
+      error: {
+        code: "HUMANISH_REMOTE_FAILED",
+        message: `Run ${outcome.runId} ${outcome.error ?? "ended without a result"}.`,
+      },
+    };
+    writeResult(command, io, failed, formatRunHuman);
+    io.setExitCode(outcome.exitCode === 0 ? 2 : outcome.exitCode);
+    return;
+  }
+  const result = { ...(outcome.result as RunResult), cwd };
+  if (outcome.error !== undefined) result.warnings = [...(result.warnings ?? []), outcome.error];
+  if (wantsJson(command)) io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
+  else {
+    if (outcome.error !== undefined) io.writeErr(`warning: ${outcome.error}\n`);
+    io.writeErr(
+      `Run ${outcome.runId} ${result.ok && outcome.exitCode === 0 ? "passed" : "did not pass"}; its evidence (${outcome.files ?? 0} files) is in .humanish/runs/${outcome.runId}. Next: humanish review --run ${outcome.runId}\n`,
+    );
+  }
+  io.setExitCode(outcome.exitCode);
 }
