@@ -166,7 +166,8 @@ export async function serveRunPath(
   const derivedLeaf = path.posix.basename(cleanedRelativePath);
   // Local-only files (raw sandbox ids, the recording pid) are read in process, never served.
   if (
-    derivedRoot === ".analysis-lock" ||
+    // `.analysis-lock-stale-*` is a lock whose dead owner's next writer moved it aside.
+    derivedRoot?.startsWith(".analysis-lock") === true ||
     derivedLeaf.startsWith(".humanish-write-") ||
     isAnalysisRecordPath(cleanedRelativePath) ||
     isLocalOnlyRunFile(cleanedRelativePath)

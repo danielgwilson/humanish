@@ -112,7 +112,8 @@ participant stream ended; when one was still running it refuses with
 with `ANALYSIS_RUN_ACTIVE`, and a run whose heartbeat stopped while its pid is still in use with
 `ANALYSIS_RUN_UNCONFIRMED`, naming `humanish reclaim --run <id>`. When the process running an
 automatic analysis stops before it finishes, `review` says so and names the `analyze` command
-that runs it again.
+that runs it again. That command takes over the run's `.analysis-lock` when the process that
+held it is gone, and says so in a warning.
 
 CLI live starts disclose the selected analyst, its expected cost range and cap, or unknown account dollars before execution.
 `humanish study check <study> --json` and the TUI study screen also expose the

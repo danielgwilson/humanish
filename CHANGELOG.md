@@ -45,6 +45,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   (`AUTOMATIC_ANALYSIS_STOPPED`) and the `analyze` command that runs it again, instead of "records
   could not be read or checked". A run that ended while a participant was still running says so and names
   `humanish run <study>`.
+- A run's `.analysis-lock` records the process that took it (host, pid namespace, pid and start
+  time, as `reclaim --preflight` reads a probe's owner). When that process is gone, as after a
+  killed analysis, the next `analyze` takes the lock over and says so in a warning, instead of
+  refusing with `ANALYSIS_BUSY` until someone deletes the directory. A lock whose owner is still
+  running, runs on another host, or was written by an earlier version still refuses.
 - Email and desktop cleanup messages no longer call the step "finalization".
 - A participant on a hosted desktop (E2B or Modal) who clicks a `mailto:` link no longer gets
   XFCE's "Choose Preferred Application" dialog, and a `tel:` or `sms:` link on the study's own

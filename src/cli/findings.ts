@@ -450,7 +450,7 @@ function pendingFindings(
     source,
     "failed",
     "AUTOMATIC_ANALYSIS_STOPPED",
-    `The automatic analysis stopped before it wrote findings: the process running it stopped updating its record${at === undefined ? "" : ` at ${at}`}, most likely because it ended. Analyze the run again with the next command. If it says another analysis holds the lock, confirm no humanish process is still running for this run first.`,
+    `The automatic analysis stopped before it wrote findings: the process running it stopped updating its record${at === undefined ? "" : ` at ${at}`}, most likely because it ended. Analyze the run again with the next command.`,
     analyzeCommand(source, progress?.stage === "analysis" ? progress.provider : undefined),
   );
 }
