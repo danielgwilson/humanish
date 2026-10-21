@@ -8,16 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Fixed
+## 0.139.1: Hosted Codex participants work with an AGENTS.md in the Codex home (2026-10-21)
 
-- A hosted Codex participant works when the Codex home (`CODEX_HOME`, or `~/.codex`) has an
-  `AGENTS.md` or `AGENTS.override.md`. Codex adds that file to every thread with no setting to skip
-  it, and humanish refused the launch as `codex_unsafe_configuration`. humanish now admits that one
-  file, leaves it unchanged, and says in `doctor --study` and the run's warnings that the
-  participant also received it. Any other instruction file is still refused.
-- `codex_unsafe_configuration` now says what it refused. `doctor --study` and a hosted Codex
-  participant's run warnings name the setting by its config key, never its value, for example
-  `features.shell_tool is not the value humanish sets` or `skills.config is set`.
+humanish 0.139.1 fixes hosted Codex participants for operators whose Codex home
+(`CODEX_HOME`, or `~/.codex`) holds an `AGENTS.md`. Codex adds that file to every thread, and
+humanish refused the launch as `codex_unsafe_configuration` with no reason. humanish now admits
+that file, leaves it unchanged, and says the participant also received it. Every other
+`codex_unsafe_configuration` refusal names the setting it refused.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.139.1)
 
 ## 0.139.0: Computer-use studies can run on Modal desktops (2026-10-19)
 
