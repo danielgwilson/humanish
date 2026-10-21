@@ -54,7 +54,7 @@ describe("the local guest's stand-in for a link's app", () => {
     expect((await observed.observe()).externalHandoffs).toBeUndefined();
 
     await execFileAsync("xdg-email", ["mailto:help@example.test?body=order%2042"], { env });
-    await execFileAsync("xdg-open", ["tel:+1-555-0100"], { env });
+    await execFileAsync("xdg-open", ["tel:555-0100"], { env });
     expect((await observed.observe()).externalHandoffs).toEqual([
       { scheme: "mailto", recipients: ["help@example.test"] },
       { scheme: "tel" },

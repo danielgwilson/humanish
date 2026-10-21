@@ -73,7 +73,7 @@ describe("the desktop's stand-ins for a link's app", () => {
         requestTimeoutMs: 5_000,
       },
     );
-    await browserHandsOff("xdg-open", "tel:+1-555-0100");
+    await browserHandsOff("xdg-open", "tel:555-0100");
     expect(await read()).toEqual([{ scheme: "tel" }]);
     await browserHandsOff("xdg-open", "sms:+1-555-0100?body=hello");
     expect(await read()).toEqual([{ scheme: "sms" }]);

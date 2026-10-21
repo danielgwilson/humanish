@@ -124,11 +124,11 @@ describe("a link handed to another app", () => {
 
   it("puts the recipients through the trace redaction", async () => {
     const { result, handoffItems } = await run(
-      new Desktop({ 1: [{ scheme: "mailto", recipients: ["inbox-7@study.test"] }] }),
-      (text) => text.replaceAll("inbox-7@study.test", "[redacted]"),
+      new Desktop({ 1: [{ scheme: "mailto", recipients: ["inbox-7@example.test"] }] }),
+      (text) => text.replaceAll("inbox-7@example.test", "[redacted]"),
     );
     expect(handoffItems.map((item) => item.text)).toEqual(["mailto: [redacted]"]);
-    expect(JSON.stringify(result.trace)).not.toContain("inbox-7@study.test");
+    expect(JSON.stringify(result.trace)).not.toContain("inbox-7@example.test");
   });
 });
 
