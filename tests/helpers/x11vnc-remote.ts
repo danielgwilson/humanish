@@ -9,11 +9,11 @@ export function x11vncRemote(): (
   let viewOnly = false;
   return (command) => {
     if (!command.startsWith("x11vnc ")) return undefined;
-    if (/ -R viewonly$/.test(command)) {
+    if (command.endsWith(" -R viewonly")) {
       viewOnly = true;
       return { exitCode: 0, stdout: "" };
     }
-    if (/ -Q viewonly$/.test(command)) {
+    if (command.endsWith(" -Q viewonly")) {
       return { exitCode: 0, stdout: `ans=viewonly:${viewOnly ? 1 : 0}\n` };
     }
     return undefined;
