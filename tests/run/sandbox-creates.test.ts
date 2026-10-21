@@ -86,7 +86,9 @@ describe("the sandbox create registry", () => {
       });
       expect(sandboxOwnerTags(remote)).toEqual(sandboxOwnerTags(launcher));
       // Pinned once: a second key is refused, and the first stays.
-      await expect(pinRunOwnerKey(launcher, "5555666677778888")).rejects.toThrow();
+      await expect(pinRunOwnerKey(launcher, "5555666677778888")).rejects.toMatchObject({
+        code: "EEXIST",
+      });
       expect(sandboxOwnerTags(launcher).runKey).toBe("1111222233334444");
     } finally {
       await rm(cwd, { recursive: true, force: true });
