@@ -13,7 +13,8 @@ import {
   showAnalysis,
 } from "../../analysis/service.js";
 import { admissionRule } from "../../analysis/admission.js";
-import type { AnalysisAdmission } from "../../analysis/execute.js";
+import { SUPPORTED_ANALYSIS_MODELS, type AnalysisAdmission } from "../../analysis/execute.js";
+import { CODEX_ANALYSIS_MODEL } from "../../analysis/codex-config.js";
 import { listAnalyses } from "../../analysis/store.js";
 import { listAnalysisExecutions } from "../../analysis/store-executions.js";
 import { resolveRunPath } from "../../run/locate.js";
@@ -74,7 +75,7 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     )
     .option(
       "--model <id>",
-      "Supported vision model. OpenAI uses high effort; qualified Codex account analysis uses low effort.",
+      `OpenAI analysis model, at high effort: ${SUPPORTED_ANALYSIS_MODELS.join(", ")}. Codex account analysis runs ${CODEX_ANALYSIS_MODEL} at low effort.`,
       DEFAULT_ANALYSIS_MODEL,
     )
     .option(

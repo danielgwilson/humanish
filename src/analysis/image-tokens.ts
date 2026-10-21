@@ -6,12 +6,16 @@
  * 32), scaled down to the model's high-detail patch budget, then ceil(patches × multiplier).
  * Scaling down only removes patches, so min(patches, budget) bounds the billed count from above.
  * The guide lists a 2,500-patch high budget and a 1.2 multiplier for each model below; its own
- * examples are 1024×1024 → 1,229 tokens and 2048×2048 → 3,000.
+ * examples are 1024×1024 → 1,229 tokens and 2048×2048 → 3,000. It does not list gpt-6-luna or
+ * gpt-6.1-sol (read 2026-10-21). Their entries copy gpt-6-astra's because OpenAI billed the same
+ * image tokens on all three on 2026-10-21, within the guide's one-token rounding.
  */
 const HIGH_DETAIL_SIZING: Readonly<
   Record<string, { patchBudget: number; multiplierTenths: number }>
 > = Object.freeze({
   "gpt-6-astra": { patchBudget: 2500, multiplierTenths: 12 },
+  "gpt-6.1-sol": { patchBudget: 2500, multiplierTenths: 12 },
+  "gpt-6-luna": { patchBudget: 2500, multiplierTenths: 12 },
   "gpt-5.6-sol": { patchBudget: 2500, multiplierTenths: 12 },
   "gpt-5.6-terra": { patchBudget: 2500, multiplierTenths: 12 },
   "gpt-5.6-luna": { patchBudget: 2500, multiplierTenths: 12 },

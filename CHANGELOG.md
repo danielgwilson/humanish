@@ -8,6 +8,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+Analysis runs on `gpt-6.1-sol` ($2 / $10 per 1M tokens) and `gpt-6-luna` ($0.10 / $0.50) as well
+as the default `gpt-6-astra` ($10 / $50). Pass `humanish analyze --model gpt-6-luna` or set
+`review.analysis.model`; admission, the cost cap and the recorded cost use each model's own rates
+and image-token sizing. `analyze --help` lists the accepted models. The default is unchanged.
+
 ## 0.141.0: A run says when it is writing findings, and email links no longer open a dialog (2026-10-21)
 
 humanish 0.141.0 says when a run is writing its findings: the CLI prints progress with the

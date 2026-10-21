@@ -42,8 +42,10 @@ import { mapWithConcurrency } from "../run/concurrency.js";
 import type { RejectedAnalysisOutput } from "./diagnostics.js";
 
 export const ANALYSIS_PROMPT_VERSION = "study-evidence-8";
-const SUPPORTED_ANALYSIS_MODELS = Object.freeze([
+export const SUPPORTED_ANALYSIS_MODELS = Object.freeze([
   "gpt-6-astra",
+  "gpt-6.1-sol",
+  "gpt-6-luna",
   "gpt-5.5",
   "gpt-5.6",
   "gpt-5.6-sol",
