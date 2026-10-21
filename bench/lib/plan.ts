@@ -1,6 +1,7 @@
 // What a benchmark invocation will run and what it may spend. Pure functions, so the budget rules
 // are testable without a provider.
 
+import { MODEL_RATES, type ModelRate } from "../../src/run/pricing.js";
 import type { Arm } from "../taskly/answer-key.js";
 
 export type BrainId = "openai-computer-use" | "local-agent-claude" | "local-agent-codex";
@@ -56,6 +57,83 @@ export const TYPICAL_ANALYSIS_USD = 0.7;
  * $1.21 to $1.35 (tests/fixtures/bench/analyze-dry-run/README.md).
  */
 export const TYPICAL_ANALYSIS_WORST_CASE_USD = 1.26;
+
+/** Mean tokens billed by the six 2026-10-04 gpt-6-astra analyses in tests/fixtures/bench/taskly/analyses. */
+const TYPICAL_ANALYSIS_TOKENS = { input: 40_060, output: 7_613 };
+/**
+ * Mean input tokens admission counted for the six 0.114.0 runs: each worst case less 16,384
+ * output tokens at $50 per million, divided by the $12.50 cache-write rate it prices input at.
+ */
+const TYPICAL_ADMISSION_INPUT_TOKENS = 35_531;
+const BENCH_OUTPUT_ALLOWANCE = 16_384;
+
+export interface AnalysisCost {
+  typicalUsd: number;
+  worstCaseUsd: number;
+}
+
+/**
+ * One Taskly analysis by `model`, for the dry-run projection: gpt-6-astra's recorded typical spend
+ * and worst case, scaled by what the same tokens cost at the model's rates. Input in the worst
+ * case is priced at the highest input rate the model bills, as admission prices it. Null when
+ * this checkout has no rate for the model.
+ */
+export function analysisCostFor(model: string): AnalysisCost | null {
+  const rate = MODEL_RATES[model];
+  const astra = MODEL_RATES["gpt-6-astra"];
+  if (rate === undefined || astra === undefined) return null;
+  const typical = (r: ModelRate): number =>
+    TYPICAL_ANALYSIS_TOKENS.input * r.inputUsdPerToken + TYPICAL_ANALYSIS_TOKENS.output * r.outputUsdPerToken;
+  const worst = (r: ModelRate): number =>
+    TYPICAL_ADMISSION_INPUT_TOKENS * Math.max(r.inputUsdPerToken, r.cacheWriteUsdPerToken ?? 0) +
+    BENCH_OUTPUT_ALLOWANCE * r.outputUsdPerToken;
+  return {
+    typicalUsd: round((TYPICAL_ANALYSIS_USD * typical(rate)) / typical(astra)),
+    worstCaseUsd: round((TYPICAL_ANALYSIS_WORST_CASE_USD * worst(rate)) / worst(astra)),
+  };
+}
+
+export interface AnalysisProjection {
+  analyses: number;
+  /** Analyses that start under the cap at typical spend, and that spend. */
+  fit: number;
+  typicalUsd: number;
+  /** Analyses that start if each one bills its worst case, and that spend. */
+  worstCaseFit: number;
+  worstCaseUsd: number;
+  /** The smallest cap, in steps of $0.50, at which every analysis starts at typical spend. */
+  capThatFits: number;
+}
+
+/** One analysis model's planned analyses under its cap, in order, with the live loop's start rule. */
+export function projectAnalyses(costs: readonly AnalysisCost[], capUsd: number): AnalysisProjection {
+  const replay = (charge: (cost: AnalysisCost) => number): { fit: number; spent: number } => {
+    let spent = 0;
+    let fit = 0;
+    for (const cost of costs) {
+      if (spent + cost.worstCaseUsd > capUsd) continue;
+      spent += charge(cost);
+      fit++;
+    }
+    return { fit, spent: round(spent) };
+  };
+  const typical = replay((cost) => cost.typicalUsd);
+  const worst = replay((cost) => cost.worstCaseUsd);
+  let before = 0;
+  let needed = 0;
+  for (const cost of costs) {
+    needed = Math.max(needed, before + cost.worstCaseUsd);
+    before += cost.typicalUsd;
+  }
+  return {
+    analyses: costs.length,
+    fit: typical.fit,
+    typicalUsd: typical.spent,
+    worstCaseFit: worst.fit,
+    worstCaseUsd: worst.spent,
+    capThatFits: Math.ceil(round(needed) * 2) / 2,
+  };
+}
 
 export interface BudgetSettings {
   maxUsdPerBrain: number;

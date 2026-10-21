@@ -37,6 +37,9 @@ cost projection. It needs no keys and spends nothing. The live command writes
 | `--work-dir <dir>`         | a new temp directory  | The project, its `.humanish/runs`, `manifest.json` and `cli.log`              |
 | `--out <dir>`              | the work directory    | Where the results file and summary go                                         |
 | `--rescore <work-dir>`     | none                  | Score an earlier invocation's bundles again with the current rubric; no spend |
+| `--analysis-models <list>` | none                  | Analyze every recorded run once per model, after all participants ran (below) |
+| `--analysis-repeats <n>`   | 1                     | Analyses of each run per model                                                |
+| `--reanalyze <work-dir>`   | none                  | Run only the analysis models on an earlier invocation's recordings            |
 
 The runner never reads a key. `humanish run` and `humanish reclaim` load `--dotenv` themselves;
 `humanish analyze` has no such flag, so Node's `--env-file` loads the same file for that child.
@@ -62,7 +65,47 @@ Every child process gets `DO_NOT_TRACK=1`.
    analysis's expected cost, admitted cost and worst case. By default, the per-run cap is the
    admitted cost, the smallest cap `analyze` accepts. `--analysis-max-usd` sets a fixed cap
    instead. Analysis starts only when its worst case fits the budget.
-5. Scores every recorded run and writes the results file and summary.
+5. With `--analysis-models` or `--analysis-repeats`, step 4 skips the analysis, and once every
+   participant has run, each run is analyzed by every model (see "Compare analysis models").
+6. Scores every recorded run and writes the results file and summary.
+
+## Compare analysis models
+
+Participant sessions vary more from run to run than analysis models differ, so a model comparison
+holds the recordings fixed and varies only the analyst. `--analysis-models` takes a comma-separated
+list; each entry is a model id, or `provider:model` to pass `--provider` as well:
+
+```bash
+pnpm bench --dotenv path/to/.env --no-analysis --work-dir /tmp/taskly
+pnpm bench --reanalyze /tmp/taskly --analysis-models gpt-6-astra,gpt-5.6-luna --dry-run
+pnpm bench --reanalyze /tmp/taskly --dotenv path/to/.env --analysis-models gpt-6-astra,gpt-5.6-luna \
+  --analysis-repeats 2 --out docs/evidence/benchmark
+```
+
+The first command records participants without analysis. `--reanalyze` reads that work
+directory's `manifest.json`, analyzes each recorded run with every model `--analysis-repeats`
+times, and spends nothing on participants. `--analysis-models` or `--analysis-repeats` on a fresh
+invocation does the same after the last participant run, in place of each run's own analysis. With
+`--analysis-repeats` or `--reanalyze` alone, the model is the CLI's default analysis model.
+
+Each analysis is `humanish analyze --run <id> --model <model> --rerun`, with `--provider` when the
+entry names one. `--rerun` makes every analysis a new version, so no analysis is satisfied by an
+earlier one with the same input and configuration; a different model already has a different
+configuration. The manifest's `analysisMatrix` records each analysis's run, model, repeat number,
+CLI version, analysis id, state, estimated spend and wall time, and scoring reads that exact
+analysis id. A second `--reanalyze` of the same work directory appends to the matrix and numbers
+repeats after the ones already recorded.
+
+Before any spend, the benchmark asks the CLI to dry-run each model against a run id that does
+not exist. `analyze` checks the analyst before it looks for the run, so a model or provider that
+build does not support stops the benchmark with the CLI's reason.
+
+The summary adds an analysis models table per brain: one column per model, with recall per
+defect, total recall with its 95% interval, false assurance, invented claims on each arm,
+harness-caused and unresolved findings, the analyses not scored and why, estimated spend and the
+wall time of the `humanish analyze` calls, in total and per analysis. A table of every analysis and
+a list of each model's invented and unresolved findings follow it. Results files of an invocation
+with the matrix end in `-analysis-models`.
 
 ## What it spends
 
@@ -78,6 +121,11 @@ Each step starts only when the spend so far plus that step's worst case fits und
   cap does not bound the bill, so the budget counts the worst case. A missing estimate refuses the
   analysis. `--analysis-max-usd` keeps a fixed per-run cap. A dispatched analysis that reports no
   usage is charged its worst case.
+- Each analysis model has its own `--max-usd` cap, under the same rule as a brain's analyses: an
+  analysis starts only when that model's spend in this invocation plus the worst case
+  `analyze --dry-run` reports for that run and model fits under the cap. A skipped analysis is
+  recorded as `skipped_budget` and later, cheaper ones can still start. Participants keep the
+  per-brain cap.
 - A `local-agent` participant's model spend has no price. It is recorded as unknown, and the cap
   bounds only its desktop and analysis spend.
 
@@ -92,6 +140,15 @@ step on its worst case. The dry run counts an analysis at $1.26, the mean of tho
 so the sixth analysis needs about $6.40 of headroom: at $6 the dry run projects 6 runs and 5
 analyses, and the default of $7 fits all 12 steps. When a plan does not fit, the dry run names the
 smallest cap, in $0.50 steps, at which it does.
+
+The dry run projects each analysis model separately. On a fresh invocation it scales the typical
+gpt-6-astra analysis above, $0.70 billed and $1.26 worst case, by what the same tokens cost at the
+model's rates in `src/run/pricing.ts`: 40,060 input and 7,613 output tokens billed (the mean of the
+2026-10-04 analyses in `tests/fixtures/bench/taskly/analyses`), and 35,531 input tokens with the
+16,384-token allowance for the worst case. A model with no rate in this checkout gets no
+projection. With `--reanalyze`, the dry run asks `analyze --dry-run` about every recorded run and
+model and projects from the expected cost and worst case it reports, which runs above the billed
+cost for gpt-6-astra.
 
 The benchmark's automatic cap uses a fixed 16,384-token output allowance for both the admission
 check and the analysis, preserving the allowance of earlier benchmarks as the input prompt grows.

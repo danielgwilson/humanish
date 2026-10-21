@@ -4,16 +4,19 @@ import { parse } from "yaml";
 
 import {
   BRAINS,
+  analysisCostFor,
   canStartAnalysis,
   canStartParticipant,
   capThatFits,
   participantBoundUsd,
   planRuns,
+  projectAnalyses,
   projectBrain,
   type BudgetSettings,
 } from "../../bench/lib/plan.js";
 import { studyYaml } from "../../bench/lib/project.js";
-import { summaryMarkdown, wilson95, type BenchResult } from "../../bench/lib/report.js";
+import { summaryMarkdown, type BenchResult } from "../../bench/lib/report.js";
+import { wilson95 } from "../../bench/lib/summary.js";
 import { MISSIONS } from "../../bench/taskly/missions.js";
 import { CONTRAST, docProse } from "../../scripts/lib/doc-prose.mjs";
 import { EM_DASH } from "../../scripts/lib/prose-rules.mjs";
@@ -112,6 +115,39 @@ describe("the benchmark budget", () => {
     expect([six.participantsFit, six.analysesFit]).toEqual([6, 5]);
     // The sixth analysis starts after $5.12 of typical spend and counts its $1.26 worst case.
     expect(capThatFits(brain, 6, budget({ maxUsdPerBrain: 6 }))).toBe(6.5);
+  });
+});
+
+describe("the analysis model projection", () => {
+  it("prices gpt-6-astra at the recorded typical spend and worst case", () => {
+    expect(analysisCostFor("gpt-6-astra")).toEqual({ typicalUsd: 0.7, worstCaseUsd: 1.26 });
+  });
+
+  it("prices another model at its own rates on the same token counts", () => {
+    // gpt-5.6-luna bills $0.20 in, $0.25 for a cache write and $1.20 out per million tokens:
+    // 40,060 in and 7,613 out is $0.0171, and 35,531 in at $0.25 with 16,384 out is $0.0285.
+    // gpt-6-astra bills those $0.7813 and $1.2633, recorded as $0.70 and $1.26.
+    const luna = analysisCostFor("gpt-5.6-luna");
+    expect(luna?.typicalUsd).toBeCloseTo(0.0154, 4);
+    expect(luna?.worstCaseUsd).toBeCloseTo(0.0285, 4);
+  });
+
+  it("has no projection for a model this checkout cannot price", () => {
+    expect(analysisCostFor("gemini-3.8-flash-unpriced")).toBeNull();
+  });
+
+  it("starts each analysis only when its worst case fits the model's cap", () => {
+    const astra = { typicalUsd: 0.7, worstCaseUsd: 1.26 };
+    // The sixth analysis starts after $3.50 at typical spend; at worst case, after $6.30 it cannot.
+    expect(projectAnalyses(Array(6).fill(astra), 7)).toEqual({
+      analyses: 6,
+      fit: 6,
+      typicalUsd: 4.2,
+      worstCaseFit: 5,
+      worstCaseUsd: 6.3,
+      capThatFits: 5,
+    });
+    expect(projectAnalyses(Array(6).fill(astra), 4)).toMatchObject({ fit: 4, typicalUsd: 2.8 });
   });
 });
 
