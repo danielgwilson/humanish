@@ -52,8 +52,11 @@ def main():
             "--worker", str(output / "payload/root/opt/humanish/media/guest-media-worker.js"),
             "--output", str(output / "media-browser"))
         browser_image = read("media-browser/manifest.json")["image"]["localTag"]
-    base = json.loads((ROOT / "runtime/browser-guest/inputs.json").read_text())["platforms"][architecture]["base"]
+    guest_inputs = json.loads((ROOT / "runtime/browser-guest/inputs.json").read_text())
+    base = guest_inputs["platforms"][architecture]["base"]
     run("runner", "docker", "build", "--build-arg", "BASE_IMAGE=" + base,
+        "--build-arg", "DEBIAN_SNAPSHOT=" + guest_inputs["debianSnapshot"],
+        "--build-arg", "SECURITY_SNAPSHOT=" + guest_inputs["securitySnapshot"],
         "-f", "runtime/local-firecracker/Containerfile", "-t", runner, "runtime/local-firecracker")
     run("guest", "docker", "build", "--build-arg", "BROWSER_IMAGE=" + browser_image,
         "--build-context", "payload=" + str(output / "payload"), "-f", "runtime/local-firecracker/Guest.Containerfile",
