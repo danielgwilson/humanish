@@ -8,6 +8,7 @@ import {
 } from "./routing.js";
 import type { StudyConfig } from "./types.js";
 import { DESKTOP_FILES_ROUTE_REASON } from "./desktop-files.js";
+import { isLocalBrowserStudy } from "../substrates/local/runtime-config.js";
 import {
   computerUseParticipants,
   declaredParticipantIds,
@@ -264,9 +265,11 @@ const CONFIG_ROWS: readonly InertRow[] = [
   {
     field: "execution.desktop.fidelity",
     reason:
-      "mobile emulation is applied only to computer-use participants in hosted Chromium on execution.target: e2b-desktop",
+      "mobile emulation is applied only to computer-use participants in Chromium on a hosted desktop or execution.target: local",
     applies: (config, routes) =>
-      !routes.hostedCuaBrowser && config.execution?.desktop?.fidelity !== undefined,
+      !routes.hostedCuaBrowser &&
+      !isLocalBrowserStudy(config) &&
+      config.execution?.desktop?.fidelity !== undefined,
   },
   {
     field: "execution.desktop.sandboxTimeoutMs",

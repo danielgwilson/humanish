@@ -11,10 +11,13 @@ import type {
 } from "../../../substrates/e2b/desktop-browser.js";
 import {
   applyMobileEmulation,
-  DEFAULT_MOBILE_USER_AGENT,
   makeChromeBrowserStateObserver,
   type ChromeCdpEndpoint,
 } from "../../../substrates/e2b/desktop-cdp.js";
+import {
+  mobileEmulationLaunchFlags,
+  participantMobileEmulation,
+} from "../../../study/mobile-emulation.js";
 import type { ChromeNetworkCaptureRequest } from "../../../substrates/e2b/cdp-network-capture.js";
 import type { ChromeCdpProbeResult } from "../../../substrates/e2b/cdp-probe.js";
 import { captureDesktopBrowserGeometry } from "../../../substrates/e2b/desktop-geometry.js";
@@ -31,17 +34,23 @@ export interface ParticipantFidelity {
   holderName: string | undefined;
 }
 
+/** The participant's emulation request; see participantMobileEmulation for who gets one. */
+function emulationFor(
+  residual: Readonly<ResidualConfig>,
+  spec: DesktopParticipantRun,
+): ReturnType<typeof participantMobileEmulation> {
+  return participantMobileEmulation(
+    residual.execution?.desktop?.fidelity,
+    spec.planned.device.preset,
+  );
+}
+
 /** Only participants on a mobile preset are emulated; the flags go on the browser command line. */
 export function mobileLaunchFlags(
   residual: Readonly<ResidualConfig>,
   spec: DesktopParticipantRun,
 ): string[] {
-  const requested = residual.execution?.desktop?.fidelity;
-  if (!requested?.mobileEmulation || !spec.planned.device.preset.isMobile) return [];
-  return [
-    `--user-agent=${requested.userAgent ?? DEFAULT_MOBILE_USER_AGENT}`,
-    ...(requested.touch === false ? [] : ["--touch-events=enabled"]),
-  ];
+  return mobileEmulationLaunchFlags(emulationFor(residual, spec));
 }
 
 /** The launched browser's DevTools address, as far as the launch recorded it. */
@@ -80,13 +89,13 @@ export async function applyParticipantMobileFidelity(args: {
   };
 }): Promise<ParticipantFidelity> {
   const { spec, deps } = args;
-  const request = deps.residual.execution?.desktop?.fidelity;
+  const request = emulationFor(deps.residual, spec);
   const none: ParticipantFidelity = {
     applied: undefined,
     emulatedTargetId: undefined,
     holderName: undefined,
   };
-  if (!request?.mobileEmulation || !spec.planned.device.preset.isMobile) return none;
+  if (request === undefined) return none;
   if (args.browserFamily !== "chromium") {
     throw new Error(
       `execution.desktop.fidelity.mobileEmulation needs Chrome or Chromium for participant ${spec.planned.id}; the launched browser family is ${args.browserFamily}. Set execution.desktop.browser: chrome.`,
@@ -96,13 +105,7 @@ export async function applyParticipantMobileFidelity(args: {
     args.desktop,
     deps.requestTimeoutMs,
     cdpEndpoint(args.launchIdentity, args.targetUrl),
-    {
-      width: spec.planned.device.preset.width,
-      height: spec.planned.device.preset.height,
-      deviceScaleFactor: request.deviceScaleFactor ?? spec.planned.device.preset.deviceScaleFactor,
-      touch: request.touch ?? true,
-      userAgent: request.userAgent ?? DEFAULT_MOBILE_USER_AGENT,
-    },
+    request,
     {
       targetId: args.targetId,
       ...(args.network === undefined ? {} : { network: args.network.request }),

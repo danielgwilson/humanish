@@ -67,8 +67,9 @@ VMM, and Docker removes the container and its anonymous state volume. Abrupt
 controller death can leave a small host socket directory. A 30-minute process
 deadline bounds a guest that stops responding.
 
-The development guest currently uses a 960×720 Chromium desktop, 2 vCPUs and
-2 GiB guest RAM per participant. Media is off by default. `build.py --media`
+The development guest gives each participant 2 vCPUs, 2 GiB guest RAM and a
+960×720 Chromium desktop, unless the study sets a device or resolution for the
+participant. Media is off by default. `build.py --media`
 builds the larger optional Linux image with a synthetic V4L2 camera and offline
 speech input/output. Its synthetic `espeak-ng` voice is robotic, and it must pass
 a received-speech acceptance run before a release can claim media qualification.

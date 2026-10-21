@@ -18,7 +18,11 @@ import {
 import {
   localBrowserDefaults,
   localBrowserUnsupportedReason,
+  localGuestDisplay,
 } from "../../substrates/local/runtime-config.js";
+import type { GuestDisplayConfig } from "../../guest/display-config.js";
+import { mobileEmulationCommands } from "../../study/mobile-emulation.js";
+import { declaredScreenForRender } from "../../substrates/e2b/desktop-geometry.js";
 import { localRuntimeCapacity, prepareLocalRuntime } from "../../substrates/local/runtime.js";
 import { dockerCommandLine, usesLima } from "../../substrates/local/runtime-host.js";
 import { outOfMemoryMessage } from "../../substrates/local/capacity.js";
@@ -108,6 +112,34 @@ function mediaEvidence(
   };
 }
 
+/**
+ * The geometry a local participant records when its guest emulates a phone: the requested screen
+ * and the emulation the guest applied before the first page loaded. The guest does not read back
+ * what the page reports, so the block has no `resolved` part and says so.
+ */
+function emulatedGeometry(
+  run: DesktopParticipantRun,
+  display: GuestDisplayConfig & { mobileEmulation: object },
+): NonNullable<ParticipantDesktopEvidence["desktopGeometry"]> {
+  const { device } = run.planned;
+  const declared = declaredScreenForRender(device.preset, device.name, device.resolution);
+  const request = display.mobileEmulation;
+  return {
+    screen: {
+      requested: { width: display.width, height: display.height },
+      ...(declared === undefined ? {} : { declared }),
+    },
+    fidelity: {
+      tier: "mobile-emulated",
+      requested: request,
+      applied: mobileEmulationCommands(request).map((command) => command.method),
+    },
+    warnings: [
+      `Mobile emulation was applied for participant ${run.planned.id} in the local guest, which does not read back the page's own report; desktopGeometry.fidelity carries the request without a resolved block.`,
+    ],
+  };
+}
+
 /** One participant's Firecracker desktop and optional captured inbox, released in finalize. */
 function createLocalParticipantDesktop(
   context: LocalParticipantContext,
@@ -133,17 +165,24 @@ function createLocalParticipantDesktop(
       const runtime = await context.assets();
       if (address && email?.kind === "fake" && email.external)
         inbox = await startLocalCapturedInbox(email.external, address);
+      const display = localGuestDisplay(config, run.planned.device);
       session = await createLocalFirecrackerDesktop({
         assets: runtime,
         ...(inbox ? { inboxUrl: inbox.url } : {}),
         ...(media === undefined ? {} : { media }),
         ...(recording === undefined ? {} : { recording }),
+        ...(display === undefined ? {} : { display }),
         appUrl: run.planned.targetUrl ?? config.subject.appUrl!,
         outputRoot: path.join(context.cwd, ".humanish", "local-runtime"),
         ...(context.signal === undefined ? {} : { signal: context.signal }),
       });
       state.sessions.push(session);
       if (media !== undefined) evidence.desktopBrowser = mediaEvidence(media);
+      if (display?.mobileEmulation !== undefined)
+        evidence.desktopGeometry = emulatedGeometry(run, {
+          ...display,
+          mobileEmulation: display.mobileEmulation,
+        });
     },
     async openSession() {
       if (!session) throw new Error("The local desktop has not been prepared.");

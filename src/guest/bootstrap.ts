@@ -11,10 +11,11 @@ import {
 import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 import { createBrowserControlClient } from "../browser-control/client.js";
 import { guestMediaConfigSchema, type GuestMediaConfig } from "./media-config.js";
+import { guestDisplayConfigSchema, type GuestDisplayConfig } from "./display-config.js";
 
 export const GUEST_BOOTSTRAP_VERSION = 1;
 export const GUEST_BOOTSTRAP_LIMITS = Object.freeze({
-  bytes: 65_536 + 1024,
+  bytes: 65_536 + 2048,
   readyBytes: 1024,
   initialUrlBytes: 65_536,
   admissionMs: 5000,
@@ -60,6 +61,7 @@ function canonical(
   initialUrl?: string,
   media?: GuestMediaConfig,
   recording?: DesktopRecordingConfig,
+  display?: GuestDisplayConfig,
 ): string {
   const { generation, challenge, runtimeRevision } = validateBrowserControlIdentity(identity);
   const fixed = { generation, challenge, runtimeRevision };
@@ -72,6 +74,8 @@ function canonical(
     (ready || !desktopRecordingConfigSchema.safeParse(recording).success)
   )
     throw refused();
+  if (display !== undefined && (ready || !guestDisplayConfigSchema.safeParse(display).success))
+    throw refused();
   return JSON.stringify(
     ready
       ? { version: 1, ready: true, identity: fixed }
@@ -83,6 +87,7 @@ function canonical(
           ...(recording === undefined
             ? {}
             : { recording: desktopRecordingConfigSchema.parse(recording) }),
+          ...(display === undefined ? {} : { display: guestDisplayConfigSchema.parse(display) }),
         },
   );
 }
@@ -92,8 +97,9 @@ export function encodeGuestBootstrap(
   initialUrl?: string,
   media?: GuestMediaConfig,
   recording?: DesktopRecordingConfig,
+  display?: GuestDisplayConfig,
 ): Buffer {
-  const bytes = Buffer.from(canonical(identity, ready, initialUrl, media, recording));
+  const bytes = Buffer.from(canonical(identity, ready, initialUrl, media, recording, display));
   if (bytes.length > (ready ? GUEST_BOOTSTRAP_LIMITS.readyBytes : GUEST_BOOTSTRAP_LIMITS.bytes))
     throw refused();
   const frame = Buffer.alloc(4 + bytes.length);
@@ -117,6 +123,7 @@ function parseBootstrap(
   initialUrl?: string;
   media?: GuestMediaConfig;
   recording?: DesktopRecordingConfig;
+  display?: GuestDisplayConfig;
 } {
   if (
     !bytes.length ||
@@ -132,10 +139,11 @@ function parseBootstrap(
     const media = "media" in value ? guestMediaConfigSchema.parse(value.media) : undefined;
     const recording =
       "recording" in value ? desktopRecordingConfigSchema.parse(value.recording) : undefined;
+    const display = "display" in value ? guestDisplayConfigSchema.parse(value.display) : undefined;
     if (initialUrl !== undefined && typeof initialUrl !== "string") throw refused();
     if (
       identity.runtimeRevision !== revision ||
-      canonical(identity, ready, initialUrl, media, recording) !== bytes.toString("ascii")
+      canonical(identity, ready, initialUrl, media, recording, display) !== bytes.toString("ascii")
     )
       throw refused();
     return {
@@ -143,6 +151,7 @@ function parseBootstrap(
       ...(initialUrl === undefined ? {} : { initialUrl }),
       ...(media === undefined ? {} : { media }),
       ...(recording === undefined ? {} : { recording }),
+      ...(display === undefined ? {} : { display }),
     };
   } catch {
     throw refused();
@@ -155,6 +164,7 @@ export class GuestBootstrapReader {
   initialUrl: string | undefined;
   media: GuestMediaConfig | undefined;
   recording: DesktopRecordingConfig | undefined;
+  display: GuestDisplayConfig | undefined;
   private resolve!: (identity: BrowserControlIdentity) => void;
   private reject!: (error: ComputerUseExecutorError) => void;
   private readonly header = Buffer.alloc(4);
@@ -235,6 +245,7 @@ export class GuestBootstrapReader {
         this.initialUrl = parsed.initialUrl;
         this.media = parsed.media;
         this.recording = parsed.recording;
+        this.display = parsed.display;
         this.admitted = true;
         clearTimeout(this.timer);
         this.resolve(parsed.identity);
@@ -303,9 +314,10 @@ export async function connectGuestBootstrap(
   initialUrl?: string,
   media?: GuestMediaConfig,
   recording?: DesktopRecordingConfig,
+  display?: GuestDisplayConfig,
 ): Promise<ReturnType<typeof createBrowserControlClient>> {
   validateBrowserControlIdentity(identity);
-  const request = encodeGuestBootstrap(identity, false, initialUrl, media, recording);
+  const request = encodeGuestBootstrap(identity, false, initialUrl, media, recording, display);
   await new Promise<void>((resolve, reject) => {
     let bytes = Buffer.alloc(0),
       done = false;

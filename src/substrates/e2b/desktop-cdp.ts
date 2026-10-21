@@ -169,10 +169,6 @@ export function makeChromeBrowserStateObserver(
   };
 }
 
-/** The user agent a mobile-emulated participant presents unless the study sets its own. */
-export const DEFAULT_MOBILE_USER_AGENT =
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
-
 /**
  * Apply mobile emulation to the participant's launch page and read back what the page reports.
  * Fails closed: a request that cannot be applied throws, because a desktop run labelled mobile is
