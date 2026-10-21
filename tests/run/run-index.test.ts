@@ -202,6 +202,36 @@ describe("run index: list and classify without parsing bundles", () => {
     }
   });
 
+  it("a finished run whose analysis is running reads as analyzing until the heartbeat stops", async () => {
+    const runDir = path.join(cwd, ".humanish", "runs", "r-analyzing");
+    await mkdir(runDir, { recursive: true });
+    const record = {
+      schema: RUN_STATUS_SCHEMA,
+      runId: "r-analyzing",
+      state: "finished",
+      mode: "live",
+      pid: 4242,
+      startedAt: new Date(NOW - 300_000).toISOString(),
+      updatedAt: new Date(NOW - 1_000).toISOString(),
+      completedAt: new Date(NOW - 120_000).toISOString(),
+      outcome: { verdict: "pass", ok: true, execution: { succeeded: true, failures: [] } },
+      analysis: { startedAt: new Date(NOW - 119_000).toISOString() },
+    };
+    await writeFile(path.join(runDir, "status.json"), JSON.stringify(record));
+    const cache = new RunIndexCache();
+    const [entry] = (await readRunIndex(cwd, { cache, nowMs: NOW })).runs;
+    expect(entry).toMatchObject({
+      liveness: "finished",
+      ok: true,
+      analysis: { state: "running", startedAt: record.analysis.startedAt },
+    });
+    // The participants' duration ends when they did, not when the analysis does.
+    expect(entry?.durationMs).toBe(180_000);
+    // The same cached file a minute later: the heartbeat stopped, so the analysis did too.
+    const [later] = (await readRunIndex(cwd, { cache, nowMs: NOW + 60_000 })).runs;
+    expect(later?.analysis?.state).toBe("stopped");
+  });
+
   it("the cache drops runs that no longer exist", async () => {
     await writeFixtureRuns(
       cwd,

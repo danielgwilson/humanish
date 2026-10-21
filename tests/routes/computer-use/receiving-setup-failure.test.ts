@@ -109,7 +109,7 @@ describe("computer-use email receiving setup failure", () => {
     ]);
     const runDir = path.join(runsRoot, runId!);
     const status = JSON.parse(await readFile(path.join(runDir, "status.json"), "utf8"));
-    expect(status.state).toBe("finished");
+    expect(status).toMatchObject({ state: "interrupted", reason: "no-publish" });
     expect(status).not.toHaveProperty("outcome");
     // The first snapshot stays as the evidence the run left, and latest.json names this run.
     const inProgress = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8"));

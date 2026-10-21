@@ -6,12 +6,29 @@
 
 import path from "node:path";
 import { costRefusal } from "../analysis/admission.js";
-import { DEFAULT_ANALYSIS_MAX_COST_USD } from "../analysis/automatic-config.js";
+import {
+  DEFAULT_ANALYSIS_MAX_COST_USD,
+  resolveAutomaticAnalysis,
+} from "../analysis/automatic-config.js";
+import { ANALYSIS_USUALLY_TAKES } from "../analysis/analysis-limits.js";
 import { bySeverity } from "../analysis/finding-lead.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { projectShareCheckedAnalysis } from "../analysis/sharing.js";
 import type { AnalysisArtifact, LoadedAnalysis } from "../analysis/types.js";
-import { loadRunBundlePrepared, resolveRunPath } from "../run/locate.js";
+import {
+  loadRunBundlePrepared,
+  readRunJsonIfExists,
+  resolveRunPath,
+  runJsonValue,
+} from "../run/locate.js";
+import {
+  classifyRunStatus,
+  isRunStatusRecord,
+  RUN_STATUS_FILE,
+  runAnalysisPhase,
+  type RunAnalysisPhase,
+} from "../run/status.js";
+import { formatDuration } from "../run/projection.js";
 import { resolvePhysicalCwd, runIdOf } from "../run/paths.js";
 import { studyProvenanceOf, type RunStudyProvenance } from "../run/study-provenance.js";
 import { resolveStudyManifest } from "../study/discover.js";
@@ -152,6 +169,22 @@ interface FindingsSource {
    * skipped for a missing OpenAI key, whose next step it picks.
    */
   codexSignedIn?: boolean;
+  /**
+   * Where the run is before its findings, from status.json: its participants still running, or
+   * the automatic analysis its own process started. Undefined once neither applies.
+   */
+  progress?:
+    | { stage: "participants" }
+    | {
+        stage: "analysis";
+        phase: RunAnalysisPhase;
+        /** status.json's last heartbeat. */
+        updatedAt: string;
+        /** The analyst the run's study gets, read only for an analysis whose process stopped. */
+        provider?: string;
+      };
+  /** When the view was built, for how long an analysis has run. */
+  nowMs?: number;
 }
 
 /** A study `run` can start live after a dry run. */
@@ -360,6 +393,70 @@ function missingKeyFindings(source: FindingsSource, reason: string): AnalysisFin
   );
 }
 
+/**
+ * The view of a run whose findings are not written yet: participants still running, an analysis
+ * running, or an analysis whose process stopped before it finished. Undefined otherwise.
+ */
+function pendingFindings(
+  source: FindingsSource,
+  job: LoadedAnalysis["automatic"],
+): AnalysisFindings | undefined {
+  const again = cli(`review --run ${source.runId}${source.cwdFlag}`);
+  const progress = source.progress;
+  if (progress?.stage === "participants" && job === undefined)
+    return withoutFindings(
+      source,
+      "running",
+      null,
+      source.analysisOffIn === undefined
+        ? "Participants are still running in this run, so no analysis has started. Automatic analysis starts when they finish, and the findings follow it."
+        : "Participants are still running in this run. Analysis is turned off in its study, so none starts when they finish.",
+      again,
+    );
+  const phase = progress?.stage === "analysis" ? progress.phase : undefined;
+  const jobPending = job?.state === "queued" || job?.state === "running";
+  if (jobPending || (job === undefined && phase?.state === "running")) {
+    const since =
+      phase === undefined
+        ? ""
+        : ` It started at ${phase.startedAt}, ${formatDuration(Math.max(0, (source.nowMs ?? Date.now()) - Date.parse(phase.startedAt)))} ago.`;
+    return withoutFindings(
+      source,
+      "running",
+      null,
+      `The automatic analysis is running.${since} Findings usually take ${ANALYSIS_USUALLY_TAKES}; check again then.`,
+      again,
+    );
+  }
+  const stopped =
+    (job?.state === "unknown" && job.reason === "AUTOMATIC_ANALYSIS_STOPPED") ||
+    (job === undefined && phase?.state === "stopped");
+  if (!stopped) return undefined;
+  const at = job?.updatedAt ?? (progress?.stage === "analysis" ? progress.updatedAt : undefined);
+  return withoutFindings(
+    source,
+    "failed",
+    "AUTOMATIC_ANALYSIS_STOPPED",
+    `The automatic analysis stopped before it wrote findings: the process running it stopped updating its record${at === undefined ? "" : ` at ${at}`}, most likely because it ended. Analyze the run again with the next command. If it says another analysis holds the lock, confirm no humanish process is still running for this run first.`,
+    analyzeCommand(source, progress?.stage === "analysis" ? progress.provider : undefined),
+  );
+}
+
+/** The analyst the run's study gets, when its file still names the same study. */
+async function studyAnalyst(
+  cwd: string,
+  study: RunStudyProvenance | undefined,
+): Promise<string | undefined> {
+  if (study?.path === undefined) return undefined;
+  const resolved = await resolveStudyManifest(cwd, study.path).catch(() => null);
+  if (!resolved?.ok || resolved.config.id !== study.id) return undefined;
+  const analysis = resolveAutomaticAnalysis(
+    resolved.config.review?.analysis,
+    resolved.config.actor,
+  );
+  return analysis.ok ? analysis.config?.provider : undefined;
+}
+
 /** The findings view of a run's selected analysis, or why it has none. */
 export function analysisFindings(source: FindingsSource): AnalysisFindings {
   if (source.mode !== undefined && source.mode !== "live") return dryRunFindings(source);
@@ -403,14 +500,8 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       null,
     );
   const job = loaded.automatic;
-  if (job?.state === "queued" || job?.state === "running")
-    return withoutFindings(
-      source,
-      "running",
-      null,
-      "The automatic analysis is still running. Check again when it finishes.",
-      cli(`review --run ${source.runId}${source.cwdFlag}`),
-    );
+  const pending = pendingFindings(source, job);
+  if (pending !== undefined) return pending;
   if (analysis && analysis.result === null)
     return withoutFindings(
       source,
@@ -546,6 +637,26 @@ export async function readRunAnalysis(
   const liveStudy =
     mode !== undefined && mode !== "live" ? await liveStudyAfterDryRun(physical, study) : undefined;
   const loaded = await loadAnalysis(prepared, analysisId);
+  const nowMs = Date.now();
+  const status = runJsonValue(await readRunJsonIfExists(prepared, RUN_STATUS_FILE));
+  const record = isRunStatusRecord(status) && status.runId === runIdOf(prepared) ? status : null;
+  const phase = record === null ? undefined : runAnalysisPhase(record, nowMs);
+  const stopped =
+    phase?.state === "stopped" || loaded.automatic?.reason === "AUTOMATIC_ANALYSIS_STOPPED";
+  const provider = stopped ? await studyAnalyst(physical, study) : undefined;
+  const progress =
+    phase !== undefined && record !== null
+      ? {
+          stage: "analysis" as const,
+          phase,
+          updatedAt: record.updatedAt,
+          ...(provider === undefined ? {} : { provider }),
+        }
+      : bundle?.bundle.outcome === undefined &&
+          record !== null &&
+          classifyRunStatus(record, nowMs) === "running"
+        ? { stage: "participants" as const }
+        : undefined;
   const codexSignedIn =
     loaded.automatic?.reason === "AUTOMATIC_ANALYSIS_KEY_MISSING"
       ? await (deps.codexSignedIn ?? codexSignedInHere)().catch(() => false)
@@ -562,6 +673,8 @@ export async function readRunAnalysis(
       ? {}
       : { study: { id: study.id, ...(study.path === undefined ? {} : { path: study.path }) } }),
     ...(codexSignedIn === undefined ? {} : { codexSignedIn }),
+    ...(progress === undefined ? {} : { progress }),
+    nowMs,
   };
 }
 

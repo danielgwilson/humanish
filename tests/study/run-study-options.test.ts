@@ -449,7 +449,7 @@ describe("a computer-use dry run through runStudy", () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("reports its plan and carries a failed handler's warning on the result", async () => {
+  it("reports its plan and its run id and carries a failed handler's warning on the result", async () => {
     const events: StudyEvent[] = [];
     const outcome = await runStudyWith(config("cuAppUrl"), {
       cwd,
@@ -460,7 +460,8 @@ describe("a computer-use dry run through runStudy", () => {
       },
     });
     expect(outcome.result.ok).toBe(true);
-    expect(events.map((event) => event.type)).toEqual(["plan"]);
+    expect(events.map((event) => event.type)).toEqual(["plan", "run-started"]);
+    expect(events[1]).toEqual({ type: "run-started", runId: outcome.result.runId });
     expect(outcome.result.warnings).toContain(
       "RunStudyOptions.onEvent failed on plan: observer down",
     );

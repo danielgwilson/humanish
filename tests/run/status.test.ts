@@ -18,6 +18,8 @@ import {
   beginRunStatus,
   classifyRunStatus,
   isRunStatusRecord,
+  runAnalysisPhase,
+  runOwnerGone,
   runStatusOutcome,
   type RunStatusRecord,
 } from "../../src/run/status.js";
@@ -235,6 +237,79 @@ describe("run status: identity + liveness on disk", () => {
       expect(await active?.status.interrupt("SIGTERM")).toBe(false);
       expect(await read("run-g")).toEqual(finished);
     });
+  });
+
+  it("automatic analysis keeps the heartbeat alive and records when it started and ended", async () => {
+    const bundle = await bundleFor("run-k");
+    vi.useFakeTimers({
+      toFake: ["setInterval", "clearInterval", "Date"],
+      now: Date.parse("2026-08-19T10:00:00.000Z"),
+    });
+    const { finished } = await runScope(async (scope) => {
+      const run = await startLive(scope, "run-k");
+      return run.finish(bundle, PASSING_OUTCOME);
+    });
+    if (finished === undefined) throw new Error("run-k did not publish");
+    vi.advanceTimersByTime(1_000);
+    const end = await finished.beginAnalysis();
+    const analyzing = await read("run-k");
+    expect(analyzing).toMatchObject({
+      state: "finished",
+      completedAt: "2026-08-19T10:00:00.000Z",
+      analysis: { startedAt: "2026-08-19T10:00:01.000Z" },
+    });
+    expect(runAnalysisPhase(analyzing, Date.now())).toEqual({
+      state: "running",
+      startedAt: "2026-08-19T10:00:01.000Z",
+    });
+
+    // Minutes of analysis: the heartbeat keeps the record fresh, so it never reads as stopped.
+    vi.advanceTimersByTime(RUN_STATUS_TOUCH_MS * 24);
+    const touched = "2026-08-19T10:02:01.000Z";
+    await waitFor(async () => ((await read("run-k")).updatedAt === touched ? true : undefined));
+    expect(runAnalysisPhase(await read("run-k"), Date.now())?.state).toBe("running");
+
+    await end("failed");
+    const ended = await read("run-k");
+    expect(ended.analysis).toEqual({
+      startedAt: "2026-08-19T10:00:01.000Z",
+      endedAt: touched,
+      state: "failed",
+    });
+    expect(ended.outcome).toEqual(runStatusOutcome(bundle));
+    expect(vi.getTimerCount()).toBe(0);
+    expect(runAnalysisPhase(ended, Date.now() + RUN_STATUS_STALE_MS * 10)?.state).toBe("ended");
+  });
+
+  it("an analysis whose process stopped reads as stopped once its heartbeat is stale", () => {
+    const record = {
+      updatedAt: "2026-08-19T10:00:10.000Z",
+      analysis: { startedAt: "2026-08-19T10:00:00.000Z" },
+    };
+    const at = Date.parse(record.updatedAt);
+    expect(runAnalysisPhase(record, at + RUN_STATUS_STALE_MS)?.state).toBe("running");
+    expect(runAnalysisPhase(record, at + RUN_STATUS_STALE_MS + 1)).toEqual({
+      state: "stopped",
+      startedAt: "2026-08-19T10:00:00.000Z",
+    });
+    // A record without analysis, or one a newer writer shaped differently, has no phase.
+    expect(runAnalysisPhase({ updatedAt: record.updatedAt }, at)).toBeUndefined();
+    expect(
+      runAnalysisPhase({ ...record, analysis: { startedAt: 7 } as never }, at),
+    ).toBeUndefined();
+  });
+
+  it("an owner is gone only when its heartbeat is stale and its pid is not running here", () => {
+    const now = Date.parse("2026-08-19T10:01:00.000Z");
+    const record = { state: "running" as const, pid: 4242, updatedAt: "2026-08-19T10:00:00.000Z" };
+    expect(runOwnerGone(record, now, () => false)).toBe(true);
+    expect(runOwnerGone(record, now, () => true)).toBe(false);
+    expect(
+      runOwnerGone({ ...record, updatedAt: "2026-08-19T10:00:59.000Z" }, now, () => false),
+    ).toBe(false);
+    expect(runOwnerGone({ ...record, state: "finished" }, now, () => false)).toBe(false);
+    // This process is never gone, whatever the probe says.
+    expect(runOwnerGone({ ...record, pid: process.pid }, now, () => false)).toBe(false);
   });
 
   it("classifies liveness from the record: running, stale-means-interrupted, finished", () => {

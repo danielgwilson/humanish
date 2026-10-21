@@ -92,7 +92,7 @@ describe("in-process participant desktop", () => {
     const desktop = createInProcessDesktop(f.deps);
     await desktop.prepare();
     await desktop.finalize({ failed: true });
-    await expect(desktop.openSession()).rejects.toThrow("before finalization");
+    await expect(desktop.openSession()).rejects.toThrow("before the desktop is released");
     expect(f.inProcessExecutor).not.toHaveBeenCalled();
   });
 

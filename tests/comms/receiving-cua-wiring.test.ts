@@ -140,7 +140,7 @@ describe("real inbox wiring through the actual computer-use route", () => {
         );
         if (failFinalization)
           expect(result.warnings).toContain(
-            "Real email finalization is incomplete. Inspect communication cleanup with humanish comms recover.",
+            "Real email cleanup is incomplete. Inspect communication cleanup with humanish comms recover.",
           );
       } finally {
         await rm(cwd, { recursive: true, force: true });

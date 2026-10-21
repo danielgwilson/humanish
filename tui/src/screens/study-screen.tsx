@@ -3,7 +3,7 @@ import React from "react";
 
 import type { StudySummary } from "../../../src/study/summary.js";
 import type { RunDetail } from "../../../src/run/detail.js";
-import { runDisplay } from "../../../src/run/display.js";
+import { analysisPhaseLabel, runDisplay } from "../../../src/run/display.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import type { StudyRow } from "../../../src/run/projection.js";
 import { indexedRunCost, runCostLabel } from "../../../src/run/run-cost.js";
@@ -517,7 +517,8 @@ function PastRun({
     (run.estimatedCostUsd === null && run.analysisCost === undefined)
       ? ""
       : ` · run ${runCostLabel(indexedRunCost(run))}`;
-  const summary = [when, outcome].filter(Boolean).join(" · ") + cost;
+  const summary =
+    [when, outcome, analysisPhaseLabel(run.analysis)].filter(Boolean).join(" · ") + cost;
   return (
     <Box width={columns}>
       <Box flexShrink={0}>

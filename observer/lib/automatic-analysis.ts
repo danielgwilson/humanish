@@ -1,4 +1,7 @@
 import { costRefusal } from "../../src/analysis/admission.js";
+import { ANALYSIS_USUALLY_TAKES } from "../../src/analysis/analysis-limits.js";
+import { ageLabel } from "./live";
+import type { ObserverData } from "./observer-data";
 import type { AutomaticAnalysisView } from "../../src/analysis/job";
 
 export type { AutomaticAnalysisView } from "../../src/analysis/job";
@@ -63,6 +66,8 @@ const reasonDetails: Record<string, string> = {
   AUTOMATIC_ANALYSIS_REUSED: "An existing matching analysis was reused.",
   AUTOMATIC_ANALYSIS_LIMITATIONS:
     "Review the report's coverage and limitations alongside participant evidence.",
+  AUTOMATIC_ANALYSIS_STOPPED:
+    "The process running the analysis stopped before it wrote findings, most likely because it ended. humanish review for this run names the command that analyzes it again.",
 };
 
 const usd = (value: unknown): value is number =>
@@ -115,12 +120,27 @@ export interface AutomaticAnalysisNotice {
   command?: string;
 }
 
-/** A heartbeat is a display hint, never authority to resume or dispatch work. */
+/**
+ * The analysis the served Observer shows: the job's view, or, when the run's process has started
+ * analysis but not claimed its job yet, a queued view observed with the run's status. A saved page
+ * has no runtime observation, so it shows only the job's view.
+ */
+export function shownAutomaticAnalysis(
+  automatic: AutomaticAnalysisView | undefined,
+  runtime: ObserverData["runtime"],
+): AutomaticAnalysisView | undefined {
+  if (automatic !== undefined || runtime?.analysis === undefined) return automatic;
+  return { state: "queued", analysisId: null, reason: null, updatedAt: runtime.observedAt };
+}
+
+/** A heartbeat is a display hint, never authority to resume or dispatch work. `startedAt` is when
+ *  the run's process started the analysis, from the served runtime observation. */
 export function automaticAnalysisNotice(
   automatic: AutomaticAnalysisView,
   snapshot: boolean,
   now: number,
   runId?: string,
+  startedAt?: string,
 ): AutomaticAnalysisNotice {
   const value = parseAutomaticAnalysis(automatic)!;
   if (value.state === "skipped" && value.admission && runId) {
@@ -159,12 +179,13 @@ export function automaticAnalysisNotice(
     unknown: "Analysis status is unknown.",
   };
   const pending = state === "queued" || state === "running";
+  const started = startedAt === undefined ? Number.NaN : Date.parse(startedAt);
   return {
     state,
     message: message[state],
     pending,
     detail: pending
-      ? "You can review participant recordings and feedback while you wait."
+      ? `Findings are being written; this usually takes ${ANALYSIS_USUALLY_TAKES}.${Number.isFinite(started) ? ` Started ${ageLabel(started, now)}.` : ""} You can review participant recordings and feedback while you wait.`
       : nonterminal
         ? reasonDetails.AUTOMATIC_ANALYSIS_OUTCOME_UNKNOWN!
         : ((value.reason ? reasonDetails[value.reason] : undefined) ??

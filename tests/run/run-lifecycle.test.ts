@@ -120,7 +120,7 @@ function deferred() {
 }
 
 describe("runScope closes a run on every exit", () => {
-  it("a return before finish leaves a finished status with no outcome and no token", async () => {
+  it("a return before finish leaves the run interrupted with no outcome and no token", async () => {
     const { result, finished } = await runScope(async (scope) => {
       await startOk(scope, "returned");
       return "refused";
@@ -128,8 +128,12 @@ describe("runScope closes a run on every exit", () => {
     expect(result).toBe("refused");
     expect(finished).toBeUndefined();
     const status = await readStatus("returned");
-    expect(status.state).toBe("finished");
+    // Nothing published, so the run did not finish: it reads as interrupted, never as passed.
+    expect(status).toMatchObject({ state: "interrupted", reason: "no-publish" });
+    expect(status).not.toHaveProperty("signal");
     expect(status).not.toHaveProperty("outcome");
+    const [indexed] = (await readRunIndex(cwd)).runs;
+    expect(indexed?.liveness).toBe("interrupted");
     await expect(readLatest()).rejects.toMatchObject({ code: "ENOENT" });
   });
 
@@ -141,7 +145,10 @@ describe("runScope closes a run on every exit", () => {
         throw failure;
       }),
     ).rejects.toBe(failure);
-    expect((await readStatus("thrown")).state).toBe("finished");
+    expect(await readStatus("thrown")).toMatchObject({
+      state: "interrupted",
+      reason: "no-publish",
+    });
     expect(await readStatus("thrown")).not.toHaveProperty("outcome");
   });
 
@@ -230,7 +237,7 @@ describe("Run.finish publishes once, in order", () => {
       }),
     ).rejects.toThrow(/single-link regular files/);
     const status = await readStatus("bundle-fault");
-    expect(status.state).toBe("finished");
+    expect(status).toMatchObject({ state: "interrupted", reason: "no-publish" });
     expect(status).not.toHaveProperty("outcome");
   });
 
@@ -432,6 +439,38 @@ describe("the run's start and its token", () => {
     );
   });
 
+  it("status.json says the run is analyzing while automatic analysis runs, then how it ended", async () => {
+    const finished = await publish("analyzed");
+    const analysis = resolveAutomaticAnalysis(undefined);
+    if (!analysis.ok) throw new Error(analysis.message);
+    let during: unknown;
+    const result = await completeAutomaticAnalysis(
+      { cwd, runId: "analyzed", dryRun: false },
+      finished,
+      analysis.config,
+      {
+        deps: {
+          analysis: {
+            run: async () => {
+              during = await readStatus("analyzed");
+              return { state: "failed", reason: "AUTOMATIC_ANALYSIS_FAILED" };
+            },
+          },
+        },
+      },
+    );
+    expect(result.automaticAnalysis?.state).toBe("failed");
+    expect(during).toMatchObject({
+      state: "finished",
+      analysis: { startedAt: expect.any(String) },
+    });
+    expect(during).not.toHaveProperty("analysis.endedAt");
+    const after = await readStatus("analyzed");
+    expect(after.analysis).toMatchObject({ endedAt: expect.any(String), state: "failed" });
+    // The participants' outcome stays what it was: the analysis is recorded beside it.
+    expect(after.outcome).toEqual(PUBLISHED_OUTCOME);
+  });
+
   it("a run directory replaced after finish is neither rendered nor analyzed", async () => {
     const finished = await publish("replaced");
     expect(FinishedRun.isIssued(finished)).toBe(true);
@@ -500,7 +539,7 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
     expect(written.review.gaps).toEqual(["final"]);
   });
 
-  it("a snapshot and then an early return leave the in-progress run.json and no outcome", async () => {
+  it("a snapshot and then an early return leave the in-progress run.json, interrupted", async () => {
     const { finished } = await runScope(async (scope) => {
       const run = await startOk(scope, "abandoned-live");
       await run.writeSnapshot(bundleFor("abandoned-live", "in progress"));
@@ -510,7 +549,7 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
     const written = await readJson(path.join(runDir("abandoned-live"), "run.json"));
     expect(written.review.gaps).toEqual(["in progress"]);
     const status = await readStatus("abandoned-live");
-    expect(status.state).toBe("finished");
+    expect(status).toMatchObject({ state: "interrupted", reason: "no-publish" });
     expect(status).not.toHaveProperty("outcome");
   });
 
@@ -564,7 +603,7 @@ describe("Run.writeSnapshot publishes in-progress bundles through the same queue
       expect(timersWhileRunning).toBe(1);
       expect(vi.getTimerCount()).toBe(0);
       const status = await readStatus("doubly-failed");
-      expect(status.state).toBe("finished");
+      expect(status).toMatchObject({ state: "interrupted", reason: "no-publish" });
       expect(status).not.toHaveProperty("outcome");
     } finally {
       vi.useRealTimers();

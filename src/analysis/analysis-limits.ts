@@ -101,3 +101,10 @@ export function hasRevisionFields(promptVersion: string, result: RevisionFields)
       ))
   );
 }
+
+/**
+ * How long automatic analysis usually takes, for a person deciding whether to wait. The 247
+ * automatic analyses recorded in the maintainer's run directories by October 2026 took 18 s to
+ * 6 min from claim to result, median 100 s; four in five took 40 s to 3 min 10 s.
+ */
+export const ANALYSIS_USUALLY_TAKES = "1 to 4 minutes";

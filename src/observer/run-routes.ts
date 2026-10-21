@@ -39,6 +39,7 @@ import { analysisCostOf, runCost, runCostLabel, type RunAnalysisCost } from "../
 import {
   RUN_STATUS_FILE,
   RUN_STATUS_STALE_MS,
+  runAnalysisPhase,
   isRunStatusRecord,
   type RunStatusRecord,
 } from "../run/status.js";
@@ -491,9 +492,16 @@ function withLocalRunStatus(
       state = "running";
     }
   }
+  // The run's own process analyzes it after the run ended; the bundle outcome does not say so.
+  const analysis = timestampsValid ? runAnalysisPhase(record, now) : undefined;
   return {
     ...data,
-    runtime: { state, observedAt: new Date(now).toISOString(), source: "local-run-status" },
+    runtime: {
+      state,
+      observedAt: new Date(now).toISOString(),
+      source: "local-run-status",
+      ...(analysis?.state === "running" ? { analysis: { startedAt: analysis.startedAt } } : {}),
+    },
   };
 }
 

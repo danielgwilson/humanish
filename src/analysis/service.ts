@@ -20,7 +20,8 @@ import {
   validatePreparedRunRootIdentity,
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
-import { isRunStatusRecord, RUN_STATUS_FILE } from "../run/status.js";
+import { isRunStatusRecord, RUN_STATUS_FILE, type RunStatusRecord } from "../run/status.js";
+import { assertRecordingEnded } from "./recording-ended.js";
 import { captureEvidence, EVIDENCE_LIMITS } from "./evidence.js";
 import { AnalysisSourceRefusedError, runFileTooLarge, throwAsAnalysisRefusal } from "./source.js";
 import { pathMissing, readBoundedFile, readBoundedFileResult } from "../run/evidence-files.js";
@@ -123,7 +124,8 @@ export async function resolveAnalysisRun(
 const messages: Record<string, string> = {
   ANALYSIS_RUN_NOT_FOUND: "The selected run is unavailable or its storage is unsafe.",
   ANALYSIS_VERIFY_FAILED: "The run must pass verification before analysis.",
-  ANALYSIS_RUN_ACTIVE: "Analysis requires a completed recording. Wait for the study to finish.",
+  ANALYSIS_RUN_ACTIVE:
+    "This run's status.json is missing, unreadable or names another run, so humanish cannot tell whether its recording has ended. `humanish verify` checks the run's files.",
   ANALYSIS_NO_PARTICIPANTS: "This run contains no participant evidence to analyze.",
   ANALYSIS_REQUIRES_LIVE_RUN:
     "A dry run has no participant behavior to analyze. Select a completed live run.",
@@ -256,7 +258,7 @@ export async function withAnalysisLock<T>(
   }
 }
 
-/** The completion gate: the run verifies, is live and finished, and has participants. */
+/** The completion gate: the run verifies, is live, its recording ended, and it has participants. */
 export async function readCompletedAnalysisSource(
   cwd: string,
   prepared: PreparedRunArtifactPaths,
@@ -280,25 +282,22 @@ export async function readCompletedAnalysisSource(
     );
     if (!missing) throw new Error("ANALYSIS_RUN_ACTIVE");
   }
+  let status: RunStatusRecord | undefined;
   if (statusBytes) {
-    const status: unknown = JSON.parse(statusBytes.toString("utf8"));
-    // An old heartbeat is unknown, not proof that a process stopped writing evidence.
-    if (
-      !isRunStatusRecord(status) ||
-      status.runId !== loaded.bundle.runId ||
-      status.state !== "finished"
-    ) {
+    const record: unknown = JSON.parse(statusBytes.toString("utf8"));
+    if (!isRunStatusRecord(record) || record.runId !== loaded.bundle.runId)
       throw new Error("ANALYSIS_RUN_ACTIVE");
-    }
+    status = record;
   }
-  if (
-    loaded.bundle.streams.some(
+  assertRecordingEnded({
+    runId: loaded.bundle.runId,
+    status,
+    runningStreams: loaded.bundle.streams.filter(
       (stream) =>
         !TERMINAL_SIMULATION_STATUSES.has(stream.status) || stream.liveActor !== undefined,
-    )
-  ) {
-    throw new Error("ANALYSIS_RUN_ACTIVE");
-  }
+    ).length,
+    streams: loaded.bundle.streams.length,
+  });
   return bytes;
 }
 

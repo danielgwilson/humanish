@@ -136,7 +136,7 @@ export async function finishE2BDesktop(
         await deps.receiving.finishParticipant(spec.planned.id);
       } catch {
         warnings.push(
-          "Real email finalization is incomplete. Inspect communication cleanup with humanish comms recover.",
+          "Real email cleanup is incomplete. Inspect communication cleanup with humanish comms recover.",
         );
       }
     }

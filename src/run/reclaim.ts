@@ -22,6 +22,7 @@ import {
   refusalText,
   RUN_ARTIFACT_MAX_BYTES,
   type ContainedRefusal,
+  writeContainedOutputFile,
   type PreparedOutputRoot,
 } from "./contained-output.js";
 import {
@@ -31,7 +32,12 @@ import {
 } from "./preflight-receipts.js";
 import { readRunJsonIfExists, resolveRunPath, runJsonValue } from "./locate.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
-import { RUN_STATUS_FILE } from "./status.js";
+import {
+  classifyRunStatus,
+  isRunStatusRecord,
+  RUN_STATUS_FILE,
+  type RunStatusRecord,
+} from "./status.js";
 import { isRecord } from "./type-guards.js";
 import { isRunOutcome } from "./bundle-shape.js";
 import {
@@ -88,6 +94,12 @@ export interface ReclaimResult {
    * route created none for this run. Reclaim then contacts E2B for nothing.
    */
   reason?: NoSandboxReason;
+  /**
+   * True when this reclaim found the run's status.json still `running` with a stale heartbeat and
+   * recorded it `interrupted` (reason `reclaimed`): the process is gone or no longer updating it,
+   * and its sandboxes are being stopped. Absent when it changed nothing.
+   */
+  markedInterrupted?: true;
   warnings: string[];
   error?: {
     code:
@@ -175,6 +187,22 @@ async function reclaimRun(
       },
     };
   }
+  // A kill by hand, not a check and not the signal handler (whose run is alive and records its
+  // own interrupt): a run whose heartbeat stopped is over once its sandboxes are stopped.
+  const marked =
+    hooks.check !== true &&
+    hooks.creates === undefined &&
+    (await markStaleRunInterrupted(runPaths, Date.now()).catch(() => false));
+  const result = await reclaimLocated(runPaths, base, hooks, warnings);
+  return marked ? { ...result, markedInterrupted: true } : result;
+}
+
+async function reclaimLocated(
+  runPaths: PreparedRunArtifactPaths,
+  base: ReclaimResult,
+  hooks: ReclaimHooks,
+  warnings: string[],
+): Promise<ReclaimResult> {
   const runId = runIdOf(runPaths);
   // The signal handler passes the creates it stopped and decides from what they reported.
   const reason = hooks.creates === undefined ? await recordedNoSandbox(runPaths) : undefined;
@@ -599,4 +627,32 @@ async function reclaimRoot(
     tagSearch,
     createsInFlight,
   };
+}
+
+/**
+ * For `humanish reclaim`, which stops the run's sandboxes: a `running` record whose heartbeat is
+ * stale becomes `interrupted` with reason `reclaimed` and `completedAt` at its last heartbeat. A
+ * fresh record belongs to a live owner and is left alone, as is one that already ended. True when
+ * it wrote one.
+ */
+async function markStaleRunInterrupted(
+  runPaths: PreparedRunArtifactPaths,
+  nowMs: number,
+): Promise<boolean> {
+  const record = runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE));
+  if (!isRunStatusRecord(record) || record.state !== "running") return false;
+  if (classifyRunStatus(record, nowMs) === "running") return false;
+  const marked: RunStatusRecord = {
+    ...record,
+    state: "interrupted",
+    reason: "reclaimed",
+    completedAt: record.updatedAt,
+  };
+  await writeContainedOutputFile(
+    runPaths,
+    RUN_STATUS_FILE,
+    `${JSON.stringify(marked, null, 2)}\n`,
+    "utf8",
+  );
+  return true;
 }

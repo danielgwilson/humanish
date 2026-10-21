@@ -73,6 +73,8 @@ describe("scripted run whose surface session throws after it started", () => {
     ) as { streams: Array<{ actor?: unknown }> };
     expect(bundle.streams.some((stream) => stream.actor !== undefined)).toBe(false);
     expect(analysis).toHaveBeenCalledOnce();
+    // The run is named before anything else it reports, so a caller can follow it from the start.
+    expect(events[0]).toBe("run-started");
     expect(events.filter((type) => type.startsWith("analysis-"))).toEqual([
       "analysis-started",
       "analysis-finished",

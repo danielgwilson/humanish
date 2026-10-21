@@ -1,7 +1,7 @@
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
 import type { StudyConfig } from "../../study/types.js";
-import { cliAnalysisOptions } from "./analysis-signals.js";
+import { cliRunEventOptions } from "./analysis-signals.js";
 import { type CliIo, type StudyCommandOptions, wantsJson } from "../io.js";
 import { writeRunResult } from "../run-findings.js";
 import { showObserver } from "../observer-follow.js";
@@ -34,7 +34,7 @@ export function scriptedRouteRun(args: ScriptedRouteArgs): RouteRun | undefined 
 
   return {
     options: {
-      ...cliAnalysisOptions(args.io),
+      ...cliRunEventOptions(args.io, { json: wantsJson(args.command) }),
       cwd: args.options.cwd,
       open: observerOpen(args.mode, finishedPlan, shouldOpen),
       ...(args.options.dryRun === undefined ? {} : { dryRun: args.options.dryRun }),

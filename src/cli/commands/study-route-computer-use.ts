@@ -13,7 +13,7 @@ import { startExposedObserver, validateExposure } from "../../observer/exposure.
 import type { ExposurePlan } from "../../observer/exposure.js";
 import { ServeTunnelError } from "../../observer/tunnel.js";
 import type { ServeTunnel } from "../../observer/tunnel.js";
-import { cliAnalysisOptions } from "./analysis-signals.js";
+import { cliRunEventOptions } from "./analysis-signals.js";
 import { onRunShutdown } from "./run-signals.js";
 import {
   type CliIo,
@@ -222,7 +222,7 @@ function cuaRunOptions(
 ): InternalRunStudyOptions {
   const { finishedPlan } = prepared;
   return {
-    ...cliAnalysisOptions(args.io),
+    ...cliRunEventOptions(args.io, { json: wantsJson(args.command) }),
     cwd: args.options.cwd,
     // A followed watch opens the served Observer (or prints the phone target under --expose), so
     // its static render never opens. A non-follow watch opens what its plan says, once. Run mode

@@ -31,7 +31,10 @@ export const systemHostClock: HostClock = {
 
 /**
  * A wall-clock gap between two heartbeats this long or longer is a suspension. A shorter one is
- * most likely a busy event loop.
+ * most likely a busy event loop. It is twice RUN_STATUS_STALE_MS (src/run/status.ts) on purpose:
+ * that threshold is a reader's guess, made without the writer, so it errs early; this one is the
+ * writer's own record, and a route blames participant failures on it, so it errs late. A pause of
+ * 15 to 30 s reads as stale while it lasts and leaves no suspension on record.
  */
 const HOST_SUSPENSION_MIN_MS = 30_000;
 

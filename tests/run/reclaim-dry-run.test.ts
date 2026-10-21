@@ -41,6 +41,35 @@ describe("humanish reclaim on a dry run", () => {
     await writeFile(path.join(runRoot, file), JSON.stringify(value));
   };
 
+  it("marks a run whose heartbeat went stale interrupted, and a check marks nothing", async () => {
+    const stale = new Date(Date.now() - 600_000).toISOString();
+    await editJson("status.json", (status) => {
+      status.state = "running";
+      status.updatedAt = stale;
+      delete status.completedAt;
+      delete status.outcome;
+    });
+    const status = async () =>
+      JSON.parse(await readFile(path.join(runRoot, "status.json"), "utf8")) as Record<
+        string,
+        unknown
+      >;
+    const checked = await reclaimRunSandboxes(cwd, RUN, { loadModule, check: true });
+    expect(checked).not.toHaveProperty("markedInterrupted");
+    expect((await status()).state).toBe("running");
+
+    const reclaimed = await reclaimRunSandboxes(cwd, RUN, { loadModule });
+    expect(reclaimed.markedInterrupted).toBe(true);
+    expect(await status()).toMatchObject({
+      state: "interrupted",
+      reason: "reclaimed",
+      completedAt: stale,
+    });
+    expect(await reclaimRunSandboxes(cwd, RUN, { loadModule })).not.toHaveProperty(
+      "markedInterrupted",
+    );
+  });
+
   it.each([false, true])(
     "reports it clean for the dry run and loads no E2B SDK (check %s)",
     async (check) => {

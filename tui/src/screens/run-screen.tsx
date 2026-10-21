@@ -2,7 +2,7 @@ import { Box, Text } from "ink";
 import React from "react";
 
 import type { RunDetail, RunParticipant } from "../../../src/run/detail.js";
-import { runDisplay } from "../../../src/run/display.js";
+import { analysisPhaseLabel, runDisplay } from "../../../src/run/display.js";
 import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import { formatDuration, normalizeThought, participantNote } from "../../../src/run/projection.js";
 import { indexedRunCost, runCostLabel } from "../../../src/run/run-cost.js";
@@ -162,7 +162,8 @@ function headline(run: RunIndexEntry, participant: RunParticipant | undefined): 
       : ` · ${counts.reportedFriction} reported friction`;
   // Reaching the goal is what the participants did; a run whose execution failed still failed.
   const ended = display.state === "passed" ? "" : ` · ${display.label}`;
-  return `${counts.reachedGoal}/${counts.total} reached the goal${friction}${ended}`;
+  const analysis = analysisPhaseLabel(run.analysis);
+  return `${counts.reachedGoal}/${counts.total} reached the goal${friction}${ended}${analysis === undefined ? "" : ` · ${analysis}`}`;
 }
 
 /** A finished run: what they said, then what it took, then what it cost. */

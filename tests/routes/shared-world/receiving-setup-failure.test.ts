@@ -84,7 +84,7 @@ describe("shared-world email receiving setup failure", () => {
       "automaticAnalysis",
     ]);
     const status = JSON.parse(await readFile(path.join(runsRoot, runId!, "status.json"), "utf8"));
-    expect(status.state).toBe("finished");
+    expect(status).toMatchObject({ state: "interrupted", reason: "no-publish" });
     expect(status).not.toHaveProperty("outcome");
   });
 });

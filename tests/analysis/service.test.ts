@@ -318,8 +318,9 @@ describe("ordinary study analysis flow", () => {
     bundle.mode = "live";
     bundle.streams[0]!.status = "running";
     await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle));
+    // With no status record nothing says the run is alive, so a running stream is a cut-off one.
     expect((await analyzeRun(cwd, "analysis-flow", { config }, { fetch })).error?.code).toBe(
-      "ANALYSIS_RUN_ACTIVE",
+      "ANALYSIS_RUN_INCOMPLETE",
     );
     expect(fetch).not.toHaveBeenCalled();
   });

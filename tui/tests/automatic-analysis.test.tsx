@@ -48,6 +48,28 @@ describe("the separate analysis phase", () => {
       expect(frame.split("\n").every((line) => [...line].length <= columns)).toBe(true);
     },
   );
+  it("says the run is analyzing from status.json before the job is claimed", async () => {
+    const analyzing = {
+      ...run,
+      analysis: { state: "running" as const, startedAt: new Date(NOW - 60_000).toISOString() },
+    };
+    const rendered = await renderToText(
+      <RunScreen
+        run={analyzing}
+        detail={undefined}
+        columns={60}
+        viewport={20}
+        selected={0}
+        tick={0}
+        now={NOW}
+        actionNote={undefined}
+      />,
+      { columns: 60, until: (frame) => frame.includes("reached the goal") },
+    );
+    const frame = normalizeFrame(rendered.last);
+    rendered.unmount();
+    expect(frame).toMatch(/2\/2 reached the goal[^\n]* · analyzing/);
+  });
   it.each(["queued", "running"] as const)(
     "only offers marker cancellation while analysis is %s",
     (state) => {

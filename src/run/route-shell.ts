@@ -70,8 +70,9 @@ export async function admitRoute<R extends ShellRoute, I extends AnalysisInput, 
       // The scorer joins the input only; whatever the checks admitted stays what the run uses.
       const input = shell.withScorer?.(shell.input, scorer) ?? shell.input;
       const run = async () => {
-        const { result, finished } = await runScope((scope) =>
-          shell.runInScope(admitted, input, scope),
+        const { result, finished } = await runScope(
+          (scope) => shell.runInScope(admitted, input, scope),
+          { onStart: (runId) => input.emit?.({ type: "run-started", runId }) },
         );
         return complete(input, result, finished);
       };

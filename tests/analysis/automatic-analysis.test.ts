@@ -17,7 +17,7 @@ import {
 import { FinishedRun } from "../../src/run/run.js";
 import { asLiveRecording, publishRun } from "../helpers/finished-run.js";
 import { automaticAnalysisEnvelope, writeResult } from "../../src/cli/io.js";
-import { cliAnalysisOptions } from "../../src/cli/commands/analysis-signals.js";
+import { cliRunEventOptions } from "../../src/cli/commands/analysis-signals.js";
 import { createProgram } from "../../src/cli/program.js";
 import { readStudySummary } from "../../src/study/summary.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
@@ -159,7 +159,7 @@ describe("automatic analysis admission and producer boundary", () => {
     expect(finished.interrupted).toBe(true);
     const run = vi.fn();
     const writeErr = vi.fn();
-    const { onEvent } = cliAnalysisOptions({ writeErr });
+    const { onEvent } = cliRunEventOptions({ writeErr });
     const result = await completeAutomaticAnalysis(
       { cwd, runId: "interrupted", dryRun: false, ok: false },
       finished,
@@ -188,7 +188,7 @@ describe("automatic analysis admission and producer boundary", () => {
     } as AutomaticAnalysisOutcome;
     const run = vi.fn(async () => skip);
     const writeErr = vi.fn();
-    const { onEvent } = cliAnalysisOptions({ writeErr });
+    const { onEvent } = cliRunEventOptions({ writeErr });
     const result = await completeAutomaticAnalysis(
       { cwd, runId: "no-participant", dryRun: false, ok: false },
       none,
@@ -767,17 +767,52 @@ describe("automatic analysis admission and producer boundary", () => {
       },
     );
   });
-  it("announces preparation before admission without claiming a provider request", () => {
+  it("says the findings are being written, then how long, at most every 20 seconds", () => {
     const writeErr = vi.fn();
-    const { onEvent } = cliAnalysisOptions({ writeErr });
+    let nowMs = 0;
+    let tick: (() => void) | undefined;
+    const clock = {
+      now: () => nowMs,
+      every: (_intervalMs: number, fn: () => void) => {
+        tick = fn;
+        return () => {
+          tick = undefined;
+        };
+      },
+    };
+    const { onEvent } = cliRunEventOptions({ writeErr }, { json: false, clock });
     void onEvent!({ type: "analysis-started" });
     try {
       expect(writeErr).toHaveBeenCalledExactlyOnceWith(
-        "Participants finished; preparing analysis…\n",
+        "Participants finished. Writing findings; this usually takes 1 to 4 minutes.\n",
       );
+      nowMs = 80_000;
+      tick?.();
+      expect(writeErr).toHaveBeenLastCalledWith("Still writing findings: 1m 20s elapsed.\n");
     } finally {
       void onEvent!({ type: "analysis-finished" });
     }
+    expect(tick).toBeUndefined();
+  });
+  it("prints one analysis line and no progress under --json", () => {
+    const writeErr = vi.fn();
+    const every = vi.fn(() => () => {});
+    const { onEvent } = cliRunEventOptions(
+      { writeErr },
+      { json: true, clock: { now: () => 0, every } },
+    );
+    void onEvent!({ type: "analysis-started" });
+    void onEvent!({ type: "analysis-finished" });
+    expect(writeErr).toHaveBeenCalledOnce();
+    expect(every).not.toHaveBeenCalled();
+  });
+  it("names the run and the command that follows it as soon as the run starts", () => {
+    const writeErr = vi.fn();
+    const { onEvent } = cliRunEventOptions({ writeErr }, { json: true });
+    void onEvent!({ type: "run-started", runId: "cua-2026-10-21-abc" });
+    expect(writeErr).toHaveBeenCalledExactlyOnceWith(
+      expect.stringMatching(/^Run cua-2026-10-21-abc started\. .*observe --run cua-2026-10-21-abc/),
+    );
   });
   it.each([["run"], ["watch"]])(
     "CLI %j discloses default analysis before a live start",
@@ -948,11 +983,11 @@ describe("automatic analysis admission and producer boundary", () => {
     async (signal) => {
       const script = `
       import { runStudyWith } from ${JSON.stringify(new URL("../../src/run-study.ts", import.meta.url).href)};
-      import { cliAnalysisOptions } from ${JSON.stringify(new URL("../../src/cli/commands/analysis-signals.ts", import.meta.url).href)};
+      import { cliRunEventOptions } from ${JSON.stringify(new URL("../../src/cli/commands/analysis-signals.ts", import.meta.url).href)};
       const config = ${JSON.stringify(libraryConfig(fixtures.find((row) => row.name === "cua-openai-computer-use-app-url")!.config))};
       config.review = { analysis: { maxCostUsd: 5 } };
       const timer = setInterval(() => {}, 1000);
-      const analysis = cliAnalysisOptions({ writeErr: text => process.stderr.write(text) });
+      const analysis = cliRunEventOptions({ writeErr: text => process.stderr.write(text) });
       const analysisSeam = { run: async () => { process.stdout.write("UNEXPECTED_ANALYSIS\\n"); return { state: "failed", reason: "synthetic" }; } };
       await runStudyWith(config, { cwd: ${JSON.stringify(cwd)}, dryRun: false, open: false, ...analysis,
         env: { OPENAI_API_KEY: "synthetic", E2B_API_KEY: "synthetic" } },
@@ -1001,7 +1036,7 @@ describe("automatic analysis admission and producer boundary", () => {
   it("installs cancellation handlers only for the analysis phase and removes them afterward", () => {
     const signals = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
     const counts = signals.map((signal) => process.listenerCount(signal));
-    const { onEvent, analysisSignal } = cliAnalysisOptions({ writeErr: vi.fn() });
+    const { onEvent, analysisSignal } = cliRunEventOptions({ writeErr: vi.fn() });
     expect(signals.map((signal) => process.listenerCount(signal))).toEqual(counts);
     void onEvent!({ type: "analysis-started" });
     expect(signals.map((signal) => process.listenerCount(signal))).toEqual(

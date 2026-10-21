@@ -38,6 +38,8 @@ export function describeEvent(event: StudyEvent): string {
       const durationMs: number | undefined = event.durationMs;
       return `${event.at} ${where} ${event.name}: ${event.message} ${ok ?? ""} ${durationMs ?? ""}`;
     }
+    case "run-started":
+      return `${event.type} ${event.runId}`;
     case "analysis-started":
     case "analysis-finished":
       return event.type;

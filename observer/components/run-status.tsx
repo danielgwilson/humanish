@@ -25,6 +25,9 @@ export function RunStatus({
   const ended = runtime?.state === "finished";
   const offline = connection.state === "offline";
   const failed = connection.state === "retrying";
+  // The participants ended and the run's process is writing the findings.
+  const analysisStarted =
+    ended && !offline && runtime?.analysis ? Date.parse(runtime.analysis.startedAt) : null;
   const updated = sourceUpdatedAt(data);
   const date = Date.parse(data.run.createdAt);
   const recordedDate = Number.isFinite(date)
@@ -38,11 +41,13 @@ export function RunStatus({
         ? "Run interrupted"
         : staleProcess
           ? "Run status unconfirmed"
-          : ended
-            ? "Run ended"
-            : active > 0
-              ? "Running"
-              : "Finished";
+          : analysisStarted !== null
+            ? "Writing findings"
+            : ended
+              ? "Run ended"
+              : active > 0
+                ? "Running"
+                : "Finished";
   return (
     <div
       className={`run-status${compact ? " run-status-compact" : ""}${failed || staleProcess ? " needs-attention" : ""}`}
@@ -50,7 +55,8 @@ export function RunStatus({
       <div className="run-status-main">
         <span
           className={
-            active > 0 && !offline && !staleProcess && !ended && !failed
+            (active > 0 && !offline && !staleProcess && !ended && !failed) ||
+            analysisStarted !== null
               ? "status-dot active"
               : "status-dot"
           }
@@ -58,9 +64,11 @@ export function RunStatus({
         />
         <strong>{status}</strong>
         <span>
-          {active > 0 && !offline && !ended && !staleProcess && !failed
-            ? `${active} of ${data.streams.length} participants active`
-            : `Recorded ${recordedDate}${offline ? " · no updates" : ""}`}
+          {analysisStarted !== null
+            ? `Participants finished · analysis started ${ageLabel(analysisStarted, now)}`
+            : active > 0 && !offline && !ended && !staleProcess && !failed
+              ? `${active} of ${data.streams.length} participants active`
+              : `Recorded ${recordedDate}${offline ? " · no updates" : ""}`}
         </span>
         {data.run.mode === "dry-run" ? <span className="chip chip-mute">Dry run</span> : null}
       </div>

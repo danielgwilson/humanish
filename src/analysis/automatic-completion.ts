@@ -80,6 +80,9 @@ export async function completeAutomaticAnalysis<
   const seams = input?.deps?.analysis;
   const signal = input?.analysisSignal;
   let started = false;
+  // From here status.json says the run is analyzing, and its heartbeat runs until the end below.
+  const endAnalysis = await finished.beginAnalysis();
+  let ended: AutomaticAnalysisOutcome["state"] = "unknown";
   try {
     // The CLI prints "Participants finished" on analysis-started. A run where no participant's
     // session started (it failed before, such as at E2B login) still records its analysis
@@ -91,6 +94,7 @@ export async function completeAutomaticAnalysis<
     try {
       await validatePreparedRunRootIdentity(prepared);
     } catch {
+      ended = "failed";
       return {
         ...result,
         ...origin,
@@ -111,8 +115,10 @@ export async function completeAutomaticAnalysis<
         expectedRun: prepared,
       },
     );
+    ended = automaticAnalysis.state;
     return { ...result, ...origin, automaticAnalysis };
   } catch {
+    ended = "failed";
     // Preserve the producer result. Never put a hook exception or provider response in the envelope.
     return {
       ...result,
@@ -120,6 +126,7 @@ export async function completeAutomaticAnalysis<
       automaticAnalysis: { state: "failed", reason: "AUTOMATIC_ANALYSIS_FAILED" },
     };
   } finally {
+    await endAnalysis(ended);
     try {
       if (started) input?.emit?.({ type: "analysis-finished" });
     } catch {

@@ -6,7 +6,7 @@ import type { StudyConfig } from "../../study/types.js";
 import { serveObserver } from "../../observer/render.js";
 import type { ObserverResult, ObserverServer } from "../../observer/render.js";
 import { redactText } from "../../evidence/redaction.js";
-import { cliAnalysisOptions } from "./analysis-signals.js";
+import { cliRunEventOptions } from "./analysis-signals.js";
 import {
   type CliIo,
   type StudyCommandOptions,
@@ -96,7 +96,7 @@ export function sharedWorldRouteRun(args: SharedWorldRouteArgs): RouteRun | unde
   let observerFailure: unknown;
   return {
     options: {
-      ...cliAnalysisOptions(args.io),
+      ...cliRunEventOptions(args.io, { json: wantsJson(args.command) }),
       cwd: args.options.cwd,
       open: wantsFollow
         ? false

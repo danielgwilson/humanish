@@ -75,6 +75,7 @@ export function StudyReport({
           automatic.analysisId !== report.id
         }
         resultAvailable={!!report}
+        startedAt={data.runtime?.analysis?.startedAt}
       />
     ) : null;
   if (!report)
