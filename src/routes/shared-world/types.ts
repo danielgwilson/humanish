@@ -56,6 +56,8 @@ export interface SharedWorldRunInput {
   cwd: string;
   open?: boolean;
   runId?: string;
+  /** The run key its sandboxes carry; see InternalRunStudyOptions.ownerKey. */
+  ownerKey?: string;
   onObserverReady?: (observer: ObserverResult & { ok: true }) => Promise<void> | void;
   /** Keys and subject env for the run. Defaults to process.env. */
   env?: Readonly<Record<string, string | undefined>>;
