@@ -269,7 +269,7 @@ export async function startParticipantStream(
     // A browser participant streams its browser window when one was found. A CLI participant has
     // no window id and streams the whole desktop: a person studying a terminal app opens other windows, and
     // a stream bound to the first one would quietly stop being evidence.
-    await startDesktopStream(desktop, state.browserWindowId);
+    await startDesktopStream(desktop, state.browserWindowId, deps.requestTimeoutMs);
     const candidateStreamUrl: unknown = desktop.stream.getUrl({
       authKey: desktop.stream.getAuthKey(),
       autoConnect: true,

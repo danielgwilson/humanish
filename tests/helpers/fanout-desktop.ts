@@ -9,6 +9,7 @@ import type {
   E2BDesktopSandbox,
 } from "../../src/substrates/e2b/sdk.js";
 import { measuredChromeDesktop } from "./measured-chrome-desktop.js";
+import { x11vncRemote } from "./x11vnc-remote.js";
 
 // ---------------------------------------------------------------------------
 // Fan-out fakes: a desktop module that mints a distinct sandbox per create()
@@ -119,6 +120,7 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
       void name;
     };
     const measured = options.measuredChrome ? measuredChromeDesktop(() => reported) : undefined;
+    const x11vnc = x11vncRemote();
     return {
       sandboxId: id,
       // Captured stock shape; resource-size variation tests live in desktop-resource-pricing.
@@ -127,6 +129,8 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
         run: async (command: string, runOptions?: E2BCommandRunOptions) => {
           const handled = options.commandHandler?.(laneIndex, command);
           if (handled) return { exitCode: 0, ...handled };
+          const vnc = x11vnc(command);
+          if (vnc !== undefined) return vnc;
           if (command.includes("xdpyinfo")) {
             return {
               exitCode: 0,

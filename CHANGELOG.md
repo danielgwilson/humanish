@@ -13,6 +13,14 @@ as the default `gpt-6-astra` ($10 / $50). Pass `humanish analyze --model gpt-6-l
 `review.analysis.model`; admission, the cost cap and the recorded cost use each model's own rates
 and image-token sizing. `analyze --help` lists the accepted models. The default is unchanged.
 
+### Fixed
+
+- A hosted desktop's live stream is view-only on the VNC server itself. E2B and Modal started
+  x11vnc without `-viewonly`, and the stream URL's `view_only` setting applied only to the noVNC
+  page, so anyone holding a participant's stream URL could type into or click on that desktop.
+  humanish now switches the server to view-only after the stream starts and confirms it; if the
+  server does not confirm, the run continues with screenshots and no live stream.
+
 ## 0.141.0: A run says when it is writing findings, and email links no longer open a dialog (2026-10-21)
 
 humanish 0.141.0 says when a run is writing its findings: the CLI prints progress with the

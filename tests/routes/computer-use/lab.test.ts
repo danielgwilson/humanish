@@ -92,6 +92,7 @@ import type { LocalTreeArchive } from "../../../src/subject/local-tree-archive.j
 import { freePort } from "../../helpers/free-port.js";
 import { NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";
 import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
+import { x11vncRemote } from "../../helpers/x11vnc-remote.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
 
 // ---------------------------------------------------------------------------
@@ -156,6 +157,7 @@ function makeFakeSandbox(
       calls.push([name, ...args]);
     };
   let screen: readonly [number, number] | undefined;
+  const x11vnc = x11vncRemote();
   const sandbox = {
     calls,
     sandboxId: "fake-sandbox-001",
@@ -181,6 +183,8 @@ function makeFakeSandbox(
         }
         const handled = options.commandHandler?.(command);
         if (handled !== undefined) return handled;
+        const vnc = x11vnc(command);
+        if (vnc !== undefined) return vnc;
         // E2B creates the desktop at the requested resolution, and xdpyinfo reports it. The
         // fake has no Chromium, so window, containment and viewport stay unmeasured unless a
         // test passes measuredChromeDesktop as its commandHandler.
@@ -1236,6 +1240,34 @@ describe("runCuaActorLab", () => {
     await expect(writer("frame.png", makePng(2))).rejects.toThrow(/hardlink|single-link/i);
     expect(await readFile(outside, "utf8")).toBe("unchanged\n");
     expect(screenshots).toEqual([]);
+  });
+
+  it("publishes no live stream when the desktop's VNC server stays interactive", async () => {
+    const sandbox = makeFakeSandbox({
+      // The server takes the remote command but never reports view-only.
+      commandHandler: (command) =>
+        command.endsWith("-R viewonly") ? { exitCode: 0, stdout: "" } : undefined,
+    });
+    const { module } = makeFakeModule(sandbox);
+    const outcome = await runStudyWith(
+      cuaConfig(),
+      { cwd, env: { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" } },
+      {
+        desktopModule: async () => module,
+        runSession: async (options) =>
+          runCuaActorSession({
+            ...options,
+            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          }),
+      },
+    );
+    if (outcome.route !== "computer-use") throw new Error("expected cua backend");
+    const result = outcome.result;
+    expect(result.ok).toBe(true);
+    expect(result.sandbox?.streamUrlPresent).toBe(false);
+    expect(result.warnings.join("\n")).toContain("could not be made view-only");
+    const runDir = path.join(cwd, ".humanish", "runs", result.runId);
+    expect(await readFile(path.join(runDir, "run.json"), "utf8")).not.toContain("stream.invalid");
   });
 
   it("live (with fakes): registry actor drives the real loop/provider/executor through a study run, fills stream.actor, and tears down", async () => {
