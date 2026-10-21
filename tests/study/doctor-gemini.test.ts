@@ -40,7 +40,7 @@ it("reports the Gemini key for a study analyzed on Gemini, from either spelling"
     };
     expect(await row(base)).toMatchObject({
       status: "note",
-      message: expect.stringMatching(/GEMINI_API_KEY is missing/),
+      message: expect.stringMatching(/GEMINI_API_KEY and GOOGLE_API_KEY are missing/),
     });
     for (const name of ["GEMINI_API_KEY", "GOOGLE_API_KEY"])
       expect(await row({ ...base, [name]: "synthetic-marker" })).toMatchObject({

@@ -37,9 +37,6 @@ const HIGH_DETAIL_IMAGE_TOKEN_CEILING = 3000;
  */
 const GEMINI_HIGH_RESOLUTION_IMAGE_TOKENS: Readonly<Record<string, number>> = Object.freeze({
   "gemini-3.8-flash": 1120,
-  "gemini-3.5-flash-lite": 1120,
-  "gemini-3-flash-preview": 1120,
-  "gemini-4-argon": 1120,
 });
 
 /** The most one image can cost on `model`, whatever its size. */

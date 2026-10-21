@@ -11,7 +11,7 @@ import {
 } from "./service.js";
 import { preferLargerAnalysisOutput, ANALYSIS_PROMPT_VERSION } from "./execute.js";
 import { captureEvidence } from "./evidence.js";
-import { analysisApiKey } from "./provider.js";
+import { analysisApiKey } from "../keys/key-resolution.js";
 import { loadRunTraces } from "../run/stream-trace.js";
 import { hashAnalysisValue } from "./validation.js";
 import { refusedCost, type RefusedAnalysisCost } from "./admission.js";
@@ -104,7 +104,13 @@ function statusReason(result: AnalyzeResult): string | null {
   return null;
 }
 
-function outcomeOf(result: AnalyzeResult): AutomaticAnalysisOutcome {
+/** The skip reason for a missing API key, which names the key the selected analyst reads. */
+const keyMissingReason = (config: AnalysisConfig) =>
+  config.provider === "gemini"
+    ? ("AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING" as const)
+    : ("AUTOMATIC_ANALYSIS_KEY_MISSING" as const);
+
+function outcomeOf(result: AnalyzeResult, config: AnalysisConfig): AutomaticAnalysisOutcome {
   if (result.error?.code === "ANALYSIS_PUBLICATION_FAILED")
     return { state: "failed", reason: "AUTOMATIC_ANALYSIS_PUBLICATION_FAILED", result };
   if (result.error?.code?.startsWith("analysis_codex_"))
@@ -113,8 +119,7 @@ function outcomeOf(result: AnalyzeResult): AutomaticAnalysisOutcome {
   const code = result.error?.code;
   if (code === "ANALYSIS_CANCELLED")
     return { state: "cancelled", reason: "AUTOMATIC_ANALYSIS_CANCELLED", result };
-  if (code === "ANALYSIS_API_KEY_MISSING")
-    return { ...skipped("AUTOMATIC_ANALYSIS_KEY_MISSING"), result };
+  if (code === "ANALYSIS_API_KEY_MISSING") return { ...skipped(keyMissingReason(config)), result };
   if (code === "ANALYSIS_BUSY") return { ...skipped("AUTOMATIC_ANALYSIS_BUSY"), result };
   if (code === "ANALYSIS_HISTORY_UNAVAILABLE")
     return { ...skipped("AUTOMATIC_ANALYSIS_STORAGE_UNAVAILABLE"), result };
@@ -305,9 +310,7 @@ export async function runAutomaticAnalysis(
       outcome = signal.aborted
         ? { state: "cancelled", reason: "AUTOMATIC_ANALYSIS_CANCELLED" }
         : skipped(
-            missingKey
-              ? "AUTOMATIC_ANALYSIS_KEY_MISSING"
-              : "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE",
+            missingKey ? keyMissingReason(config) : "AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE",
           );
     } else {
       const result = await analyzeRun(
@@ -333,7 +336,7 @@ export async function runAutomaticAnalysis(
           },
         },
       );
-      outcome = outcomeOf(result);
+      outcome = outcomeOf(result, config);
     }
     if (cancellationFailed)
       outcome = {

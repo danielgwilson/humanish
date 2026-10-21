@@ -91,14 +91,14 @@ review:
 
 Gemini analysis sends the same evidence packet and captures to Google, at high thinking level,
 with each capture at high media resolution. It reads `GEMINI_API_KEY`, which `humanish keys set
-gemini` stores, or `GOOGLE_API_KEY`, which wins when both are set, as in Google's own client
-libraries. A missing Gemini key skips the analysis; the OpenAI key is never used in its place.
-Admission, `maxCostUsd`, `maxOutputTokens` and priced usage work as they do on OpenAI, at the
-paid-tier rates in `src/run/pricing.ts`; requests made with a free-tier key bill nothing, and
-Google's terms let it use free-tier content to improve its products. The supported models are
-`gemini-3.8-flash` (the default), `gemini-3.5-flash-lite`, `gemini-3-flash-preview` and
-`gemini-4-argon`, the Gemini models whose pages list image input and structured output.
-`gemini-4-argon` is not available on the free tier.
+gemini` stores, and `GOOGLE_API_KEY` only when `GEMINI_API_KEY` is unset. Key discovery treats
+the two names as one key: a project's `.humanish/local/provider.env` or the user store never adds
+one while the other is already in the environment. A missing Gemini key skips the analysis
+(`AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING`); the OpenAI key is never used in its place. Admission,
+`maxCostUsd`, `maxOutputTokens` and priced usage work as they do on OpenAI, at the paid-tier
+rates in `src/run/pricing.ts`; requests made with a free-tier key bill nothing, and Google's
+terms let it use free-tier content to improve its products. The supported model is
+`gemini-3.8-flash`, the one with a completed live analysis.
 
 The same configuration works through `humanish run <study>`,
 `watch <study>`, and TUI live starts. Direct library calls to the five recording
@@ -219,7 +219,8 @@ JSON also has `findings`:
 | `AUTOMATIC_ANALYSIS_DRY_RUN`                  | `skipped`                 | A dry run records no participant evidence                             |
 | `AUTOMATIC_ANALYSIS_SOURCE_UNAVAILABLE`       | `skipped`                 | This invocation published no run to analyze, or the run id is invalid |
 | `AUTOMATIC_ANALYSIS_SOURCE_CHANGED`           | `failed`                  | The run directory changed after the run published its bundle          |
-| `AUTOMATIC_ANALYSIS_KEY_MISSING`              | `skipped`                 | No API key for the selected OpenAI or Gemini analyst                  |
+| `AUTOMATIC_ANALYSIS_KEY_MISSING`              | `skipped`                 | No OpenAI API key                                                     |
+| `AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING`       | `skipped`                 | No Gemini API key for a study analyzed on Gemini                      |
 | `AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE`  | `skipped`                 | A default analysis found no participant evidence                      |
 | `AUTOMATIC_ANALYSIS_ACTOR_CANCELLED`          | `skipped`                 | The harness cancelled the participants, or a signal stopped the run   |
 | `AUTOMATIC_ANALYSIS_CLEANUP_UNCONFIRMED`      | `skipped`                 | A local VM study could not confirm its cleanup; the command exits 2   |

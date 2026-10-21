@@ -11,23 +11,37 @@ const count = (value: unknown): value is number =>
   Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 1e12;
 
 /**
- * The response schema as Gemini accepts it. Gemini refuses the analysis schemas with a 400 while
- * they carry `maxItems`: its constrained decoder counts the states each nested array limit adds,
- * and its structured-output guide names large nested `maxItems` as a cause of that refusal. The
- * limits still hold, because validation.ts checks every response against the full schema.
+ * The response schema as Gemini accepts it, and the array limits it leaves out. Gemini refuses the
+ * analysis schemas with a 400 while they carry `maxItems`: its constrained decoder counts the
+ * states each nested array limit adds, and its structured-output guide names large nested
+ * `maxItems` as a cause of that refusal. So any Gemini model can return an array past its limit;
+ * validation.ts checks every response against the full schema and refuses that one as
+ * analysis_validation_failed_schema_invalid. The limits go to the model as instructions instead.
  */
-function geminiResponseSchema(schema: unknown, inProperties = false): unknown {
-  if (Array.isArray(schema)) return schema.map((item) => geminiResponseSchema(item));
-  if (!isRecord(schema)) return schema;
-  return Object.fromEntries(
-    Object.entries(schema)
-      // Under `properties` a key is a field name, which may be any word, `maxItems` included.
-      .filter(([key]) => inProperties || key !== "maxItems")
-      .map(([key, value]) => [
-        key,
-        geminiResponseSchema(value, !inProperties && key === "properties"),
-      ]),
-  );
+function withoutArrayLimits(schema: unknown): { schema: unknown; limits: string[] } {
+  const limits: string[] = [];
+  const strip = (value: unknown, path: string): unknown => {
+    if (Array.isArray(value)) return value.map((item) => strip(item, path));
+    if (!isRecord(value)) return value;
+    if (typeof value.maxItems === "number")
+      limits.push(`${path || "the answer"}: ${value.maxItems}`);
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => key !== "maxItems")
+        .map(([key, child]) => [
+          key,
+          key === "properties" && isRecord(child)
+            ? Object.fromEntries(
+                Object.entries(child).map(([name, field]) => [
+                  name,
+                  strip(field, path ? `${path}.${name}` : name),
+                ]),
+              )
+            : strip(child, key === "items" ? `${path}[]` : path),
+        ]),
+    );
+  };
+  return { schema: strip(schema, ""), limits };
 }
 
 /**
@@ -124,36 +138,43 @@ export const geminiWire: AnalysisWire = {
   url: (model) =>
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
   headers: (apiKey) => ({ "x-goog-api-key": apiKey, "Content-Type": "application/json" }),
-  body: (request) => ({
-    systemInstruction: { parts: [{ text: request.instructions }] },
-    contents: [
-      {
-        // The API leaves role optional outside a multi-turn conversation.
-        parts: [
-          { text: request.evidence },
-          ...request.images.flatMap((image) => {
-            const [, type, data] = INPUT_IMAGE_DATA_URL.exec(image.dataUrl)!;
-            return [
-              { text: JSON.stringify({ captureEvidenceId: image.evidenceId }) },
-              {
-                inlineData: { mimeType: `image/${type}`, data },
-                mediaResolution: { level: "MEDIA_RESOLUTION_HIGH" },
-              },
-            ];
-          }),
-        ],
+  body: (request) => {
+    const { schema, limits } = withoutArrayLimits(request.schema);
+    const limitText =
+      limits.length === 0
+        ? ""
+        : `\n\nThe response schema sent with this request omits its array limits. Keep each array at or under its limit, by field path: ${limits.join("; ")}.`;
+    return {
+      systemInstruction: { parts: [{ text: request.instructions + limitText }] },
+      contents: [
+        {
+          // The API leaves role optional outside a multi-turn conversation.
+          parts: [
+            { text: request.evidence },
+            ...request.images.flatMap((image) => {
+              const [, type, data] = INPUT_IMAGE_DATA_URL.exec(image.dataUrl)!;
+              return [
+                { text: JSON.stringify({ captureEvidenceId: image.evidenceId }) },
+                {
+                  inlineData: { mimeType: `image/${type}`, data },
+                  mediaResolution: { level: "MEDIA_RESOLUTION_HIGH" },
+                },
+              ];
+            }),
+          ],
+        },
+      ],
+      generationConfig: {
+        candidateCount: 1,
+        maxOutputTokens: request.maxOutputTokens,
+        thinkingConfig: { thinkingLevel: "HIGH" },
+        responseFormat: {
+          text: { mimeType: "APPLICATION_JSON", schema },
+        },
       },
-    ],
-    generationConfig: {
-      candidateCount: 1,
-      maxOutputTokens: request.maxOutputTokens,
-      thinkingConfig: { thinkingLevel: "HIGH" },
-      responseFormat: {
-        text: { mimeType: "APPLICATION_JSON", schema: geminiResponseSchema(request.schema) },
-      },
-    },
-    serviceTier: "standard",
-    store: false,
-  }),
+      serviceTier: "standard",
+      store: false,
+    };
+  },
   parse: parseGenerateContent,
 };

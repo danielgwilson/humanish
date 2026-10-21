@@ -8,7 +8,9 @@ import {
   estimateActorCost,
   estimateAggregatedTurnCost,
   estimateDesktopCost,
+  participantRate,
   round6,
+  unpricedCapMessage,
   type DesktopRate,
   type ModelRate,
 } from "../../src/run/pricing.js";
@@ -396,5 +398,13 @@ describe("estimateActorCost: a dated price change", () => {
   it("prices at the next published rate from the day after", () => {
     const at = new Date("2027-01-01T00:00:00Z");
     expect(estimateActorCost(usage, "dated-model", DATED, at).estimatedCostUsd).toBe(1.9);
+  });
+});
+
+describe("participant cap pricing", () => {
+  it("never offers an analysis-only model to a participant", () => {
+    expect(participantRate("gpt-6-astra")).toBeDefined();
+    expect(participantRate("gemini-3.8-flash")).toBeUndefined();
+    expect(unpricedCapMessage("unpriced-model")).not.toMatch(/gemini/);
   });
 });

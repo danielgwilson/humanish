@@ -1,8 +1,8 @@
 // What a run reports through RunStudyOptions.onEvent, and how a callback failure becomes a run
 // warning. normalizeRunStudyOptions (run-study-options.ts) builds the emitter and hands it to the
-import { analysisKeyNames } from "../analysis/provider.js";
 // route hook bags it maps; the event values are built here.
 
+import { analysisKeyNames } from "../keys/key-resolution.js";
 import { redactText, toErrorMessage } from "../evidence/redaction.js";
 import { RunSecrets } from "../run/secrets.js";
 import type { CuaParticipantPlan } from "../routes/computer-use/types.js";

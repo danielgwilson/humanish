@@ -14,11 +14,12 @@ as the default `gpt-6-astra` ($10 / $50). Pass `humanish analyze --model gpt-6-l
 and image-token sizing. `analyze --help` lists the accepted models. The default is unchanged.
 
 Study analysis can run on Google's Gemini API. `humanish keys set gemini` stores
-`GEMINI_API_KEY` (`GOOGLE_API_KEY` also works), and `review.analysis.provider: gemini` or
-`humanish analyze --provider gemini` sends the evidence packet and captures to Google, with
-`gemini-3.8-flash` as the default model and `gemini-3.5-flash-lite`, `gemini-3-flash-preview` and
-`gemini-4-argon` as options. Admission, the cost cap and priced usage work as on OpenAI, and a
-missing Gemini key never falls back to OpenAI. An analysis that ends in an HTTP error now names
+`GEMINI_API_KEY` (`GOOGLE_API_KEY` is read when it is unset), and `review.analysis.provider:
+gemini` or `humanish analyze --provider gemini` sends the evidence packet and captures to Google
+on `gemini-3.8-flash`. Admission, the cost cap and priced usage work as on OpenAI, and a
+missing Gemini key never falls back to OpenAI. Key discovery now treats a key's second spelling
+as the same key: a project's `.humanish/local/provider.env` no longer fills `GITHUB_TOKEN` beside
+an exported `GH_TOKEN`. An analysis that ends in an HTTP error now names
 the status code in its warnings.
 
 ### Fixed

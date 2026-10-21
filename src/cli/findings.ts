@@ -40,6 +40,7 @@ import { plural } from "../run/text.js";
 import { shellQuote } from "../substrates/shell.js";
 import { analysisOutcomeText } from "./io.js";
 import { cli } from "./invocation.js";
+import { analysisKeyNames } from "../keys/key-resolution.js";
 
 export const ANALYSIS_FINDINGS_SCHEMA = "humanish.analysis-findings.v1";
 
@@ -209,6 +210,12 @@ export function cwdFlag(cwd: string): string {
   if (path.resolve(cwd) === process.cwd()) return "";
   return ` --cwd ${/^[\w@%+=:,./-]+$/.test(cwd) ? cwd : shellQuote(cwd)}`;
 }
+
+/** The skip reasons for an analysis whose API key was missing, one per API analyst. */
+const KEY_MISSING_REASONS: ReadonlySet<string> = new Set([
+  "AUTOMATIC_ANALYSIS_KEY_MISSING",
+  "AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING",
+]);
 
 /** An analysis provider and model, as a study or an analysis record names them. */
 interface Analyst {
@@ -386,18 +393,22 @@ function dryRunFindings(source: FindingsSource): AnalysisFindings {
 }
 
 /**
- * An analysis skipped because OPENAI_API_KEY is not set. With Codex signed in, the next step is the
+ * An analysis skipped because its API key is not set. For OpenAI with Codex signed in, the next step is the
  * Codex account analyst, named as an opt-in: the study chose the OpenAI analyst, and switching
  * the account that pays for it is the operator's choice.
  */
 function missingKeyFindings(source: FindingsSource, reason: string): AnalysisFindings {
-  if (source.analyst?.provider === "gemini")
+  // The skip reason records which analyst's key was missing; the study file only adds its model.
+  if (reason === "AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING")
     return withoutFindings(
       source,
       "skipped",
       reason,
-      `The automatic analysis was skipped because GEMINI_API_KEY is not set. Set it with ${cli("keys set gemini")}, then run the next command.`,
-      analyzeCommand(source, source.analyst),
+      `The automatic analysis was skipped because ${analysisKeyNames("gemini").join(" and ")} are not set. Store the key with ${cli("keys set gemini")}, then run the next command.`,
+      analyzeCommand(source, {
+        provider: "gemini",
+        ...(source.analyst?.provider === "gemini" ? { model: source.analyst.model } : {}),
+      }),
     );
   const opening = "The automatic analysis was skipped because OPENAI_API_KEY is not set.";
   if (source.codexSignedIn !== true)
@@ -591,7 +602,7 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       refusal.command,
     );
   }
-  if (job?.state === "skipped" && job.reason === "AUTOMATIC_ANALYSIS_KEY_MISSING")
+  if (job?.state === "skipped" && job.reason !== null && KEY_MISSING_REASONS.has(job.reason))
     return missingKeyFindings(source, job.reason);
   if (job?.state === "skipped") {
     const refused = job.reason === "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED";
@@ -701,7 +712,8 @@ export async function readRunAnalysis(
   const phase = record === null ? undefined : runAnalysisPhase(record, nowMs);
   const stopped =
     phase?.state === "stopped" || loaded.automatic?.reason === "AUTOMATIC_ANALYSIS_STOPPED";
-  const keyMissing = loaded.automatic?.reason === "AUTOMATIC_ANALYSIS_KEY_MISSING";
+  const missingKeyReason = loaded.automatic?.reason ?? null;
+  const keyMissing = missingKeyReason !== null && KEY_MISSING_REASONS.has(missingKeyReason);
   const analyst = stopped || keyMissing ? await studyAnalyst(physical, study) : undefined;
   const progress =
     phase !== undefined && record !== null
@@ -717,7 +729,7 @@ export async function readRunAnalysis(
         ? { stage: "participants" as const }
         : cutOff(bundle?.bundle, record, nowMs);
   const codexSignedIn =
-    keyMissing && analyst?.provider !== "gemini"
+    missingKeyReason === "AUTOMATIC_ANALYSIS_KEY_MISSING"
       ? await (deps.codexSignedIn ?? codexSignedInHere)().catch(() => false)
       : undefined;
   return {

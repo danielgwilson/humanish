@@ -54,6 +54,8 @@ export interface ModelRate {
   /** true = a stand-in that was not copied from a live sheet; the estimate carries this flag so a
    *  placeholder rate is never mistaken for a confirmed one. */
   placeholder?: boolean;
+  /** true = priced for study analysis only: no participant route runs this model. */
+  analysisOnly?: true;
 }
 
 export interface DesktopRate {
@@ -187,6 +189,7 @@ function geminiRate(
   return {
     ...geminiPrices(inPer1M, cachedPer1M, outPer1M),
     ...change,
+    analysisOnly: true,
     asOf: "2026-10-21",
     source: "ai.google.dev/gemini-api/docs/pricing (paid tier, standard)",
   };
@@ -265,12 +268,6 @@ export const MODEL_RATES: Record<string, ModelRate> = {
     until: "2026-12-31",
     after: geminiPrices(1.5, 0.15, 7.5),
   }),
-  "gemini-3.5-flash-lite": geminiRate(0.3, 0.03, 2.5),
-  "gemini-3-flash-preview": geminiRate(0.5, 0.05, 3),
-  "gemini-4-argon": geminiRate(2, 0.1, 10, {
-    until: "2026-11-30",
-    after: geminiPrices(4, 0.2, 20),
-  }),
 };
 
 // Current public incremental running-compute rates. Subscription fees/credits, negotiated
@@ -306,7 +303,14 @@ export const MODAL_SANDBOX_RESOURCE_RATE: DesktopResourceRate = {
  * since an npm install cannot edit this file.
  */
 export function unpricedCapMessage(model: string): string {
-  return `caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model "${model}", so it cannot enforce the cap and refuses to start. Priced models: ${Object.keys(MODEL_RATES).sort().join(", ")}. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap.`;
+  const priced = Object.keys(MODEL_RATES).filter((id) => participantRate(id) !== undefined);
+  return `caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model "${model}", so it cannot enforce the cap and refuses to start. Priced models: ${priced.sort().join(", ")}. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap.`;
+}
+
+/** A participant model's rate; undefined for a model without one or priced for analysis only. */
+export function participantRate(model: string): ModelRate | undefined {
+  const rate = MODEL_RATES[model.trim().toLowerCase()];
+  return rate?.analysisOnly ? undefined : rate;
 }
 
 export const DESKTOP_RATE: DesktopRate = {

@@ -106,6 +106,9 @@ describe("the Gemini analysis request", () => {
         required: ["ids", "maxItems"],
       },
     });
+    expect(sent(fetchFn).systemInstruction.parts[0].text).toBe(
+      "Review retained evidence only.\n\nThe response schema sent with this request omits its array limits. Keep each array at or under its limit, by field path: ids: 40.",
+    );
     expect(sent(fetchFn).generationConfig.responseFormat.text.schema).toEqual({
       type: "object",
       properties: {

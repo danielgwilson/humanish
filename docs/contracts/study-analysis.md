@@ -132,25 +132,29 @@ humanish analyze --run latest --provider gemini --model gemini-3.8-flash --max-c
 The request goes to `generativelanguage.googleapis.com/v1beta/models/<model>:generateContent`
 with the key in the `x-goog-api-key` header. It carries the same instructions, packet and
 captures, with each capture at `MEDIA_RESOLUTION_HIGH`, thinking level `HIGH`, one candidate,
-the standard service tier, no tools and `store: false`. The key is `GOOGLE_API_KEY` when set,
-else `GEMINI_API_KEY`, the order Google's client libraries use. Without either, the attempt
-ends with `ANALYSIS_API_KEY_MISSING` and nothing is sent; the OpenAI key is never used.
+the standard service tier, no tools and `store: false`. The key is `GEMINI_API_KEY` when set,
+else `GOOGLE_API_KEY`. Google's client libraries prefer `GOOGLE_API_KEY`; humanish does not, so a
+`GOOGLE_API_KEY` exported for another Google API never replaces the stored Gemini key. Key
+discovery fills neither name while the other is already in the environment. Without either, the attempt ends with
+`ANALYSIS_API_KEY_MISSING` and nothing is sent; the OpenAI key is never used.
 
-Supported models are `gemini-3.8-flash` (the default), `gemini-3.5-flash-lite`,
-`gemini-3-flash-preview` and `gemini-4-argon`. Each one's model page lists image input and
-structured output. `--max-cost` is required, and admission, the cost cap, `--max-output-tokens`
-(at most 32,768, the most `gemini-4-argon` returns from one `generateContent` request) and the
-partial result for a bill above the worst case work as on OpenAI. Admission prices each capture
-at 1,120 tokens, the media-resolution guide's figure for a high-resolution image. Usage maps
+The supported model is `gemini-3.8-flash`, the one with a completed live analysis. The other
+Gemini models whose pages list image input and structured output join once a live analysis on
+each completes. `--max-cost` is required, and admission, the cost cap, `--max-output-tokens`
+(at most 32,768) and the partial result for a bill above the worst case work as on OpenAI.
+Admission prices each capture at 1,120 tokens, the media-resolution guide's figure for a
+high-resolution image, and expects twice the output it expects from OpenAI: one
+`gemini-3.8-flash` analysis of one participant wrote 24,246 output tokens. Usage maps
 `promptTokenCount` to input, `candidatesTokenCount` plus `thoughtsTokenCount` to output, and
 `cachedContentTokenCount` to cached input; a usage record whose `totalTokenCount` disagrees
 with those parts is kept as unknown. Rates are Google's paid standard tier. `gemini-3.8-flash`
-and `gemini-4-argon` have published price changes (2027-01-01 and 2026-12-01), and each request
-is priced at the rates of the day it is sent. A free-tier key bills nothing, and Google's terms
+has a published price change on 2027-01-01, and each request is priced at the rates of the day
+it is sent. A free-tier key bills nothing, and Google's terms
 let it use free-tier content to improve its products.
 
 Gemini refuses the analysis schemas while they carry `maxItems`, so the request leaves those
-array limits out; the response is still checked against the full schema. A `STOP` candidate
+array limits out of the schema and states them, by field path, at the end of the system
+instruction. The response is still checked against the full schema. A `STOP` candidate
 whose only non-thought part is the JSON answer completes. `MAX_TOKENS` and `CONTINUATION` end
 as `output_incomplete`. A blocked prompt and the `SAFETY`, `RECITATION`, `LANGUAGE`,
 `BLOCKLIST`, `PROHIBITED_CONTENT`, `SPII`, `ESCALATION` and image-safety finish reasons end as
@@ -533,7 +537,8 @@ The states without findings:
   on a machine where Codex is signed in with a ChatGPT account (read when the view is built),
   `next` is `analyze --provider codex` and the message names `review.analysis.provider: codex`
   in the run's study file; otherwise the message says to set the key. A study analyzed on Gemini
-  names `keys set gemini`, and `next` is `analyze --provider gemini --model <model> --max-cost 10`.
+  is skipped with `AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING`; its message names `keys set gemini`,
+  and `next` is `analyze --provider gemini --model <model> --max-cost 10`.
   For an analysis refused for its
   cost, the message gives the expected cost, the worst case and the cap, and `next` sets
   `--max-cost` to the worst case rounded up.

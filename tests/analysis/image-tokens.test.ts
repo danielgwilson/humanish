@@ -51,12 +51,10 @@ describe("high-detail image tokens", () => {
 describe("Gemini high-resolution image tokens", () => {
   it("prices every image at the 1,120 tokens of MEDIA_RESOLUTION_HIGH, whatever its size", () => {
     const jpeg = `data:image/jpeg;base64,${Buffer.alloc(40, 1).toString("base64")}`;
-    for (const model of ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-4-argon"]) {
-      expect(highDetailImageTokens(model, pngUrl(1440, 950))).toBe(1120);
-      expect(highDetailImageTokens(model, pngUrl(16, 16))).toBe(1120);
-      expect(highDetailImageTokens(model, jpeg)).toBe(1120);
-      expect(imageTokenCeiling(model)).toBe(1120);
-    }
+    expect(highDetailImageTokens("gemini-3.8-flash", pngUrl(1440, 950))).toBe(1120);
+    expect(highDetailImageTokens("gemini-3.8-flash", pngUrl(16, 16))).toBe(1120);
+    expect(highDetailImageTokens("gemini-3.8-flash", jpeg)).toBe(1120);
+    expect(imageTokenCeiling("gemini-3.8-flash")).toBe(1120);
     expect(imageTokenCeiling("gpt-6-astra")).toBe(3000);
   });
 });

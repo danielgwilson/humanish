@@ -34,6 +34,7 @@ import {
 } from "../actors/codex/codex-admission.js";
 import type { RefusedCodexExecutable } from "../actors/codex/restricted-executable.js";
 import { cli } from "../cli/invocation.js";
+import { analysisKeyNames } from "../keys/key-resolution.js";
 
 type Check = DoctorCheckDraft;
 /**
@@ -542,14 +543,15 @@ async function analysisCheck(
     };
   }
   if (analysis.provider === "gemini") {
-    const geminiKeyed = args.keyPresent("GEMINI_API_KEY") || args.keyPresent("GOOGLE_API_KEY");
+    const names = analysisKeyNames("gemini");
+    const geminiKeyed = names.some(args.keyPresent);
     return {
       name: "post-run analysis",
       ok: true,
       ...(geminiKeyed ? {} : { status: "note" as const }),
       message: geminiKeyed
         ? `A Gemini API key is present for the separate automatic analysis request, which sends the evidence and captures to Google; model access and quota are not tested. The analysis is refused before it starts if ${admissionRule(`$${analysis.maxCostUsd}`)}; this is not a billing cap. Participant readiness is independent.`
-        : `Will be skipped: GEMINI_API_KEY is missing. The participant may run, but there will be no automatic findings report. Add it with ${cli("keys set gemini")}, or set review.analysis: false deliberately.`,
+        : `Will be skipped: ${names.join(" and ")} are missing. The participant may run, but there will be no automatic findings report. Add it with ${cli("keys set gemini")}, or set review.analysis: false deliberately.`,
     };
   }
   const keyed = args.keyPresent("OPENAI_API_KEY");

@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import {
   DOCTOR_KEYS,
+  analysisKeyNames,
   probeKeySources,
   type KeyResolutionDeps,
   type DotenvLoad,
@@ -443,7 +444,7 @@ async function probeDoctorKeys(
     // A study analyzed on Gemini reads the Gemini key, which no other study needs.
     const analysis = resolved.ok ? resolved.config.review?.analysis : undefined;
     if (typeof analysis === "object" && analysis !== null && analysis.provider === "gemini")
-      keyNames.add("GEMINI_API_KEY");
+      keyNames.add(analysisKeyNames("gemini")[0]!);
     if (resolved.ok && resolved.config.comms?.email?.kind === "real") {
       const { receivingRequiredKey } = await import("../comms/setup.js");
       receivingKey = await receivingRequiredKey(cwd, resolved.config.comms.email.connection);

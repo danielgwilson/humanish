@@ -6,9 +6,8 @@
 // key (`key-one-of`) stays with buildRuntimeAuth at run time, which also picks its placement.
 import { detectLocalAgents } from "../actors/local-agent/cli.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../actors/local-agent/readiness.js";
-import { describeMissingKeys } from "../keys/key-resolution.js";
-import { analysisKeyNames } from "../analysis/provider.js";
-import { MODEL_RATES, unpricedCapMessage } from "../run/pricing.js";
+import { analysisKeyNames, describeMissingKeys } from "../keys/key-resolution.js";
+import { participantRate, unpricedCapMessage } from "../run/pricing.js";
 import type { Brain, StudyPlan, Requirement } from "./plan-types.js";
 
 /** Provider keys in the order the routes name them in a refusal. */
@@ -196,6 +195,6 @@ export function unpricedCapCheck<C extends string>(args: {
 }): LiveRefusal<C> | undefined {
   const { caps, model } = args;
   if (caps.maxUsd === undefined && caps.maxTotalUsd === undefined) return undefined;
-  if (MODEL_RATES[model.trim().toLowerCase()]) return undefined;
+  if (participantRate(model)) return undefined;
   return { code: args.code, message: unpricedCapMessage(model) };
 }

@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  analysisApiKey,
   describeMissingKeys,
   discoverProviderKeys,
   listUserKeys,
@@ -351,6 +352,38 @@ describe("provider-key discovery", () => {
       deps: deps(),
     });
     expect(githubFromGh?.source).toBeNull();
+  });
+
+  it("never lets a project overlay's GOOGLE_API_KEY replace an exported GEMINI_API_KEY", async () => {
+    await writeOverlay(["GOOGLE_API_KEY=synthetic-repo-planted"]);
+    const env: NodeJS.ProcessEnv = { GEMINI_API_KEY: "synthetic-operator-exported" };
+    const fills = await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
+    expect(fills).toEqual([]);
+    expect(env.GOOGLE_API_KEY).toBeUndefined();
+    expect(analysisApiKey("gemini", env)).toBe("synthetic-operator-exported");
+  });
+
+  it("never lets a project overlay's GEMINI_API_KEY replace an exported GOOGLE_API_KEY", async () => {
+    await writeOverlay(["GEMINI_API_KEY=synthetic-repo-planted"]);
+    const env: NodeJS.ProcessEnv = { GOOGLE_API_KEY: "synthetic-operator-exported" };
+    await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
+    expect(env.GEMINI_API_KEY).toBeUndefined();
+    expect(analysisApiKey("gemini", env)).toBe("synthetic-operator-exported");
+  });
+
+  it("never fills GITHUB_TOKEN from an overlay over an exported GH_TOKEN", async () => {
+    await writeOverlay(["GITHUB_TOKEN=synthetic-repo-planted"]);
+    const env: NodeJS.ProcessEnv = { GH_TOKEN: "synthetic-operator-exported" };
+    await discoverProviderKeys({ cwd, env, announce: () => {}, deps: deps() });
+    expect(env.GITHUB_TOKEN).toBeUndefined();
+  });
+
+  it("reads GEMINI_API_KEY ahead of GOOGLE_API_KEY when both are set", () => {
+    const env = { GOOGLE_API_KEY: "synthetic-google", GEMINI_API_KEY: "synthetic-gemini" };
+    expect(analysisApiKey("gemini", env)).toBe("synthetic-gemini");
+    expect(analysisApiKey("openai", { OPENAI_API_KEY: "synthetic-openai", ...env })).toBe(
+      "synthetic-openai",
+    );
   });
 
   it("reports GOOGLE_API_KEY in the env as the source of GEMINI_API_KEY", async () => {

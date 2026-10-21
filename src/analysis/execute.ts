@@ -1,6 +1,6 @@
 import { validCodexAnalysisConfig } from "./codex-config.js";
 import { INPUT_IMAGE_DATA_URL, highDetailImageTokens, imageTokenCeiling } from "./image-tokens.js";
-import { estimateAnalysisCost } from "./admission.js";
+import { EXPECTED_OUTPUT_SCALE, estimateAnalysisCost } from "./admission.js";
 import { createHash, randomUUID } from "node:crypto";
 import { modelRate } from "../run/pricing.js";
 import { containsSensitive } from "../evidence/redaction.js";
@@ -55,15 +55,12 @@ export const SUPPORTED_ANALYSIS_MODELS = Object.freeze([
 ]);
 const SUPPORTED_MODELS = new Set(SUPPORTED_ANALYSIS_MODELS);
 /**
- * Gemini models that take image input and JSON-schema output, from each model's page under
- * ai.google.dev/gemini-api/docs/models, read 2026-10-21.
+ * Gemini models that completed a live analysis. Each model's page under
+ * ai.google.dev/gemini-api/docs/models (read 2026-10-21) also lists image input and JSON-schema
+ * output for gemini-3.5-flash-lite, gemini-3-flash-preview and gemini-4-argon; they join this list
+ * once a live analysis on each completes.
  */
-export const GEMINI_ANALYSIS_MODELS = Object.freeze([
-  "gemini-3.8-flash",
-  "gemini-3.5-flash-lite",
-  "gemini-3-flash-preview",
-  "gemini-4-argon",
-]);
+export const GEMINI_ANALYSIS_MODELS = Object.freeze(["gemini-3.8-flash"]);
 const GEMINI_MODELS: ReadonlySet<string> = new Set(GEMINI_ANALYSIS_MODELS);
 /** Whether the API analyst `provider` (omitted is OpenAI) analyzes with `model`. */
 export const isSupportedAnalysisModel = (
@@ -345,6 +342,7 @@ export function estimateAnalysisAdmission(
     }),
     // Without reports: estimateAnalysisCost prices them at the cohorts' output allowances.
     mergeTextBytes: requestBytes(mergeRequest(input, config, [])),
+    outputScale: EXPECTED_OUTPUT_SCALE[config.provider ?? "openai"],
   });
   if (!Number.isFinite(cost.worstCaseCostUsd)) return denied("analysis_rate_unknown");
   const allowed = cost.admittedCostUsd <= config.maxCostUsd;
@@ -457,6 +455,7 @@ export function analysisCostRange(
         imageTokens: share * EVIDENCE_LIMITS.captures * imageTokenCeiling(config.model),
       })),
       mergeTextBytes: mergePrompt + share * covered * ENTRY_STRUCTURE_BYTES,
+      outputScale: EXPECTED_OUTPUT_SCALE[config.provider ?? "openai"],
     });
   const admits = (share: number, allowance: number): boolean =>
     request(share, allowance).admittedCostUsd <= config.maxCostUsd;

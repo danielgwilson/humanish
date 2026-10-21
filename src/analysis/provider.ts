@@ -155,24 +155,10 @@ export interface AnalysisWire {
   parse(raw: unknown): AnalysisProviderResult;
 }
 
-const VENDORS: Readonly<
-  Record<AnalysisApiVendor, { wire: AnalysisWire; keyNames: readonly string[] }>
-> = {
-  openai: { wire: openaiWire, keyNames: ["OPENAI_API_KEY"] },
-  // Google's client libraries read GOOGLE_API_KEY first when both are set
-  // (ai.google.dev/gemini-api/docs/api-key, read 2026-10-21); humanish reads them in that order.
-  gemini: { wire: geminiWire, keyNames: ["GOOGLE_API_KEY", "GEMINI_API_KEY"] },
+const WIRES: Readonly<Record<AnalysisApiVendor, AnalysisWire>> = {
+  openai: openaiWire,
+  gemini: geminiWire,
 };
-
-/** The env names that hold a vendor's key, in the order they are read. */
-export const analysisKeyNames = (vendor: AnalysisApiVendor): readonly string[] =>
-  VENDORS[vendor].keyNames;
-
-/** The vendor's key from `env`: the first of its names with a non-blank value, else "". */
-export function analysisApiKey(vendor: AnalysisApiVendor, env: NodeJS.ProcessEnv): string {
-  for (const name of VENDORS[vendor].keyNames) if (env[name]?.trim()) return env[name]!;
-  return "";
-}
 
 /** One request to the vendor's fixed endpoint, never retried and never sent elsewhere. */
 export function createAnalysisProvider(options: {
@@ -182,7 +168,7 @@ export function createAnalysisProvider(options: {
   fetchFn?: AnalysisFetch;
 }): AnalysisProvider {
   const fetchFn = options.fetchFn ?? undiciFetch;
-  const { wire } = VENDORS[options.vendor ?? "openai"];
+  const wire = WIRES[options.vendor ?? "openai"];
   return async (request) => {
     const failure = (
       errorCode: AnalysisProviderResult["errorCode"],

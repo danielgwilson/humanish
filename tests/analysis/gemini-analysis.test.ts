@@ -2,7 +2,9 @@ import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { runAutomaticAnalysis } from "../../src/analysis/automatic.js";
 import { resolveAutomaticAnalysis } from "../../src/analysis/automatic-config.js";
+import { createProgram } from "../../src/cli/program.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import { analyzeRun, showAnalysis } from "../../src/analysis/service.js";
@@ -28,16 +30,16 @@ const wirePath = new URL(
   import.meta.url,
 );
 
-describe("study analysis on Gemini", () => {
-  let cwd: string;
-  let input: AnalysisInput;
+/** A completed synthetic run in a fresh project, with no analysis key in the environment. */
+function useRun() {
+  const run = { cwd: "", input: undefined as unknown as AnalysisInput };
   beforeEach(async () => {
     vi.unstubAllEnvs();
     for (const name of ["GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"])
       vi.stubEnv(name, undefined);
     // The rates in effect before gemini-3.8-flash's published change on 2027-01-01.
     vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-01T12:00:00Z") });
-    cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-gemini-analysis-"));
+    const cwd = (run.cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-gemini-analysis-")));
     await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
     await runDryRun({ cwd, dryRun: true, runId: "gemini-flow" });
     const runRoot = path.join(cwd, ".humanish/runs/gemini-flow");
@@ -48,25 +50,31 @@ describe("study analysis on Gemini", () => {
     await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle, null, 2) + "\n");
     await rm(path.join(runRoot, "status.json"), { force: true });
     const prepared = (await resolveRunPath(cwd, "gemini-flow"))!;
-    input = await captureEvidence(prepared, await readFile(path.join(runRoot, "run.json")));
+    run.input = await captureEvidence(prepared, await readFile(path.join(runRoot, "run.json")));
   });
   afterEach(async () => {
     vi.useRealTimers();
     vi.unstubAllEnvs();
-    await rm(cwd, { recursive: true, force: true });
+    await rm(run.cwd, { recursive: true, force: true });
   });
+  return run;
+}
 
-  async function transport() {
-    const wire = JSON.parse(await readFile(wirePath, "utf8"));
-    wire.candidates[0].content.parts[0].text = JSON.stringify(syntheticResult(input));
-    return vi.fn<AnalysisFetch>(async () => new Response(JSON.stringify(wire)));
-  }
+/** A fetch that answers with the captured Gemini response carrying a valid report of `input`. */
+async function geminiTransport(input: AnalysisInput) {
+  const wire = JSON.parse(await readFile(wirePath, "utf8"));
+  wire.candidates[0].content.parts[0].text = JSON.stringify(syntheticResult(input));
+  return vi.fn<AnalysisFetch>(async () => new Response(JSON.stringify(wire)));
+}
 
+describe("study analysis on Gemini", () => {
+  const run = useRun();
+  const transport = () => geminiTransport(run.input);
   it("sends the run to Gemini with GEMINI_API_KEY and keeps a priced, valid analysis", async () => {
     vi.stubEnv("GEMINI_API_KEY", "synthetic-gemini-key");
     vi.stubEnv("OPENAI_API_KEY", "synthetic-openai-key");
     const fetch = await transport();
-    const result = await analyzeRun(cwd, "gemini-flow", { config }, { fetch });
+    const result = await analyzeRun(run.cwd, "gemini-flow", { config }, { fetch });
     expect(result).toMatchObject({ ok: true, status: "partial" });
     expect(fetch).toHaveBeenCalledTimes(1);
     const [url, init] = fetch.mock.calls[0]!;
@@ -74,7 +82,7 @@ describe("study analysis on Gemini", () => {
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
     );
     expect(init.headers["x-goog-api-key"]).toBe("synthetic-gemini-key");
-    const saved = await showAnalysis(cwd, "gemini-flow");
+    const saved = await showAnalysis(run.cwd, "gemini-flow");
     expect(saved.state).toBe("ready");
     expect(saved.analysis).toMatchObject({
       provider: "gemini",
@@ -83,22 +91,31 @@ describe("study analysis on Gemini", () => {
       usage: { inputTokens: 1124, outputTokens: 183, estimatedCostUsd: 0.001529 },
     });
     expect(saved.analysis?.usage.ratesAsOf).toBe("2026-10-21");
-    const executions = await listAnalysisExecutions((await resolveRunPath(cwd, "gemini-flow"))!);
+    const executions = await listAnalysisExecutions(
+      (await resolveRunPath(run.cwd, "gemini-flow"))!,
+    );
     expect(executions.receipts).toMatchObject([{ provider: "gemini" }]);
   });
 
-  it("reads GOOGLE_API_KEY ahead of GEMINI_API_KEY, as Google's own clients do", async () => {
+  it("reads GEMINI_API_KEY ahead of GOOGLE_API_KEY", async () => {
     vi.stubEnv("GEMINI_API_KEY", "synthetic-gemini-key");
     vi.stubEnv("GOOGLE_API_KEY", "synthetic-google-key");
     const fetch = await transport();
-    await analyzeRun(cwd, "gemini-flow", { config }, { fetch });
+    await analyzeRun(run.cwd, "gemini-flow", { config }, { fetch });
+    expect(fetch.mock.calls[0]?.[1].headers["x-goog-api-key"]).toBe("synthetic-gemini-key");
+  });
+
+  it("sends GOOGLE_API_KEY when it is the only Gemini key", async () => {
+    vi.stubEnv("GOOGLE_API_KEY", "synthetic-google-key");
+    const fetch = await transport();
+    await analyzeRun(run.cwd, "gemini-flow", { config }, { fetch });
     expect(fetch.mock.calls[0]?.[1].headers["x-goog-api-key"]).toBe("synthetic-google-key");
   });
 
   it("never falls back to the OpenAI key: without a Gemini key nothing is sent", async () => {
     vi.stubEnv("OPENAI_API_KEY", "synthetic-openai-key");
     const fetch = await transport();
-    const result = await analyzeRun(cwd, "gemini-flow", { config }, { fetch });
+    const result = await analyzeRun(run.cwd, "gemini-flow", { config }, { fetch });
     expect(result).toMatchObject({ ok: false, error: { code: "ANALYSIS_API_KEY_MISSING" } });
     expect(result.error?.message).toMatch(/humanish keys set gemini/);
     expect(fetch).not.toHaveBeenCalled();
@@ -112,20 +129,86 @@ describe("study analysis on Gemini", () => {
           status: 503,
         }),
     );
-    const result = await analyzeRun(cwd, "gemini-flow", { config }, { fetch });
+    const result = await analyzeRun(run.cwd, "gemini-flow", { config }, { fetch });
     expect(result.error?.code).toBe("analysis_provider_http_error");
     expect(result.warnings).toEqual([expect.stringMatching(/^The Gemini API answered HTTP 503/)]);
     expect(JSON.stringify(result)).not.toContain("synthetic-private");
   });
+});
+
+describe("automatic and CLI analysis on Gemini", () => {
+  const run = useRun();
+  const transport = () => geminiTransport(run.input);
+  it("runs a study's automatic analysis on Gemini", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "synthetic-gemini-key");
+    const fetch = await transport();
+    const outcome = await runAutomaticAnalysis(run.cwd, "gemini-flow", config, { fetch });
+    expect(outcome).toMatchObject({ result: { ok: true } });
+    expect(fetch.mock.calls[0]?.[0]).toMatch(/models\/gemini-3\.8-flash:generateContent$/);
+    expect((await showAnalysis(run.cwd, "gemini-flow")).analysis?.provider).toBe("gemini");
+  });
+
+  it("records a skip that names the Gemini key when the study's analysis has none", async () => {
+    vi.stubEnv("OPENAI_API_KEY", "synthetic-openai-key");
+    const fetch = await transport();
+    const outcome = await runAutomaticAnalysis(run.cwd, "gemini-flow", config, { fetch });
+    expect(outcome).toMatchObject({
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING",
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("analyze --provider gemini admits a dry run and names the Gemini key when one is missing", async () => {
+    vi.stubEnv("HUMANISH_STRICT_KEYS", "1");
+    vi.stubEnv("OPENAI_API_KEY", "synthetic-openai-key");
+    const cli = async (...flags: string[]) => {
+      const output: string[] = [];
+      let exit: number | undefined;
+      const program = createProgram({
+        writeOut: (text) => output.push(text),
+        writeErr: () => {},
+        setExitCode: (code) => {
+          exit = code;
+        },
+      });
+      await program.parseAsync(
+        ["analyze", "--cwd", run.cwd, "--run", "gemini-flow", "--provider", "gemini", ...flags],
+        { from: "user" },
+      );
+      return { exit, result: JSON.parse(output.join("")) };
+    };
+    expect(await cli("--max-cost", "2", "--dry-run", "--json")).toMatchObject({
+      exit: 0,
+      result: { ok: true, admission: { allowed: true, ratesAsOf: "2026-10-21" } },
+    });
+    expect(await cli("--max-cost", "2", "--json")).toMatchObject({
+      exit: 2,
+      result: {
+        ok: false,
+        error: {
+          code: "ANALYSIS_API_KEY_MISSING",
+          message:
+            "Gemini analysis needs GEMINI_API_KEY or GOOGLE_API_KEY: run `humanish keys set gemini`. --dry-run checks admission without a key or provider request.",
+        },
+      },
+    });
+    expect(
+      await cli("--model", "gemini-3.5-flash-lite", "--max-cost", "2", "--json"),
+    ).toMatchObject({
+      exit: 2,
+      result: { error: { code: "ANALYSIS_CONFIG_INVALID" } },
+    });
+  });
 
   it("prices a dry run at Gemini's rates and its fixed image tokens", async () => {
-    const result = await analyzeRun(cwd, "gemini-flow", { config, dryRun: true }, {});
+    const result = await analyzeRun(run.cwd, "gemini-flow", { config, dryRun: true }, {});
     expect(result).toMatchObject({
       ok: true,
       admission: { allowed: true, ratesAsOf: "2026-10-21", maxCostUsd: 5 },
     });
     const openai = await analyzeRun(
-      cwd,
+      run.cwd,
       "gemini-flow",
       { config: { ...config, provider: "openai", model: "gpt-6-astra" }, dryRun: true },
       {},
@@ -150,12 +233,20 @@ describe("a study's Gemini analysis setting", () => {
     [{ model: "gemini-3.8-flash", maxCostUsd: 2 }],
     [{ provider: "openai", model: "gemini-3.8-flash", maxCostUsd: 2 }],
     [{ provider: "gemini", model: "gemini-3.8-flash" }],
+    [{ provider: "gemini", model: "gemini-3.5-flash-lite", maxCostUsd: 2 }],
   ])("refuses a model of the other provider or a missing cap: %j", (raw) => {
     expect(resolveAutomaticAnalysis(raw).ok).toBe(false);
   });
 
-  it("gives a Gemini analysis its own identity, apart from OpenAI's with the same settings", () => {
-    const { provider: _provider, ...openai } = config;
-    expect(hashAnalysisValue(config)).not.toBe(hashAnalysisValue(openai));
+  it("leaves an OpenAI configuration and its hash as they were before Gemini", () => {
+    // Hashes of these resolved configurations on main before Gemini analysis existed.
+    const omitted = resolveAutomaticAnalysis({ maxCostUsd: 10 });
+    const named = resolveAutomaticAnalysis({ provider: "openai", maxCostUsd: 10 });
+    expect(omitted.ok && hashAnalysisValue(omitted.config)).toBe(
+      "d4a11fc68c8d476c7187dcaa5fb65626bf3a25502aac154ff545a688e33c282d",
+    );
+    expect(named.ok && hashAnalysisValue(named.config)).toBe(
+      "77a70e555b194fb2c9408606366a98c3fb325467a99d8330804c041698cd30e6",
+    );
   });
 });

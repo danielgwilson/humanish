@@ -38,6 +38,8 @@ const reasonDetails: Record<string, string> = {
     "Codex account analysis could not complete. Check the attempt error and your qualified Codex installation/login, then explicitly retry humanish analyze --provider codex --rerun. No API fallback was attempted.",
   AUTOMATIC_ANALYSIS_KEY_MISSING:
     "Set OPENAI_API_KEY in the CLI environment, then explicitly run humanish analyze for this study with a cost limit.",
+  AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING:
+    "Store a Gemini key with humanish keys set gemini, then explicitly run humanish analyze --provider gemini for this study with a cost limit.",
   AUTOMATIC_ANALYSIS_NO_PARTICIPANT_EVIDENCE:
     "No participant activity was retained to analyze. The run's setup and failure records remain available.",
   AUTOMATIC_ANALYSIS_ADMISSION_REFUSED:

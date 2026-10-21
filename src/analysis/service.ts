@@ -3,8 +3,8 @@ import {
   describeCodexCliAdmission,
 } from "../actors/codex/codex-admission.js";
 import { validCodexAnalysisConfig } from "./codex-config.js";
-import { analysisApiKey, type AnalysisFetch, type AnalysisProvider } from "./provider.js";
-import { missingKeyHint } from "../keys/key-resolution.js";
+import type { AnalysisFetch, AnalysisProvider } from "./provider.js";
+import { analysisApiKey, analysisKeyNames, missingKeyHint } from "../keys/key-resolution.js";
 import { randomUUID } from "node:crypto";
 import { realpath } from "node:fs/promises";
 import path from "node:path";
@@ -451,7 +451,7 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
         false,
         "ANALYSIS_API_KEY_MISSING",
         config.provider === "gemini"
-          ? `Gemini analysis needs GEMINI_API_KEY (or GOOGLE_API_KEY): ${missingKeyHint("GEMINI_API_KEY")}. --dry-run checks admission without a key or provider request.`
+          ? `Gemini analysis needs ${analysisKeyNames("gemini").join(" or ")}: ${missingKeyHint(analysisKeyNames("gemini")[0]!)}. --dry-run checks admission without a key or provider request.`
           : undefined,
       ),
       admission,
