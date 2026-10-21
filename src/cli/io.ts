@@ -285,11 +285,16 @@ export function writeHuman(command: Command, io: CliIo, human: HumanOutput): voi
   if (human.error) io.writeErr(formatCliError(commandLabel(command), human.error));
 }
 
+/**
+ * Prints a result: JSON for --json, else the human formatter's text and, for a run, its analysis
+ * line. `analysisLines` replaces that line, for a caller that has read what the analysis left.
+ */
 export function writeResult<T>(
   command: Command,
   io: CliIo,
   result: T,
   formatHuman: (result: T) => HumanOutput,
+  analysisLines?: readonly string[],
 ): void {
   const output = automaticAnalysisEnvelope(result);
   if (wantsJson(command)) {
@@ -297,9 +302,11 @@ export function writeResult<T>(
     io.writeOut(`${JSON.stringify(withQueuedWarnings(command, output), null, 2)}\n`);
   } else {
     writeHuman(command, io, formatHuman(output));
-    // A run refused before it was created has no analysis to report, so its output ends with the
-    // refusal. Its JSON keeps the skip record.
-    if (
+    if (analysisLines !== undefined) {
+      for (const line of analysisLines) io.writeOut(`${line}\n`);
+    } else if (
+      // A run refused before it was created has no analysis to report, so its output ends with the
+      // refusal. Its JSON keeps the skip record.
       output !== null &&
       typeof output === "object" &&
       "automaticAnalysis" in output &&

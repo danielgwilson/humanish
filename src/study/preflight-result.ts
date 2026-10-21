@@ -18,6 +18,7 @@ export function finalize(
     ctx.config.review?.analysis,
     ctx.route,
     computerUseParticipantCount(ctx.config),
+    ctx.config.actor,
   );
   return {
     schema: STUDY_CHECK_SCHEMA,

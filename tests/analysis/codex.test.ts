@@ -97,7 +97,7 @@ describe("explicit Codex account analysis", () => {
       config: {
         model: "gpt-6-astra",
         question: null,
-        maxCostUsd: 3,
+        maxCostUsd: 10,
         timeoutMs: 600000,
         maxOutputTokens: 16384,
       },

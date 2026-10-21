@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 import { runAutomaticAnalysis } from "../../src/analysis/automatic.js";
 import { captureEvidence } from "../../src/analysis/evidence.js";
 import type { AnalysisFetch } from "../../src/analysis/provider.js";
-import { writeRunFindings } from "../../src/cli/findings.js";
+import { writeRunResult } from "../../src/cli/run-findings.js";
 import { createProgram } from "../../src/cli/program.js";
 import type { RunBundle } from "../../src/run/bundle.js";
 import { runDryRun } from "../../src/run/dry-run.js";
@@ -49,8 +49,8 @@ async function runCli(args: string[]) {
   return { exitCode, output: stdout.join("") };
 }
 
-/** A finished live run with one completed stream and the automatic analysis of it. */
-async function analyzedRun() {
+/** A finished live run with one completed stream, not yet analyzed. */
+async function liveRun() {
   const cwd = await makeTestTempDir("humanish-review-findings-");
   await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
   await runDryRun({ cwd, dryRun: true, runId: RUN });
@@ -60,6 +60,12 @@ async function analyzedRun() {
   bundle.streams[0]!.status = "complete";
   await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle, null, 2) + "\n");
   await rm(path.join(runRoot, "status.json"), { force: true });
+  return { cwd, runRoot };
+}
+
+/** A finished live run with one completed stream and the automatic analysis of it. */
+async function analyzedRun() {
+  const { cwd, runRoot } = await liveRun();
   const input = await captureEvidence(
     (await resolveRunPath(cwd, RUN))!,
     await readFile(path.join(runRoot, "run.json")),
@@ -273,18 +279,35 @@ describe("humanish analyze show", () => {
 });
 
 describe("the end of a live run", () => {
-  it("lists the analysis findings after the analysis line, and prints nothing for --json", async () => {
-    const { cwd, outcome } = await analyzedRun();
+  const capture = () => {
     const out: string[] = [];
     const io = {
       writeOut: (text: string) => out.push(text),
       writeErr: () => {},
       setExitCode: () => {},
     };
-    const result = { runId: RUN, automaticAnalysis: outcome };
+    return { out, io };
+  };
+  const jsonCommand = () => {
+    const json = new Command().option("--json");
+    json.parse(["--json"], { from: "user" });
+    return json;
+  };
+  const human = () => "humanish run synthetic: live run finished\n";
 
-    await writeRunFindings(new Command(), io, cwd, result);
-    expect(out.join("").split("\n")).toEqual([
+  it("lists the analysis findings after the analysis line, and puts them in the JSON", async () => {
+    const { cwd, outcome } = await analyzedRun();
+    const result = {
+      ok: true,
+      runId: RUN,
+      automaticAnalysis: outcome,
+      observer: { observerPath: `.humanish/runs/${RUN}/observer/index.html` },
+    };
+    const text = capture();
+    await writeRunResult(new Command(), text.io, cwd, result, human);
+    expect(text.out.join("").split("\n")).toEqual([
+      "humanish run synthetic: live run finished",
+      "analysis: partial, because it covered only part of the evidence",
       "findings: 1",
       "- finding-1 The participant could not create an item. (blocked task, medium confidence, no recovery observed)",
       "design findings: none",
@@ -292,14 +315,90 @@ describe("the end of a live run", () => {
       "",
     ]);
 
-    out.length = 0;
-    const json = new Command().option("--json");
-    json.parse(["--json"], { from: "user" });
-    await writeRunFindings(json, io, cwd, result);
-    await writeRunFindings(new Command(), io, cwd, {
-      runId: RUN,
-      automaticAnalysis: { state: "skipped", reason: "AUTOMATIC_ANALYSIS_DRY_RUN" },
+    const json = capture();
+    await writeRunResult(jsonCommand(), json.io, cwd, result, human);
+    const document = JSON.parse(json.out.join(""));
+    expect(document.automaticAnalysis).toMatchObject({
+      state: "partial",
+      nextCommand: `humanish review --run ${RUN} --cwd ${cwd}`,
     });
-    expect(out).toEqual([]);
+    expect(document.automaticAnalysis.message).toMatch(/1 finding/);
+    expect(document.findings).toEqual({
+      analysisId: outcome.result?.analysisId,
+      status: "partial",
+      count: 1,
+      designFindingCount: 0,
+      top: [
+        {
+          id: "finding-1",
+          title: expect.any(String),
+          headline: "The participant could not create an item.",
+          impact: "blocked_task",
+          confidence: "medium",
+          participants: [expect.any(String)],
+        },
+      ],
+      review: `humanish review --run ${RUN} --cwd ${cwd}`,
+      observer: `.humanish/runs/${RUN}/observer/index.html#/report`,
+      path: expect.stringMatching(/analysis\.json$/),
+    });
+  });
+
+  it("names the command that analyzes a run skipped for a missing key", async () => {
+    const { cwd } = await liveRun();
+    const outcome = await runAutomaticAnalysis(
+      cwd,
+      RUN,
+      {
+        model: "gpt-5.6-sol",
+        question: null,
+        maxCostUsd: 5,
+        timeoutMs: 1000,
+        maxOutputTokens: 8192,
+      },
+      { apiKey: "", defaultRequest: true },
+    );
+    expect(outcome).toMatchObject({ state: "skipped", reason: "AUTOMATIC_ANALYSIS_KEY_MISSING" });
+    const result = { ok: true, runId: RUN, automaticAnalysis: outcome };
+    const codex = { codexSignedIn: async () => true };
+
+    const text = capture();
+    await writeRunResult(new Command(), text.io, cwd, result, human, codex);
+    const lines = text.out.join("").split("\n");
+    expect(lines[1]).toMatch(
+      /^analysis: skipped because OPENAI_API_KEY is not set\. Codex is signed in.*review\.analysis\.provider: codex/,
+    );
+    expect(lines.slice(2)).toEqual([
+      `next: humanish analyze --run ${RUN} --cwd ${cwd} --provider codex`,
+      "",
+    ]);
+
+    const json = capture();
+    await writeRunResult(jsonCommand(), json.io, cwd, result, human, codex);
+    const document = JSON.parse(json.out.join(""));
+    expect(document.automaticAnalysis).toMatchObject({
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_KEY_MISSING",
+      nextCommand: `humanish analyze --run ${RUN} --cwd ${cwd} --provider codex`,
+    });
+    expect(document).not.toHaveProperty("findings");
+  });
+
+  it("keeps a dry run's analysis line and names no command", async () => {
+    const { cwd } = await liveRun();
+    const result = {
+      ok: true,
+      runId: RUN,
+      automaticAnalysis: { state: "skipped" as const, reason: "AUTOMATIC_ANALYSIS_DRY_RUN" },
+    };
+    const text = capture();
+    await writeRunResult(new Command(), text.io, cwd, result, human);
+    expect(text.out.join("").split("\n").slice(1)).toEqual(["analysis: skipped for dry runs", ""]);
+    const json = capture();
+    await writeRunResult(jsonCommand(), json.io, cwd, result, human);
+    expect(JSON.parse(json.out.join("")).automaticAnalysis).toMatchObject({
+      message: "The automatic analysis was skipped for dry runs.",
+      nextCommand: null,
+    });
   });
 });

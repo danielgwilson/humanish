@@ -3,7 +3,14 @@
 Supported live studies automatically request analysis after each recording finishes. Findings remain
 separate from participant feedback and the recorded study verdict.
 
-The default is `gpt-6-astra` with high reasoning effort, a separate $3 cap on its
+A study that declares no `review.analysis` gets its analyst from its participant (`actor`). A
+Codex `local-agent` participant, on a local or hosted desktop, gets the Codex account analyst
+described below, so a study run on a signed-in Codex needs no OpenAI API key for its findings.
+Every other participant, including a Claude Code `local-agent` participant, gets the OpenAI
+analyst. humanish never moves a study to the other analyst because a key is missing: the account
+that pays for analysis is the one the study names or its participant implies.
+
+The OpenAI default is `gpt-6-astra` with high reasoning effort, a separate $10 cap on its
 expected cost and a 600-second timeout. When no output limit is specified,
 humanish selects 32,768 tokens if the exact input's expected cost still fits that
 cap; otherwise it keeps the established 16,384-token allowance. This preserves
@@ -12,7 +19,7 @@ previously admitted studies without increasing their spending limit. To customiz
 ```yaml
 review:
   analysis:
-    maxCostUsd: 3
+    maxCostUsd: 10
     # Optional overrides. Omit maxOutputTokens for budget-aware selection.
     model: gpt-6-astra
     timeoutMs: 600000
@@ -20,7 +27,8 @@ review:
     # question: Where did participants need to recover?
 ```
 
-Omitting `review.analysis` uses these defaults. Set `review.analysis: false` to
+Omitting `review.analysis` uses these defaults for any participant other than a Codex
+`local-agent`. Set `review.analysis: false` to
 run participants without the additional analysis request. An explicit analysis
 mapping using the default OpenAI API provider requires `maxCostUsd`. Admission
 refuses the request when both its worst case and its expected cost plus a 10% margin are over
@@ -33,9 +41,10 @@ the cap admits no analysis at all, it says so instead. A study of more than 16 p
 analysed in cohorts of at most 16, one request each, and one more request merges their reports;
 the range covers every request and the analysis line names them (see
 [runs with more than 16 participants](../contracts/study-analysis.md#runs-with-more-than-16-participants)).
-The default $3 cap refuses the analysis of 17 participants even for a run that keeps no evidence,
-so a default analysis of more than 16 participants is skipped with
-`AUTOMATIC_ANALYSIS_ADMISSION_REFUSED` unless `review.analysis.maxCostUsd` admits it. Use `analyze --dry-run --max-cost <usd>` on retained
+The default $10 cap admits a single request at the evidence limits ($3.79 expected for one
+participant, $4.54 for 16) and the analysis of 17 to 40 participants from $4.60 to $7.05 with no
+evidence; a run that keeps more evidence can still be refused, and its skip names the
+`--max-cost` that admits it. Use `analyze --dry-run --max-cost <usd>` on retained
 evidence to inspect the expected cost, the worst case and the selected token
 allowance before deliberately choosing a larger budget. Explicit
 `maxOutputTokens` and `--max-output-tokens` limits are honored exactly. The output allowance
@@ -65,8 +74,8 @@ enforced output-token ceiling are unknown, so omit `maxCostUsd` and
 allocated. There is no API fallback. Missing or unsupported account setup leaves
 an explicit failed analysis state and the original recording intact. Use
 `humanish doctor --study <study>` for setup checks; account allowance and model access
-remain untested until a request. An omitted provider still means OpenAI, including
-hosted studies whose participant uses a local Codex or Claude login. This setting
+remain untested until a request. An omitted provider means this analyst for a Codex
+`local-agent` participant on any target, and OpenAI for every other participant. This setting
 does not enable managed local desktops.
 
 The same configuration works through `humanish run <study>`,
@@ -95,7 +104,7 @@ runner continues after the TUI closes; reopening the TUI or Observer reads the
 existing job and does not start another request. Concurrent or repeated automatic
 invocations cannot silently retry a paid attempt. If a process disappears while
 an attempt is in flight, its state can be unknown rather than falsely complete.
-Use manual `humanish analyze --run <exact-run-id> --max-cost 3` for an intentional
+Use manual `humanish analyze --run <exact-run-id> --max-cost 10` for an intentional
 follow-up after inspecting the existing attempt and its accounting. For the account branch, use `humanish analyze --run <exact-run-id> --provider codex --rerun` without a dollar limit.
 
 Stopping participant execution does not start a fresh automatic analysis. A
@@ -113,8 +122,12 @@ unknown analysis produces exit code 2 without discarding the recording. When the
 run's own result is ok, the first line of the human output reads
 `humanish run <study>: live run finished; the analysis did not complete`. A missing
 `OPENAI_API_KEY` skips default analysis and preserves a successful run exit;
-`automaticAnalysisTrigger: "default"` distinguishes that case in JSON. So does a
-default analysis whose expected cost, plus the margin, is over the default $3 cap:
+`automaticAnalysisTrigger: "default"` distinguishes that case in JSON. The skip names the next
+command: with Codex signed in with a ChatGPT account it is `humanish analyze --run <id>
+--provider codex`, and the message names `review.analysis.provider: codex` as the setting that
+makes that analyst the study's; otherwise it says to set the key and names `humanish analyze
+--run <id> --max-cost 10`. So does a
+default analysis whose expected cost, plus the margin, is over the default $10 cap:
 it is skipped with `AUTOMATIC_ANALYSIS_ADMISSION_REFUSED` and the run exits 0. For
 any analysis refused for its cost, the job records the expected cost, the worst
 case and the cap, and the CLI, `humanish review` and the Observer give them with
@@ -125,6 +138,28 @@ retry automatically. Partial
 findings remain visibly partial; a valid partial result can succeed, while a
 partial result with an analysis error still fails the command. Recorded task
 outcomes and the deterministic review verdict are never rewritten by analysis.
+
+After a live run the human output ends with the analysis line. When the analysis left findings,
+the line gives its state and the top three findings follow, with the `humanish review --run <id>`
+command that prints all of them. Otherwise the line says what happened and a `next:` line gives
+the command that gets findings, when one can. A dry run keeps its one line,
+`analysis: skipped for dry runs`.
+
+`run --json` and `watch --json` carry the same on `automaticAnalysis`: `message`, the sentence the
+human line is built from, and `nextCommand`, the command that gets findings or, when the analysis
+left them, the `review` command (null when no command can). When the analysis left findings the
+JSON also has `findings`:
+
+| Field                | Meaning                                                                                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `analysisId`         | The analysis the findings come from                                                                                                                |
+| `status`             | `complete` or `partial`                                                                                                                            |
+| `count`              | How many findings the analysis made                                                                                                                |
+| `designFindingCount` | How many design findings it made; null for an analysis written before them                                                                         |
+| `top`                | At most five findings, highest priority first: `id`, `title`, `headline`, `impact`, `confidence` and `participants` (the affected participant ids) |
+| `review`             | `humanish review --run <id>`, which prints every finding with its evidence                                                                         |
+| `observer`           | The run's Observer page opened on the findings (`observer/index.html#/report`); null without an Observer                                           |
+| `path`               | analysis.json relative to the project directory                                                                                                    |
 
 `automaticAnalysis.reason` is one of these codes, in `--json` and in the human line
 `analysis: <state> (<reason>)`:

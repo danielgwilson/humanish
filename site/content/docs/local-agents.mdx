@@ -5,12 +5,15 @@ description: Run a synthetic participant through your signed-in Codex or Claude 
 
 You can pay for the participant with a plan you already have. A signed-in Codex or Claude Code CLI on your machine can be the participant's model on a hosted E2B desktop; you still need `E2B_API_KEY` and `@e2b/desktop` from the [install](/docs#install). For an app running on your machine with Codex, a [local browser study](/docs/your-app#study-your-running-local-app) needs neither key; Claude Code cannot drive a local browser study.
 
-On a hosted desktop, automatic findings default to the OpenAI API and require
-`OPENAI_API_KEY`, even with a local-agent participant. Without that key the
-participant can run, but automatic analysis is skipped. To opt out deliberately,
-set `review.analysis: false`. A Codex account analyst can also be
-[selected explicitly](repo:docs/product/automatic-analysis.md);
-changing the participant alone does not change the analyst.
+A Codex participant's run is analyzed by the same Codex account, on a hosted
+desktop as on a local one, so it needs no `OPENAI_API_KEY` for its findings. A
+Claude Code participant's run is analyzed by the OpenAI API and needs
+`OPENAI_API_KEY`; without it the participant can run, automatic analysis is
+skipped, and the run names the next command, `humanish analyze --run <id>
+--provider codex` when Codex is also signed in. Setting
+`review.analysis.provider: codex` makes the
+[Codex account analyst](repo:docs/product/automatic-analysis.md) the study's.
+To opt out deliberately, set `review.analysis: false`.
 
 Replace the `actor` block in your [own-app study](/docs/your-app) with this fragment,
 and delete `caps`. A Codex participant signed in with a ChatGPT account

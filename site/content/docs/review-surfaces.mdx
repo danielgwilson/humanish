@@ -232,12 +232,13 @@ observations and follow their evidence links.
 Supported live studies request analysis by default when the recording finishes;
 `review.analysis: false` in the study turns it off.
 [Automatic analysis](repo:docs/product/automatic-analysis.md)
-has the model, the $3 admission limit and the failure behavior. For an existing
+has the analyst a study gets (the Codex account for a Codex participant, otherwise OpenAI with a
+$10 admission limit) and the failure behavior. For an existing
 recording, inspect the admission estimate, then generate:
 
 ```bash
-npx humanish analyze --run latest --max-cost 3 --dry-run --json
-npx humanish analyze --run latest --max-cost 3 --json
+npx humanish analyze --run latest --max-cost 10 --dry-run --json
+npx humanish analyze --run latest --max-cost 10 --json
 npx humanish observe --run latest
 ```
 

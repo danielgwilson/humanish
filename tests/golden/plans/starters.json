@@ -24,7 +24,7 @@
         "analysis": {
           "config": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
             "question": null
@@ -122,7 +122,7 @@
         "analysis": {
           "config": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
             "question": null
@@ -149,11 +149,6 @@
         "residual": {
           "defaults": {
             "open": true
-          },
-          "review": {
-            "analysis": {
-              "provider": "codex"
-            }
           },
           "execution": {
             "desktop": {
@@ -186,7 +181,7 @@
               "cliVersion": "0.160.0"
             }
           },
-          "trigger": "explicit",
+          "trigger": "default",
           "preferLargerOutput": false
         },
         "requirements": [],
@@ -284,7 +279,7 @@
         "analysis": {
           "config": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
             "question": null
@@ -398,7 +393,7 @@
         "analysis": {
           "config": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
             "question": null
@@ -496,7 +491,7 @@
         "analysis": {
           "config": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
             "question": null
@@ -523,11 +518,6 @@
         "residual": {
           "defaults": {
             "open": true
-          },
-          "review": {
-            "analysis": {
-              "provider": "codex"
-            }
           },
           "execution": {
             "desktop": {
@@ -560,7 +550,7 @@
               "cliVersion": "0.160.0"
             }
           },
-          "trigger": "explicit",
+          "trigger": "default",
           "preferLargerOutput": false
         },
         "requirements": [],
@@ -657,14 +647,25 @@
         "dryRun": true,
         "analysis": {
           "config": {
+            "provider": "codex",
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "question": null,
             "timeoutMs": 600000,
-            "maxOutputTokens": 16384,
-            "question": null
+            "maxCostUsd": null,
+            "maxOutputTokens": null,
+            "identity": {
+              "transport": "codex-app-server",
+              "authentication": "chatgpt-account",
+              "billing": "account-unknown",
+              "requestedModel": "gpt-6-astra",
+              "resolvedModel": "gpt-6-astra",
+              "reasoningEffort": "low",
+              "toolPolicy": "restricted-codex-v1",
+              "cliVersion": "0.160.0"
+            }
           },
           "trigger": "default",
-          "preferLargerOutput": true
+          "preferLargerOutput": false
         },
         "requirements": [],
         "route": "computer-use",
@@ -768,7 +769,7 @@
         "analysis": {
           "config": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
             "question": null
@@ -866,7 +867,7 @@
         "analysis": {
           "config": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
             "question": null
@@ -893,11 +894,6 @@
         "residual": {
           "defaults": {
             "open": true
-          },
-          "review": {
-            "analysis": {
-              "provider": "codex"
-            }
           },
           "execution": {
             "desktop": {
@@ -930,7 +926,7 @@
               "cliVersion": "0.160.0"
             }
           },
-          "trigger": "explicit",
+          "trigger": "default",
           "preferLargerOutput": false
         },
         "requirements": [],
@@ -1028,7 +1024,7 @@
         "analysis": {
           "config": {
             "model": "gpt-6-astra",
-            "maxCostUsd": 3,
+            "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
             "question": null

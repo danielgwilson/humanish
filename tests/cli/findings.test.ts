@@ -194,7 +194,7 @@ describe("a ready analysis", () => {
     expect(view).toMatchObject({
       state: "stale",
       reason: "ANALYSIS_SOURCE_CHANGED",
-      next: "humanish analyze --run synthetic-study --max-cost 3",
+      next: "humanish analyze --run synthetic-study --max-cost 10",
     });
     expect(view.findings).toHaveLength(1);
     expect(formatFindingsSummary(view, "humanish review --run synthetic-study")[0]).toBe(
@@ -326,6 +326,25 @@ describe("headlines and design findings", () => {
   });
 });
 
+describe("a run skipped for a missing OpenAI key", () => {
+  it("names the Codex account analyst for a missing OpenAI key only when Codex is signed in", () => {
+    const missing = none(job("skipped", "AUTOMATIC_ANALYSIS_KEY_MISSING"));
+    const study = { id: "survey", path: "humanish/studies/survey.yaml" };
+    const signedIn = analysisFindings({ ...source(missing), codexSignedIn: true, study });
+    expect(signedIn).toMatchObject({
+      state: "skipped",
+      reason: "AUTOMATIC_ANALYSIS_KEY_MISSING",
+      next: "humanish analyze --run synthetic-study --provider codex",
+    });
+    expect(signedIn.message).toMatch(/review\.analysis\.provider: codex/);
+    expect(signedIn.message).toMatch(/humanish\/studies\/survey\.yaml/);
+    const signedOut = analysisFindings({ ...source(missing), codexSignedIn: false, study });
+    expect(signedOut.next).toBe("humanish analyze --run synthetic-study --max-cost 10");
+    expect(signedOut.message).toMatch(/OPENAI_API_KEY/);
+    expect(signedOut.message).not.toMatch(/codex/i);
+  });
+});
+
 describe("a run without findings", () => {
   const cases: Array<[string, LoadedAnalysis, string | undefined, string, string | null]> = [
     ["a dry run with no live study to name", none(), "dry-run", "dry_run", "humanish study list"],
@@ -341,14 +360,14 @@ describe("a run without findings", () => {
       none(job("skipped", "AUTOMATIC_ANALYSIS_KEY_MISSING")),
       "live",
       "skipped",
-      "humanish analyze --run synthetic-study --max-cost 3",
+      "humanish analyze --run synthetic-study --max-cost 10",
     ],
     [
       "an analysis refused at admission",
       none(job("skipped", "AUTOMATIC_ANALYSIS_ADMISSION_REFUSED")),
       "live",
       "skipped",
-      "humanish analyze --run synthetic-study --max-cost 3 --dry-run",
+      "humanish analyze --run synthetic-study --max-cost 10 --dry-run",
     ],
     [
       "an analysis refused for its cost",
@@ -383,7 +402,7 @@ describe("a run without findings", () => {
       none(),
       "live",
       "none",
-      "humanish analyze --run synthetic-study --max-cost 3",
+      "humanish analyze --run synthetic-study --max-cost 10",
     ],
   ];
 
