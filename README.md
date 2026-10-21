@@ -235,18 +235,19 @@ a separately verified copy while preserving the readable original.
 participant's report, task outcomes, costs, and how to turn a finding into an issue.
 
 For a ranked review of a completed live study, run
-`npx humanish analyze --run latest --max-cost 3 --dry-run --json` to inspect
+`npx humanish analyze --run latest --max-cost 10 --dry-run --json` to inspect
 admission, then remove `--dry-run` to generate findings. This sends selected
 retained evidence to OpenAI and requires `OPENAI_API_KEY`. Findings appear
 beside Participants in Observer, with evidence links and separate participant
 feedback. You can explicitly select a restricted Codex account analyst with
 `npx humanish analyze --run latest --provider codex`; it uses remote inference,
 requires the qualified CLI and account login, and reports dollar cost as unknown.
-The OpenAI API default stays unchanged. See the [analysis contract](docs/contracts/study-analysis.md) for
+A study whose participant is a Codex `local-agent` uses that analyst by default. See the [analysis contract](docs/contracts/study-analysis.md) for
 coverage limits, estimated cost controls, corrections and sharing behavior.
 
-Supported live studies generate findings automatically after participants finish,
-using a separate $3 cap on the expected cost with `gpt-6-astra` and high reasoning.
+Supported live studies generate findings automatically after participants finish.
+A Codex participant's run is analyzed by the same Codex account; every other run uses
+`gpt-6-astra` with high reasoning and a separate $10 cap on the expected cost.
 This is additional to participant execution costs, and is not a hard provider
 billing cap. To disable the extra request:
 

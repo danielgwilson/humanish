@@ -52,17 +52,40 @@ const SENSITIVE_QUESTION = {
   message: "review.analysis.question contains sensitive text and cannot be sent for analysis.",
 } as const;
 
-/** The spend cap on an analysis the study did not declare. */
-export const DEFAULT_ANALYSIS_MAX_COST_USD = 3;
+/** The spend cap on an OpenAI analysis the study did not declare. */
+export const DEFAULT_ANALYSIS_MAX_COST_USD = 10;
 
-/** Called for parsed manifests and direct library configs, before participant execution. */
+/** The study's participant, which picks the analyst when the study declares none. */
+export interface AnalysisParticipant {
+  readonly type?: string;
+  readonly localAgent?: "codex" | "claude";
+}
+
+/**
+ * The analysis a study gets when it declares none. A Codex local-agent participant signs in with a
+ * ChatGPT account and needs no API key, so its run is analyzed by the same account; every other
+ * participant gets the OpenAI analyst under the default cap. A Claude participant stays on OpenAI:
+ * moving it to the Codex account because OPENAI_API_KEY is missing would bill an account the study
+ * never named.
+ */
+function undeclaredAnalysis(participant: AnalysisParticipant | undefined): StudyAnalysis {
+  return participant?.type === "local-agent" && (participant.localAgent ?? "codex") === "codex"
+    ? { provider: "codex" }
+    : { maxCostUsd: DEFAULT_ANALYSIS_MAX_COST_USD };
+}
+
+/**
+ * Called for parsed manifests and direct library configs, before participant execution. An
+ * undefined `raw` is the study's default, chosen by its participant (the study's `actor`).
+ */
 export function resolveAutomaticAnalysis(
   raw: unknown,
+  participant?: AnalysisParticipant,
 ):
   | { ok: true; config: AnalysisConfig | undefined; preferLargerOutput?: boolean }
   | { ok: false; message: string } {
   if (raw === false) return { ok: true, config: undefined };
-  if (raw === undefined) raw = { maxCostUsd: DEFAULT_ANALYSIS_MAX_COST_USD };
+  if (raw === undefined) raw = undeclaredAnalysis(participant);
   if (
     raw === null ||
     typeof raw !== "object" ||
@@ -170,15 +193,17 @@ export interface AutomaticAnalysisBudget {
 }
 
 /** Metadata only: resolving the future live-run budget never reads keys or dispatches. With a
- * participant count it also gives the expected cost range for that many participants. */
+ * participant count it also gives the expected cost range for that many participants, and with the
+ * study's participant it resolves an undeclared analysis the way the run will. */
 export function automaticAnalysisBudget(
   raw: unknown,
   route: StudyRoute,
   participants?: number,
+  participant?: AnalysisParticipant,
 ): AutomaticAnalysisBudget | undefined {
   // The synthetic preview has no participants, so nothing is analyzed after it.
   if (route === "preview") return undefined;
-  const resolved = resolveAutomaticAnalysis(raw);
+  const resolved = resolveAutomaticAnalysis(raw, participant);
   if (!resolved.ok || !resolved.config) return undefined;
   const { config } = resolved;
   const range =
@@ -208,7 +233,7 @@ export function analysisRequestsText(requests: number): string | undefined {
 
 export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): string {
   if (budget.provider === "codex")
-    return `After live runs: Codex account analysis · ${budget.model} · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
+    return `After live runs: ${budget.trigger === "default" ? "default " : ""}Codex account analysis · ${budget.model} · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
   const rule = admissionRule(`$${budget.maxCostUsd}`);
   // The participants, and the requests that analyse them when there is more than one.
   const requests = analysisRequestsText(

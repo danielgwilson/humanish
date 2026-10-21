@@ -408,11 +408,11 @@ Each policy is `false` until the study sets it to an unquoted `true`.
 
 ## Configure analysis in `review`
 
-| Field                                                      | Type               | Default                        | Meaning                                                                                                                                                                                                                                             |
-| ---------------------------------------------------------- | ------------------ | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `review.analysis`                                          | `false` or mapping | on, with OpenAI and a $3 limit | The separate model reading of a finished live run. `false` turns it off. A default analysis is skipped without `OPENAI_API_KEY` or when its expected cost is over the limit. One the study declares fails when its expected cost is over its limit. |
-| `review.scorer`                                            | `{ ref }`          | none                           | A project-relative path to a scorer module (`.mjs`) that exports `score`, `deriveFeedback` or `deriveArtifacts`. It runs as code, so review it as code. `scripted` refuses it.                                                                      |
-| `review.scoring`, `review.milestones`, `review.vocabulary` | string             | none                           | No route reads them, so a study that sets one fails at parse.                                                                                                                                                                                       |
+| Field                                                      | Type               | Default                                                                                        | Meaning                                                                                                                                                                                                                                                                                                |
+| ---------------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `review.analysis`                                          | `false` or mapping | on: the Codex account for a Codex `local-agent` participant, otherwise OpenAI with a $10 limit | The separate model reading of a finished live run. `false` turns it off. A default OpenAI analysis is skipped without `OPENAI_API_KEY` or when its expected cost is over the limit, and the run names the command that runs it. One the study declares fails when its expected cost is over its limit. |
+| `review.scorer`                                            | `{ ref }`          | none                                                                                           | A project-relative path to a scorer module (`.mjs`) that exports `score`, `deriveFeedback` or `deriveArtifacts`. It runs as code, so review it as code. `scripted` refuses it.                                                                                                                         |
+| `review.scoring`, `review.milestones`, `review.vocabulary` | string             | none                                                                                           | No route reads them, so a study that sets one fails at parse.                                                                                                                                                                                                                                          |
 
 `review.analysis` as a mapping takes these keys:
 
@@ -565,7 +565,7 @@ review:
 `surfaces: [desktop, mobile]` adds a mobile surface to the desktop one. Without `mode: live` the study is a dry run: it validates the steps
 and writes a contract bundle without opening a browser. Post-run analysis is separate
 from the steps: when `OPENAI_API_KEY` is set it runs by default, and it is refused when
-its estimate exceeds $3. `analysis: false` turns it off, so the study makes no model
+its estimate exceeds $10. `analysis: false` turns it off, so the study makes no model
 requests.
 
 A live run drives a local Chrome or Chromium against your app, so start the app on

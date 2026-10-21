@@ -150,7 +150,7 @@
     "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING",
     "createdAt": "[ts]",
     "updatedAt": "[ts]",
-    "configDigest": "7b2784060eec8cdd30962537f7e3b3be18be27843350c72b45ef40348da98226",
+    "configDigest": "d4a11fc68c8d476c7187dcaa5fb65626bf3a25502aac154ff545a688e33c282d",
     "promptVersion": "study-evidence-8",
     "sourceRunSha256": null,
     "inputDigest": null,

@@ -313,7 +313,7 @@ export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
   checks.push(...(await participantChecks(config, route, keys, local, args, checkAccount)));
   if (route === "scripted") checks.push(await scriptedBrowserCheck());
   checks.push(...subjectEnvChecks(requiredSubjectEnv(requirements), args));
-  const analysis = automaticAnalysisBudget(config.review?.analysis, route);
+  const analysis = automaticAnalysisBudget(config.review?.analysis, route, undefined, config.actor);
   if (analysis) checks.push(await analysisCheck(analysis, args, checkAccount));
   checks.push(checkScope(analysis));
   const reads =
@@ -548,7 +548,7 @@ async function analysisCheck(
     ...(keyed ? {} : { status: "note" as const }),
     message: keyed
       ? `OPENAI_API_KEY is present for the separate automatic analysis request; model access and quota are not tested. The analysis is refused before it starts if ${admissionRule(`$${analysis.maxCostUsd}`)}; this is not a billing cap. Participant readiness is independent.`
-      : "Will be skipped: OPENAI_API_KEY is missing. The participant may run, but there will be no automatic findings report. Add an OpenAI API key or set review.analysis: false deliberately.",
+      : "Will be skipped: OPENAI_API_KEY is missing. The participant may run, but there will be no automatic findings report. Add an OpenAI API key, or set review.analysis.provider: codex to have a signed-in Codex account analyze the run instead, or set review.analysis: false deliberately.",
   };
 }
 

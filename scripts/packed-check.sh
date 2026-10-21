@@ -2198,20 +2198,21 @@ fi
 # 20bd. `study check` gives the expected analysis cost range for the study's participant count
 # (#1667): try-live, one participant, $0.75 to $3.79 for the default gpt-6-astra analysis, in the
 # text and as analysis.participants and analysis.expectedCostUsd {low, high} in JSON, and says the
-# cap is compared with the expected cost plus a 10% margin. 0.118.0 (#1735) ends the range at
-# $2.83, the largest packet admission admits under the $3 cap, and states the rule as both the
-# worst case and the expected cost plus the margin over the cap. 0.113.0 printed "refused before it
-# starts if its estimate is over $3". On this keyless HOME, `doctor --study` says the analysis will
-# be skipped, so its cap wording is not checked here.
+# cap is compared with the expected cost plus a 10% margin. 0.118.0 (#1735) ended the range at
+# $2.83, the largest packet admission admitted under the old $3 cap; the default cap is now $10,
+# which admits the packet at the evidence limits, so the range ends at $3.79. The rule is stated as
+# both the worst case and the expected cost plus the margin over the cap. 0.113.0 printed "refused
+# before it starts if its estimate is over $3". On this keyless HOME, `doctor --study` says the
+# analysis will be skipped, so its cap wording is not checked here.
 hx study check try-live >"$work/logs/check-range.out" 2>"$work/logs/check-range.err"
 cr_exit=$?
 hx study check try-live --json >"$work/logs/check-range.json" 2>>"$work/logs/check-range.err"
 crj_exit=$?
 cr_view=$(json_field "$work/logs/check-range.json" 'd.analysis && [d.analysis.participants, d.analysis.expectedCostUsd && d.analysis.expectedCostUsd.low.toFixed(2), d.analysis.expectedCostUsd && d.analysis.expectedCostUsd.high.toFixed(2), d.analysis.maxCostUsd].join(" ")')
-if [ "$cr_exit" = 0 ] && [ "$crj_exit" = 0 ] && [ "$cr_view" = "1 0.75 2.83 3" ] &&
-  grep -qF 'expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps' "$work/logs/check-range.out" &&
-  grep -qF 'refused before it starts if both its worst case and its expected cost plus a 10% margin are over $3' "$work/logs/check-range.out"; then
-  record "study check: expected analysis cost range" PASS "1 participant: \$0.75 to \$2.83, cap \$3 on the worst case and expected plus 10%" "#1667, #1735"
+if [ "$cr_exit" = 0 ] && [ "$crj_exit" = 0 ] && [ "$cr_view" = "1 0.75 3.79 10" ] &&
+  grep -qF 'expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps' "$work/logs/check-range.out" &&
+  grep -qF 'refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10' "$work/logs/check-range.out"; then
+  record "study check: expected analysis cost range" PASS "1 participant: \$0.75 to \$3.79, cap \$10 on the worst case and expected plus 10%" "#1667, #1735"
 else
   record "study check: expected analysis cost range" FAIL "exit $cr_exit/$crj_exit '${cr_view}'; see logs/check-range*" "#1667, #1735"
 fi
@@ -2402,9 +2403,9 @@ for downs in 3 0 1 2 4 5; do
 done
 tui_text=$(sed -n '/studies \/ try-live/,$p' "$work/logs/tui-study-$tui_found.txt" 2>/dev/null | tr '\n' ' ' | tr -s ' ')
 tui_runs=$(find "$tui_project/.humanish/runs" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
-if [ "$tui_found" != none ] && grep -qF 'expected $0.75 to $2.83 for 1 participant, depending on how much evidence the run keeps' <<<"$tui_text" &&
-  grep -qF 'margin are over $3; this is not a billing cap.' <<<"$tui_text" && ! grep -qF 'admission estimate limit' <<<"$tui_text" && [ "$tui_runs" = 0 ]; then
-  record "tui: try-live study screen shows the expected analysis cost line" PASS "expected \$0.75 to \$2.83 for 1 participant; no 'admission estimate limit'; no run started" "#1678, #1735"
+if [ "$tui_found" != none ] && grep -qF 'expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps' <<<"$tui_text" &&
+  grep -qF 'margin are over $10; this is not a billing cap.' <<<"$tui_text" && ! grep -qF 'admission estimate limit' <<<"$tui_text" && [ "$tui_runs" = 0 ]; then
+  record "tui: try-live study screen shows the expected analysis cost line" PASS "expected \$0.75 to \$3.79 for 1 participant; no 'admission estimate limit'; no run started" "#1678, #1735"
 else
   record "tui: try-live study screen shows the expected analysis cost line" FAIL "found at $tui_found; text '$(grep -o 'After live runs[^>]*' <<<"$tui_text" | cut -c1-160)'; runs $tui_runs; see logs/tui-study-*" "#1678, #1735"
 fi
@@ -2893,10 +2894,10 @@ else
 fi
 
 # 20bz. How many participants a computer-use study may have (#1739): a dry run of 17 participants
-# finishes, `study check` of the same live study says the default $3 cap refuses the analysis of
-# its 2 cohort requests and one merge request even with no evidence (#1742; 0.118.0 said automatic
-# analysis will not run for more than 16 participants), and 101 participants are refused naming
-# 100. 0.117.0 refuses 17 and 101 at 16 participants.
+# finishes, `study check` of the same live study gives the expected cost of its 2 cohort requests
+# and one merge request under the default $10 cap (#1742; 0.118.0 said automatic analysis will not
+# run for more than 16 participants, and the old $3 default refused it even with no evidence), and
+# 101 participants are refused naming 100. 0.117.0 refuses 17 and 101 at 16 participants.
 crowd_study() { # id, participants, extra execution lines
   cat >"$project/humanish/studies/$1.yaml" <<YAML
 schema: humanish.study.v3
@@ -2929,12 +2930,12 @@ hx run crowd-101 --dry-run --no-open >"$work/logs/crowd-101.out" 2>"$work/logs/c
 c101_run=$?
 c17_sims=$(json_field "$project/.humanish/runs/crowd-17/run.json" 'd.simCount')
 rm -f "$project/humanish/studies/crowd-17.yaml" "$project/humanish/studies/crowd-101.yaml"
-c17_line="After live runs: default analysis · gpt-6-astra · refused before it starts for 17 participants in 2 cohort requests of at most 16 participants and one merge request even with no evidence (expected \$3.15), since both its worst case and its expected cost plus a 10% margin are over \$3; this is not a billing cap. Set review.analysis: false to disable."
+c17_line="After live runs: default analysis · gpt-6-astra · expected \$4.60 to \$9.24 for 17 participants in 2 cohort requests of at most 16 participants and one merge request, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over \$10; this is not a billing cap. Set review.analysis: false to disable."
 if [ "$c17_run" = 0 ] && [ "$c17_sims" = 17 ] && [ "$c17_check" = 0 ] && grep -qxF "$c17_line" "$work/logs/crowd-17-check.out" &&
   [ "$c101_run" = 2 ] && grep -qF "at most 100 participants" "$work/logs/crowd-101.out" "$work/logs/crowd-101.err" && grep -qF "has 101" "$work/logs/crowd-101.out" "$work/logs/crowd-101.err"; then
-  record "run: 17 participants plan, cohort analysis refused at the default cap; 101 refused" PASS "17: dry run exit 0, simCount 17, study check names 2 cohort requests and one merge request refused at \$3; 101: exit 2, at most 100" "#1739, #1742"
+  record "run: 17 participants plan, cohort analysis admitted at the default cap; 101 refused" PASS "17: dry run exit 0, simCount 17, study check names 2 cohort requests and one merge request at \$4.60 to \$9.24 under \$10; 101: exit 2, at most 100" "#1739, #1742"
 else
-  record "run: 17 participants plan, cohort analysis refused at the default cap; 101 refused" FAIL "17 run exit $c17_run simCount '${c17_sims}', check exit $c17_check; 101 exit $c101_run '$(grep -ho 'at most [0-9]* participants[^.]*' "$work/logs/crowd-101.out" "$work/logs/crowd-101.err" | head -n 1)'; see logs/crowd-*" "#1739, #1742"
+  record "run: 17 participants plan, cohort analysis admitted at the default cap; 101 refused" FAIL "17 run exit $c17_run simCount '${c17_sims}', check exit $c17_check; 101 exit $c101_run '$(grep -ho 'at most [0-9]* participants[^.]*' "$work/logs/crowd-101.out" "$work/logs/crowd-101.err" | head -n 1)'; see logs/crowd-*" "#1739, #1742"
 fi
 
 # 20ca. execution.concurrency above the concurrent-sandbox limit (#1739): 24 participants with
@@ -3185,24 +3186,27 @@ else
   record "run: a 3-hour start plans on computer use, refused on a provisioned shared world" FAIL "computer use exit $lc_exit, shared world exit $ls_exit '$(grep -ho 'needs a [0-9]*m deadline\|Unknown study field[^.]*' "$work/logs/late-sw.out" "$work/logs/late-sw.err" | head -n 1)'; see logs/late-*" "#1745"
 fi
 
-# 20ch. The analysis line of 17 participants (#1742): at a $10 cap it gives the range for 2 cohort
-# requests and one merge request; at the default $3 cap (20bz) `study check --json` gives
-# analysis.refusedFromUsd. 0.118.0 says automatic analysis will not run for more than 16.
+# 20ch. The analysis line of 17 participants (#1742): at the default $10 cap (20bz) `study check
+# --json` gives the range for 2 cohort requests and one merge request; at a $3 cap it says
+# admission refuses them even with no evidence and gives analysis.refusedFromUsd. 0.118.0 says
+# automatic analysis will not run for more than 16.
 crowd_study crowd-17-cap 17 "review:
   analysis:
-    maxCostUsd: 10"
+    maxCostUsd: 3"
 crowd_study crowd-17-json 17 ""
 hx study check crowd-17-cap >"$work/logs/crowd-17-cap.out" 2>"$work/logs/crowd-17-cap.err"
 cc17_exit=$?
+hx study check crowd-17-cap --json >"$work/logs/crowd-17-cap.json" 2>>"$work/logs/crowd-17-cap.err"
+ccj17=$(json_field "$work/logs/crowd-17-cap.json" 'd.analysis && [d.analysis.participants, d.analysis.refusedFromUsd, d.analysis.expectedCostUsd === undefined].join(" ")')
 hx study check crowd-17-json --json >"$work/logs/crowd-17-json.json" 2>"$work/logs/crowd-17-json.err"
 cj17_exit=$?
-cj17=$(json_field "$work/logs/crowd-17-json.json" 'd.analysis && [d.analysis.participants, d.analysis.refusedFromUsd, d.analysis.expectedCostUsd === undefined].join(" ")')
+cj17=$(json_field "$work/logs/crowd-17-json.json" 'd.analysis && [d.analysis.participants, d.analysis.expectedCostUsd.low.toFixed(2), d.analysis.expectedCostUsd.high.toFixed(2), d.analysis.refusedFromUsd === undefined].join(" ")')
 rm -f "$project/humanish/studies/crowd-17-cap.yaml" "$project/humanish/studies/crowd-17-json.yaml"
-if [ "$cc17_exit" = 0 ] && grep -qF 'After live runs: explicit analysis · gpt-6-astra · expected $4.60 to $9.24 for 17 participants in 2 cohort requests of at most 16 participants and one merge request, depending on how much evidence the run keeps' "$work/logs/crowd-17-cap.out" &&
-  [ "$cj17_exit" = 0 ] && [ "$cj17" = "17 3.150188 true" ]; then
-  record "study check: 17 participants analysed in 2 cohort requests and a merge request" PASS "cap 10: expected \$4.60 to \$9.24 for 2 cohort requests and one merge request; default cap: refusedFromUsd 3.150188" "#1742"
+if [ "$cc17_exit" = 0 ] && grep -qF 'After live runs: explicit analysis · gpt-6-astra · refused before it starts for 17 participants in 2 cohort requests of at most 16 participants and one merge request even with no evidence (expected $3.15)' "$work/logs/crowd-17-cap.out" &&
+  [ "$ccj17" = "17 3.150188 true" ] && [ "$cj17_exit" = 0 ] && [ "$cj17" = "17 4.60 9.24 true" ]; then
+  record "study check: 17 participants analysed in 2 cohort requests and a merge request" PASS "default cap: expected \$4.60 to \$9.24 for 2 cohort requests and one merge request; cap 3: refusedFromUsd 3.150188" "#1742"
 else
-  record "study check: 17 participants analysed in 2 cohort requests and a merge request" FAIL "cap 10 exit $cc17_exit '$(grep -ho 'After live runs[^·]*·[^·]*·[^·]*' "$work/logs/crowd-17-cap.out" | head -n 1 | cut -c1-160)'; json exit $cj17_exit '${cj17}'; see logs/crowd-17-*" "#1742"
+  record "study check: 17 participants analysed in 2 cohort requests and a merge request" FAIL "cap 3 exit $cc17_exit '$(grep -ho 'After live runs[^·]*·[^·]*·[^·]*' "$work/logs/crowd-17-cap.out" | head -n 1 | cut -c1-160)'; json exit $cj17_exit '${cj17}'; see logs/crowd-17-*" "#1742"
 fi
 
 # 20ci. analyze --dry-run --json reports admission.requests (#1742): 1 on 20t's live scripted run,

@@ -551,7 +551,7 @@ export function planComputerUseStudy(
     },
   });
 
-  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis, config.actor);
   if (!analysis.ok)
     return refuse("before-scope", "HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, true);

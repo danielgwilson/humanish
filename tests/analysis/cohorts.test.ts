@@ -286,8 +286,8 @@ describe("admission for a run with more than 16 participants", () => {
     const line = (participants: number, raw?: unknown) =>
       formatAutomaticAnalysisBudget(automaticAnalysisBudget(raw, "computer-use", participants)!);
     expect(line(16)).not.toMatch(/cohort/);
-    // The default $3 cap refuses even a 24-participant run with no evidence; $20 admits a range.
-    expect(line(24)).toMatch(
+    // A $3 cap refuses even a 24-participant run with no evidence; $20 admits a range.
+    expect(line(24, { maxCostUsd: 3 })).toMatch(
       /refused before it starts for 24 participants in 2 cohort requests of at most 16 participants and one merge request even with no evidence/,
     );
     expect(line(24, { maxCostUsd: 20 })).toMatch(

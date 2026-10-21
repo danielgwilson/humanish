@@ -99,7 +99,7 @@ For example, the 0.114.0 run with a $1.182375 expected cost has a $1.300613 admi
 becomes its cap, and a $1.351575 worst case, which the budget counts. An explicit
 `--analysis-max-usd` keeps the CLI's admission-based output sizing: `analyze` uses a
 32,768-token allowance when the cap admits it, which raises the worst case. At `--max-cost 1.31`
-the same run's worst case is $2.17. Automatic analysis after a user's run uses a $3 limit. Results record the analysis model, prompt version and limits;
+the same run's worst case is $2.17. Automatic analysis after a user's run uses a $10 limit. Results record the analysis model, prompt version and limits;
 each run's manifest records the cap it used.
 
 ## Missions

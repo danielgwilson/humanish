@@ -52,9 +52,6 @@ export function localBrowserDefaults(config: StudyConfig): StudyConfig {
             }),
       },
     },
-    ...(config.review?.analysis === undefined && actor.type === "local-agent"
-      ? { review: { ...config.review, analysis: { provider: "codex" as const } } }
-      : {}),
   };
 }
 

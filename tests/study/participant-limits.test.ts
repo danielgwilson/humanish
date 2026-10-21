@@ -197,7 +197,7 @@ describe("automatic analysis of a study over 16 participants", () => {
     }
   });
 
-  it("says in study check's analysis line that 17 participants take two cohort requests the default cap refuses", async () => {
+  it("says in study check's analysis line that 17 participants take two cohort requests the default cap admits", async () => {
     const cwd = await makeTestTempDir("humanish-participant-limits-");
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     await writeFile(
@@ -205,8 +205,9 @@ describe("automatic analysis of a study over 16 participants", () => {
       stringify(lab("cuAppUrl", { mode: "live", ...participants(17) })),
     );
     const check = await runStudyPreflight({ cwd, study: "crowd", env: {} });
-    // Two cohort requests and a merge request are over the default $3 cap even with no evidence.
-    expect(check.analysis?.refusedFromUsd).toBeGreaterThan(0);
+    // Two cohort requests and a merge request fit the default $10 cap, up to the evidence limits.
+    expect(check.analysis?.refusedFromUsd).toBeUndefined();
+    expect(check.analysis?.expectedCostUsd?.high).toBeLessThanOrEqual(10);
     let stdout = "";
     const program = createProgram({
       writeOut: (text) => {
@@ -218,7 +219,7 @@ describe("automatic analysis of a study over 16 participants", () => {
     await program.parseAsync(["node", "humanish", "study", "check", "crowd", "--cwd", cwd]);
     const line = stdout.split("\n").find((text) => text.startsWith("After live runs:"));
     expect(line).toMatch(
-      /refused before it starts for 17 participants in 2 cohort requests of at most 16 participants and one merge request even with no evidence/,
+      /expected \$[\d.]+ to \$[\d.]+ for 17 participants in 2 cohort requests of at most 16 participants and one merge request, depending on/,
     );
   });
 });

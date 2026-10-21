@@ -36,7 +36,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -165,7 +165,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -270,7 +270,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -382,7 +382,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -498,7 +498,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -648,7 +648,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -780,7 +780,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -1010,7 +1010,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -1050,7 +1050,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -1211,7 +1211,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -1332,7 +1332,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -1491,7 +1491,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -1615,7 +1615,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -1807,7 +1807,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -1996,7 +1996,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -2217,7 +2217,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -2433,7 +2433,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null
@@ -2507,7 +2507,7 @@
       "analysis": {
         "config": {
           "model": "gpt-6-astra",
-          "maxCostUsd": 3,
+          "maxCostUsd": 10,
           "timeoutMs": 600000,
           "maxOutputTokens": 16384,
           "question": null

@@ -108,7 +108,7 @@ export function planSharedWorldStudy(
     desktopMediaValidationReason(config, false) ??
     networkCaptureValidationReason(config, "shared-world");
   if (mediaReason) return refuse(invalid, mediaReason);
-  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis, config.actor);
   if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);

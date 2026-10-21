@@ -92,7 +92,7 @@ export function completeRefusalAnalysis<T extends { cwd: string; runId: string; 
   config: StudyConfig,
   input: AnalysisInput,
 ): Promise<T> {
-  const analysis = resolveAutomaticAnalysis(config.review?.analysis);
+  const analysis = resolveAutomaticAnalysis(config.review?.analysis, config.actor);
   return completeAutomaticAnalysis(
     refused,
     undefined,
