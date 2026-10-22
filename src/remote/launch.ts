@@ -2,7 +2,7 @@
 // participants' provider, follow it from here, and copy the finished run back. This machine only
 // plans, launches and watches, so it may sleep or lose its network while the study goes on.
 import { execFile } from "node:child_process";
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -23,6 +23,8 @@ import { serveObserverProxy, type ObserverProxy } from "./observer-proxy.js";
 import {
   installHumanish,
   listRemoteRun,
+  listSettledEvidence,
+  readRemoteBytes,
   readRemoteFile,
   readRemoteRun,
   RUNNER_OBSERVER_PORT,
@@ -39,6 +41,12 @@ const POLL_MS = 5_000;
 const UNANSWERED_LIMIT = 24;
 /** How long the run has to write its status record after it is started. */
 const START_DEADLINE_MS = 3 * 60_000;
+/** How often the launcher copies the run's settled evidence while it goes on. */
+const SYNC_EVERY_MS = 30_000;
+/** How long a screenshot or recording must be unchanged before it is copied mid-run. */
+const SETTLED_SECONDS = 10;
+/** The largest file read back to compare digests: a recording's own limit, with room. */
+const LARGEST_FILE_BYTES = 256 * 1024 * 1024;
 /** How long a stopped run has to end and write its result. */
 const STOP_DEADLINE_MS = 2 * 60_000;
 
@@ -179,7 +187,14 @@ export async function followRemoteRun(args: {
 }): Promise<RemoteOutcome> {
   const { launch, runner, paths, runId, signals } = args;
   const { say } = launch;
-  const copy = () => copyRunBack(runner, paths, runId);
+  // Evidence already copied while the run went on, by path, with its size then.
+  const copied = new Map<string, number>();
+  const copy = async () => {
+    const { files, alreadyHere } = await copyRunBack(runner, paths, runId);
+    if (alreadyHere > 0) say(`${alreadyHere} of its ${files} files were already here.`);
+    return files;
+  };
+  let syncAt = Date.now() + SYNC_EVERY_MS;
   let state: string | undefined;
   let stopAt: number | undefined;
   let unanswered = 0;
@@ -256,6 +271,11 @@ export async function followRemoteRun(args: {
         ...("files" in copied ? { files: copied.files } : {}),
       });
     }
+    if (state === "running" && Date.now() >= syncAt) {
+      syncAt = Date.now() + SYNC_EVERY_MS;
+      // Best effort: what this misses, the copy at the end takes.
+      await copySettledEvidence(runner, paths, runId, copied).catch(() => undefined);
+    }
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
   }
 }
@@ -269,10 +289,19 @@ async function copyRunBack(
   runner: Runner,
   paths: PreparedRunArtifactPaths,
   runId: string,
-): Promise<number> {
+): Promise<{ files: number; alreadyHere: number }> {
   const files = await listRemoteRun(runner, runId);
+  let alreadyHere = 0;
   for (const file of files) {
     if (file.path === "owner-key") continue;
+    // Already here with the same bytes, copied while the run went on or by an earlier attempt.
+    if (
+      file.path !== SANDBOX_RECEIPTS_ARTIFACT &&
+      (await localDigest(paths, file.path)) === file.sha256
+    ) {
+      alreadyHere += 1;
+      continue;
+    }
     const bytes = await readRemoteFile(runner, runId, file);
     if (file.path === SANDBOX_RECEIPTS_ARTIFACT) {
       const local = await readContainedRegularFile(paths, file.path, 16 * 1024 * 1024);
@@ -288,14 +317,48 @@ async function copyRunBack(
     await writeContainedOutputFile(paths, file.path, bytes);
   }
   await pointLatestRunAt(paths, runId);
-  return files.length;
+  return { files: files.length, alreadyHere };
 }
 
-/** Two sandbox journals as one: every line of each, in order, one per line. */
+/**
+ * Copy the run's screenshots and recordings that have settled and are not here yet, while the run
+ * goes on, so the copy at its end is only what is left.
+ */
+async function copySettledEvidence(
+  runner: Runner,
+  paths: PreparedRunArtifactPaths,
+  runId: string,
+  copied: Map<string, number>,
+): Promise<void> {
+  for (const file of await listSettledEvidence(runner, runId, SETTLED_SECONDS)) {
+    if (copied.get(file.path) === file.size) continue;
+    await writeContainedOutputFile(
+      paths,
+      file.path,
+      await readRemoteBytes(runner, runId, file.path),
+    );
+    copied.set(file.path, file.size);
+  }
+}
+
+async function localDigest(
+  paths: PreparedRunArtifactPaths,
+  file: string,
+): Promise<string | undefined> {
+  const read = await readContainedRegularFile(paths, file, LARGEST_FILE_BYTES);
+  return read.status === "read" ? createHash("sha256").update(read.bytes).digest("hex") : undefined;
+}
+
+/**
+ * Two sandbox journals as one: every line of each, in order, once. A copy that runs again adds
+ * nothing it already added.
+ */
 export function joinJournals(...journals: string[]): string {
-  const lines = journals
-    .flatMap((journal) => journal.split("\n"))
-    .filter((line) => line.trim() !== "");
+  const lines = [
+    ...new Set(
+      journals.flatMap((journal) => journal.split("\n")).filter((line) => line.trim() !== ""),
+    ),
+  ];
   return lines.length === 0 ? "" : `${lines.join("\n")}\n`;
 }
 
