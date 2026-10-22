@@ -129,7 +129,8 @@ function parseGenerateContent(raw: unknown): AnalysisProviderResult {
 }
 
 /**
- * One stateless request: no tools, high thinking, JSON constrained to the schema, the standard
+ * One stateless request: no tools, the analysis's reasoning effort as its thinking level (the
+ * ThinkingLevel enum spells the same names in capitals), JSON constrained to the schema, the standard
  * service tier, and `store: false` so the request stays out of the project's request logs. Each
  * capture goes at MEDIA_RESOLUTION_HIGH, the setting the media-resolution guide recommends for
  * image analysis, after a text part naming its evidence key.
@@ -167,7 +168,7 @@ export const geminiWire: AnalysisWire = {
       generationConfig: {
         candidateCount: 1,
         maxOutputTokens: request.maxOutputTokens,
-        thinkingConfig: { thinkingLevel: "HIGH" },
+        thinkingConfig: { thinkingLevel: request.reasoningEffort.toUpperCase() },
         responseFormat: {
           text: { mimeType: "APPLICATION_JSON", schema },
         },

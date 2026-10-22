@@ -41,7 +41,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_STUDY_ANALYSIS_INVALID",
-      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
+      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs, maxOutputTokens and reasoningEffort."
     }
   },
   "tasks": {
@@ -406,7 +406,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_STUDY_ANALYSIS_INVALID",
-      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs and maxOutputTokens."
+      "message": "review.analysis must be false or a mapping containing only provider, maxCostUsd, model, question, timeoutMs, maxOutputTokens and reasoningEffort."
     }
   },
   "tasks and unregistered actor": {

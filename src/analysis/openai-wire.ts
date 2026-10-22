@@ -81,7 +81,8 @@ export function parseAnalysisResponse(raw: unknown): AnalysisProviderResult {
   }
 }
 
-/** One stateless request: no stored response, no tools, high reasoning effort, strict schema. */
+/** One stateless request: no stored response, no tools, the analysis's reasoning effort, strict
+ * schema. */
 export const openaiWire: AnalysisWire = {
   url: () => OPENAI_RESPONSES_URL,
   headers: (apiKey) => ({ Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }),
@@ -105,7 +106,7 @@ export const openaiWire: AnalysisWire = {
     tool_choice: "none",
     truncation: "disabled",
     service_tier: "default",
-    reasoning: { effort: "high" },
+    reasoning: { effort: request.reasoningEffort },
     max_output_tokens: request.maxOutputTokens,
     text: {
       format: { type: "json_schema", name: "study_analysis", strict: true, schema: request.schema },

@@ -118,6 +118,11 @@ and a missing Gemini key never falls back to OpenAI. On a free-tier key, Google
 may use the content to improve its products; tell the user before a study with
 private evidence runs on one.
 
+`review.analysis.reasoningEffort` (or `analyze --reasoning-effort <level>`)
+sets an OpenAI or Gemini analyst's reasoning effort. It is `high` when unset.
+Each model takes only the levels its provider documents, and `analyze` refuses
+the others before any request with the levels the model takes.
+
 When post-run analysis is refused for its cost, the run output and `humanish
 review` give its expected cost, its worst case and the command that runs it,
 `humanish analyze --run <id> --max-cost <n>`. Show the user those costs and run

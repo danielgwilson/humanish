@@ -13,12 +13,31 @@ it("reads each analysis model as a bare model or provider:model", () => {
   ]);
 });
 
-it.each(["", "gpt-6-astra,,gpt-5.6-luna", "gemini:", ":gpt-6-astra", "gpt-6-astra,gpt-6-astra"])(
-  "refuses the analysis model list %j",
-  (raw) => {
-    expect(() => parseAnalysisSpecs(raw)).toThrow(/--analysis-models/);
-  },
-);
+it("reads an optional @effort suffix and keeps it in the label", () => {
+  expect(parseAnalysisSpecs("gpt-6-luna,gpt-6-luna@medium,gemini:gemini-3.8-flash@low")).toEqual([
+    { label: "gpt-6-luna", provider: null, model: "gpt-6-luna" },
+    { label: "gpt-6-luna@medium", provider: null, model: "gpt-6-luna", reasoningEffort: "medium" },
+    {
+      label: "gemini:gemini-3.8-flash@low",
+      provider: "gemini",
+      model: "gemini-3.8-flash",
+      reasoningEffort: "low",
+    },
+  ]);
+});
+
+it.each([
+  "",
+  "gpt-6-astra,,gpt-5.6-luna",
+  "gemini:",
+  ":gpt-6-astra",
+  "gpt-6-astra,gpt-6-astra",
+  "gpt-6-luna@",
+  "@medium",
+  "gpt-6-luna@Medium",
+])("refuses the analysis model list %j", (raw) => {
+  expect(() => parseAnalysisSpecs(raw)).toThrow(/--analysis-models/);
+});
 
 const budget = {
   maxUsdPerBrain: 2,
@@ -250,6 +269,31 @@ it("names the analysis models the CLI refuses before anything is spent", async (
     },
   ]);
   for (const args of calls) expect(args).toContain("--dry-run");
+});
+
+it("passes a spec's effort to analyze and its admission check as --reasoning-effort", async () => {
+  const calls: string[][] = [];
+  const manifest = manifestOf(["run-a"]);
+  await runAnalysisMatrix(
+    manifest,
+    options("gpt-5.6-luna,gpt-5.6-luna@medium", 1),
+    fakeCli(calls, { "gpt-5.6-luna": 0.01 }),
+  );
+  expect(manifest.analysisMatrix?.map((analysis) => analysis.spec)).toEqual([
+    "gpt-5.6-luna",
+    "gpt-5.6-luna@medium",
+  ]);
+  const efforts = calls.map((args) => [
+    args.includes("--dry-run"),
+    flag(args, "--model"),
+    flag(args, "--reasoning-effort"),
+  ]);
+  expect(efforts).toEqual([
+    [true, "gpt-5.6-luna", undefined],
+    [false, "gpt-5.6-luna", undefined],
+    [true, "gpt-5.6-luna", "medium"],
+    [false, "gpt-5.6-luna", "medium"],
+  ]);
 });
 
 it("runs up to the concurrency at once, never two on one run, and records in plan order", async () => {

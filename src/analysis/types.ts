@@ -5,6 +5,7 @@ import type {
   ParticipantDeclaredOutcome,
 } from "../actors/contract.js";
 import type { CuaEndpointSource } from "../actors/goal-source.js";
+import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import type { AutomaticAnalysisView } from "./job.js";
 import type { RunAnalysisCost } from "../run/run-cost.js";
 
@@ -164,6 +165,9 @@ interface OpenAIAnalysisConfig {
   maxCostUsd: number;
   timeoutMs: number;
   maxOutputTokens: number;
+  /** Present only when the study or command declared it, so an omitted effort keeps the hash of
+   * every configuration before the field. An analysis without it ran at high (models.ts). */
+  reasoningEffort?: ReasoningEffort | undefined;
 }
 /** The Gemini API analyst: the same billed, capped request as OpenAI's, sent to Google. */
 interface GeminiAnalysisConfig extends Omit<OpenAIAnalysisConfig, "provider"> {

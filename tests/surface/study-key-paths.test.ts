@@ -62,6 +62,11 @@ const ALLOWED: readonly { file: string; path: string; reason: string }[] = [
   },
   {
     file: "src/analysis/automatic-config.ts",
+    path: "review.analysis.reasoningEffort",
+    reason: "the key table stops at review.analysis; resolveAutomaticAnalysis checks its keys",
+  },
+  {
+    file: "src/analysis/automatic-config.ts",
     path: "review.analysis.provider",
     reason: "the key table stops at review.analysis; resolveAutomaticAnalysis checks its keys",
   },

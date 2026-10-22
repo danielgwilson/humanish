@@ -46,11 +46,15 @@ export type AnalysisState =
   | "skipped_no_run"
   | "not_run";
 
-/** One analysis model of the matrix: `model`, or `provider:model` passed as `--provider`. */
+/**
+ * One analysis model of the matrix: `model`, or `provider:model` passed as `--provider`, with an
+ * optional `@effort` passed as `--reasoning-effort`.
+ */
 export interface AnalysisSpec {
   label: string;
   provider: string | null;
   model: string;
+  reasoningEffort?: string;
 }
 
 export interface RunRecord {

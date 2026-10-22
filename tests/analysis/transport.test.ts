@@ -19,6 +19,7 @@ const request: AnalysisProviderRequest = {
   images: [],
   schema: {},
   maxOutputTokens: 8192,
+  reasoningEffort: "high",
   timeoutMs: 4000,
 };
 
