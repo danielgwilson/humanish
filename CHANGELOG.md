@@ -22,7 +22,7 @@ The Unreleased section holds the full notes for the next version until it is tag
 - The default OpenAI analyst is `gpt-6.1-sol` at medium reasoning effort, in place of
   `gpt-6-astra` at high, for automatic analysis without `review.analysis.model` and for `humanish
   analyze` without `--model`. On the same recordings it matched `gpt-6-astra` on Taskly recall
-  (28/60 each, 0 invented) and on the CineGuessr findings at about one seventh of the cost ($0.06
+  (28/60 each, 0 invented) and on the movie-game findings at about one seventh of the cost ($0.06
   against $0.41 per Taskly analysis)
   ([analysis models on fixed recordings](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-10-22-analysis-models.md)).
   A study that names a model but no effort runs it at high, so its configuration hash is

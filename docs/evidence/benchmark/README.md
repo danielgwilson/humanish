@@ -277,7 +277,7 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-14 | 0.133.0, src/ as of 7147b595 | `neutral` | `openai-computer-use` | 3            | 9/15          | 8/15            | 0 and 0             | $5.87           | [summary](2026-10-14-0.133.0-neutral-openai-computer-use.md) |
 
 Analysis models on fixed recordings, 2026-10-22: twelve analyst settings on the same 8 Taskly
-recordings, and seven on three CineGuessr runs, in
+recordings, and seven on three movie-game runs, in
 [2026-10-22-analysis-models.md](2026-10-22-analysis-models.md). It is the basis for the
 `gpt-6.1-sol` medium-effort default analyst.
 

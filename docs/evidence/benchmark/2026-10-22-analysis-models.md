@@ -13,7 +13,7 @@ Two sets of recordings:
   committed rubric scored every analysis. The participants' own reports found 10 of the 20 planted
   defects they could have met; an analysis can only report what a participant ran into, so no
   analysis can score above what the recordings hold.
-- **CineGuessr**: 3 runs of one study against cineguessr.com, a public movie-guessing game, each
+- **Movie game**: 3 runs of one study against a public movie-guessing web game the maintainer built, each
   with a phone, a tablet and a desktop participant on E2B desktops (`gpt-5.6-sol`, three fictional
   personas). 8 of 9 participants finished; run 3's desktop participant stopped after 78 s on a
   typing error that ends the participant. Each model analyzed each run twice. No answer key exists for a real app,
@@ -52,7 +52,7 @@ The three false assurances concern D5. `gemini-3.8-flash` wrote that "inline tas
 save worked as expected"; both `gemini-4-argon` lines attribute the claim to the participant
 ("reported that ... the edit and save controls worked well").
 
-## CineGuessr
+## Movie game
 
 | Analyst | Completed | Cost per analysis | Median time |
 | --- | --- | --- | --- |
@@ -81,7 +81,7 @@ score.
 whose citations do not support its claims. Most of their failures are
 `analysis_validation_failed_statement_source_invalid`: an observation labelled as a participant
 statement cites an evidence item that is not a quotable statement. On the three-participant
-CineGuessr runs, they completed 2 of 24 analyses between them. `gpt-6-luna` at high effort also
+movie-game runs, they completed 2 of 24 analyses between them. `gpt-6-luna` at high effort also
 wrote a median 14,822 output tokens at about 29 tokens per second, so 9 of 24 analyses ran out of
 output and 5 of 24 at the larger limit ran past the 600 s timeout.
 
@@ -97,15 +97,15 @@ runs `gpt-6-luna` with low verbosity on both sets of recordings.
 ## What changed
 
 The default analyst is `gpt-6.1-sol` at medium effort. On these recordings it matched
-`gpt-6-astra` at high on Taskly recall (28/60 each) and on the CineGuessr findings, completed
+`gpt-6-astra` at high on Taskly recall (28/60 each) and on the movie-game findings, completed
 every analysis, and cost about one seventh as much per analysis (Taskly $0.06 against $0.41,
-CineGuessr mean $0.17 against $1.28) in less time.
+movie-game mean $0.17 against $1.28) in less time.
 
 ## Not verified
 
 - Studies larger than 3 participants, studies over 16 participants (analysed in cohorts and
   merged), and terminal or shared-world studies.
-- CineGuessr grading is one reviewer's reading of the recordings; it has no answer key.
+- The movie-game grading is one reviewer's reading of the recordings; it has no answer key.
 - Taskly recall for the completed analysts rests on 8 recordings, and its intervals overlap.
 - Whether a repair step could make `gpt-6-luna` or Gemini pass the evidence checks.
 - `gpt-6-luna` and Gemini at efforts and output limits other than those in the tables.
