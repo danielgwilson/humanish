@@ -472,7 +472,9 @@ wording matches the quote, so an analyst's judgment labelled as a statement stil
 cites a quote. Before this revision, any non-quote citation failed the whole analysis; on the
 2026-10-22 benchmark recordings that rule caused nearly all `gpt-6-luna` rejections, and in a
 hand-read sample of 11 offending observations none of the extra citations contradicted the quote
-([gpt-6-luna with low text verbosity](../evidence/benchmark/2026-10-22-luna-verbosity.md)).
+([gpt-6-luna with low text verbosity](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-10-22-luna-verbosity.md)).
+In the rerun under this rule, no analysis labelled the analyst's own judgment as a statement
+([participant statements that cite captures](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-10-22-statement-rule.md)).
 
 ## Durable records
 

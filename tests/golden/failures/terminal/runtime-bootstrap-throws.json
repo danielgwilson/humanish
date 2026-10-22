@@ -151,7 +151,7 @@
     "createdAt": "[ts]",
     "updatedAt": "[ts]",
     "configDigest": "d519f696aa7dc5502a01ca1138bc4657ed75d585661207fa8335cb053e2cc6c9",
-    "promptVersion": "study-evidence-8",
+    "promptVersion": "study-evidence-9",
     "sourceRunSha256": null,
     "inputDigest": null,
     "analysisSha256": null,
