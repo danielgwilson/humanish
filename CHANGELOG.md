@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- Study analysis takes a reasoning effort: `review.analysis.reasoningEffort` or `humanish analyze
+  --reasoning-effort <level>`, sent as OpenAI's `reasoning.effort` or Gemini's thinking level. Each
+  model takes only the levels its provider documents, and others are refused before any request.
+  The default stays `high`, and an analysis that declares none keeps its configuration hash.
+  `pnpm bench --analysis-models` entries take an `@effort` suffix, such as `gpt-6-luna@medium`.
+
 ## 0.142.0: Remote runs, Gemini and GPT-6 analysis models, and a view-only live stream (2026-10-21)
 
 humanish 0.142.0 can run a study remotely: `humanish run <study> --remote` puts the study's own

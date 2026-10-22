@@ -14,11 +14,8 @@ import {
   showAnalysis,
 } from "../../analysis/service.js";
 import { admissionRule } from "../../analysis/admission.js";
-import {
-  GEMINI_ANALYSIS_MODELS,
-  SUPPORTED_ANALYSIS_MODELS,
-  type AnalysisAdmission,
-} from "../../analysis/execute.js";
+import type { AnalysisAdmission } from "../../analysis/execute.js";
+import { GEMINI_ANALYSIS_MODELS, SUPPORTED_ANALYSIS_MODELS } from "../../analysis/models.js";
 import { CODEX_ANALYSIS_MODEL } from "../../analysis/codex-config.js";
 import { listAnalyses } from "../../analysis/store.js";
 import { listAnalysisExecutions } from "../../analysis/store-executions.js";
@@ -80,7 +77,11 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     )
     .option(
       "--model <id>",
-      `OpenAI analysis model, at high effort: ${SUPPORTED_ANALYSIS_MODELS.join(", ")}; ${DEFAULT_ANALYSIS_MODEL} when omitted. Gemini analysis model, at high thinking: ${GEMINI_ANALYSIS_MODELS.join(", ")}; ${DEFAULT_GEMINI_ANALYSIS_MODEL} when omitted. Codex account analysis runs ${CODEX_ANALYSIS_MODEL} at low effort.`,
+      `OpenAI analysis model: ${SUPPORTED_ANALYSIS_MODELS.join(", ")}; ${DEFAULT_ANALYSIS_MODEL} when omitted. Gemini analysis model: ${GEMINI_ANALYSIS_MODELS.join(", ")}; ${DEFAULT_GEMINI_ANALYSIS_MODEL} when omitted. Codex account analysis runs ${CODEX_ANALYSIS_MODEL} at low effort.`,
+    )
+    .option(
+      "--reasoning-effort <level>",
+      "OpenAI reasoning.effort or Gemini thinking level, from none, minimal, low, medium, high, xhigh and max; each model takes only the levels its provider documents for it, and others are refused before any request. High when omitted. Unsupported for Codex.",
     )
     .option(
       "--question <text>",
@@ -153,6 +154,7 @@ async function handleAnalyze(
     question?: string;
     timeoutMs: string;
     maxOutputTokens?: string;
+    reasoningEffort?: string;
     dryRun?: boolean;
     rerun?: boolean;
   },
@@ -169,6 +171,7 @@ async function handleAnalyze(
     ...(options.maxOutputTokens === undefined
       ? {}
       : { maxOutputTokens: Number(options.maxOutputTokens) }),
+    ...(options.reasoningEffort === undefined ? {} : { reasoningEffort: options.reasoningEffort }),
   });
   if (!selected.ok || !selected.config) {
     const refusal = await dryRunBundleRefusal(

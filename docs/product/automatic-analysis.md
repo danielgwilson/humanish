@@ -10,7 +10,8 @@ Every other participant, including a Claude Code `local-agent` participant, gets
 analyst. humanish never moves a study to the other analyst because a key is missing: the account
 that pays for analysis is the one the study names or its participant implies.
 
-The OpenAI default is `gpt-6-astra` with high reasoning effort, a separate $10 cap on its
+The OpenAI default is `gpt-6-astra` with high reasoning effort (`review.analysis.reasoningEffort`
+sets another), a separate $10 cap on its
 expected cost and a 600-second timeout. When no output limit is specified,
 humanish selects 32,768 tokens if the exact input's expected cost still fits that
 cap; otherwise it keeps the established 16,384-token allowance. This preserves
@@ -89,7 +90,8 @@ review:
     maxCostUsd: 2
 ```
 
-Gemini analysis sends the same evidence packet and captures to Google, at high thinking level,
+Gemini analysis sends the same evidence packet and captures to Google, at the high thinking level
+unless the study declares a `reasoningEffort`,
 with each capture at high media resolution. It reads `GEMINI_API_KEY`, which `humanish keys set
 gemini` stores, and `GOOGLE_API_KEY` only when `GEMINI_API_KEY` is unset. Key discovery treats
 the two names as one key: a project's `.humanish/local/provider.env` or the user store never adds

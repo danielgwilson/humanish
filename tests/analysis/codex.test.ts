@@ -584,6 +584,7 @@ describe("explicit Codex account analysis", () => {
         images: [],
         schema: {},
         maxOutputTokens: null,
+        reasoningEffort: "low",
         timeoutMs: 1000,
       });
     };
