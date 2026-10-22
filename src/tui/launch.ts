@@ -155,6 +155,9 @@ export async function launchRun(options: LaunchRunOptions): Promise<LaunchRunRes
     cwd,
     "--json",
     "--no-open",
+    // The TUI follows and stops a run through its local status record, which a remote run does
+    // not have until it is copied back.
+    "--local",
     ...(options.mode === "dry-run" ? ["--dry-run"] : []),
     // `--` ends option parsing, so the handle can only ever be read as the positional argument.
     "--",

@@ -144,6 +144,7 @@ export const ACTOR = {
 
 export const EXECUTION = {
   target: true,
+  remote: true,
   runtime: { version: true } satisfies Keys<Field<Execution, "runtime">>,
   runtimeAuth: true,
   concurrency: true,

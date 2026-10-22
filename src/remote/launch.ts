@@ -108,6 +108,8 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
   try {
     const tarball = await packThisHumanish();
     tarballDir = tarball.dir;
+    if (signals.requested !== undefined)
+      return { runId, exitCode: signals.exitCode, error: "stopped before the runner was created" };
     const where = remote.provider === "modal" ? "a Modal sandbox" : "an E2B sandbox";
     say(`Running this study on ${where} as run ${runId}; creating the runner.`);
     const runner = runnerOf((await acquireRunner(launch, paths)).sandbox);
@@ -126,7 +128,17 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
       await runner.sandbox.portAccess!(RUNNER_OBSERVER_PORT),
       launch.port,
     );
-    const version = await installHumanish(runner, tarball.bytes, [await peerSpec(remote.provider)]);
+    // Installing can take minutes; a signal stops waiting for it, and the reclaim below stops the
+    // runner, and the install with it.
+    const installing = installHumanish(runner, tarball.bytes, [await peerSpec(remote.provider)]);
+    // An install left behind by a signal fails once its runner is gone; that is expected.
+    installing.catch(() => undefined);
+    const version = await Promise.race([installing, signals.received.then(() => "")]);
+    if (signals.requested !== undefined)
+      return await endRun(launch, runId, {
+        exitCode: signals.exitCode,
+        error: "stopped before the run started",
+      });
     say(`Installed humanish ${version} in the runner; uploading the study.`);
     await uploadProject(runner, cwd, remote.uploads, remote.uploadDirectories);
     if (signals.requested !== undefined)
@@ -138,17 +150,19 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
       study: launch.study,
       runId,
       ownerKey,
-      env: Object.fromEntries(
-        remote.envNames.flatMap((name) => {
-          const value = launch.env[name];
-          return value === undefined || value === "" ? [] : [[name, value]];
-        }),
-      ),
+      env: forwardedEnv(remote, launch.env),
     });
     return await followRemoteRun({ launch, runner, paths, runId, signals, proxyUrl: proxy.url });
   } catch (error) {
-    await reclaimRunSandboxes(cwd, runId, { env: launch.env }).catch(() => undefined);
-    throw error;
+    const reclaimed = await reclaimRunSandboxes(cwd, runId, { env: launch.env }).then(
+      (result) => result.ok,
+      () => false,
+    );
+    if (reclaimed) throw error;
+    throw new Error(
+      `${message(error)}; its sandboxes were not confirmed stopped, so run humanish reclaim --run ${runId}`,
+      { cause: error },
+    );
   } finally {
     signals.dispose();
     await proxy?.close();
@@ -217,8 +231,10 @@ export async function followRemoteRun(args: {
         (error: unknown) => ({ error }),
       );
       // The run reclaimed its participants as it ended; only the runner is left, and it holds the
-      // only whole copy of the evidence until a copy succeeds.
-      if ("error" in copied && stopAt === undefined)
+      // only whole copy of the evidence until a copy succeeds. It is kept only then: a run that
+      // refused before its run directory existed has nothing to keep, and its own result says why.
+      // Its result is not reported as the run's own, since the evidence is not here.
+      if ("error" in copied && stopAt === undefined && run.state !== undefined)
         return {
           runId,
           exitCode: 2,
@@ -230,7 +246,9 @@ export async function followRemoteRun(args: {
         result: run.result.result,
         ...("files" in copied
           ? { files: copied.files }
-          : { error: `copying the evidence back failed: ${message(copied.error)}` }),
+          : run.state === undefined
+            ? {}
+            : { error: `copying the evidence back failed: ${message(copied.error)}` }),
       });
     }
     if (signals.requested === "detach") return { runId, exitCode: 0, detached: true };
@@ -411,8 +429,13 @@ async function writeRemoteRecord(
 
 export interface Signals {
   readonly requested: "stop" | "detach" | undefined;
-  /** The exit code a local run gives for the stop signal received: 130 for SIGINT, 143 for SIGTERM. */
+  /**
+   * The exit code for the first signal received: 130 for SIGINT and 143 for SIGTERM, as a local
+   * run gives, and 129 for a closed terminal.
+   */
   readonly exitCode: number;
+  /** Settles when the first signal arrives, so a long step can stop waiting for itself. */
+  readonly received: Promise<void>;
   dispose(): void;
 }
 
@@ -423,16 +446,19 @@ export interface Signals {
 export function watchSignals(): Signals {
   let requested: "stop" | "detach" | undefined;
   let exitCode = 130;
-  const interrupt = () => {
-    requested ??= "stop";
+  let signalled!: () => void;
+  const received = new Promise<void>((resolve) => {
+    signalled = resolve;
+  });
+  const first = (kind: "stop" | "detach", code: number) => {
+    if (requested !== undefined) return;
+    requested = kind;
+    exitCode = code;
+    signalled();
   };
-  const terminate = () => {
-    if (requested === undefined) exitCode = 143;
-    requested ??= "stop";
-  };
-  const detach = () => {
-    requested ??= "detach";
-  };
+  const interrupt = () => first("stop", 130);
+  const terminate = () => first("stop", 143);
+  const detach = () => first("detach", 129);
   process.on("SIGINT", interrupt);
   process.on("SIGTERM", terminate);
   process.on("SIGHUP", detach);
@@ -443,6 +469,7 @@ export function watchSignals(): Signals {
     get exitCode() {
       return exitCode;
     },
+    received,
     dispose() {
       process.off("SIGINT", interrupt);
       process.off("SIGTERM", terminate);
@@ -452,13 +479,35 @@ export function watchSignals(): Signals {
 }
 
 /**
+ * The names and values the runner's run receives: each of the plan's names that is set here, and of
+ * names the run reads only the first of, only the first one set.
+ */
+export function forwardedEnv(
+  remote: Pick<RemotePlan, "envNames" | "alternatives">,
+  env: Readonly<Record<string, string | undefined>>,
+): Record<string, string> {
+  const set = (name: string) => (env[name]?.trim() ?? "") !== "";
+  const unread = new Set(remote.alternatives.flatMap((names) => names.filter(set).slice(1)));
+  return Object.fromEntries(
+    remote.envNames.flatMap((name) => (set(name) && !unread.has(name) ? [[name, env[name]!]] : [])),
+  );
+}
+
+/** Whether this humanish runs from a built package, which a runner can install. */
+export function runsFromPackage(): boolean {
+  const here = fileURLToPath(import.meta.url);
+  const root = path.resolve(path.dirname(here), "..", "..");
+  return path.relative(root, here).split(path.sep)[0] === "dist";
+}
+
+/**
  * This machine's humanish as an npm tarball, so the runner runs exactly the same code. A run from
  * source has no built package to pack.
  */
 async function packThisHumanish(): Promise<{ bytes: Uint8Array; dir: string }> {
   const here = fileURLToPath(import.meta.url);
   const root = path.resolve(path.dirname(here), "..", "..");
-  if (path.relative(root, here).split(path.sep)[0] !== "dist")
+  if (!runsFromPackage())
     throw new Error(
       "A remote run installs this humanish in the runner, and a run from source has no built package. Run `pnpm build`, then `node dist/cli.js`, or use an installed humanish.",
     );

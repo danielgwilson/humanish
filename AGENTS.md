@@ -111,9 +111,11 @@ anyone.
 - `humanish verify` grades a run `share_ready`, `local_only` or `blocked`, and only
   `share_ready` evidence is shared. Feedback drafts do not mutate GitHub by default. Live spend,
   publishing, external mutation and broader credential access each need an explicit choice.
-- Credential placement depends on the route. The computer-use model key stays on the host; the
-  default terminal runtime keeps its key in E2B's egress proxy, and `openai-env` passes it
-  command-scoped.
+- Credential placement depends on the route. The computer-use model key stays on the host for a
+  local run. A remote run, the default for a hosted computer-use study with a public app URL,
+  sends the keys its plan reads to the runner sandbox in the operator's own E2B or Modal account,
+  names them first, and `--local` or `execution.remote: false` keeps them here. The default
+  terminal runtime keeps its key in E2B's egress proxy, and `openai-env` passes it command-scoped.
 - Report a cost estimate, an unknown or a failure as it is, never as zero or success. Run more
   than one participant where a claim depends on replication.
 - Issue readiness grants no authority. Its machine-readiness fields gate automated queue pickup,

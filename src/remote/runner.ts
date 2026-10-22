@@ -14,6 +14,11 @@ import { tailOf } from "../substrates/shell.js";
 const RUNNER_PROJECT = "project";
 /** Where the runner keeps the launcher's own files: the result file and the run's output. */
 const RUNNER_STATE = ".humanish-remote";
+/**
+ * Set in the runner's run, so any humanish there runs locally even when its study could run
+ * remotely: a runner that launched a runner would repeat without end.
+ */
+export const INSIDE_RUNNER_ENV = "HUMANISH_INSIDE_RUNNER";
 /** The port the runner's Observer listens on. */
 export const RUNNER_OBSERVER_PORT = 7000;
 
@@ -159,13 +164,20 @@ export async function startRemoteRun(runner: Runner, start: RemoteRunStart): Pro
     start.runId,
     "--owner-key",
     start.ownerKey,
+    // The runner's run is the remote run: it must not launch a runner of its own.
+    "--local",
   ];
   const line = [
     `cd "$HOME/${RUNNER_PROJECT}"`,
     `export PATH="$HOME/${RUNNER_STATE}/node/bin:$PATH"`,
     `exec ${args.map((arg) => (arg.startsWith("$HOME") ? `"${arg}"` : shellQuote(arg))).join(" ")} > "$HOME/${RUNNER_STATE}/watch.out" 2> "$HOME/${RUNNER_STATE}/watch.err"`,
   ].join("; ");
-  const env = { ...start.env, DO_NOT_TRACK: "1", HUMANISH_TELEMETRY_DISABLED: "1" };
+  const env = {
+    ...start.env,
+    DO_NOT_TRACK: "1",
+    HUMANISH_TELEMETRY_DISABLED: "1",
+    [INSIDE_RUNNER_ENV]: "1",
+  };
   const result = await runner.shell.start(`bash -c ${shellQuote(line)}`, {
     env,
     timeoutMs: 60_000,

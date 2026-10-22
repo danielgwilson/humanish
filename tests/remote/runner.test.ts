@@ -4,8 +4,14 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { joinJournals } from "../../src/remote/launch.js";
-import { parseDigests, parseSizes, uploadProject, type Runner } from "../../src/remote/runner.js";
+import { forwardedEnv, joinJournals, watchSignals } from "../../src/remote/launch.js";
+import {
+  parseDigests,
+  parseSizes,
+  startRemoteRun,
+  uploadProject,
+  type Runner,
+} from "../../src/remote/runner.js";
 
 const HASH = "a".repeat(64);
 
@@ -91,4 +97,69 @@ describe("the runner's settled evidence listing", () => {
       { path: "recordings/p01/desktop.mp4", size: 2097152 },
     ]);
   });
+});
+
+describe("starting the runner's run", () => {
+  it("runs it here, never as another remote run", async () => {
+    const started: { command: string; env?: Readonly<Record<string, string>> }[] = [];
+    const runner = {
+      sandbox: {},
+      shell: {
+        start: async (command: string, options?: { env?: Readonly<Record<string, string>> }) => {
+          started.push({ command, ...(options?.env === undefined ? {} : { env: options.env }) });
+          return { exitCode: 0, stdout: "", stderr: "" };
+        },
+      },
+    } as unknown as Runner;
+    await startRemoteRun(runner, {
+      study: "study.yaml",
+      runId: "cua-remote",
+      ownerKey: "1111222233334444",
+      env: {},
+    });
+    expect(started[0]?.command).toContain("'--local'");
+    expect(started[0]?.env).toMatchObject({ HUMANISH_INSIDE_RUNNER: "1" });
+  });
+});
+
+describe("the keys a runner receives", () => {
+  it("sends each planned name that is set, and of alternatives only the first one set", () => {
+    expect(
+      forwardedEnv(
+        {
+          envNames: ["E2B_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"],
+          alternatives: [["GEMINI_API_KEY", "GOOGLE_API_KEY"]],
+        },
+        {
+          E2B_API_KEY: "synthetic-e2b",
+          GEMINI_API_KEY: "synthetic-gemini",
+          GOOGLE_API_KEY: "synthetic-google",
+          GH_TOKEN: "synthetic-gh",
+          OPENAI_API_KEY: " ",
+        },
+      ),
+    ).toEqual({ E2B_API_KEY: "synthetic-e2b", GEMINI_API_KEY: "synthetic-gemini" });
+  });
+});
+
+describe("signals while a remote run is followed", () => {
+  it.each([
+    ["SIGINT", "stop", 130],
+    ["SIGTERM", "stop", 143],
+    ["SIGHUP", "detach", 129],
+  ] as const)(
+    "%s is a %s with exit %d, and later signals change nothing",
+    async (signal, kind, code) => {
+      const signals = watchSignals();
+      try {
+        process.emit(signal);
+        process.emit(signal === "SIGHUP" ? "SIGINT" : "SIGHUP");
+        await signals.received;
+        expect(signals.requested).toBe(kind);
+        expect(signals.exitCode).toBe(code);
+      } finally {
+        signals.dispose();
+      }
+    },
+  );
 });

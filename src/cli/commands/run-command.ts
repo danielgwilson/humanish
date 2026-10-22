@@ -53,9 +53,15 @@ export function addRunOptions(command: Command): Command {
       "--run-id <id>",
       "Explicit run id for deterministic fixture tests; refused when that run already exists.",
     )
+    .addOption(
+      new Option(
+        "--remote",
+        "Require a remote run: the study's own process runs in a sandbox on its participants' provider, so it keeps going when this machine sleeps. A study that can is run this way by default; this refuses one that cannot, with the reason.",
+      ).conflicts("local"),
+    )
     .option(
-      "--remote",
-      "Run the study's own process in a sandbox on its participants' provider (E2B or Modal), so it keeps going when this machine sleeps. This machine follows it, serves its live Observer and copies the run back. Computer-use studies with hosted desktops and an app-url subject.",
+      "--local",
+      "Run the study on this machine even when it could run remotely. It then stops if this machine sleeps.",
     )
     .addOption(ownerKeyOption())
     .option("--json", JSON_OPTION_DESCRIPTION);

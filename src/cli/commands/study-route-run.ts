@@ -17,7 +17,8 @@ export interface RouteRun {
  * only for a plan that will run: it loads the scorer, or writes its own refusal and returns
  * undefined, so a refused study never imports the scorer's host code. `afterRun` runs once runStudyWith
  * has returned or thrown, before presentation, which may hold its own signal handlers (watch's
- * Observer and tunnel).
+ * Observer and tunnel). `elsewhere`, when given, runs an admitted study somewhere else instead of
+ * here: the route's own checks have refused anything this machine would refuse first.
  */
 export async function runRoute(
   config: StudyConfig,
@@ -25,10 +26,15 @@ export async function runRoute(
   beforeRun: () => Promise<{ scorer?: LoadedAdapterScorer } | undefined> = () =>
     Promise.resolve({}),
   afterRun: () => void = () => undefined,
+  elsewhere?: () => Promise<void>,
 ): Promise<void> {
   let outcome: StudyOutcome;
   try {
     const prepared = await prepareStudy(config, run.options);
+    if (prepared.ok && elsewhere !== undefined) {
+      await elsewhere();
+      return;
+    }
     if (prepared.ok) {
       const ready = await beforeRun();
       if (ready === undefined) return;
