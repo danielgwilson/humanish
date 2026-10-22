@@ -446,7 +446,7 @@ export function checkAnalysisResult(
       )
     )
       errors.add("ANALYSIS_ACTION_SOURCE_INVALID");
-    if (observation.basis === "participant_statement" && refs.some((ref) => !ref?.quoteEligible))
+    if (observation.basis === "participant_statement" && !refs.some((ref) => ref?.quoteEligible))
       errors.add("ANALYSIS_STATEMENT_SOURCE_INVALID");
     return new Set(refs.flatMap((ref) => (ref ? [ref.streamId] : [])));
   };

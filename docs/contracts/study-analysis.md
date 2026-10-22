@@ -461,6 +461,19 @@ that screen is a strong design finding. Validation is unchanged. A design findin
 least one cited capture, so an impression plus the capture of its screen makes a design finding,
 and an impression alone supports only a finding about what the participant said.
 
+## Participant statement citations
+
+An observation with basis `participant_statement` must cite at least one quote-eligible entry
+(`analysis_validation_failed_statement_source_invalid` otherwise). From the `study-evidence-9`
+prompt it may also cite the captures or actions the participant was speaking about, as an
+`action` observation already may cite more than its one required action. The prompt tells the
+analyst to label its own judgment `inference`. Validation does not check that the observation's
+wording matches the quote, so an analyst's judgment labelled as a statement still passes when it
+cites a quote. Before this revision, any non-quote citation failed the whole analysis; on the
+2026-10-22 benchmark recordings that rule caused nearly all `gpt-6-luna` rejections, and in a
+hand-read sample of 11 offending observations none of the extra citations contradicted the quote
+([gpt-6-luna with low text verbosity](../evidence/benchmark/2026-10-22-luna-verbosity.md)).
+
 ## Durable records
 
 The `humanish.observer-data.v3` schema is unchanged by analysis. A companion

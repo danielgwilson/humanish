@@ -190,6 +190,21 @@ describe("study analysis validation", () => {
       errors: [error],
     });
   });
+  it("accepts a participant statement that cites a quote and the capture it speaks about", () => {
+    const result = syntheticResult();
+    result.concernReviews = [
+      {
+        claim: "The participant said the screen confused them.",
+        basis: "participant_statement",
+        evidenceIds: ["e000002", "e000001"],
+        limitation: "One participant.",
+        disposition: "unsupported",
+        findingId: null,
+        reason: "Not established.",
+      },
+    ];
+    expect(checkAnalysisResult(syntheticInput(), result).ok).toBe(true);
+  });
   it("accepts bounded results and exports a strict provider JSON schema", () => {
     const input = syntheticInput();
     expect(validateAnalysisResult(input, syntheticResult(input))).toEqual(syntheticResult(input));
