@@ -61,6 +61,7 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
   --cli <path>             humanish CLI to run (default: this checkout's dist/cli.js)
   --participant-cap <usd>  the study's caps.maxUsd for a priced participant (default 0.6)
   --analysis-max-usd <usd> per-run cap override (default: the admitted cost analyze --dry-run reports)
+  --analysis-max-output-tokens <n> each analysis's output limit, 256 to 32768 (default 16384)
   --no-analysis            skip the analysis step
   --work-dir <dir>         where the throwaway project and bundles go (default: a new temp dir)
   --out <dir>              where the results JSON and summary go (default: the work dir)
@@ -81,6 +82,13 @@ function fail(message: string): never {
   process.exit(2);
 }
 
+function outputTokens(raw: string): number {
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < 256 || value > 32_768)
+    fail(`--analysis-max-output-tokens must be a whole number from 256 to 32768, got ${raw}.`);
+  return value;
+}
+
 function positiveNumber(raw: string, flag: string): number {
   const value = Number(raw);
   if (!Number.isFinite(value) || value <= 0) fail(`${flag} must be a positive number, got ${raw}.`);
@@ -98,6 +106,7 @@ const { values } = parseArgs({
     cli: { type: "string", default: path.join(REPO_ROOT, "dist", "cli.js") },
     "participant-cap": { type: "string", default: "0.6" },
     "analysis-max-usd": { type: "string" },
+    "analysis-max-output-tokens": { type: "string" },
     "no-analysis": { type: "boolean", default: false },
     "work-dir": { type: "string" },
     out: { type: "string" },
@@ -170,6 +179,9 @@ const analysisLimits = {
     ? Math.min(1000, positiveNumber(values["max-usd"], "--max-usd"))
     : positiveNumber(values["analysis-max-usd"], "--analysis-max-usd"),
   analysisAutoCap: values["analysis-max-usd"] === undefined,
+  ...(values["analysis-max-output-tokens"] === undefined
+    ? {}
+    : { analysisMaxOutputTokens: outputTokens(values["analysis-max-output-tokens"]) }),
 };
 
 // The analysis matrix: each recorded run analyzed by every model, `repeats` times.

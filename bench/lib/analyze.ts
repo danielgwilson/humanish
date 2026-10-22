@@ -26,7 +26,9 @@ interface AnalyzeTarget {
 /** The benchmark's `analyze` arguments for one run under the cap `cap`. */
 function analyzeArgs(target: AnalyzeTarget, cap: number): string[] {
   // Keep the benchmark's output allowance stable while its input prompt grows.
-  const outputArgs = target.budget.analysisAutoCap ? ["--max-output-tokens", "16384"] : [];
+  const limit =
+    target.budget.analysisMaxOutputTokens ?? (target.budget.analysisAutoCap ? 16_384 : undefined);
+  const outputArgs = limit === undefined ? [] : ["--max-output-tokens", String(limit)];
   return [
     "analyze", "--run", target.runId, "--cwd", target.projectDir, "--max-cost", String(cap), "--json",
     ...outputArgs, ...analysisSpecArgs(target.spec),

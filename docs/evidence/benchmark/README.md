@@ -33,6 +33,7 @@ cost projection. It needs no keys and spends nothing. The live command writes
 | `--cli <path>`             | `dist/cli.js`         | Another humanish build, such as an installed package's `dist/cli.js`          |
 | `--participant-cap <usd>`  | 0.6                   | The generated study's `caps.maxUsd` for a priced participant                  |
 | `--analysis-max-usd <usd>` | the admitted cost     | Override the automatic per-run cap with a fixed `humanish analyze --max-cost` |
+| `--analysis-max-output-tokens <n>` | 16384 | Each analysis's output limit, 256 to 32768, passed to `humanish analyze --max-output-tokens` |
 | `--no-analysis`            | off                   | Score participant reports only                                                |
 | `--work-dir <dir>`         | a new temp directory  | The project, its `.humanish/runs`, `manifest.json` and `cli.log`              |
 | `--out <dir>`              | the work directory    | Where the results file and summary go                                         |

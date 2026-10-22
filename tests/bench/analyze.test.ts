@@ -126,6 +126,29 @@ it("counts a fixed-cap analysis at its worst case, which the cap does not bound"
   expect(calls.at(-1)).not.toContain("--max-output-tokens");
 });
 
+it.each([
+  [true, ["--max-cost", "1.300613"]],
+  [false, ["--max-cost", "1.31"]],
+])(
+  "passes --analysis-max-output-tokens to the dry run and the analysis (automatic cap %s)",
+  async (analysisAutoCap, cost) => {
+    const budget = {
+      ...options.budget,
+      analysisMaxUsd: analysisAutoCap ? options.budget.analysisMaxUsd : 1.31,
+      analysisAutoCap,
+      analysisMaxOutputTokens: 32_768,
+    };
+    const calls: string[][] = [];
+    await analyzeWithinBudget(
+      { ...options, budget },
+      cli(analysisAutoCap ? autoCap : fixedCap, calls),
+    );
+    for (const args of calls)
+      expect(args).toEqual(expect.arrayContaining(["--max-output-tokens", "32768"]));
+    expect(calls.at(-1)).toEqual(expect.arrayContaining(cost));
+  },
+);
+
 it("records the cap the dry run checked when admission refuses it", async () => {
   const budget = { ...options.budget, analysisMaxUsd: 1.25 };
   const calls: string[][] = [];

@@ -143,6 +143,9 @@ export interface BudgetSettings {
   analysisMaxUsd: number;
   /** Derive each run's cap from admission, within analysisMaxUsd and the remaining budget. */
   analysisAutoCap?: boolean;
+  /** `humanish analyze --max-output-tokens`. Unset keeps 16384 under analysisAutoCap and the CLI's
+   * own default under a fixed cap. */
+  analysisMaxOutputTokens?: number;
   /** Desktop minutes the CLI plans as its worst case for one run (`plan.worstCaseSandboxMinutes`). */
   worstCaseDesktopMinutes: number;
   analysis: boolean;
