@@ -25,7 +25,7 @@ study's input and admission estimate without credentials, a provider request,
 or a new analysis artifact. It prints the expected cost, the worst case and the
 cap; a refused dry run says why, and names the `--max-cost` that admits it.
 
-The default provider is `openai`; its default model is `gpt-6-astra`, with high reasoning effort
+The default provider is `openai`; its default model is `gpt-6.1-sol`, at medium reasoning effort
 ([reasoning effort](#reasoning-effort)). A request sends selected retained text and
 captures to OpenAI, without tools, redirects, provider-side response storage, or
 automatic retries. `--question` adds a reviewer question; it never changes the
@@ -137,15 +137,18 @@ Any other level is refused before a request, with a message naming the levels th
 The Codex account analyst runs at its fixed low effort, and a declared effort with
 `provider: codex` is refused.
 
-An analysis that declares no effort runs at `high` on every model, and its configuration has no
-`reasoningEffort` field, so its configuration hash, and with it reuse of an earlier analysis, is
-what it was before the field existed. A declared effort is stored in the analysis artifact's
+The default analyst, an OpenAI analysis that names no model and declares no effort, is
+`gpt-6.1-sol` at `medium`, and its resolved configuration writes `reasoningEffort: medium`. A study
+or command that names a model but no effort runs that model at `high`; only the default analyst
+runs at medium. That analysis's configuration has no `reasoningEffort` field, so its configuration
+hash, and with it reuse of an earlier analysis, is what it was before the field existed. A declared effort is stored in the analysis artifact's
 `config`, `high` included, and gives the configuration its own hash. An artifact whose config has
 no `reasoningEffort` ran at `high`.
 
 Admission expects the same output at every effort, from analyses billed at `high`. No billed
 analysis at a lower effort calibrates a smaller expectation yet, so a lower effort's expected cost
-is likely over its bill. The worst case spends the whole output allowance at any effort.
+is likely over its bill: on 24 one-participant Taskly analyses on 2026-10-22, `gpt-6.1-sol` at
+medium wrote a mean 3,747 output tokens against the 13,000 admission expects. The worst case spends the whole output allowance at any effort.
 
 ## Gemini API analysis
 

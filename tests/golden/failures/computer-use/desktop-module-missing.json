@@ -127,7 +127,7 @@
     "reason": "AUTOMATIC_ANALYSIS_KEY_MISSING",
     "createdAt": "[ts]",
     "updatedAt": "[ts]",
-    "configDigest": "d4a11fc68c8d476c7187dcaa5fb65626bf3a25502aac154ff545a688e33c282d",
+    "configDigest": "d519f696aa7dc5502a01ca1138bc4657ed75d585661207fa8335cb053e2cc6c9",
     "promptVersion": "study-evidence-8",
     "sourceRunSha256": null,
     "inputDigest": null,

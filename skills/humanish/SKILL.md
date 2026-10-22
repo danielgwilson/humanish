@@ -98,7 +98,8 @@ exact returned path, not a basename that could resolve to another manifest.
 Analysis is separate from the participant. A study that declares no analyst
 gets one from its participant: a Codex `local-agent` participant, local or
 hosted, defaults to a separate Codex account analyst; every other participant,
-Claude Code included, defaults to the OpenAI API with a $10 admission budget.
+Claude Code included, defaults to the OpenAI API (`gpt-6.1-sol` at medium
+reasoning effort) with a $10 admission budget.
 Without `OPENAI_API_KEY` that OpenAI analysis is skipped, and the run output
 names the next command: `analyze --provider codex` when Codex is signed in. To
 select the restricted Codex ChatGPT account analyst on any supported study,
@@ -119,7 +120,8 @@ may use the content to improve its products; tell the user before a study with
 private evidence runs on one.
 
 `review.analysis.reasoningEffort` (or `analyze --reasoning-effort <level>`)
-sets an OpenAI or Gemini analyst's reasoning effort. It is `high` when unset.
+sets an OpenAI or Gemini analyst's reasoning effort. When unset it is `medium`
+for the default analyst, which names no model, and `high` for a named model.
 Each model takes only the levels its provider documents, and `analyze` refuses
 the others before any request with the levels the model takes.
 

@@ -23,11 +23,12 @@
         "dryRun": true,
         "analysis": {
           "config": {
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
-            "question": null
+            "question": null,
+            "reasoningEffort": "medium"
           },
           "trigger": "default",
           "preferLargerOutput": true
@@ -121,11 +122,12 @@
         "dryRun": true,
         "analysis": {
           "config": {
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
-            "question": null
+            "question": null,
+            "reasoningEffort": "medium"
           },
           "trigger": "default",
           "preferLargerOutput": true
@@ -278,11 +280,12 @@
         "dryRun": true,
         "analysis": {
           "config": {
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
-            "question": null
+            "question": null,
+            "reasoningEffort": "medium"
           },
           "trigger": "default",
           "preferLargerOutput": true
@@ -392,11 +395,12 @@
         "dryRun": true,
         "analysis": {
           "config": {
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
-            "question": null
+            "question": null,
+            "reasoningEffort": "medium"
           },
           "trigger": "default",
           "preferLargerOutput": true
@@ -490,11 +494,12 @@
         "dryRun": true,
         "analysis": {
           "config": {
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
-            "question": null
+            "question": null,
+            "reasoningEffort": "medium"
           },
           "trigger": "default",
           "preferLargerOutput": true
@@ -768,11 +773,12 @@
         "dryRun": true,
         "analysis": {
           "config": {
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
-            "question": null
+            "question": null,
+            "reasoningEffort": "medium"
           },
           "trigger": "default",
           "preferLargerOutput": true
@@ -866,11 +872,12 @@
         "dryRun": true,
         "analysis": {
           "config": {
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
-            "question": null
+            "question": null,
+            "reasoningEffort": "medium"
           },
           "trigger": "default",
           "preferLargerOutput": true
@@ -1023,11 +1030,12 @@
         "dryRun": true,
         "analysis": {
           "config": {
-            "model": "gpt-6-astra",
+            "model": "gpt-6.1-sol",
             "maxCostUsd": 10,
             "timeoutMs": 600000,
             "maxOutputTokens": 16384,
-            "question": null
+            "question": null,
+            "reasoningEffort": "medium"
           },
           "trigger": "default",
           "preferLargerOutput": true

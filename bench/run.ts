@@ -8,7 +8,6 @@ import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { parseArgs } from "node:util";
 
-import { DEFAULT_ANALYSIS_MODEL } from "../src/analysis/automatic-config.js";
 import { admissionFor, analyzeWithinBudget } from "./lib/analyze.js";
 import { readJson, readRunBundle, runCosts } from "./lib/bundle.js";
 import {
@@ -18,7 +17,7 @@ import {
   runCli,
   stringField,
 } from "./lib/humanish-cli.js";
-import { parseAnalysisSpecs, refusedSpecs, runAnalysisMatrix } from "./lib/matrix.js";
+import { DEFAULT_ANALYSIS_SPEC, parseAnalysisSpecs, refusedSpecs, runAnalysisMatrix } from "./lib/matrix.js";
 import {
   BRAINS,
   analysisCostFor,
@@ -188,7 +187,7 @@ const analysisLimits = {
 const matrixMode =
   values["analysis-models"] !== undefined || values["analysis-repeats"] !== undefined || values.reanalyze !== undefined;
 if (matrixMode && values["no-analysis"]) fail("--no-analysis turns analysis off; the analysis model flags turn it on. Pass one or the other.");
-let specs: AnalysisSpec[] = [{ label: DEFAULT_ANALYSIS_MODEL, provider: null, model: DEFAULT_ANALYSIS_MODEL }];
+let specs: AnalysisSpec[] = [DEFAULT_ANALYSIS_SPEC];
 if (values["analysis-models"] !== undefined) {
   try {
     specs = parseAnalysisSpecs(values["analysis-models"]);
@@ -421,11 +420,11 @@ if (matrixMode) {
   const planned = runsPerArm * 2 * brains.length * repeats;
   printModelProjections(
     (spec) => {
-      const cost = analysisCostFor(spec.model);
+      const cost = analysisCostFor(spec.model, spec.reasoningEffort);
       return cost === null ? null : Array.from({ length: planned }, () => cost);
     },
     planned,
-    "typical spend",
+    "typical spend, as recorded or scaled from gpt-6-astra at high effort by the model's rates",
     budget.maxUsdPerBrain,
   );
 }

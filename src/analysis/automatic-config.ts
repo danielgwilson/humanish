@@ -15,7 +15,13 @@ import type { AnalysisConfig } from "./types.js";
 
 export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
 const MAX_ANALYSIS_TIMEOUT_MS = 600_000;
-export const DEFAULT_ANALYSIS_MODEL = "gpt-6-astra";
+/** The OpenAI analyst a study or command gets when it names no model. */
+export const DEFAULT_ANALYSIS_MODEL = "gpt-6.1-sol";
+/**
+ * The effort the default OpenAI analyst runs at when no effort is declared. A named model without
+ * an effort runs at high (models.ts), so a study that names its model keeps its configuration hash.
+ */
+export const DEFAULT_ANALYSIS_EFFORT = "medium" satisfies ReasoningEffort;
 /** The model a Gemini analysis uses when the study or command names none: Google's current
  * stable Flash model. */
 export const DEFAULT_GEMINI_ANALYSIS_MODEL = "gemini-3.8-flash";
@@ -187,7 +193,11 @@ export function resolveAutomaticAnalysis(
       message: `review.analysis requires a positive maxCostUsd up to 1000, a supported ${vendor === "gemini" ? "Gemini" : "OpenAI"} analysis model, timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}, maxOutputTokens 256–${MAX_ANALYSIS_OUTPUT_TOKENS}, and an optional question of at most 4000 characters.`,
     };
   }
-  const { reasoningEffort } = value;
+  // Only the default model gets the default effort, written out because an omitted effort is high.
+  const reasoningEffort =
+    value.reasoningEffort === undefined && value.model === undefined && vendor === "openai"
+      ? DEFAULT_ANALYSIS_EFFORT
+      : value.reasoningEffort;
   const efforts = analysisEfforts(model, vendor);
   if (
     reasoningEffort !== undefined &&
@@ -201,8 +211,9 @@ export function resolveAutomaticAnalysis(
   return {
     ok: true,
     config: {
-      // An omitted provider or effort stays omitted, so the configuration keeps the hash it had
-      // before the field existed. An omitted provider is the OpenAI contract.
+      // An omitted provider, or an omitted effort on a named model, stays omitted, so the
+      // configuration keeps the hash it had before the field existed. An omitted provider is the
+      // OpenAI contract.
       ...(value.provider === undefined ? {} : { provider: vendor }),
       model,
       maxCostUsd,

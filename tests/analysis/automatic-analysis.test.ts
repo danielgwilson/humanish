@@ -56,11 +56,12 @@ describe("automatic analysis admission and producer boundary", () => {
 
   it("defaults use a separate ten-dollar admission budget and false opts out", () => {
     expect(config).toEqual({
-      model: "gpt-6-astra",
+      model: "gpt-6.1-sol",
       maxCostUsd: 5,
       question: null,
       timeoutMs: 600000,
       maxOutputTokens: 16384,
+      reasoningEffort: "medium",
     });
     expect(resolveAutomaticAnalysis(undefined)).toEqual({
       ok: true,
@@ -125,7 +126,7 @@ describe("automatic analysis admission and producer boundary", () => {
               maxCostUsd: null,
               trigger: "default",
             }
-          : { model: "gpt-6-astra", maxCostUsd: 10, trigger: "default" },
+          : { model: "gpt-6.1-sol", maxCostUsd: 10, trigger: "default" },
     );
     expect(automaticAnalysisBudget(false, route)).toBeUndefined();
   });
@@ -850,7 +851,7 @@ describe("automatic analysis admission and producer boundary", () => {
         "taken-run",
       ]);
       expect(stderr).toMatch(
-        /default analysis · gpt-6-astra · expected \$\d+\.\d\d to \$\d+\.\d\d for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over \$10; this is not a billing cap/,
+        /default analysis · gpt-6.1-sol · expected \$\d+\.\d\d to \$\d+\.\d\d for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over \$10; this is not a billing cap/,
       );
       expect(stderr).not.toContain("preparing analysis");
       expect(JSON.parse(stdout)).toMatchObject({

@@ -1,6 +1,7 @@
 // What a benchmark invocation will run and what it may spend. Pure functions, so the budget rules
 // are testable without a provider.
 
+import { DEFAULT_ANALYSIS_EFFORT, DEFAULT_ANALYSIS_MODEL } from "../../src/analysis/automatic-config.js";
 import { MODEL_RATES, type ModelRate } from "../../src/run/pricing.js";
 import type { Arm } from "../taskly/answer-key.js";
 
@@ -73,12 +74,21 @@ export interface AnalysisCost {
 }
 
 /**
- * One Taskly analysis by `model`, for the dry-run projection: gpt-6-astra's recorded typical spend
- * and worst case, scaled by what the same tokens cost at the model's rates. Input in the worst
- * case is priced at the highest input rate the model bills, as admission prices it. Null when
- * this checkout has no rate for the model.
+ * Typical Taskly analysis spend recorded for an analyst at an effort other than gpt-6-astra at
+ * high. gpt-6.1-sol at medium: $0.059 mean over 24 analyses in
+ * docs/evidence/benchmark/2026-10-22-analysis-models-effort.json.
  */
-export function analysisCostFor(model: string): AnalysisCost | null {
+const RECORDED_TYPICAL_USD: Readonly<Record<string, number>> = { "gpt-6.1-sol@medium": 0.06 };
+
+/**
+ * One Taskly analysis by `model` at `reasoningEffort`, for the dry-run projection: the recorded
+ * typical spend where there is one, otherwise gpt-6-astra's at high effort scaled by what the same
+ * tokens cost at the model's rates. A lower effort writes fewer output tokens, so the scaled
+ * figure is high for it. The worst case is gpt-6-astra's scaled the same way, with input priced at
+ * the highest input rate the model bills, as admission prices it; effort does not change it. Null
+ * when this checkout has no rate for the model.
+ */
+export function analysisCostFor(model: string, reasoningEffort = "high"): AnalysisCost | null {
   const rate = MODEL_RATES[model];
   const astra = MODEL_RATES["gpt-6-astra"];
   if (rate === undefined || astra === undefined) return null;
@@ -88,10 +98,15 @@ export function analysisCostFor(model: string): AnalysisCost | null {
     TYPICAL_ADMISSION_INPUT_TOKENS * Math.max(r.inputUsdPerToken, r.cacheWriteUsdPerToken ?? 0) +
     BENCH_OUTPUT_ALLOWANCE * r.outputUsdPerToken;
   return {
-    typicalUsd: round((TYPICAL_ANALYSIS_USD * typical(rate)) / typical(astra)),
+    typicalUsd:
+      RECORDED_TYPICAL_USD[`${model}@${reasoningEffort}`] ??
+      round((TYPICAL_ANALYSIS_USD * typical(rate)) / typical(astra)),
     worstCaseUsd: round((TYPICAL_ANALYSIS_WORST_CASE_USD * worst(rate)) / worst(astra)),
   };
 }
+
+/** The analysis a run gets when the benchmark names no analysis model: the CLI's default. */
+const DEFAULT_ANALYSIS_COST = analysisCostFor(DEFAULT_ANALYSIS_MODEL, DEFAULT_ANALYSIS_EFFORT)!;
 
 export interface AnalysisProjection {
   analyses: number;
@@ -199,8 +214,8 @@ export function projectBrain(brain: Brain, runs: number, settings: BudgetSetting
     if (!canStartParticipant(spent, brain, settings)) break;
     spent += typicalParticipant;
     participantsFit++;
-    if (canStartAnalysis(spent, settings, TYPICAL_ANALYSIS_WORST_CASE_USD)) {
-      spent += TYPICAL_ANALYSIS_USD;
+    if (canStartAnalysis(spent, settings, DEFAULT_ANALYSIS_COST.worstCaseUsd)) {
+      spent += DEFAULT_ANALYSIS_COST.typicalUsd;
       analysesFit++;
     }
   }

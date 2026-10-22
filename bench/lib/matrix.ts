@@ -1,6 +1,7 @@
 // The analysis matrix: every recorded run analyzed once per analysis model and repeat, so a model
 // comparison holds the recording fixed and varies only the analyst.
 
+import { DEFAULT_ANALYSIS_EFFORT, DEFAULT_ANALYSIS_MODEL } from "../../src/analysis/automatic-config.js";
 import { analysisSpecArgs, analyzeWithinBudget } from "./analyze.js";
 import { objectField, runCli, stringField } from "./humanish-cli.js";
 import { mapWithConcurrency } from "../../src/run/concurrency.js";
@@ -9,6 +10,17 @@ import type { AnalysisSpec, Manifest, MatrixAnalysis } from "./report.js";
 
 const PROVIDER = /^[a-z][a-z0-9-]*$/;
 const EFFORT = /^[a-z]+$/;
+
+/**
+ * The analyst when `--analysis-models` names none: the one `humanish analyze` runs without --model.
+ * It names its effort, since a named model without one runs at high.
+ */
+export const DEFAULT_ANALYSIS_SPEC: AnalysisSpec = {
+  label: `${DEFAULT_ANALYSIS_MODEL}@${DEFAULT_ANALYSIS_EFFORT}`,
+  provider: null,
+  model: DEFAULT_ANALYSIS_MODEL,
+  reasoningEffort: DEFAULT_ANALYSIS_EFFORT,
+};
 
 /**
  * `--analysis-models`: comma-separated, each `model` or `provider:model`, with an optional
