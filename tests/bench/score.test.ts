@@ -229,18 +229,50 @@ describe("the Taskly scorer on claims the recorded runs never made", () => {
     expect(score.supported.map((match) => match.classId)).toEqual(["B1"]);
   });
 
+  it("reads reassurance and negated truncation as no problem", () => {
+    const score = scoreReport(
+      participant(
+        "The long task wrapped over four lines without being cut off. No issues blocked me, and I encountered no blockers or unclear error output.",
+      ),
+      "clean",
+    );
+    expect(score.unresolved).toEqual([]);
+    expect(score.invented).toEqual([]);
+  });
+
+  it("separates a data-loss reading of D2 from a display reading", () => {
+    const loss = scoreReport(
+      participant(
+        "The long task was cut off. Opening Edit confirmed only the first 30 characters were kept.",
+      ),
+      "planted",
+    );
+    const display = scoreReport(
+      participant("The long task was cut off visually instead of wrapping."),
+      "planted",
+    );
+    expect(loss.d2Mechanism).toBe("data_loss");
+    expect(display.d2Mechanism).toBe("display");
+  });
+});
+
+describe("the Taskly scorer on analysis wordings of D1 and D5", () => {
+  const scored = (title: string, arm: Arm) =>
+    scoreAnalysis(
+      {
+        analysisId: "analysis-synthetic",
+        model: null,
+        promptVersion: null,
+        summaryText: "",
+        findings: [
+          { id: "f1", title, summary: "", impact: "low", confidence: "high", observations: [] },
+        ],
+      },
+      arm,
+      facts(),
+    ).findings[0]!;
+
   it("reads a finding that Save left the row editing as D5, and one about Enter or a reload as another claim", () => {
-    const finding = (title: string) => ({
-      analysisId: "analysis-synthetic",
-      model: null,
-      promptVersion: null,
-      summaryText: "",
-      findings: [
-        { id: "f1", title, summary: "", impact: "low", confidence: "high", observations: [] },
-      ],
-    });
-    const scored = (title: string, arm: Arm) =>
-      scoreAnalysis(finding(title), arm, facts()).findings[0]!;
     // Wordings of D5 from gpt-6-luna, gpt-6.1-sol, gpt-6-astra and Gemini analyses of the
     // 2026-10-21 recordings that the first rubric left unresolved.
     for (const title of [
@@ -293,46 +325,10 @@ describe("the Taskly scorer on claims the recorded runs never made", () => {
       "Completed tasks remained after repeated clearing attempts",
       "Completed tasks remained after bulk-clear attempts",
     ]) {
-      const score = scoreAnalysis(
-        {
-          analysisId: "analysis-synthetic",
-          model: null,
-          promptVersion: null,
-          summaryText: "",
-          findings: [
-            { id: "f1", title, summary: "", impact: "low", confidence: "high", observations: [] },
-          ],
-        },
-        "planted",
-        facts(),
-      );
-      expect(score.findings[0], title).toMatchObject({ verdict: "planted", defects: ["D1"] });
+      expect(scored(title, "planted"), title).toMatchObject({
+        verdict: "planted",
+        defects: ["D1"],
+      });
     }
-  });
-
-  it("reads reassurance and negated truncation as no problem", () => {
-    const score = scoreReport(
-      participant(
-        "The long task wrapped over four lines without being cut off. No issues blocked me, and I encountered no blockers or unclear error output.",
-      ),
-      "clean",
-    );
-    expect(score.unresolved).toEqual([]);
-    expect(score.invented).toEqual([]);
-  });
-
-  it("separates a data-loss reading of D2 from a display reading", () => {
-    const loss = scoreReport(
-      participant(
-        "The long task was cut off. Opening Edit confirmed only the first 30 characters were kept.",
-      ),
-      "planted",
-    );
-    const display = scoreReport(
-      participant("The long task was cut off visually instead of wrapping."),
-      "planted",
-    );
-    expect(loss.d2Mechanism).toBe("data_loss");
-    expect(display.d2Mechanism).toBe("display");
   });
 });
