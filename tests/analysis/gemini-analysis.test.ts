@@ -240,8 +240,12 @@ describe("a study's Gemini analysis setting", () => {
 
   it("leaves an OpenAI configuration and its hash as they were before Gemini", () => {
     // Hashes of these resolved configurations on main before Gemini analysis existed.
-    const omitted = resolveAutomaticAnalysis({ maxCostUsd: 10 });
-    const named = resolveAutomaticAnalysis({ provider: "openai", maxCostUsd: 10 });
+    const omitted = resolveAutomaticAnalysis({ maxCostUsd: 10, model: "gpt-6-astra" });
+    const named = resolveAutomaticAnalysis({
+      provider: "openai",
+      maxCostUsd: 10,
+      model: "gpt-6-astra",
+    });
     expect(omitted.ok && hashAnalysisValue(omitted.config)).toBe(
       "d4a11fc68c8d476c7187dcaa5fb65626bf3a25502aac154ff545a688e33c282d",
     );

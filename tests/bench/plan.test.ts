@@ -108,20 +108,36 @@ describe("the benchmark budget", () => {
     expect(priced - unpriced).toBeCloseTo(0.6);
   });
 
-  it("fits the default plan of three runs per arm with analysis under the default $7 cap", () => {
+  it("fits the default plan of three runs per arm with the default analyst under the default $7 cap", () => {
     const brain = BRAINS["openai-computer-use"];
-    const defaults = budget({ maxUsdPerBrain: 7 });
-    expect(projectBrain(brain, 6, defaults)).toMatchObject({ participantsFit: 6, analysesFit: 6 });
-    const six = projectBrain(brain, 6, budget({ maxUsdPerBrain: 6 }));
-    expect([six.participantsFit, six.analysesFit]).toEqual([6, 5]);
-    // The sixth analysis starts after $5.12 of typical spend and counts its $1.26 worst case.
-    expect(capThatFits(brain, 6, budget({ maxUsdPerBrain: 6 }))).toBe(6.5);
+    expect(projectBrain(brain, 6, budget({ maxUsdPerBrain: 7 }))).toMatchObject({
+      participantsFit: 6,
+      analysesFit: 6,
+      typicalUsd: 1.98,
+    });
+    // Each run is $0.27 of typical participant and desktop spend and a $0.06 analysis. The sixth
+    // run starts after $1.65 only if its $1.044 bound fits, so $2.50 stops at five and $3 fits six.
+    const tight = projectBrain(brain, 6, budget({ maxUsdPerBrain: 2.5 }));
+    expect([tight.participantsFit, tight.analysesFit]).toEqual([5, 5]);
+    expect(capThatFits(brain, 6, budget({ maxUsdPerBrain: 2.5 }))).toBe(3);
   });
 });
 
 describe("the analysis model projection", () => {
   it("prices gpt-6-astra at the recorded typical spend and worst case", () => {
     expect(analysisCostFor("gpt-6-astra")).toEqual({ typicalUsd: 0.7, worstCaseUsd: 1.26 });
+  });
+
+  it("prices the default analyst, gpt-6.1-sol at medium, at its recorded typical spend", () => {
+    // $0.059 mean over 24 Taskly analyses on 2026-10-22. The worst case is gpt-6-astra's scaled
+    // by rate: 35,531 in at $2.50 and 16,384 out at $10 is $0.2526, so $1.26 * 0.2526 / 1.2633.
+    expect(analysisCostFor("gpt-6.1-sol", "medium")).toEqual({
+      typicalUsd: 0.06,
+      worstCaseUsd: 0.252,
+    });
+    // With no recorded spend at high, the typical spend scales from gpt-6-astra at high:
+    // 40,060 in at $2 and 7,613 out at $10 is $0.1563, so $0.70 * 0.1563 / 0.7813.
+    expect(analysisCostFor("gpt-6.1-sol")).toEqual({ typicalUsd: 0.14, worstCaseUsd: 0.252 });
   });
 
   it("prices another model at its own rates on the same token counts", () => {

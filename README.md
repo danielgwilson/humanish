@@ -249,7 +249,7 @@ coverage limits, estimated cost controls, corrections and sharing behavior.
 
 Supported live studies generate findings automatically after participants finish.
 A Codex participant's run is analyzed by the same Codex account; every other run uses
-`gpt-6-astra` with high reasoning and a separate $10 cap on the expected cost.
+`gpt-6.1-sol` at medium reasoning effort and a separate $10 cap on the expected cost.
 This is additional to participant execution costs, and is not a hard provider
 billing cap. To disable the extra request:
 

@@ -1,8 +1,14 @@
 import { setTimeout as sleep } from "node:timers/promises";
 import { expect, it } from "vitest";
 
+import { analysisSpecArgs } from "../../bench/lib/analyze.js";
 import type { runCli } from "../../bench/lib/humanish-cli.js";
-import { parseAnalysisSpecs, refusedSpecs, runAnalysisMatrix } from "../../bench/lib/matrix.js";
+import {
+  DEFAULT_ANALYSIS_SPEC,
+  parseAnalysisSpecs,
+  refusedSpecs,
+  runAnalysisMatrix,
+} from "../../bench/lib/matrix.js";
 import type { Manifest, MatrixAnalysis } from "../../bench/lib/report.js";
 
 it("reads each analysis model as a bare model or provider:model", () => {
@@ -10,6 +16,16 @@ it("reads each analysis model as a bare model or provider:model", () => {
     { label: "gpt-6-astra", provider: null, model: "gpt-6-astra" },
     { label: "gemini:gemini-3.8-flash", provider: "gemini", model: "gemini-3.8-flash" },
     { label: "openai:gpt-5.6-luna", provider: "openai", model: "gpt-5.6-luna" },
+  ]);
+});
+
+it("analyzes with the default analyst `humanish analyze` runs without --model when no model is named", () => {
+  expect(DEFAULT_ANALYSIS_SPEC.label).toBe("gpt-6.1-sol@medium");
+  expect(analysisSpecArgs(DEFAULT_ANALYSIS_SPEC)).toEqual([
+    "--model",
+    "gpt-6.1-sol",
+    "--reasoning-effort",
+    "medium",
   ]);
 });
 

@@ -13,10 +13,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 - Study analysis takes a reasoning effort: `review.analysis.reasoningEffort` or `humanish analyze
   --reasoning-effort <level>`, sent as OpenAI's `reasoning.effort` or Gemini's thinking level. Each
   model takes only the levels its provider documents, and others are refused before any request.
-  The default stays `high`, and an analysis that declares none keeps its configuration hash.
-  `pnpm bench --analysis-models` entries take an `@effort` suffix, such as `gpt-6-luna@medium`.
+  An analysis that names a model and declares no effort runs at `high` and keeps its
+  configuration hash. `pnpm bench --analysis-models` entries take an `@effort` suffix, such as
+  `gpt-6-luna@medium`.
 
 ### Changed
+
+- The default OpenAI analyst is `gpt-6.1-sol` at medium reasoning effort, in place of
+  `gpt-6-astra` at high, for automatic analysis without `review.analysis.model` and for `humanish
+  analyze` without `--model`. On the same recordings it matched `gpt-6-astra` on Taskly recall
+  (28/60 each, 0 invented) and on the movie-game findings at about one seventh of the cost ($0.06
+  against $0.41 per Taskly analysis)
+  ([analysis models on fixed recordings](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-10-22-analysis-models.md)).
+  A study that names a model but no effort runs it at high, so its configuration hash is
+  unchanged. To keep the old analyst, set `review.analysis: {model: gpt-6-astra, maxCostUsd: 10}`.
 
 - `--remote` copies a run's screenshots and recordings back while the run goes on, every 30
   seconds, so the copy when it ends is only what is left; the final copy skips any file already

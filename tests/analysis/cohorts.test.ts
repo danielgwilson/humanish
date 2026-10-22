@@ -287,17 +287,18 @@ describe("admission for a run with more than 16 participants", () => {
       formatAutomaticAnalysisBudget(automaticAnalysisBudget(raw, "computer-use", participants)!);
     expect(line(16)).not.toMatch(/cohort/);
     // A $3 cap refuses even a 24-participant run with no evidence; $20 admits a range.
-    expect(line(24, { maxCostUsd: 3 })).toMatch(
+    expect(line(24, { model: "gpt-6-astra", maxCostUsd: 3 })).toMatch(
       /refused before it starts for 24 participants in 2 cohort requests of at most 16 participants and one merge request even with no evidence/,
     );
-    expect(line(24, { maxCostUsd: 20 })).toMatch(
+    expect(line(24, { model: "gpt-6-astra", maxCostUsd: 20 })).toMatch(
       /to \$[\d.]+ for 24 participants in 2 cohort requests of at most 16 participants and one merge request, depending on/,
     );
   });
 
   it("ends the range for 40 participants at what the cap admits across every request", () => {
     const range = (maxCostUsd: number) =>
-      automaticAnalysisBudget({ maxCostUsd }, "computer-use", 40)!.expectedCostUsd!;
+      automaticAnalysisBudget({ model: "gpt-6-astra", maxCostUsd }, "computer-use", 40)!
+        .expectedCostUsd!;
     // At the evidence limits the three cohort requests and the merge request expect $16.20.
     expect(range(1000).high).toBeGreaterThan(10);
     expect(range(10).low).toBe(range(1000).low);
@@ -308,7 +309,7 @@ describe("admission for a run with more than 16 participants", () => {
   it("gives study check a range for 40 participants that brackets their packets", () => {
     // An undeclared output limit is priced at the larger allowance a $1000 cap admits.
     const range = automaticAnalysisBudget(
-      { maxCostUsd: 1000 },
+      { model: "gpt-6-astra", maxCostUsd: 1000 },
       "computer-use",
       40,
     )?.expectedCostUsd;

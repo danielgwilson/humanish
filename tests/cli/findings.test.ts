@@ -194,7 +194,8 @@ describe("a ready analysis", () => {
     expect(view).toMatchObject({
       state: "stale",
       reason: "ANALYSIS_SOURCE_CHANGED",
-      next: "humanish analyze --run synthetic-study --max-cost 10",
+      // The redo names the analysis's own model, so it runs the same analyst again.
+      next: "humanish analyze --run synthetic-study --model synthetic-reviewer --max-cost 10",
     });
     expect(view.findings).toHaveLength(1);
     expect(formatFindingsSummary(view, "humanish review --run synthetic-study")[0]).toBe(
@@ -342,6 +343,31 @@ describe("a run skipped for a missing OpenAI key", () => {
     expect(signedOut.next).toBe("humanish analyze --run synthetic-study --max-cost 10");
     expect(signedOut.message).toMatch(/OPENAI_API_KEY/);
     expect(signedOut.message).not.toMatch(/codex/i);
+  });
+});
+
+describe("a run skipped for a missing OpenAI key on a named model", () => {
+  it("keeps the study's model in the analyze command, so the rerun is not the default analyst", () => {
+    const missing = none(job("skipped", "AUTOMATIC_ANALYSIS_KEY_MISSING"));
+    const view = analysisFindings({ ...source(missing), analyst: { model: "gpt-6-astra" } });
+    expect(view.next).toBe(
+      "humanish analyze --run synthetic-study --model gpt-6-astra --max-cost 10",
+    );
+  });
+
+  it("names no model for the default analyst and keeps a declared effort for any other", () => {
+    const missing = none(job("skipped", "AUTOMATIC_ANALYSIS_KEY_MISSING"));
+    const next = (analyst: { model: string; reasoningEffort?: string }) =>
+      analysisFindings({ ...source(missing), analyst }).next;
+    expect(next({ model: "gpt-6.1-sol", reasoningEffort: "medium" })).toBe(
+      "humanish analyze --run synthetic-study --max-cost 10",
+    );
+    expect(next({ model: "gpt-6.1-sol" })).toBe(
+      "humanish analyze --run synthetic-study --model gpt-6.1-sol --max-cost 10",
+    );
+    expect(next({ model: "gpt-6-luna", reasoningEffort: "high" })).toBe(
+      "humanish analyze --run synthetic-study --model gpt-6-luna --reasoning-effort high --max-cost 10",
+    );
   });
 });
 

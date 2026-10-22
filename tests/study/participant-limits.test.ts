@@ -193,7 +193,7 @@ describe("automatic analysis of a study over 16 participants", () => {
   it("is planned to run for 17 participants, as for 16", () => {
     for (const count of [16, 17]) {
       const analysis = planned(plan(study("cuAppUrl", participants(count)))).analysis;
-      expect(analysis?.config.model).toBe("gpt-6-astra");
+      expect(analysis?.config.model).toBe("gpt-6.1-sol");
     }
   });
 

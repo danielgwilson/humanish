@@ -10,9 +10,12 @@ Every other participant, including a Claude Code `local-agent` participant, gets
 analyst. humanish never moves a study to the other analyst because a key is missing: the account
 that pays for analysis is the one the study names or its participant implies.
 
-The OpenAI default is `gpt-6-astra` with high reasoning effort (`review.analysis.reasoningEffort`
+The OpenAI default is `gpt-6.1-sol` at medium reasoning effort (`review.analysis.reasoningEffort`
 sets another), a separate $10 cap on its
-expected cost and a 600-second timeout. When no output limit is specified,
+expected cost and a 600-second timeout. A study or command that names a model but no effort runs
+that model at high; only the default analyst, with no model named, runs at medium. On the same
+recordings it matched `gpt-6-astra` at high, the earlier default, at about one seventh of the cost
+([analysis models on fixed recordings](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-10-22-analysis-models.md)). When no output limit is specified,
 humanish selects 32,768 tokens if the exact input's expected cost still fits that
 cap; otherwise it keeps the established 16,384-token allowance. This preserves
 previously admitted studies without increasing their spending limit. To customize it:
@@ -22,7 +25,9 @@ review:
   analysis:
     maxCostUsd: 10
     # Optional overrides. Omit maxOutputTokens for budget-aware selection.
-    model: gpt-6-astra
+    # A named model without reasoningEffort runs at high.
+    model: gpt-6.1-sol
+    reasoningEffort: medium
     timeoutMs: 600000
     # maxOutputTokens: 32768
     # question: Where did participants need to recover?
@@ -42,9 +47,12 @@ the cap admits no analysis at all, it says so instead. A study of more than 16 p
 analysed in cohorts of at most 16, one request each, and one more request merges their reports;
 the range covers every request and the analysis line names them (see
 [runs with more than 16 participants](../contracts/study-analysis.md#runs-with-more-than-16-participants)).
-The default $10 cap admits a single request at the evidence limits ($3.79 expected for one
-participant, $4.54 for 16) and the analysis of 17 to 40 participants from $4.60 to $7.05 with no
-evidence; a run that keeps more evidence can still be refused, and its skip names the
+The default $10 cap admits the default analyst up to the evidence limits: a single request at
+$0.76 expected for one participant and $0.91 for 16, and 17 to 40 participants at $0.92 to $3.24
+from no evidence to the limits. Admission expects 13,000 output tokens for one participant at any
+effort; on 24 Taskly analyses `gpt-6.1-sol` at medium wrote a mean 3,747 and cost a mean $0.06.
+`gpt-6-astra` at high expects $3.79 for one participant at the limits and $4.60 to $7.05 for 17 to
+40 with no evidence, so a run that keeps more evidence can be refused, and its skip names the
 `--max-cost` that admits it. Use `analyze --dry-run --max-cost <usd>` on retained
 evidence to inspect the expected cost, the worst case and the selected token
 allowance before deliberately choosing a larger budget. Explicit

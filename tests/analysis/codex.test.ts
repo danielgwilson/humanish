@@ -95,11 +95,12 @@ describe("explicit Codex account analysis", () => {
     expect(resolveAutomaticAnalysis(undefined)).toEqual({
       ok: true,
       config: {
-        model: "gpt-6-astra",
+        model: "gpt-6.1-sol",
         question: null,
         maxCostUsd: 10,
         timeoutMs: 600000,
         maxOutputTokens: 16384,
+        reasoningEffort: "medium",
       },
       preferLargerOutput: true,
     });

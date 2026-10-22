@@ -80,13 +80,13 @@ describe("the study screen's analysis line", () => {
         candidate.includes("After live runs"),
       );
       const text = normalizeFrame(study).replace(/\s+/g, " ");
-      // One participant, gpt-6-astra at $12.50 per million input tokens (the cache-write rate) and
-      // $50 per million output tokens. With no evidence: 6,208 tokens of instructions and schema
-      // plus 2,048 of framing, and 13,000 expected output tokens, so $0.1032 + $0.65 = $0.7532.
+      // One participant, gpt-6.1-sol at $2.50 per million input tokens (the cache-write rate) and
+      // $10 per million output tokens. With no evidence: 8,344 input tokens of instructions,
+      // schema and framing, and 13,000 expected output tokens, so $0.0209 + $0.13 = $0.1509.
       // The $10 cap admits the packet at the evidence limits with the 32,768-token allowance, so
-      // the range ends at that packet's expected cost, $3.7892.
+      // the range ends at that packet's expected cost: 251,224 input tokens, $0.7581.
       expect(text).toContain(
-        "expected $0.75 to $3.79 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap.",
+        "default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap.",
       );
     } finally {
       surface.unmount();

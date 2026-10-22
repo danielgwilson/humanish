@@ -1,6 +1,7 @@
 import {
   analysisRequestsText,
   resolveAutomaticAnalysis,
+  DEFAULT_ANALYSIS_EFFORT,
   DEFAULT_ANALYSIS_MODEL,
   DEFAULT_ANALYSIS_TIMEOUT_MS,
   DEFAULT_GEMINI_ANALYSIS_MODEL,
@@ -77,11 +78,11 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     )
     .option(
       "--model <id>",
-      `OpenAI analysis model: ${SUPPORTED_ANALYSIS_MODELS.join(", ")}; ${DEFAULT_ANALYSIS_MODEL} when omitted. Gemini analysis model: ${GEMINI_ANALYSIS_MODELS.join(", ")}; ${DEFAULT_GEMINI_ANALYSIS_MODEL} when omitted. Codex account analysis runs ${CODEX_ANALYSIS_MODEL} at low effort.`,
+      `OpenAI analysis model: ${SUPPORTED_ANALYSIS_MODELS.join(", ")}; ${DEFAULT_ANALYSIS_MODEL} at ${DEFAULT_ANALYSIS_EFFORT} effort when omitted. Gemini analysis model: ${GEMINI_ANALYSIS_MODELS.join(", ")}; ${DEFAULT_GEMINI_ANALYSIS_MODEL} when omitted. Codex account analysis runs ${CODEX_ANALYSIS_MODEL} at low effort.`,
     )
     .option(
       "--reasoning-effort <level>",
-      "OpenAI reasoning.effort or Gemini thinking level, from none, minimal, low, medium, high, xhigh and max; each model takes only the levels its provider documents for it, and others are refused before any request. High when omitted. Unsupported for Codex.",
+      `OpenAI reasoning.effort or Gemini thinking level, from none, minimal, low, medium, high, xhigh and max; each model takes only the levels its provider documents for it, and others are refused before any request. When omitted: ${DEFAULT_ANALYSIS_EFFORT} for the default OpenAI analyst, high with --model or --provider gemini. Unsupported for Codex.`,
     )
     .option(
       "--question <text>",

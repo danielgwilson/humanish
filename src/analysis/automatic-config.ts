@@ -5,7 +5,7 @@ import {
   MAX_ANALYSIS_OUTPUT_TOKENS,
   analysisCostRange,
 } from "./execute.js";
-import { analysisEfforts, isSupportedAnalysisModel } from "./models.js";
+import { analysisEffort, analysisEfforts, isSupportedAnalysisModel } from "./models.js";
 import { isReasoningEffort, type ReasoningEffort } from "../actors/reasoning-effort.js";
 import { admissionRule } from "./admission.js";
 import { analysisRequestCount, EVIDENCE_LIMITS } from "./analysis-limits.js";
@@ -15,7 +15,13 @@ import type { AnalysisConfig } from "./types.js";
 
 export const DEFAULT_ANALYSIS_TIMEOUT_MS = 600_000;
 const MAX_ANALYSIS_TIMEOUT_MS = 600_000;
-export const DEFAULT_ANALYSIS_MODEL = "gpt-6-astra";
+/** The OpenAI analyst a study or command gets when it names no model. */
+export const DEFAULT_ANALYSIS_MODEL = "gpt-6.1-sol";
+/**
+ * The effort the default OpenAI analyst runs at when no effort is declared. A named model without
+ * an effort runs at high (models.ts), so a study that names its model keeps its configuration hash.
+ */
+export const DEFAULT_ANALYSIS_EFFORT = "medium" satisfies ReasoningEffort;
 /** The model a Gemini analysis uses when the study or command names none: Google's current
  * stable Flash model. */
 export const DEFAULT_GEMINI_ANALYSIS_MODEL = "gemini-3.8-flash";
@@ -187,7 +193,11 @@ export function resolveAutomaticAnalysis(
       message: `review.analysis requires a positive maxCostUsd up to 1000, a supported ${vendor === "gemini" ? "Gemini" : "OpenAI"} analysis model, timeoutMs 1–${MAX_ANALYSIS_TIMEOUT_MS}, maxOutputTokens 256–${MAX_ANALYSIS_OUTPUT_TOKENS}, and an optional question of at most 4000 characters.`,
     };
   }
-  const { reasoningEffort } = value;
+  // Only the default model gets the default effort, written out because an omitted effort is high.
+  const reasoningEffort =
+    value.reasoningEffort === undefined && value.model === undefined && vendor === "openai"
+      ? DEFAULT_ANALYSIS_EFFORT
+      : value.reasoningEffort;
   const efforts = analysisEfforts(model, vendor);
   if (
     reasoningEffort !== undefined &&
@@ -201,8 +211,9 @@ export function resolveAutomaticAnalysis(
   return {
     ok: true,
     config: {
-      // An omitted provider or effort stays omitted, so the configuration keeps the hash it had
-      // before the field existed. An omitted provider is the OpenAI contract.
+      // An omitted provider, or an omitted effort on a named model, stays omitted, so the
+      // configuration keeps the hash it had before the field existed. An omitted provider is the
+      // OpenAI contract.
       ...(value.provider === undefined ? {} : { provider: vendor }),
       model,
       maxCostUsd,
@@ -219,6 +230,8 @@ export interface AutomaticAnalysisBudget {
   provider?: "openai" | "gemini" | "codex";
   billing?: "api-estimate" | "account-unknown";
   model: string;
+  /** The reasoning effort the analysis runs at. */
+  effort: ReasoningEffort;
   maxCostUsd: number | null;
   trigger: "default" | "explicit";
   /** The participants the expected cost range is for. */
@@ -257,6 +270,7 @@ export function automaticAnalysisBudget(
         ? { provider: "gemini" as const }
         : {}),
     model: config.model,
+    effort: analysisEffort(config),
     maxCostUsd: config.maxCostUsd,
     trigger: raw === undefined ? "default" : "explicit",
     ...(range === undefined || participants === undefined ? {} : { participants, ...range }),
@@ -275,7 +289,7 @@ export function analysisRequestsText(requests: number): string | undefined {
 
 export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): string {
   if (budget.provider === "codex")
-    return `After live runs: ${budget.trigger === "default" ? "default " : ""}Codex account analysis · ${budget.model} · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
+    return `After live runs: ${budget.trigger === "default" ? "default " : ""}Codex account analysis · ${budget.model} at ${budget.effort} effort · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
   const rule = admissionRule(`$${budget.maxCostUsd}`);
   // The participants, and the requests that analyse them when there is more than one.
   const requests = analysisRequestsText(
@@ -295,5 +309,5 @@ export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): 
       : `refused before it starts for ${who} even with no evidence (expected $${budget.refusedFromUsd.toFixed(2)}), since ${rule}`;
   const where =
     budget.provider === "gemini" ? " on Gemini, which sends the evidence to Google" : "";
-  return `After live runs: ${budget.trigger} analysis${where} · ${budget.model}${range} · ${refused}; this is not a billing cap. Set review.analysis: false to disable.`;
+  return `After live runs: ${budget.trigger} analysis${where} · ${budget.model} at ${budget.effort} effort${range} · ${refused}; this is not a billing cap. Set review.analysis: false to disable.`;
 }
