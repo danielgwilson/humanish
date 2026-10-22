@@ -8,35 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Security
+## 0.145.0: A remote runner's keys stay in E2B's proxy (2026-10-22)
 
-- A remote run on E2B no longer puts the OpenAI, Gemini or E2B key in the runner's environment.
-  Each one stays in an E2B header transform on its fixed host (`api.openai.com`,
-  `generativelanguage.googleapis.com`, `api.<E2B_DOMAIN>`), the run gets a placeholder, and Node in
-  the runner trusts E2B's proxy CA through `NODE_EXTRA_CA_CERTS`. The line before the run names
-  the keys E2B's proxy holds apart from those that enter the runner as environment variables.
-  Code in the runner can still read the keys back from E2B's sandbox info endpoint, which returns
-  the transforms as they were set. A Modal runner, which has no header transform, still receives
-  its keys as environment variables.
+humanish 0.145.0 keeps the OpenAI, Gemini and E2B keys out of a remote E2B runner's environment.
+E2B's egress proxy adds each key to the runner's requests on its fixed host, and the runner holds
+placeholders; code in the runner can still read the keys back through the E2B API, and a Modal
+runner still receives them as environment variables. Study analysis with `gpt-6-luna` sends low
+text verbosity, which made it about four times faster on the benchmark recordings, and an
+observation of what a participant said may now also cite the capture they spoke about.
 
-### Changed
-
-- An analysis observation that reports what a participant said may now cite the captures or
-  actions they were speaking about, as long as it cites at least one of their own messages.
-  Before, any such extra citation failed the whole analysis, which caused nearly all
-  `gpt-6-luna` rejections on the benchmark recordings
-  ([participant statements that cite captures](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-10-22-statement-rule.md)).
-  The analysis prompt is unchanged.
-- Study analysis with `gpt-6-luna` sends `text.verbosity: "low"`. On the Taskly benchmark
-  recordings at high effort, its median analysis took 110 s in place of 406 s, 22 of 24 analyses
-  passed the evidence checks in place of 18 of 24, and the cost stayed under $0.01
-  ([gpt-6-luna with low text verbosity](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-10-22-luna-verbosity.md)).
-  At medium effort the median took 80 s in place of 41 s. Other models send the API's default
-  verbosity.
-- The Taskly benchmark rubric is version 2. It reads more wordings of D1 (Clear completed does
-  nothing) and D5 (Save leaves the row in edit mode), so analysis recall on the 2026-10-21
-  recordings rises for every analyst except `gemini-4-argon`, for example `gpt-6.1-sol` at medium effort from 28/60 to
-  36/60. Invented claims are unchanged.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.145.0)
 
 ## 0.144.0: Hosted studies run remotely by default (2026-10-22)
 
