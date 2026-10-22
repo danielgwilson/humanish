@@ -560,7 +560,8 @@ SIGTERM stops the run: humanish marks it interrupted and stops its sandboxes.
   If its terminal closes, the command exits 129 with `HUMANISH_REMOTE_DETACHED` and the run goes
   on; `observe --run <id>` copies it back. `--local` keeps one run on this machine,
   `execution.remote: false` every run of a study. The JSON result's `remote.keys` names the keys
-  the runner received.
+  the run used. On E2B the OpenAI, Gemini and E2B keys stay in E2B's egress proxy and the runner
+  holds placeholders; a Modal runner receives them as environment variables.
 - Start a study that can outlive your shell call in tmux, for example
   `tmux new -d -s study 'npx humanish run <study> --json --no-open > run-result.json 2> run.log'`.
   `--detach` only skips the Observer server at the end; it does not move the run to the background.

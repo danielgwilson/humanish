@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { doctor } from "../../src/cli/doctor.js";
 import { probeKeySources } from "../../src/keys/key-resolution.js";
-import { OPENAI_EGRESS_PLACEHOLDER } from "../../src/routes/terminal/runtime-auth.js";
+import { EGRESS_PLACEHOLDER } from "../../src/substrates/e2b/egress-keys.js";
 
 const noAgents = { which: async () => undefined };
 
@@ -25,7 +25,7 @@ describe("doctor in a terminal study's sandbox", () => {
   const sandboxEnv = (): NodeJS.ProcessEnv => ({
     HUMANISH_STRICT_KEYS: "1",
     PATH: "",
-    CODEX_API_KEY: OPENAI_EGRESS_PLACEHOLDER,
+    CODEX_API_KEY: EGRESS_PLACEHOLDER,
     XDG_CONFIG_HOME: path.join(cwd, "user-config"),
   });
 
@@ -55,6 +55,6 @@ describe("doctor in a terminal study's sandbox", () => {
     });
     expect(overlay?.source).toBe(path.join(".humanish", "local", "provider.env"));
     expect(overlay?.placeholder).toBeUndefined();
-    expect(env.CODEX_API_KEY).toBe(OPENAI_EGRESS_PLACEHOLDER);
+    expect(env.CODEX_API_KEY).toBe(EGRESS_PLACEHOLDER);
   });
 });

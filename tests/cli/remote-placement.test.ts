@@ -2,7 +2,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { placeRun } from "../../src/cli/commands/study-remote.js";
+import { placeRun, runnerKeysLine } from "../../src/cli/commands/study-remote.js";
 import type { StudyCommandOptions } from "../../src/cli/io.js";
 import { parseStudy } from "../../src/study/config.js";
 import type { StudyConfig } from "../../src/study/types.js";
@@ -153,5 +153,25 @@ describe("where a study's run executes", () => {
       packaged: true,
     });
     expect(terminal).toEqual({ kind: "local" });
+  });
+});
+
+describe("the line that names a runner's keys before the run", () => {
+  it("on E2B, names the keys E2B's proxy holds apart from those sent as environment variables", () => {
+    const line = runnerKeysLine("e2b", {
+      held: ["E2B_API_KEY", "OPENAI_API_KEY"],
+      sent: ["HUMANISH_E2B_MAX_SANDBOX_MINUTES"],
+    });
+    expect(line).toMatch(/E2B's egress proxy holds E2B_API_KEY, OPENAI_API_KEY\b/);
+    expect(line).toMatch(/HUMANISH_E2B_MAX_SANDBOX_MINUTES as environment variables/);
+  });
+
+  it("on Modal, says every key enters the runner as an environment variable", () => {
+    const line = runnerKeysLine("modal", {
+      held: [],
+      sent: ["MODAL_TOKEN_ID", "OPENAI_API_KEY"],
+    });
+    expect(line).toMatch(/MODAL_TOKEN_ID, OPENAI_API_KEY as environment variables/);
+    expect(line).not.toMatch(/proxy holds/);
   });
 });

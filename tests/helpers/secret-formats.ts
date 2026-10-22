@@ -2,7 +2,7 @@
 // them. Every value is built when the module loads, so this file holds no literal that the
 // public-surface scan or gitleaks would flag. None of these values is a working credential.
 
-import { OPENAI_EGRESS_PLACEHOLDER } from "../../src/routes/terminal/runtime-auth.js";
+import { EGRESS_PLACEHOLDER } from "../../src/substrates/e2b/egress-keys.js";
 
 function range(from: string, to: string): string {
   const start = from.charCodeAt(0);
@@ -212,7 +212,7 @@ export const ORDINARY_VALUES: readonly SecretFormat[] = [
     name: "URL before an escaped line break and an E2B variable",
     text: JSON.stringify({ output: "HOST=http://192.0.2.1\nE2B_SANDBOX=true\n" }),
   },
-  { name: "egress placeholder", text: `CODEX_API_KEY=${OPENAI_EGRESS_PLACEHOLDER}` },
+  { name: "egress placeholder", text: `CODEX_API_KEY=${EGRESS_PLACEHOLDER}` },
   { name: "loopback app URL", text: "http://127.0.0.1:3000/todos?filter=active&page=2" },
   {
     name: "campaign query",

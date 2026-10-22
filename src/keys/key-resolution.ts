@@ -39,7 +39,7 @@ import { parse as parseToml } from "smol-toml";
 import { loadEnvFile } from "./env-file.js";
 import { cli } from "../cli/invocation.js";
 import { humanishConfigFile } from "../cli/user-config.js";
-import { OPENAI_EGRESS_PLACEHOLDER } from "../routes/terminal/runtime-auth.js";
+import { EGRESS_PLACEHOLDER } from "../substrates/e2b/egress-keys.js";
 
 /** A provider key humanish knows. */
 interface ProviderKey {
@@ -467,8 +467,7 @@ export async function probeKeySources(
   // A terminal study's sandbox sets CODEX_API_KEY to an inert placeholder so Codex starts; the key
   // itself stays in the host-side egress proxy. The placeholder is no key, so it counts as unset and
   // discovery may still find a real one.
-  const placeholder = (name: string): boolean =>
-    args.env[name]?.trim() === OPENAI_EGRESS_PLACEHOLDER;
+  const placeholder = (name: string): boolean => args.env[name]?.trim() === EGRESS_PLACEHOLDER;
   const scratch: NodeJS.ProcessEnv = { ...args.env };
   for (const name of names) if (placeholder(name)) delete scratch[name];
   const fills = await discoverProviderKeys({

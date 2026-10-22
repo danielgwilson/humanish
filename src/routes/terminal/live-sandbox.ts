@@ -33,7 +33,7 @@ import {
 import { shellQuote } from "../../substrates/shell.js";
 import type { buildRuntimeAuth, buildSandboxMetadata } from "./credentials.js";
 import type { createTerminalRecorder } from "./recorder.js";
-import { buildOpenAiEgressNetwork } from "./runtime-auth.js";
+import { holdKeysInEgress } from "../../substrates/e2b/egress-keys.js";
 import {
   TERMINAL_RUNTIME_VERSION_TIMEOUT_MS,
   buildRuntimeExecPrefix,
@@ -138,7 +138,7 @@ export class LiveTerminalSandbox {
         : { allowOut: [...egressAllow], denyOut: ["0.0.0.0/0"] };
     const network =
       runtimeEnv.mode === "openai-egress"
-        ? buildOpenAiEgressNetwork(runtimeEnv.keyValue, routing)
+        ? holdKeysInEgress({ OPENAI_API_KEY: runtimeEnv.keyValue }, { existing: routing }).network
         : routing;
     const options: E2BDesktopCreateOptions = {
       apiKey: e2bApiKey,
