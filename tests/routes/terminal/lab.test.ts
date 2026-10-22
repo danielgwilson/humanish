@@ -22,8 +22,8 @@ import {
 } from "../../../src/substrates/e2b/sdk.js";
 import {
   E2B_SYSTEM_CA_BUNDLE,
-  OPENAI_EGRESS_PLACEHOLDER,
-} from "../../../src/routes/terminal/runtime-auth.js";
+  EGRESS_PLACEHOLDER,
+} from "../../../src/substrates/e2b/egress-keys.js";
 import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { readAutomaticAnalysis, runAutomaticAnalysis } from "../../../src/analysis/automatic.js";
@@ -1794,7 +1794,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       expect(JSON.stringify(creates[0]?.metadata)).not.toContain(FAKE_RUNTIME_KEY);
       const codexRun = runs.find((r) => r.command.includes(" exec "));
       expect(codexRun?.envs).toEqual({
-        CODEX_API_KEY: OPENAI_EGRESS_PLACEHOLDER,
+        CODEX_API_KEY: EGRESS_PLACEHOLDER,
         CODEX_CA_CERTIFICATE: E2B_SYSTEM_CA_BUNDLE,
         HUMANISH_STUDY_PARTICIPANT: "1",
         DO_NOT_TRACK: "1",
@@ -1857,7 +1857,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       { transform: { headers: { Authorization: `Bearer ${FAKE_RUNTIME_KEY}` } } },
     ]);
     expect(runs.find((r) => r.command.includes(" exec "))?.envs?.CODEX_API_KEY).toBe(
-      OPENAI_EGRESS_PLACEHOLDER,
+      EGRESS_PLACEHOLDER,
     );
     expect(JSON.stringify(runs)).not.toContain(FAKE_RUNTIME_KEY);
     const runDir = path.join(cwd, ".humanish", "runs", result.runId);

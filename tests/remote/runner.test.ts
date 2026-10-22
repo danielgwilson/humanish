@@ -4,7 +4,9 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { forwardedEnv, joinJournals, watchSignals } from "../../src/remote/launch.js";
+import type { Sandbox } from "@e2b/desktop";
+
+import { joinJournals, runnerKeys, watchSignals } from "../../src/remote/launch.js";
 import {
   parseDigests,
   parseSizes,
@@ -12,6 +14,12 @@ import {
   uploadProject,
   type Runner,
 } from "../../src/remote/runner.js";
+import { E2B_SYSTEM_CA_BUNDLE, EGRESS_PLACEHOLDER } from "../../src/substrates/e2b/egress-keys.js";
+
+// The runner's network is checked against the installed Desktop SDK's create overload.
+type InstalledSdkNetwork = NonNullable<
+  NonNullable<Parameters<typeof Sandbox.create>[1]>["network"]
+>;
 
 const HASH = "a".repeat(64);
 
@@ -123,22 +131,77 @@ describe("starting the runner's run", () => {
 });
 
 describe("the keys a runner receives", () => {
-  it("sends each planned name that is set, and of alternatives only the first one set", () => {
-    expect(
-      forwardedEnv(
-        {
-          envNames: ["E2B_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENAI_API_KEY"],
-          alternatives: [["GEMINI_API_KEY", "GOOGLE_API_KEY"]],
-        },
-        {
-          E2B_API_KEY: "synthetic-e2b",
-          GEMINI_API_KEY: "synthetic-gemini",
-          GOOGLE_API_KEY: "synthetic-google",
-          GH_TOKEN: "synthetic-gh",
-          OPENAI_API_KEY: " ",
-        },
-      ),
-    ).toEqual({ E2B_API_KEY: "synthetic-e2b", GEMINI_API_KEY: "synthetic-gemini" });
+  const plan = {
+    envNames: [
+      "E2B_API_KEY",
+      "GEMINI_API_KEY",
+      "GOOGLE_API_KEY",
+      "HUMANISH_E2B_MAX_SANDBOX_MINUTES",
+      "OPENAI_API_KEY",
+    ],
+    alternatives: [["GEMINI_API_KEY", "GOOGLE_API_KEY"]],
+  };
+  const env = {
+    E2B_API_KEY: "synthetic-e2b",
+    GEMINI_API_KEY: "synthetic-gemini",
+    GOOGLE_API_KEY: "synthetic-google",
+    GH_TOKEN: "synthetic-gh",
+    HUMANISH_E2B_MAX_SANDBOX_MINUTES: "60",
+    OPENAI_API_KEY: "synthetic-openai",
+  };
+
+  it("on E2B, creates the runner with each key in a header transform and starts its run with placeholders", () => {
+    const keys = runnerKeys({ ...plan, provider: "e2b" }, env);
+    const network: InstalledSdkNetwork = keys.network;
+    expect(network).toEqual({
+      allowPublicTraffic: false,
+      rules: {
+        "api.e2b.app": [{ transform: { headers: { "X-API-Key": "synthetic-e2b" } } }],
+        "api.openai.com": [
+          { transform: { headers: { Authorization: "Bearer synthetic-openai" } } },
+        ],
+        "generativelanguage.googleapis.com": [
+          { transform: { headers: { "x-goog-api-key": "synthetic-gemini" } } },
+        ],
+      },
+    });
+    expect(keys.env).toEqual({
+      E2B_API_KEY: EGRESS_PLACEHOLDER,
+      GEMINI_API_KEY: EGRESS_PLACEHOLDER,
+      HUMANISH_E2B_MAX_SANDBOX_MINUTES: "60",
+      NODE_EXTRA_CA_CERTS: E2B_SYSTEM_CA_BUNDLE,
+      OPENAI_API_KEY: EGRESS_PLACEHOLDER,
+    });
+    expect(JSON.stringify(keys.env)).not.toMatch(/synthetic/);
+    expect(keys.held).toEqual(["E2B_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"]);
+    expect(keys.sent).toEqual(["HUMANISH_E2B_MAX_SANDBOX_MINUTES"]);
+  });
+
+  it("on E2B, holds the E2B key for the API host of the forwarded E2B_DOMAIN", () => {
+    const keys = runnerKeys(
+      { provider: "e2b", envNames: ["E2B_API_KEY", "E2B_DOMAIN"], alternatives: [] },
+      { E2B_API_KEY: "synthetic-e2b", E2B_DOMAIN: "e2b.example.test" },
+    );
+    expect(Object.keys(keys.network.rules ?? {})).toEqual(["api.e2b.example.test"]);
+    expect(keys.env.E2B_DOMAIN).toBe("e2b.example.test");
+  });
+
+  it("on Modal, which has no header transform, sends each planned key that is set as an environment variable", () => {
+    const keys = runnerKeys(
+      {
+        provider: "modal",
+        envNames: ["GEMINI_API_KEY", "GOOGLE_API_KEY", "MODAL_TOKEN_ID", "OPENAI_API_KEY"],
+        alternatives: [["GEMINI_API_KEY", "GOOGLE_API_KEY"]],
+      },
+      { ...env, MODAL_TOKEN_ID: "synthetic-modal", OPENAI_API_KEY: " " },
+    );
+    expect(keys.network).toEqual({ allowPublicTraffic: false });
+    expect(keys.env).toEqual({
+      GEMINI_API_KEY: "synthetic-gemini",
+      MODAL_TOKEN_ID: "synthetic-modal",
+    });
+    expect(keys.held).toEqual([]);
+    expect(keys.sent).toEqual(["GEMINI_API_KEY", "MODAL_TOKEN_ID"]);
   });
 });
 

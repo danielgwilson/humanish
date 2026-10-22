@@ -113,9 +113,12 @@ anyone.
   publishing, external mutation and broader credential access each need an explicit choice.
 - Credential placement depends on the route. The computer-use model key stays on the host for a
   local run. A remote run, the default for a hosted computer-use study with a public app URL,
-  sends the keys its plan reads to the runner sandbox in the operator's own E2B or Modal account,
-  names them first, and `--local` or `execution.remote: false` keeps them here. The default
-  terminal runtime keeps its key in E2B's egress proxy, and `openai-env` passes it command-scoped.
+  runs in a runner sandbox in the operator's own E2B or Modal account and names its keys first.
+  On E2B, the OpenAI, Gemini and E2B keys stay in E2B's egress proxy and the runner holds
+  placeholders. A process in the runner can still read them back through the E2B API. A Modal
+  runner receives its keys as environment variables. `--local` or `execution.remote: false` keeps
+  them here. The default terminal runtime keeps its key in E2B's egress proxy, and `openai-env`
+  passes it command-scoped.
 - Report a cost estimate, an unknown or a failure as it is, never as zero or success. Run more
   than one participant where a claim depends on replication.
 - Issue readiness grants no authority. Its machine-readiness fields gate automated queue pickup,

@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Security
+
+- A remote run on E2B no longer puts the OpenAI, Gemini or E2B key in the runner's environment.
+  Each one stays in an E2B header transform on its fixed host (`api.openai.com`,
+  `generativelanguage.googleapis.com`, `api.<E2B_DOMAIN>`), the run gets a placeholder, and Node in
+  the runner trusts E2B's proxy CA through `NODE_EXTRA_CA_CERTS`. The line before the run names
+  the keys E2B's proxy holds apart from those that enter the runner as environment variables.
+  Code in the runner can still read the keys back from E2B's sandbox info endpoint, which returns
+  the transforms as they were set. A Modal runner, which has no header transform, still receives
+  its keys as environment variables.
+
 ## 0.144.0: Hosted studies run remotely by default (2026-10-22)
 
 humanish 0.144.0 runs a hosted computer-use study remotely by default. A study on

@@ -16,7 +16,9 @@ import { pointLatestRunAt } from "../run/run.js";
 import { appendSandboxOwner, SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import { loadE2BBaseModule } from "../substrates/e2b/base-module.js";
 import { e2bConnection } from "../substrates/e2b/connection.js";
+import { E2B_SYSTEM_CA_BUNDLE, holdKeysInEgress } from "../substrates/e2b/egress-keys.js";
 import { acquireE2BShellSandbox } from "../substrates/e2b/sandbox.js";
+import type { E2BNetworkOptions } from "../substrates/e2b/sdk.js";
 import { loadModalShellModule } from "../substrates/modal/sandbox.js";
 import type { RemotePlan } from "./plan.js";
 import { serveObserverProxy, type ObserverProxy } from "./observer-proxy.js";
@@ -112,7 +114,8 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
       return { runId, exitCode: signals.exitCode, error: "stopped before the runner was created" };
     const where = remote.provider === "modal" ? "a Modal sandbox" : "an E2B sandbox";
     say(`Running this study on ${where} as run ${runId}; creating the runner.`);
-    const runner = runnerOf((await acquireRunner(launch, paths)).sandbox);
+    const keys = runnerKeys(remote, launch.env);
+    const runner = runnerOf((await acquireRunner(launch, paths, keys.network)).sandbox);
     if (signals.requested !== undefined)
       return await endRun(launch, runId, {
         exitCode: signals.exitCode,
@@ -150,7 +153,7 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
       study: launch.study,
       runId,
       ownerKey,
-      env: forwardedEnv(remote, launch.env),
+      env: keys.env,
     });
     return await followRemoteRun({ launch, runner, paths, runId, signals, proxyUrl: proxy.url });
   } catch (error) {
@@ -170,7 +173,11 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
   }
 }
 
-async function acquireRunner(launch: RemoteLaunch, paths: PreparedRunArtifactPaths) {
+async function acquireRunner(
+  launch: RemoteLaunch,
+  paths: PreparedRunArtifactPaths,
+  network: E2BNetworkOptions,
+) {
   const { provider, runnerMs } = launch.remote;
   const module =
     provider === "modal" ? await loadModalShellModule(launch.env) : await loadE2BBaseModule();
@@ -184,7 +191,7 @@ async function acquireRunner(launch: RemoteLaunch, paths: PreparedRunArtifactPat
       ...account,
       timeoutMs: runnerMs,
       metadata: { participantId: "runner" },
-      network: { allowPublicTraffic: false },
+      network,
     },
     receipt: { root: paths, participantId: "runner" },
   });
@@ -478,19 +485,52 @@ export function watchSignals(): Signals {
   };
 }
 
+/** What the runner gets from this machine's env, and how each key reaches it. */
+export interface RunnerKeys {
+  /** The run command's env: each forwarded name, with a placeholder for each key E2B holds. */
+  env: Record<string, string>;
+  /**
+   * The runner's network: its URLs answer only with its traffic token, and on E2B its header
+   * transforms carry the held keys. It holds key values: never log or persist it.
+   */
+  network: E2BNetworkOptions;
+  /** Names whose values stay in E2B's egress proxy; the runner sees a placeholder. */
+  held: string[];
+  /** Names whose values enter the runner as environment variables. */
+  sent: string[];
+}
+
 /**
- * The names and values the runner's run receives: each of the plan's names that is set here, and of
- * names the run reads only the first of, only the first one set.
+ * The keys the runner's run receives: each of the plan's names that is set here, and of names the
+ * run reads only the first of, only the first one set. On E2B, each key that travels as a header
+ * to a fixed host stays in an E2B header transform, and the run gets a placeholder and the system
+ * CA bundle that holds E2B's proxy CA, which Node does not read by default. Modal has no such
+ * transform, so a Modal runner receives every key as an environment variable.
  */
-export function forwardedEnv(
-  remote: Pick<RemotePlan, "envNames" | "alternatives">,
+export function runnerKeys(
+  remote: Pick<RemotePlan, "provider" | "envNames" | "alternatives">,
   env: Readonly<Record<string, string | undefined>>,
-): Record<string, string> {
+): RunnerKeys {
   const set = (name: string) => (env[name]?.trim() ?? "") !== "";
   const unread = new Set(remote.alternatives.flatMap((names) => names.filter(set).slice(1)));
-  return Object.fromEntries(
+  const forwarded: Record<string, string> = Object.fromEntries(
     remote.envNames.flatMap((name) => (set(name) && !unread.has(name) ? [[name, env[name]!]] : [])),
   );
+  const routing: E2BNetworkOptions = { allowPublicTraffic: false };
+  if (remote.provider === "modal")
+    return { env: forwarded, network: routing, held: [], sent: Object.keys(forwarded).sort() };
+  const held = holdKeysInEgress(forwarded, { domain: forwarded.E2B_DOMAIN, existing: routing });
+  return {
+    env:
+      held.held.length === 0
+        ? held.env
+        : { ...held.env, NODE_EXTRA_CA_CERTS: E2B_SYSTEM_CA_BUNDLE },
+    network: held.network,
+    held: held.held,
+    sent: Object.keys(forwarded)
+      .filter((name) => !held.held.includes(name))
+      .sort(),
+  };
 }
 
 /** Whether this humanish runs from a built package, which a runner can install. */

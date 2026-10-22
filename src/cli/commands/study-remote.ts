@@ -5,10 +5,11 @@ import path from "node:path";
 import type { Command } from "commander";
 
 import {
-  forwardedEnv,
   launchRemoteRun,
+  runnerKeys,
   runsFromPackage,
   type RemoteOutcome,
+  type RunnerKeys,
 } from "../../remote/launch.js";
 import { planRemoteRun, type RemotePlan } from "../../remote/plan.js";
 import { INSIDE_RUNNER_ENV } from "../../remote/runner.js";
@@ -153,13 +154,12 @@ export async function runRemoteStudy(args: {
     refuseRemote(args.command, io, cwd, "--port must be an integer between 0 and 65535.");
     return;
   }
+  const keys = runnerKeys(args.remote, process.env);
   const forwarded = {
     provider: args.remote.provider,
-    keys: Object.keys(forwardedEnv(args.remote, process.env)).sort(),
+    keys: [...keys.held, ...keys.sent].sort(),
   };
-  io.writeErr(
-    `The runner receives ${forwarded.keys.join(", ") || "no keys"} from this machine, in your own ${forwarded.provider === "modal" ? "Modal" : "E2B"} account. Run with --local to keep the study on this machine.\n`,
-  );
+  io.writeErr(`${runnerKeysLine(args.remote.provider, keys)}\n`);
   let outcome;
   try {
     outcome = await launchRemoteRun({
@@ -182,6 +182,26 @@ export async function runRemoteStudy(args: {
     return;
   }
   reportRemoteOutcome(args.command, io, cwd, outcome, forwarded);
+}
+
+/** The line that says, before the runner exists, where each of this machine's keys goes. */
+export function runnerKeysLine(
+  provider: RemotePlan["provider"],
+  keys: Pick<RunnerKeys, "held" | "sent">,
+): string {
+  const list = (names: readonly string[]) => names.join(", ");
+  const local = "Run with --local to keep the study on this machine.";
+  if (provider === "modal")
+    return `The runner runs in your own Modal account and receives ${list(keys.sent) || "no keys"} as environment variables, since Modal has no egress proxy that could hold them. ${local}`;
+  const held =
+    keys.held.length === 0
+      ? ""
+      : ` E2B's egress proxy holds ${list(keys.held)} and adds them to the runner's requests, so the runner's environment holds placeholders.`;
+  const sent =
+    keys.sent.length === 0
+      ? ""
+      : ` The runner receives ${list(keys.sent)} as environment variables.`;
+  return `The runner runs in your own E2B account.${held}${sent} ${local}`;
 }
 
 /** The run options a remote run does not carry to the runner yet. */

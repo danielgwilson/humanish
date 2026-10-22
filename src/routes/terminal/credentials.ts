@@ -1,8 +1,5 @@
-import {
-  DEFAULT_RUNTIME_AUTH,
-  E2B_SYSTEM_CA_BUNDLE,
-  OPENAI_EGRESS_PLACEHOLDER,
-} from "./runtime-auth.js";
+import { DEFAULT_RUNTIME_AUTH } from "./runtime-auth.js";
+import { E2B_SYSTEM_CA_BUNDLE, EGRESS_PLACEHOLDER } from "../../substrates/e2b/egress-keys.js";
 import type { StudyRuntimeAuth } from "../../study/types.js";
 import { TERMINAL_PRODUCT_STUDY_PROVIDER_METADATA } from "./types.js";
 
@@ -99,7 +96,7 @@ export function buildRuntimeAuth(args: {
     mode === "openai-egress"
       ? // Codex documents this verified-TLS trust channel. The stock image's default OpenSSL CA
         // file can be absent even though E2B has installed its proxy CA in the system bundle.
-        { CODEX_API_KEY: OPENAI_EGRESS_PLACEHOLDER, CODEX_CA_CERTIFICATE: E2B_SYSTEM_CA_BUNDLE }
+        { CODEX_API_KEY: EGRESS_PLACEHOLDER, CODEX_CA_CERTIFICATE: E2B_SYSTEM_CA_BUNDLE }
       : keyName === "OPENAI_API_KEY"
         ? { CODEX_API_KEY: keyValue, OPENAI_API_KEY: keyValue }
         : { [keyName]: keyValue };
