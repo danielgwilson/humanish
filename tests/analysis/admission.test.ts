@@ -309,7 +309,7 @@ describe("analysis admission estimate", () => {
     expect(budget.expectedCostUsd).toBeUndefined();
     expect(budget.refusedFromUsd).toBe(0.7543);
     expect(formatAutomaticAnalysisBudget(budget)).toBe(
-      "After live runs: explicit analysis · gpt-6-astra · refused before it starts for 1 participant even with no evidence (expected $0.75), since both its worst case and its expected cost plus a 10% margin are over $0.5; this is not a billing cap. Set review.analysis: false to disable.",
+      "After live runs: explicit analysis · gpt-6-astra at high effort · refused before it starts for 1 participant even with no evidence (expected $0.75), since both its worst case and its expected cost plus a 10% margin are over $0.5; this is not a billing cap. Set review.analysis: false to disable.",
     );
   });
 });

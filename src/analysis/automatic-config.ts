@@ -5,7 +5,7 @@ import {
   MAX_ANALYSIS_OUTPUT_TOKENS,
   analysisCostRange,
 } from "./execute.js";
-import { analysisEfforts, isSupportedAnalysisModel } from "./models.js";
+import { analysisEffort, analysisEfforts, isSupportedAnalysisModel } from "./models.js";
 import { isReasoningEffort, type ReasoningEffort } from "../actors/reasoning-effort.js";
 import { admissionRule } from "./admission.js";
 import { analysisRequestCount, EVIDENCE_LIMITS } from "./analysis-limits.js";
@@ -230,6 +230,8 @@ export interface AutomaticAnalysisBudget {
   provider?: "openai" | "gemini" | "codex";
   billing?: "api-estimate" | "account-unknown";
   model: string;
+  /** The reasoning effort the analysis runs at. */
+  effort: ReasoningEffort;
   maxCostUsd: number | null;
   trigger: "default" | "explicit";
   /** The participants the expected cost range is for. */
@@ -268,6 +270,7 @@ export function automaticAnalysisBudget(
         ? { provider: "gemini" as const }
         : {}),
     model: config.model,
+    effort: analysisEffort(config),
     maxCostUsd: config.maxCostUsd,
     trigger: raw === undefined ? "default" : "explicit",
     ...(range === undefined || participants === undefined ? {} : { participants, ...range }),
@@ -286,7 +289,7 @@ export function analysisRequestsText(requests: number): string | undefined {
 
 export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): string {
   if (budget.provider === "codex")
-    return `After live runs: ${budget.trigger === "default" ? "default " : ""}Codex account analysis · ${budget.model} · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
+    return `After live runs: ${budget.trigger === "default" ? "default " : ""}Codex account analysis · ${budget.model} at ${budget.effort} effort · separate restricted analyst with remote inference. Account limits apply; dollar cost and output-token ceiling are unknown. Set review.analysis: false to disable.`;
   const rule = admissionRule(`$${budget.maxCostUsd}`);
   // The participants, and the requests that analyse them when there is more than one.
   const requests = analysisRequestsText(
@@ -306,5 +309,5 @@ export function formatAutomaticAnalysisBudget(budget: AutomaticAnalysisBudget): 
       : `refused before it starts for ${who} even with no evidence (expected $${budget.refusedFromUsd.toFixed(2)}), since ${rule}`;
   const where =
     budget.provider === "gemini" ? " on Gemini, which sends the evidence to Google" : "";
-  return `After live runs: ${budget.trigger} analysis${where} · ${budget.model}${range} · ${refused}; this is not a billing cap. Set review.analysis: false to disable.`;
+  return `After live runs: ${budget.trigger} analysis${where} · ${budget.model} at ${budget.effort} effort${range} · ${refused}; this is not a billing cap. Set review.analysis: false to disable.`;
 }

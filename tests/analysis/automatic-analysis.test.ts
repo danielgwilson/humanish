@@ -123,10 +123,11 @@ describe("automatic analysis admission and producer boundary", () => {
               provider: "codex",
               billing: "account-unknown",
               model: "gpt-6-astra",
+              effort: "low",
               maxCostUsd: null,
               trigger: "default",
             }
-          : { model: "gpt-6.1-sol", maxCostUsd: 10, trigger: "default" },
+          : { model: "gpt-6.1-sol", effort: "medium", maxCostUsd: 10, trigger: "default" },
     );
     expect(automaticAnalysisBudget(false, route)).toBeUndefined();
   });
@@ -851,7 +852,7 @@ describe("automatic analysis admission and producer boundary", () => {
         "taken-run",
       ]);
       expect(stderr).toMatch(
-        /default analysis · gpt-6.1-sol · expected \$\d+\.\d\d to \$\d+\.\d\d for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over \$10; this is not a billing cap/,
+        /default analysis · gpt-6.1-sol at medium effort · expected \$\d+\.\d\d to \$\d+\.\d\d for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over \$10; this is not a billing cap/,
       );
       expect(stderr).not.toContain("preparing analysis");
       expect(JSON.parse(stdout)).toMatchObject({

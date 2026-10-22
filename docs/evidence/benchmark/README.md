@@ -155,15 +155,17 @@ desktops about $0.01 each, analyses $0.50 to $0.84. On copies of the six 0.114.0
 $1.18, admitted costs of $1.14 to $1.30 and worst cases of $1.21 to $1.35; those analyses billed
 $0.59 to $0.88. An `--analysis-max-usd` below a run's admitted cost refuses that run's analysis.
 
-The default plan, 3 runs per arm with analysis, is about $5.20 at those costs. The cap admits each
-step on its worst case. The dry run counts an analysis at $1.26, the mean of those six worst cases,
-so the sixth analysis needs about $6.40 of headroom: at $6 the dry run projects 6 runs and 5
-analyses, and the default of $7 fits all 12 steps. When a plan does not fit, the dry run names the
-smallest cap, in $0.50 steps, at which it does.
+Those figures are for `gpt-6-astra` at high effort, the default analyst through 0.142.0. The
+default analyst is now `gpt-6.1-sol` at medium effort, which on the 2026-10-21 recordings billed
+about $0.06 an analysis ([2026-10-22-analysis-models.md](2026-10-22-analysis-models.md)). The dry
+run counts it at that typical cost and a $0.252 worst case, so the default plan, 3 runs per arm
+with analysis, is about $1.98, and $3 is the smallest cap in $0.50 steps that fits all 12 steps.
+When a plan does not fit, the dry run names that smallest cap.
 
-The dry run projects each analysis model separately. On a fresh invocation it scales the typical
-gpt-6-astra analysis above, $0.70 billed and $1.26 worst case, by what the same tokens cost at the
-model's rates in `src/run/pricing.ts`: 40,060 input and 7,613 output tokens billed (the mean of the
+The dry run projects each analysis model separately. On a fresh invocation it prices the
+default analyst from its recorded typical cost, and scales the typical gpt-6-astra analysis above,
+$0.70 billed and $1.26 worst case, by what the same tokens cost at any other model's rates in
+`src/run/pricing.ts`: 40,060 input and 7,613 output tokens billed (the mean of the
 2026-10-04 analyses in `tests/fixtures/bench/taskly/analyses`), and 35,531 input tokens with the
 16,384-token allowance for the worst case. A model with no rate in this checkout gets no
 projection. With `--reanalyze`, the dry run asks `analyze --dry-run` about every recorded run and
@@ -273,6 +275,11 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-09 | 0.119.0, src/ as of 6405a7c0 | `neutral` | `openai-computer-use` | 3            | 10/15         | 10/15           | 0 and 0             | $6.12           | [summary](2026-10-09-0.119.0-neutral-openai-computer-use.md) |
 | 2026-10-09 | 0.120.0, src/ as of cf75cc6f | `neutral` | `openai-computer-use` | 3            | 12/15         | 11/15           | 0 and 0             | $5.87           | [summary](2026-10-09-0.120.0-neutral-openai-computer-use.md) |
 | 2026-10-14 | 0.133.0, src/ as of 7147b595 | `neutral` | `openai-computer-use` | 3            | 9/15          | 8/15            | 0 and 0             | $5.87           | [summary](2026-10-14-0.133.0-neutral-openai-computer-use.md) |
+
+Analysis models on fixed recordings, 2026-10-22: twelve analyst settings on the same 8 Taskly
+recordings, and seven on three CineGuessr runs, in
+[2026-10-22-analysis-models.md](2026-10-22-analysis-models.md). It is the basis for the
+`gpt-6.1-sol` medium-effort default analyst.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where

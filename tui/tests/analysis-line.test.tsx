@@ -86,7 +86,7 @@ describe("the study screen's analysis line", () => {
       // The $10 cap admits the packet at the evidence limits with the 32,768-token allowance, so
       // the range ends at that packet's expected cost: 251,224 input tokens, $0.7581.
       expect(text).toContain(
-        "default analysis · gpt-6.1-sol · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap.",
+        "default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap.",
       );
     } finally {
       surface.unmount();
