@@ -21,6 +21,24 @@ const OPENAI_MODELS = {
 } as const satisfies Record<string, readonly ReasoningEffort[]>;
 
 /**
+ * The `text.verbosity` the OpenAI wire sends for a model; a model not listed gets the API default,
+ * `medium`. The Responses API takes `low`, `medium` or `high` beside a json_schema `text.format`
+ * (developers.openai.com/api/reference/resources/responses/methods/create, read 2026-10-22). On
+ * the benchmark recordings, gpt-6-luna at low verbosity decoded about three times faster and its
+ * analyses passed the evidence checks more often, with the same findings: see
+ * docs/evidence/benchmark/2026-10-22-luna-verbosity.md.
+ */
+const OPENAI_TEXT_VERBOSITY: Partial<Record<keyof typeof OPENAI_MODELS, "low">> = {
+  "gpt-6-luna": "low",
+};
+
+/** The `text.verbosity` an OpenAI analysis with `model` asks for, or undefined for the default. */
+export const openaiTextVerbosity = (model: string): "low" | undefined =>
+  Object.hasOwn(OPENAI_TEXT_VERBOSITY, model)
+    ? OPENAI_TEXT_VERBOSITY[model as keyof typeof OPENAI_MODELS]
+    : undefined;
+
+/**
  * Gemini models that completed a live analysis, with the `thinkingLevel` values the thinking guide
  * lists for each (ai.google.dev/gemini-api/docs/generate-content/thinking, read 2026-10-21):
  * gemini-3.8-flash answers `minimal` with an error. Each model's page under

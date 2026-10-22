@@ -7,7 +7,7 @@
 // value is a new rubric version, and results carry the version and a digest of this file.
 
 export const RUBRIC_ID = "taskly-rubric";
-export const RUBRIC_VERSION = 1;
+export const RUBRIC_VERSION = 2;
 
 export type Arm = "planted" | "clean";
 export type DefectId = "D1" | "D2" | "D3" | "D4" | "D5";
@@ -73,13 +73,16 @@ export interface HarnessClaim extends ClaimClassBase {
 export type ClaimClass = PlantedDefect | BaselineClaim | ContradictedClaim | HarnessClaim;
 
 const CC = String.raw`clear[- ]completed`;
-const NO_EFFECT = String.raw`(?:did nothing|does nothing|do nothing|did not (?:visibly )?(?:do anything|work|remove|clear|respond|delete)|didn't (?:visibly )?(?:do anything|work|remove|clear|respond|delete)|does not (?:work|remove|clear|do anything|respond)|doesn't (?:work|remove|clear|do anything|respond)|had no (?:visible )?effect|has no effect|no effect|gave no (?:visible )?(?:response|feedback)|was unresponsive|failed to (?:remove|clear|work)|nothing happened|nothing changed|left (?:the |my )?(?:completed|finished|checked|ticked|done) tasks? (?:visible|in place|there)|wasn't (?:removed|cleared)|was not (?:removed|cleared))`;
+const NO_EFFECT = String.raw`(?:did nothing|does nothing|do nothing|did not (?:visibly )?(?:do anything|work|remove|clear|respond|delete)|didn't (?:visibly )?(?:do anything|work|remove|clear|respond|delete)|does not (?:work|remove|clear|do anything|respond)|doesn't (?:work|remove|clear|do anything|respond)|had no (?:visible )?effect|has no effect|no effect|gave no (?:visible )?(?:response|feedback)|was unresponsive|failed to (?:remove|clear|work)|nothing happened|nothing changed|produced no (?:visible )?(?:removal|change|effect)|left (?:the |my |both |all )?(?:\w+ )?(?:completed|finished|checked|ticked|done) (?:tasks?|rows?|items?) (?:visible|in place|there)|wasn't (?:removed|cleared)|was not (?:removed|cleared))`;
 const TRUNCATED = String.raw`(?:truncat\w*|cut off|cut down|cut short|chopped|clipped|shortened|trimmed|mid-word|got cut|stopped at|ends? mid|cut at)`;
 const DONE = String.raw`(?:completed|finished|ticked|checked|crossed[- ]out|struck[- ]through|done)`;
 const OPEN = String.raw`(?:unfinished|unticked|unchecked|remaining|incomplete|open|active|not[- ]done|outstanding|uncompleted)`;
 const SHOWED = String.raw`(?:showed|shows|show|displayed|displays|listed|lists|saw|see|contained|had)`;
 const AFTER_SHOWED = String.raw`(?: me)?(?: only)?(?: the)?(?: \w+)?(?: only)?`;
-const SAVE_FAILED = String.raw`(?:did nothing|does nothing|did not (?:appear to )?(?:work|save|close|finish|respond|commit|leave|exit|do anything|register)|didn't (?:appear to )?(?:work|save|close|finish|respond|commit|leave|exit|do anything|register)|does not (?:work|save|respond|do anything)|doesn't (?:work|save|respond|do anything)|had no (?:visible )?effect|no effect|nothing happened|gave no (?:visible )?(?:response|feedback|confirmation)|was unresponsive|(?:left|kept) (?:the |my |its |their )?(?:task|row|edits?|drafts?|field|it|text box|textbox)(?: \w+)? (?:in edit mode|open|uncommitted|unsaved)|stayed in edit mode|remained in edit mode)`;
+const SAVE_FAILED = String.raw`(?:did nothing|does nothing|did not (?:appear to )?(?:work|save|close|finish|respond|commit|leave|exit|do anything|register)|didn't (?:appear to )?(?:work|save|close|finish|respond|commit|leave|exit|do anything|register)|does not (?:work|save|respond|do anything)|doesn't (?:work|save|respond|do anything)|had no (?:visible )?effect|no effect|nothing happened|gave no (?:visible )?(?:response|feedback|confirmation)|was unresponsive|(?:left|kept) (?:the |my |its |their )?(?:task|row|edits?|drafts?|field|it|text box|textbox)(?: \w+)? (?:in edit(?:ing)? mode|open|uncommitted|unsaved)|stayed in edit(?:ing)? mode|remained in edit(?:ing)? mode)`;
+// A sentence about Enter or a page reload describes B1 or B10, so the broader D5 patterns skip it.
+const NOT_ENTER = String.raw`^(?!.*\b(?:enter|refresh\w*|reload\w*)\b)`;
+const STILL_SHOWED = String.raw`still (?:showed|shows|displayed|displays|had|has|read|reads|said|says|contained|contains)`;
 const re = (source: string): RegExp => new RegExp(source);
 
 export const PLANTED: readonly PlantedDefect[] = [
@@ -97,6 +100,7 @@ export const PLANTED: readonly PlantedDefect[] = [
         String.raw`\b${DONE} tasks? (?:stayed|remained|was still|were still|still (?:there|visible|showed))[^.]{0,60}\b${CC}\b`,
       ),
       re(String.raw`\b(?:stayed|remained|still visible|still there)\b[^.]{0,40}\b(?:after|despite)\b[^.]{0,30}\b${CC}\b`),
+      re(String.raw`\b${DONE} (?:tasks?|rows?|items?) (?:stayed|remained)\b[^.]{0,20}\bafter\b[^.]{0,20}\b(?:clearing|bulk-clear|clear)(?: attempts?| clicks?)\b`),
     ],
     assurance: [
       re(String.raw`\b${CC}\b(?:,? which)? (?:removed|cleared|deleted|worked|got rid of)\b`),
@@ -164,6 +168,23 @@ export const PLANTED: readonly PlantedDefect[] = [
       re(String.raw`\bsave (?:attempts?|clicks?)\b[^.]{0,40}\b(?:left|kept)\b`),
       re(String.raw`\bunresponsive save\b`),
       re(String.raw`\bwhether (?:the )?save had (?:worked|registered)\b`),
+      // The row stayed in edit mode after Save: "saving the edit left the row in editing mode".
+      re(String.raw`${NOT_ENTER}.*?\bsav(?:e|es|ed|ing)\b[^.]{0,60}\b(?:remain(?:s|ed)?|stay(?:s|ed)?|stuck|still|kept|keeps|left|leaves)\b(?: \w+){0,3} in edit(?:ing)? mode\b`),
+      re(String.raw`${NOT_ENTER}.*?\b(?:remain(?:s|ed)?|stay(?:s|ed)?|stuck|still|kept|keeps|left|leaves)\b(?: \w+){0,3} in edit(?:ing)? mode\b[^.]{0,30}\bafter\b[^.]{0,30}\bsav(?:e|ed|ing)\b`),
+      re(String.raw`${NOT_ENTER}.*?\bedit(?:ing)? mode remain(?:s|ed)? (?:active|open)\b[^.]{0,30}\bsav(?:e|ed|ing)\b`),
+      re(String.raw`${NOT_ENTER}.*?\b${STILL_SHOWED}\b[^.]{0,40}\bsave\b[^.]{0,20}\bafter\b[^.]{0,40}\bsav(?:e|ed|ing)\b`),
+      re(String.raw`${NOT_ENTER}.*?\bafter (?:saving|(?:a |the |another )?save (?:click|attempt))\b[^.]{0,60}\b${STILL_SHOWED}\b[^.]{0,40}\bsave\b`),
+      re(String.raw`\bsave\b[^.]{0,30}\b(?:had not|hadn't|did not|didn't|never) (?:changed?|turned?|switched?|reverted?) back to edit\b`),
+      re(String.raw`${NOT_ENTER}(?=.*\b(?:save (?:click|attempt)|after (?:the |a |another )?(?:\w+ )?save)\b).*?\b(?:input|field|editor)\b[^.]{0,20}\band (?:the )?save(?: button| control)? (?:remained|stayed|still present|still visible)\b`),
+      re(String.raw`\bedit(?:ing)? (?:state|mode) did not (?:visibly )?end\b[^.]{0,30}\bsave\b`),
+      re(String.raw`\bafter\b[^.]{0,20}\bsave\b[^.]{0,60}\bedit(?:ing)? (?:state|mode) remained\b`),
+      re(String.raw`\bsave (?:did not|didn't|never) (?:visibly )?return (?:the |it |its )?(?:row|task|it)\b`),
+      re(String.raw`\bstill (?:said|says|read|reads|showed|shows) save\b[^.]{0,10}\b(?:rather than|instead of)\b[^.]{0,20}\bedit\b`),
+      // The edit was lost: "task rename reverted after two save attempts".
+      re(String.raw`\b(?:edits?|edited|rename|renamed|title|name|wording)\b[^.]{0,40}\brevert(?:s|ed)?\b[^.]{0,30}\bsave (?:attempts?|clicks?)\b`),
+      re(String.raw`\bsave (?:attempts?|clicks?)\b[^.]{0,20}\b(?:did not|didn't|failed to) (?:retain|keep|commit|save)\b`),
+      re(String.raw`${NOT_ENTER}.*?\bedit(?:s|ed)?\b[^.]{0,30}\b(?:fail(?:s|ed)? to (?:save|commit|persist)|(?:are|were|was|is) not saved|(?:do|does|did) not (?:persist|save))\b`),
+      re(String.raw`\bsave button failure\b`),
     ],
     assurance: [
       re(

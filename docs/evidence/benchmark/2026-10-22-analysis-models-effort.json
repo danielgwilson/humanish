@@ -1,14 +1,14 @@
 {
   "schema": "humanish.bench-result.v1",
-  "createdAt": "2026-10-22T00:12:15.014Z",
+  "createdAt": "2026-10-22T06:20:18.119Z",
   "humanish": {
     "version": "0.141.0",
     "source": "this checkout at a1be9ab09, src/ as of a1be9ab09"
   },
   "rubric": {
     "id": "taskly-rubric",
-    "version": 1,
-    "sha256": "190f65223fe1dcc4f8f20ff7fa856f050f43f1e6e292342e20ea19c944840c7e"
+    "version": 2,
+    "sha256": "ae05cf421955ae4532b547b31785c87d8c768ea08b60613dd9e5eea0610d8394"
   },
   "fixture": {
     "id": "taskly",
@@ -320,12 +320,13 @@
                 "D2": false,
                 "D3": true,
                 "D4": true,
-                "D5": false
+                "D5": true
               },
               "detectedQuotes": {
                 "D4": "on first opening, the list showed undefined and 0 left.",
                 "D3": "the filters appeared reversed: active showed completed tasks, while completed showed unfinished tasks.",
-                "D1": "clear completed did not remove the checked tasks."
+                "D1": "clear completed did not remove the checked tasks.",
+                "D5": "after saving an edit, the row stayed in editing mode with a save button."
               },
               "falseAssurance": [],
               "d2Mechanism": null,
@@ -583,15 +584,15 @@
               "of": 4
             },
             "D5": {
-              "hits": 0,
+              "hits": 1,
               "of": 4
             },
             "total": {
-              "hits": 10,
+              "hits": 11,
               "of": 20,
               "wilson95": [
-                0.2993,
-                0.7007
+                0.3421,
+                0.7418
               ]
             }
           },
@@ -717,15 +718,15 @@
                 "of": 8
               },
               "D5": {
-                "hits": 2,
+                "hits": 4,
                 "of": 8
               },
               "total": {
-                "hits": 22,
+                "hits": 24,
                 "of": 40,
                 "wilson95": [
-                  0.3983,
-                  0.6929
+                  0.446,
+                  0.7365
                 ]
               }
             },
@@ -745,7 +746,7 @@
               "unitsWith": 0
             },
             "harness": 0,
-            "unresolved": 2,
+            "unresolved": 0,
             "supported": 6
           },
           "spentUsd": {
@@ -1260,12 +1261,13 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "friction",
                   "D3": "friction",
-                  "D1": "friction"
+                  "D1": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -1315,9 +1317,13 @@
                     "title": "The edited task still showed Save after saving.",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   }
                 ]
               }
@@ -1586,12 +1592,13 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "friction",
                   "D3": "friction",
-                  "D1": "friction"
+                  "D1": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -1640,9 +1647,13 @@
                     "title": "After saving an edit, the row still showed an editing field and Save button.",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   }
                 ]
               }
@@ -1715,15 +1726,15 @@
                 "of": 7
               },
               "D5": {
-                "hits": 1,
+                "hits": 3,
                 "of": 7
               },
               "total": {
-                "hits": 17,
+                "hits": 19,
                 "of": 35,
                 "wilson95": [
-                  0.3299,
-                  0.6443
+                  0.3819,
+                  0.6953
                 ]
               }
             },
@@ -1743,7 +1754,7 @@
               "unitsWith": 0
             },
             "harness": 0,
-            "unresolved": 2,
+            "unresolved": 0,
             "supported": 11
           },
           "spentUsd": {
@@ -1929,12 +1940,13 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "friction",
                   "D3": "friction",
-                  "D1": "friction"
+                  "D1": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -1984,9 +1996,13 @@
                     "title": "Saving the edit left the row in editing mode.",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   }
                 ]
               }
@@ -2200,12 +2216,13 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "friction",
                   "D3": "friction",
-                  "D1": "friction"
+                  "D1": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -2255,9 +2272,13 @@
                     "title": "The edited row still showed a Save button after the participant saved it.",
                     "impact": "friction",
                     "confidence": "medium",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   }
                 ]
               }
@@ -2586,7 +2607,7 @@
             "cleanUnits": 12,
             "recall": {
               "D1": {
-                "hits": 4,
+                "hits": 6,
                 "of": 12
               },
               "D2": {
@@ -2602,15 +2623,15 @@
                 "of": 12
               },
               "D5": {
-                "hits": 0,
+                "hits": 6,
                 "of": 12
               },
               "total": {
-                "hits": 28,
+                "hits": 36,
                 "of": 60,
                 "wilson95": [
-                  0.3463,
-                  0.5911
+                  0.4737,
+                  0.7143
                 ]
               }
             },
@@ -2630,7 +2651,7 @@
               "unitsWith": 0
             },
             "harness": 0,
-            "unresolved": 13,
+            "unresolved": 5,
             "supported": 29
           },
           "spentUsd": {
@@ -2877,11 +2898,12 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D3": "friction",
                   "D1": "friction",
+                  "D5": "friction",
                   "D4": "friction"
                 },
                 "d2Mechanism": null,
@@ -2929,9 +2951,13 @@
                     "title": "Editing required a retry and left Save visible",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F5",
@@ -3014,9 +3040,10 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
+                  "D5": "friction",
                   "D3": "friction",
                   "D1": "friction",
                   "D4": "friction"
@@ -3040,9 +3067,13 @@
                     "title": "The dentist-task edit reverted after repeated Save attempts",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F3",
@@ -3377,11 +3408,12 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D3": "friction",
                   "D1": "friction",
+                  "D5": "friction",
                   "D4": "friction"
                 },
                 "d2Mechanism": null,
@@ -3429,9 +3461,13 @@
                     "title": "Edit attempts left saving ambiguous",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F5",
@@ -3510,13 +3546,15 @@
               "analysis": {
                 "analysisId": "analysis-9bee97f5-8351-4a55-9420-b1089d3c0994",
                 "listed": {
-                  "D1": false,
+                  "D1": true,
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
+                  "D5": "friction",
+                  "D1": "friction",
                   "D3": "friction",
                   "D4": "friction"
                 },
@@ -3539,18 +3577,26 @@
                     "title": "The attempted task rename reverted after two Save attempts",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F3",
                     "title": "Completed tasks remained after repeated clearing attempts",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D1"
+                    ],
+                    "defects": [
+                      "D1"
+                    ]
                   },
                   {
                     "id": "F4",
@@ -3870,11 +3916,12 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D3": "friction",
                   "D1": "friction",
+                  "D5": "friction",
                   "D4": "friction"
                 },
                 "d2Mechanism": null,
@@ -3922,9 +3969,13 @@
                     "title": "Editing prompted a retry and left the saved state unclear",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F5",
@@ -4004,14 +4055,16 @@
               "analysis": {
                 "analysisId": "analysis-45ac2865-9787-48c6-a2e2-4175f9304a37",
                 "listed": {
-                  "D1": false,
+                  "D1": true,
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
+                  "D5": "friction",
                   "D3": "friction",
+                  "D1": "friction",
                   "D4": "friction"
                 },
                 "d2Mechanism": null,
@@ -4033,9 +4086,13 @@
                     "title": "The attempted task rename reverted after Save clicks",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F3",
@@ -4055,9 +4112,13 @@
                     "title": "Completed tasks remained after bulk-clear attempts",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D1"
+                    ],
+                    "defects": [
+                      "D1"
+                    ]
                   },
                   {
                     "id": "F5",
@@ -4149,7 +4210,7 @@
             "cleanUnits": 12,
             "recall": {
               "D1": {
-                "hits": 2,
+                "hits": 6,
                 "of": 12
               },
               "D2": {
@@ -4165,15 +4226,15 @@
                 "of": 12
               },
               "D5": {
-                "hits": 0,
+                "hits": 6,
                 "of": 12
               },
               "total": {
-                "hits": 23,
+                "hits": 33,
                 "of": 60,
                 "wilson95": [
-                  0.2709,
-                  0.5098
+                  0.4249,
+                  0.6691
                 ]
               }
             },
@@ -4193,7 +4254,7 @@
               "unitsWith": 0
             },
             "harness": 0,
-            "unresolved": 16,
+            "unresolved": 6,
             "supported": 31
           },
           "spentUsd": {
@@ -4442,11 +4503,12 @@
                   "D2": false,
                   "D3": true,
                   "D4": false,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D1": "blocked_task",
-                  "D3": "friction"
+                  "D3": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -4493,9 +4555,13 @@
                     "title": "Repeated edit attempts ended with ambiguous save feedback",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   }
                 ]
               }
@@ -4574,9 +4640,10 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
+                  "D5": "blocked_task",
                   "D3": "friction",
                   "D1": "blocked_task",
                   "D4": "friction"
@@ -4600,9 +4667,13 @@
                     "title": "Two Save attempts did not retain the edited title",
                     "impact": "blocked_task",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F3",
@@ -4933,14 +5004,16 @@
               "analysis": {
                 "analysisId": "analysis-18aa7ab4-1b27-4606-9da4-323e43cb859c",
                 "listed": {
-                  "D1": false,
+                  "D1": true,
                   "D2": false,
                   "D3": true,
                   "D4": false,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
-                  "D3": "friction"
+                  "D3": "friction",
+                  "D1": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -4974,18 +5047,26 @@
                     "title": "Clear completed produced no visible removal",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D1"
+                    ],
+                    "defects": [
+                      "D1"
+                    ]
                   },
                   {
                     "id": "F4",
                     "title": "Rename required a retry and remained visibly editable",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   }
                 ]
               }
@@ -5060,14 +5141,16 @@
               "analysis": {
                 "analysisId": "analysis-620650fd-879c-4cb7-97ca-3d09ac3fae58",
                 "listed": {
-                  "D1": false,
+                  "D1": true,
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
+                  "D5": "blocked_task",
                   "D3": "friction",
+                  "D1": "blocked_task",
                   "D4": "friction"
                 },
                 "d2Mechanism": null,
@@ -5089,9 +5172,13 @@
                     "title": "The dentist-task edit reverted after two Save attempts",
                     "impact": "blocked_task",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F3",
@@ -5111,9 +5198,13 @@
                     "title": "Clear completed left both completed tasks visible",
                     "impact": "blocked_task",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D1"
+                    ],
+                    "defects": [
+                      "D1"
+                    ]
                   },
                   {
                     "id": "F5",
@@ -5420,14 +5511,16 @@
               "analysis": {
                 "analysisId": "analysis-a843217a-7e53-448b-9abd-5d9ced703f14",
                 "listed": {
-                  "D1": false,
+                  "D1": true,
                   "D2": false,
                   "D3": true,
                   "D4": false,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
-                  "D3": "friction"
+                  "D3": "friction",
+                  "D1": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -5461,18 +5554,26 @@
                     "title": "Clear completed attempt left checked rows visible",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D1"
+                    ],
+                    "defects": [
+                      "D1"
+                    ]
                   },
                   {
                     "id": "F4",
                     "title": "Editing needed a retry and lacked a clear saved state",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   }
                 ]
               }
@@ -5547,14 +5648,16 @@
               "analysis": {
                 "analysisId": "analysis-f3cc9dd4-50a2-4650-b05d-f778e9f32200",
                 "listed": {
-                  "D1": false,
+                  "D1": true,
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
+                  "D5": "friction",
                   "D3": "friction",
+                  "D1": "friction",
                   "D4": "friction"
                 },
                 "d2Mechanism": null,
@@ -5576,9 +5679,13 @@
                     "title": "Task rename reverted after two Save attempts",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F3",
@@ -5598,9 +5705,13 @@
                     "title": "Completed tasks remained after repeated clearing attempts",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D1"
+                    ],
+                    "defects": [
+                      "D1"
+                    ]
                   },
                   {
                     "id": "F5",

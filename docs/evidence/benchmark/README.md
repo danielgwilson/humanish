@@ -280,6 +280,8 @@ Analysis models on fixed recordings, 2026-10-22: twelve analyst settings on the 
 recordings, and seven on three movie-game runs, in
 [2026-10-22-analysis-models.md](2026-10-22-analysis-models.md). It is the basis for the
 `gpt-6.1-sol` medium-effort default analyst.
+[2026-10-22-luna-verbosity.md](2026-10-22-luna-verbosity.md) reruns `gpt-6-luna` with
+`text.verbosity: "low"` on the same recordings and rescores every analysis with rubric version 2.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
