@@ -19,6 +19,19 @@ The Unreleased section holds the full notes for the next version until it is tag
   the transforms as they were set. A Modal runner, which has no header transform, still receives
   its keys as environment variables.
 
+### Changed
+
+- Study analysis with `gpt-6-luna` sends `text.verbosity: "low"`. On the Taskly benchmark
+  recordings at high effort, its median analysis took 110 s in place of 406 s, 22 of 24 analyses
+  passed the evidence checks in place of 18 of 24, and the cost stayed under $0.01
+  ([gpt-6-luna with low text verbosity](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-10-22-luna-verbosity.md)).
+  At medium effort the median took 80 s in place of 41 s. Other models send the API's default
+  verbosity.
+- The Taskly benchmark rubric is version 2. It reads more wordings of D1 (Clear completed does
+  nothing) and D5 (Save leaves the row in edit mode), so analysis recall on the 2026-10-21
+  recordings rises for every analyst except `gemini-4-argon`, for example `gpt-6.1-sol` at medium effort from 28/60 to
+  36/60. Invented claims are unchanged.
+
 ## 0.144.0: Hosted studies run remotely by default (2026-10-22)
 
 humanish 0.144.0 runs a hosted computer-use study remotely by default. A study on

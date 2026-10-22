@@ -1,14 +1,14 @@
 {
   "schema": "humanish.bench-result.v1",
-  "createdAt": "2026-10-21T23:13:55.536Z",
+  "createdAt": "2026-10-22T06:20:17.196Z",
   "humanish": {
     "version": "0.141.0",
     "source": "this checkout at a1be9ab09, src/ as of a1be9ab09"
   },
   "rubric": {
     "id": "taskly-rubric",
-    "version": 1,
-    "sha256": "190f65223fe1dcc4f8f20ff7fa856f050f43f1e6e292342e20ea19c944840c7e"
+    "version": 2,
+    "sha256": "ae05cf421955ae4532b547b31785c87d8c768ea08b60613dd9e5eea0610d8394"
   },
   "fixture": {
     "id": "taskly",
@@ -320,12 +320,13 @@
                 "D2": false,
                 "D3": true,
                 "D4": true,
-                "D5": false
+                "D5": true
               },
               "detectedQuotes": {
                 "D4": "on first opening, the list showed undefined and 0 left.",
                 "D3": "the filters appeared reversed: active showed completed tasks, while completed showed unfinished tasks.",
-                "D1": "clear completed did not remove the checked tasks."
+                "D1": "clear completed did not remove the checked tasks.",
+                "D5": "after saving an edit, the row stayed in editing mode with a save button."
               },
               "falseAssurance": [],
               "d2Mechanism": null,
@@ -583,15 +584,15 @@
               "of": 4
             },
             "D5": {
-              "hits": 0,
+              "hits": 1,
               "of": 4
             },
             "total": {
-              "hits": 10,
+              "hits": 11,
               "of": 20,
               "wilson95": [
-                0.2993,
-                0.7007
+                0.3421,
+                0.7418
               ]
             }
           },
@@ -717,15 +718,15 @@
                 "of": 8
               },
               "D5": {
-                "hits": 1,
+                "hits": 2,
                 "of": 8
               },
               "total": {
-                "hits": 19,
+                "hits": 20,
                 "of": 40,
                 "wilson95": [
-                  0.3294,
-                  0.625
+                  0.352,
+                  0.648
                 ]
               }
             },
@@ -745,7 +746,7 @@
               "unitsWith": 0
             },
             "harness": 0,
-            "unresolved": 2,
+            "unresolved": 1,
             "supported": 26
           },
           "spentUsd": {
@@ -1649,12 +1650,13 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "friction",
                   "D3": "friction",
-                  "D1": "friction"
+                  "D1": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -1703,9 +1705,13 @@
                     "title": "The edited row still showed Save after a save attempt.",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F5",
@@ -1976,15 +1982,15 @@
                 "of": 12
               },
               "D5": {
-                "hits": 2,
+                "hits": 6,
                 "of": 12
               },
               "total": {
-                "hits": 32,
+                "hits": 36,
                 "of": 60,
                 "wilson95": [
-                  0.4089,
-                  0.6537
+                  0.4737,
+                  0.7143
                 ]
               }
             },
@@ -2004,7 +2010,7 @@
               "unitsWith": 0
             },
             "harness": 0,
-            "unresolved": 5,
+            "unresolved": 1,
             "supported": 23
           },
           "spentUsd": {
@@ -2237,12 +2243,13 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "blocked_task",
                   "D3": "friction",
-                  "D1": "friction"
+                  "D1": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -2305,9 +2312,13 @@
                     "title": "Inline edit mode remains active after clicking Save",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   }
                 ]
               }
@@ -2377,11 +2388,12 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "friction",
                   "D3": "friction",
+                  "D5": "friction",
                   "D1": "friction"
                 },
                 "d2Mechanism": null,
@@ -2419,9 +2431,13 @@
                     "title": "Inline task edits fail to commit and revert upon subsequent component updates",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F4",
@@ -2738,11 +2754,12 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D3": "friction",
                   "D1": "friction",
+                  "D5": "friction",
                   "D4": "friction"
                 },
                 "d2Mechanism": null,
@@ -2790,9 +2807,13 @@
                     "title": "Inline task row remains in edit mode after clicking Save",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F5",
@@ -3254,12 +3275,13 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "blocked_task",
                   "D3": "friction",
-                  "D1": "friction"
+                  "D1": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -3309,9 +3331,13 @@
                     "title": "Inline task row remains in edit mode after saving changes",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F5",
@@ -3576,15 +3602,15 @@
                 "of": 10
               },
               "D5": {
-                "hits": 0,
+                "hits": 5,
                 "of": 10
               },
               "total": {
-                "hits": 22,
+                "hits": 27,
                 "of": 50,
                 "wilson95": [
-                  0.3116,
-                  0.5769
+                  0.404,
+                  0.6703
                 ]
               }
             },
@@ -3604,7 +3630,7 @@
               "unitsWith": 0
             },
             "harness": 0,
-            "unresolved": 10,
+            "unresolved": 5,
             "supported": 18
           },
           "spentUsd": {
@@ -3857,11 +3883,12 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "blocked_task",
-                  "D3": "friction"
+                  "D3": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -3898,9 +3925,13 @@
                     "title": "Edited task rows remain stuck in edit mode after saving",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "f4",
@@ -3992,10 +4023,11 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "friction",
+                  "D5": "friction",
                   "D3": "friction",
                   "D1": "friction"
                 },
@@ -4020,9 +4052,13 @@
                     "title": "Task text edits do not persist and revert after other actions",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F3",
@@ -4352,11 +4388,12 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "blocked_task",
-                  "D3": "friction"
+                  "D3": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -4392,9 +4429,13 @@
                     "title": "Inline edit mode remains active after saving",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   }
                 ]
               }
@@ -4471,10 +4512,11 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "friction",
+                  "D5": "friction",
                   "D3": "friction",
                   "D1": "friction"
                 },
@@ -4499,9 +4541,13 @@
                     "title": "Task edits fail to save and revert after subsequent actions",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F3",
@@ -4749,11 +4795,12 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D3": "friction",
-                  "D4": "friction"
+                  "D4": "friction",
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -4800,9 +4847,13 @@
                     "title": "Edit mode remains active after saving",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   }
                 ]
               }
@@ -4920,15 +4971,15 @@
                 "of": 6
               },
               "D5": {
-                "hits": 0,
+                "hits": 2,
                 "of": 6
               },
               "total": {
-                "hits": 14,
+                "hits": 16,
                 "of": 30,
                 "wilson95": [
-                  0.3023,
-                  0.6386
+                  0.3614,
+                  0.6977
                 ]
               }
             },
@@ -4948,7 +4999,7 @@
               "unitsWith": 0
             },
             "harness": 0,
-            "unresolved": 10,
+            "unresolved": 8,
             "supported": 12
           },
           "spentUsd": {
@@ -5452,10 +5503,11 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D3": "friction",
+                  "D5": "friction",
                   "D4": "blocked_task",
                   "D1": "friction"
                 },
@@ -5480,9 +5532,13 @@
                     "title": "Edited task names are not saved and revert to their original text",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F3",
@@ -5796,11 +5852,12 @@
                   "D2": false,
                   "D3": true,
                   "D4": true,
-                  "D5": false
+                  "D5": true
                 },
                 "impactByDefect": {
                   "D4": "blocked_task",
                   "D3": "friction",
+                  "D5": "friction",
                   "D1": "friction"
                 },
                 "d2Mechanism": null,
@@ -5838,9 +5895,13 @@
                     "title": "Save button failure and edit reversion",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F4",
@@ -5984,7 +6045,7 @@
               "unitsWith": 0
             },
             "harness": 0,
-            "unresolved": 3,
+            "unresolved": 2,
             "supported": 19
           },
           "spentUsd": {
@@ -6240,7 +6301,7 @@
                   "D4": "friction",
                   "D3": "friction",
                   "D1": "friction",
-                  "D5": "recovery"
+                  "D5": "friction"
                 },
                 "d2Mechanism": null,
                 "falseAssurance": [],
@@ -6290,9 +6351,13 @@
                     "title": "Saving an inline task edit updated the text on retry but kept the row in editing mode",
                     "impact": "friction",
                     "confidence": "high",
-                    "verdict": "unresolved",
-                    "classes": [],
-                    "defects": []
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
                   },
                   {
                     "id": "F5",

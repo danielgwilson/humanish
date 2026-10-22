@@ -10,7 +10,7 @@ Two sets of recordings:
 - **Taskly**: 8 runs from `pnpm bench --runs 4 --no-analysis` on humanish 0.141.0, 4 on the
   planted build and 4 on the clean build, one `openai-computer-use` participant each on
   `gpt-5.6-sol`. Each model analyzed every run 3 times with `pnpm bench --reanalyze`, and the
-  committed rubric scored every analysis. The participants' own reports found 10 of the 20 planted
+  committed rubric scored every analysis. The participants' own reports found 11 of the 20 planted
   defects they could have met; an analysis can only report what a participant ran into, so no
   analysis can score above what the recordings hold.
 - **Movie game**: 3 runs of one study against a public movie-guessing web game the maintainer built, each
@@ -25,26 +25,29 @@ Recall counts each planted defect each scored planted analysis reported, out of 
 Invented counts defects reported on the clean build or not in the app. False assurance counts a
 planted analysis saying a broken control worked. Time is the median `humanish analyze` call.
 Analyses that failed validation or stopped early are not scored, and their count is the
-"completed" column.
+"completed" column. Recall is scored with rubric version 2, which reads more wordings of D1 and D5
+than the version 1 this report first used; the counts under both versions are in
+[the low-verbosity follow-up](2026-10-22-luna-verbosity.md#rubric-version-2).
 
 | Analyst | Output limit | Completed | Recall | Invented | False assurance | Cost per analysis | Median time |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `gpt-6-astra`, high (the 0.142.0 default) | 16,384 | 24/24 | 28/60 | 0 | 0 | $0.41 | 166 s |
-| `gpt-6-astra`, medium | 16,384 | 24/24 | 23/60 | 0 | 0 | $0.31 | 64 s |
-| `gpt-6.1-sol`, high | 16,384 | 22/24 | 29/60 | 0 | 0 | $0.09 | 146 s |
-| **`gpt-6.1-sol`, medium** | 16,384 | **24/24** | **28/60** | **0** | **0** | **$0.06** | **111 s** |
-| `gpt-6-luna`, high | 16,384 | 15/24 | 19/40 | 0 | 0 | $0.008 | 419 s |
-| `gpt-6-luna`, high | 32,768 | 18/24 | 19/40 | 0 | 0 | $0.006 | 382 s |
-| `gpt-6-luna`, medium | 16,384 | 12/24 | 22/40 | 0 | 0 | $0.003 | 35 s |
-| `gpt-6-luna`, low | 16,384 | 10/24 | 17/35 | 0 | 0 | $0.003 | 24 s |
-| `gemini-3.8-flash`, high | 32,768 | 23/24 | 32/60 | 0 | 1 | $0.10 | 145 s |
+| `gpt-6-astra`, high (the 0.142.0 default) | 16,384 | 24/24 | 35/60 | 0 | 0 | $0.41 | 166 s |
+| `gpt-6-astra`, medium | 16,384 | 24/24 | 33/60 | 0 | 0 | $0.31 | 64 s |
+| `gpt-6.1-sol`, high | 16,384 | 22/24 | 35/60 | 0 | 0 | $0.09 | 146 s |
+| **`gpt-6.1-sol`, medium** | 16,384 | **24/24** | **36/60** | **0** | **0** | **$0.06** | **111 s** |
+| `gpt-6-luna`, high | 16,384 | 15/24 | 20/40 | 0 | 0 | $0.008 | 419 s |
+| `gpt-6-luna`, high | 32,768 | 18/24 | 20/40 | 0 | 0 | $0.006 | 382 s |
+| `gpt-6-luna`, medium | 16,384 | 12/24 | 24/40 | 0 | 0 | $0.003 | 35 s |
+| `gpt-6-luna`, low | 16,384 | 10/24 | 19/35 | 0 | 0 | $0.003 | 24 s |
+| `gemini-3.8-flash`, high | 32,768 | 23/24 | 36/60 | 0 | 1 | $0.10 | 145 s |
 | `gemini-4-argon`, high | 32,768 | 19/24 | 32/55 | 0 | 2 | $0.18 | 153 s |
-| `gemini-3.5-flash-lite`, high | 32,768 | 20/24 | 22/50 | 0 | 0 | $0.02 | 21 s |
-| `gemini-3-flash-preview`, high | 32,768 | 15/24 | 14/30 | 0 | 0 | $0.03 | 40 s |
+| `gemini-3.5-flash-lite`, high | 32,768 | 20/24 | 27/50 | 0 | 0 | $0.02 | 21 s |
+| `gemini-3-flash-preview`, high | 32,768 | 15/24 | 16/30 | 0 | 0 | $0.03 | 40 s |
 
 Per defect, every analyst that completed reported D3 (swapped filters) and D4 (`undefined` on
-an empty list) in nearly every planted analysis, D1 (Clear completed) in a quarter to a half, D5
-(Save in edit mode) rarely, and D2 (truncation) never: no participant typed a long enough task.
+an empty list) in nearly every planted analysis, D1 (Clear completed) and D5 (Save in edit mode)
+in up to half, the share of planted recordings where a participant met them, and D2 (truncation)
+never: no participant typed a long enough task.
 The recall intervals of the completed analysts overlap, so Taskly separates them on completion,
 cost and time more than on recall.
 
@@ -91,13 +94,14 @@ Most of `gpt-6-luna`'s high-effort output is reasoning (median 9,800 reasoning t
 second against 130 to 146 with `text.verbosity: "low"`, run side by side on the same packet.
 With low verbosity, 10 of 10 analyses validated in a median 88 s. Every rejected output inspected
 (19 of 19) failed one rule: an observation labelled as a participant statement that also cites a
-capture or an action. The samples are small and only Taskly was replayed; the next comparison
-runs `gpt-6-luna` with low verbosity on both sets of recordings.
+capture or an action. humanish now sends `gpt-6-luna` low verbosity, and
+[the follow-up](2026-10-22-luna-verbosity.md) reruns it on both sets of recordings: at high effort
+it validated 20 of 24 Taskly analyses in a median 110 s and 4 of 6 on the movie game.
 
 ## What changed
 
 The default analyst is `gpt-6.1-sol` at medium effort. On these recordings it matched
-`gpt-6-astra` at high on Taskly recall (28/60 each) and on the movie-game findings, completed
+`gpt-6-astra` at high on Taskly recall (36/60 against 35/60) and on the movie-game findings, completed
 every analysis, and cost about one seventh as much per analysis (Taskly $0.06 against $0.41,
 movie-game mean $0.17 against $1.28) in less time.
 

@@ -229,6 +229,87 @@ describe("the Taskly scorer on claims the recorded runs never made", () => {
     expect(score.supported.map((match) => match.classId)).toEqual(["B1"]);
   });
 
+  it("reads a finding that Save left the row editing as D5, and one about Enter or a reload as another claim", () => {
+    const finding = (title: string) => ({
+      analysisId: "analysis-synthetic",
+      model: null,
+      promptVersion: null,
+      summaryText: "",
+      findings: [
+        { id: "f1", title, summary: "", impact: "low", confidence: "high", observations: [] },
+      ],
+    });
+    const scored = (title: string, arm: Arm) =>
+      scoreAnalysis(finding(title), arm, facts()).findings[0]!;
+    // Wordings of D5 from gpt-6-luna, gpt-6.1-sol, gpt-6-astra and Gemini analyses of the
+    // 2026-10-21 recordings that the first rubric left unresolved.
+    for (const title of [
+      "Save left the row in edit mode",
+      "Saving the edit left the row in editing mode.",
+      "Inline task row remains in edit mode after clicking Save",
+      "Edit mode remains active after saving",
+      "Inline edit mode remains active after clicking Save",
+      "Edited task rows remain stuck in edit mode after saving",
+      "The edited task still showed Save after saving.",
+      "The edited row still showed a Save button after the participant saved it.",
+      "After saving an edit, the row still showed an editing field and Save button.",
+      "The participant noticed that Save had not changed back to Edit.",
+      "The text was visible after the second Save click, while the input and Save button remained.",
+      "The editing state did not visibly end after the second Save click.",
+      "The new wording was visible before and after the second Save, while the input and Save button remained.",
+      "After the second Save click, the wording was visible but the editing state remained unchanged.",
+      "A second attempt displayed the new wording, but Save did not visibly return the row to its normal display.",
+      "The participant was unsure because the control still said Save rather than Edit.",
+      "Task rename reverted after two Save attempts",
+      "The dentist-task edit reverted after repeated Save attempts",
+      "Two Save attempts did not retain the edited title",
+      "Edited task names are not saved and revert to their original text",
+      "Task edits fail to save and revert after subsequent actions",
+      "Save button failure and edit reversion",
+    ]) {
+      expect(scored(title, "planted"), title).toMatchObject({
+        verdict: "planted",
+        defects: ["D5"],
+      });
+      expect(scored(title, "clean").classes, title).toContain("D5");
+      expect(scored(title, "clean").verdict, title).toBe("invented");
+    }
+    for (const title of [
+      "Enter left the edited task open until Save was clicked",
+      "Pressing Enter in the task edit field did not save the edited task",
+      "Edits do not persist after a page refresh",
+      "The task remains open in edit mode until the user manually clicks the Save button.",
+      "Inline task editor lacks a Cancel button",
+    ]) {
+      expect(scored(title, "clean").classes, title).not.toContain("D5");
+    }
+  });
+
+  it("reads a finding that Clear completed left the checked rows in place as D1", () => {
+    for (const title of [
+      "Clear completed produced no visible removal",
+      "Clear completed left both checked rows visible",
+      "Clear completed attempts left the completed rows visible",
+      "Completed tasks remained after repeated clearing attempts",
+      "Completed tasks remained after bulk-clear attempts",
+    ]) {
+      const score = scoreAnalysis(
+        {
+          analysisId: "analysis-synthetic",
+          model: null,
+          promptVersion: null,
+          summaryText: "",
+          findings: [
+            { id: "f1", title, summary: "", impact: "low", confidence: "high", observations: [] },
+          ],
+        },
+        "planted",
+        facts(),
+      );
+      expect(score.findings[0], title).toMatchObject({ verdict: "planted", defects: ["D1"] });
+    }
+  });
+
   it("reads reassurance and negated truncation as no problem", () => {
     const score = scoreReport(
       participant(
