@@ -8,22 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.144.0: Hosted studies run remotely by default (2026-10-22)
 
-- A computer-use study on `e2b-desktop` or `modal-desktop` with a model API key and a public
-  `app-url` subject now runs remotely by default, as `--remote` did: its own process runs in a
-  sandbox on that provider, so it keeps going when this machine sleeps, and the command follows it,
-  serves its live Observer here and copies it back. The command first names the keys the runner
-  receives. To keep the study on this machine, pass `--local` for one run, or set
-  `execution.remote: false` in the study for every run. `--remote` and `execution.remote: true`
-  now require a remote run and refuse a study that cannot have one, with the reason. Any other
-  hosted computer-use study still runs here and the command says why. A study this machine would
-  refuse, such as one missing a key, is refused here before any runner exists. The run's JSON
-  result names the provider and the forwarded keys under `remote`. When the terminal closes (SIGHUP)
-  the run goes on remotely and the command exits 129 with `HUMANISH_REMOTE_DETACHED`, naming how to
-  follow or stop it; a local run on SIGHUP still stops and reclaims. Dry runs, studies with email
-  comms, terminal and shared-world studies, runs from a source checkout and runs started from the
-  TUI stay on this machine.
+humanish 0.144.0 runs a hosted computer-use study remotely by default. A study on
+`e2b-desktop` or `modal-desktop` with a public `app-url` runs its own process in a sandbox in your
+E2B or Modal account, so it keeps going when this machine sleeps; the command follows it, serves
+the live Observer here and copies the evidence back. Before the runner starts, the command names
+the keys it sends. Pass `--local` for one run, or set `execution.remote: false` in a study, to keep
+it on this machine.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.144.0)
 
 ## 0.143.0: Analysis costs about one seventh as much: gpt-6.1-sol at medium effort is the default (2026-10-22)
 
