@@ -7,14 +7,16 @@
 import path from "node:path";
 import { costRefusal } from "../analysis/admission.js";
 import {
+  DEFAULT_ANALYSIS_EFFORT,
   DEFAULT_ANALYSIS_MAX_COST_USD,
+  DEFAULT_ANALYSIS_MODEL,
   resolveAutomaticAnalysis,
 } from "../analysis/automatic-config.js";
 import { ANALYSIS_USUALLY_TAKES } from "../analysis/analysis-limits.js";
 import { bySeverity } from "../analysis/finding-lead.js";
 import { loadAnalysis } from "../analysis/load.js";
 import { projectShareCheckedAnalysis } from "../analysis/sharing.js";
-import type { AnalysisArtifact, LoadedAnalysis } from "../analysis/types.js";
+import type { AnalysisArtifact, AnalysisConfig, LoadedAnalysis } from "../analysis/types.js";
 import {
   loadRunBundlePrepared,
   readRunJsonIfExists,
@@ -217,21 +219,34 @@ const KEY_MISSING_REASONS: ReadonlySet<string> = new Set([
   "AUTOMATIC_ANALYSIS_GEMINI_KEY_MISSING",
 ]);
 
-/** An analysis provider and model, as a study or an analysis record names them. */
+/** An analysis provider, model and effort, as a study or an analysis record names them. */
 interface Analyst {
   provider?: string | undefined;
   model?: string;
+  reasoningEffort?: string | undefined;
 }
+
+/** The effort an analysis configuration declares; Codex configurations declare none. */
+const declaredEffort = (config: AnalysisConfig): string | undefined =>
+  "reasoningEffort" in config ? config.reasoningEffort : undefined;
 
 /** The `analyze` command that runs `analyst` on the run; undefined is the OpenAI default. */
 function analyzeCommand(source: FindingsSource, analyst: Analyst | undefined): string {
   const run = cli(`analyze --run ${source.runId}${source.cwdFlag}`);
   if (analyst?.provider === "codex") return `${run} --provider codex`;
-  const gemini =
-    analyst?.provider === "gemini"
-      ? ` --provider gemini${analyst.model === undefined ? "" : ` --model ${analyst.model}`}`
-      : "";
-  return `${run}${gemini} --max-cost ${DEFAULT_ANALYSIS_MAX_COST_USD}`;
+  if (analyst?.provider === "gemini") {
+    const model = analyst.model === undefined ? "" : ` --model ${analyst.model}`;
+    return `${run} --provider gemini${model} --max-cost ${DEFAULT_ANALYSIS_MAX_COST_USD}`;
+  }
+  // A named model or effort stays in the command, so the rerun is the same analyst. The default
+  // analyst needs neither: `analyze` without flags runs it.
+  const isDefault =
+    (analyst?.model ?? DEFAULT_ANALYSIS_MODEL) === DEFAULT_ANALYSIS_MODEL &&
+    (analyst?.model === undefined || analyst.reasoningEffort === DEFAULT_ANALYSIS_EFFORT);
+  const flags = isDefault
+    ? ""
+    : ` --model ${analyst!.model}${analyst!.reasoningEffort === undefined ? "" : ` --reasoning-effort ${analyst!.reasoningEffort}`}`;
+  return `${run}${flags} --max-cost ${DEFAULT_ANALYSIS_MAX_COST_USD}`;
 }
 
 /** The cited items the analysis evidence resolves, each once, in citation order. */
@@ -417,7 +432,7 @@ function missingKeyFindings(source: FindingsSource, reason: string): AnalysisFin
       "skipped",
       reason,
       `${opening} Set it with ${cli("keys set openai")}, then run the next command.`,
-      analyzeCommand(source, undefined),
+      analyzeCommand(source, source.analyst?.provider === "gemini" ? undefined : source.analyst),
     );
   const file = source.study?.path === undefined ? "the study file" : source.study.path;
   return withoutFindings(
@@ -520,7 +535,11 @@ async function studyAnalyst(
     resolved.config.actor,
   );
   return analysis.ok && analysis.config !== undefined
-    ? { provider: analysis.config.provider, model: analysis.config.model }
+    ? {
+        provider: analysis.config.provider,
+        model: analysis.config.model,
+        reasoningEffort: declaredEffort(analysis.config),
+      }
     : undefined;
 }
 
@@ -541,7 +560,11 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
         ? `The run's evidence changed after analysis ${analysis.id}, so its findings may not match the run.`
         : `Analysis ${analysis.id} is ${analysis.status}, with ${plural(result.findings.length, "finding")}.`,
       next: stale
-        ? analyzeCommand(source, { provider: analysis.provider, model: analysis.config.model })
+        ? analyzeCommand(source, {
+            provider: analysis.provider,
+            model: analysis.config.model,
+            reasoningEffort: declaredEffort(analysis.config),
+          })
         : null,
       analysisId: analysis.id,
       status: analysis.status,
@@ -577,7 +600,11 @@ export function analysisFindings(source: FindingsSource): AnalysisFindings {
       "failed",
       analysis.error,
       `Analysis attempt ${analysis.id} ${analysis.status === "cancelled" ? "was cancelled" : "failed"}${analysis.error ? ` (${analysis.error})` : ""} and left no findings.`,
-      analyzeCommand(source, { provider: analysis.provider, model: analysis.config.model }),
+      analyzeCommand(source, {
+        provider: analysis.provider,
+        model: analysis.config.model,
+        reasoningEffort: declaredEffort(analysis.config),
+      }),
     );
   if (job?.state === "failed" || job?.state === "cancelled") {
     const outcome = analysisOutcomeText(job);
