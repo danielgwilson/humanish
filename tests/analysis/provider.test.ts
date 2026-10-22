@@ -66,6 +66,21 @@ describe("study analysis provider boundary", () => {
     expect(String(init?.body)).not.toContain("synthetic-key");
   });
 
+  it("asks gpt-6-luna for low text verbosity beside the strict schema, and other models for the default", async () => {
+    const bodyFor = async (model: string): Promise<Record<string, unknown>> => {
+      const fetchFn = vi.fn<AnalysisFetch>(async () => response(wire()));
+      await createAnalysisProvider({ apiKey: "synthetic-key", fetchFn })({ ...request, model });
+      return JSON.parse(String(fetchFn.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
+    };
+    expect((await bodyFor("gpt-6-luna")).text).toEqual({
+      format: { type: "json_schema", name: "study_analysis", strict: true, schema: request.schema },
+      verbosity: "low",
+    });
+    for (const model of ["gpt-6.1-sol", "gpt-6-astra", "gpt-5.6-luna"]) {
+      expect((await bodyFor(model)).text).not.toHaveProperty("verbosity");
+    }
+  });
+
   it("sends local image data with explicit high detail and its evidence key", async () => {
     const fetchFn = vi.fn<AnalysisFetch>(async () => response(wire()));
     const dataUrl = "data:image/png;base64,c3ludGhldGlj";

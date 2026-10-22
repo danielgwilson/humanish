@@ -3,6 +3,7 @@
 
 import { OPENAI_RESPONSES_URL } from "../actors/openai-endpoint.js";
 import { isRecord } from "../run/type-guards.js";
+import { openaiTextVerbosity } from "./models.js";
 import type { AnalysisProviderResult, AnalysisTokenUsage, AnalysisWire } from "./provider.js";
 
 const record = (value: unknown): Record<string, unknown> => (isRecord(value) ? value : {});
@@ -82,35 +83,44 @@ export function parseAnalysisResponse(raw: unknown): AnalysisProviderResult {
 }
 
 /** One stateless request: no stored response, no tools, the analysis's reasoning effort, strict
- * schema. */
+ * schema, and the model's text verbosity from models.ts. */
 export const openaiWire: AnalysisWire = {
   url: () => OPENAI_RESPONSES_URL,
   headers: (apiKey) => ({ Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }),
-  body: (request) => ({
-    model: request.model,
-    instructions: request.instructions,
-    input: [
-      {
-        role: "user",
-        content: [
-          { type: "input_text", text: request.evidence },
-          ...request.images.flatMap((image) => [
-            { type: "input_text", text: JSON.stringify({ captureEvidenceId: image.evidenceId }) },
-            { type: "input_image", image_url: image.dataUrl, detail: "high" },
-          ]),
-        ],
+  body: (request) => {
+    const verbosity = openaiTextVerbosity(request.model);
+    return {
+      model: request.model,
+      instructions: request.instructions,
+      input: [
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: request.evidence },
+            ...request.images.flatMap((image) => [
+              { type: "input_text", text: JSON.stringify({ captureEvidenceId: image.evidenceId }) },
+              { type: "input_image", image_url: image.dataUrl, detail: "high" },
+            ]),
+          ],
+        },
+      ],
+      store: false,
+      tools: [],
+      tool_choice: "none",
+      truncation: "disabled",
+      service_tier: "default",
+      reasoning: { effort: request.reasoningEffort },
+      max_output_tokens: request.maxOutputTokens,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "study_analysis",
+          strict: true,
+          schema: request.schema,
+        },
+        ...(verbosity === undefined ? {} : { verbosity }),
       },
-    ],
-    store: false,
-    tools: [],
-    tool_choice: "none",
-    truncation: "disabled",
-    service_tier: "default",
-    reasoning: { effort: request.reasoningEffort },
-    max_output_tokens: request.maxOutputTokens,
-    text: {
-      format: { type: "json_schema", name: "study_analysis", strict: true, schema: request.schema },
-    },
-  }),
+    };
+  },
   parse: parseAnalysisResponse,
 };
