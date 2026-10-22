@@ -28,8 +28,6 @@ The Unreleased section holds the full notes for the next version until it is tag
   A study that names a model but no effort runs it at high, so its configuration hash is
   unchanged. To keep the old analyst, set `review.analysis: {model: gpt-6-astra, maxCostUsd: 10}`.
 
-### Changed
-
 - `--remote` copies a run's screenshots and recordings back while the run goes on, every 30
   seconds, so the copy when it ends is only what is left; the final copy skips any file already
   here with the same digest, which also covers `observe --run` reconnecting after an earlier copy.
