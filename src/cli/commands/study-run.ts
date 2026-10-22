@@ -23,7 +23,7 @@ import { sharedWorldRouteRun } from "./study-route-shared-world.js";
 import { previewRouteRun } from "./study-route-preview.js";
 import { terminalRouteRun } from "./study-route-terminal.js";
 import { maybeLoadAdapterScorer } from "./study-scorer.js";
-import { runRemoteStudy } from "./study-remote.js";
+import { placeRun, refuseRemote, runRemoteStudy } from "./study-remote.js";
 import {
   type CliIo,
   discoverCliKeys,
@@ -137,16 +137,13 @@ export async function runStudyCommand(args: {
     });
   }
 
-  if (args.options.remote === true) {
-    await runRemoteStudy({
-      command: args.command,
-      io: args.io,
-      options: args.options,
-      config,
-      studyPath: resolved.path,
-    });
+  const placement = placeRun({ options: args.options, config, studyPath: resolved.path });
+  if (placement.kind === "refused") {
+    refuseRemote(args.command, args.io, args.options.cwd, placement.message);
     return;
   }
+  if (placement.kind === "local" && placement.note !== undefined)
+    args.io.writeErr(`${placement.note}\n`);
 
   // The route's CLI setup refuses bad options, runStudyWith's plan refuses bad labs, and the route's local
   // checks (keys, runtime auth, subject env, the local agent, caps) refuse this machine, all before
@@ -156,6 +153,22 @@ export async function runStudyCommand(args: {
   if (routeRun === undefined) return;
   // Every route's runStudyWith options carry the study's provenance, from here only.
   const run = { ...routeRun, options: { ...routeRun.options, study } };
+
+  // A remote run passes the same checks here first, so a study this machine would refuse is refused
+  // before any runner exists. The launcher holds its own signal handlers.
+  if (placement.kind === "remote") {
+    const remote = placement.plan;
+    await runRoute(config, run, undefined, undefined, () =>
+      runRemoteStudy({
+        command: args.command,
+        io: args.io,
+        options: args.options,
+        studyPath: resolved.path,
+        remote,
+      }),
+    );
+    return;
+  }
 
   // From here a signal marks the run interrupted and reclaims its sandboxes (run-signals.ts).
   const signals = beginRunSignalPhase(args.io);

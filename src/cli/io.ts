@@ -82,6 +82,8 @@ export interface StudyCommandOptions {
   runId?: string | undefined;
   /** Run the study in a runner sandbox on its participants' provider. */
   remote?: boolean | undefined;
+  /** Run the study on this machine even when it could run remotely. */
+  local?: boolean | undefined;
   /** Hidden: the run key the run's sandboxes carry, chosen by a remote run's launcher. */
   ownerKey?: string | undefined;
   /** Hidden, watch only: bind the served Observer on every interface (a remote run's runner). */

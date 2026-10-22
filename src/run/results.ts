@@ -35,6 +35,11 @@ export interface RunResult {
   /** The Observer rendered for this run, when `RunOptions.observer` asked for one. */
   observer?: ObserverResult;
   warnings: string[];
+  /**
+   * Set when the run executed in a runner sandbox: the provider, and the names of the keys this
+   * machine sent to the runner, in the operator's own account.
+   */
+  remote?: { provider: string; keys: string[] };
   error?: {
     code:
       | "HUMANISH_STUDY_ANALYSIS_INVALID"
@@ -57,6 +62,7 @@ export interface RunResult {
       // --remote: refused before a runner exists, or the remote run failed.
       | "HUMANISH_REMOTE_REFUSED"
       | "HUMANISH_REMOTE_FAILED"
+      | "HUMANISH_REMOTE_DETACHED"
       // CLI-loadable adopter scorer: fail-closed at load, pre-spend.
       | "HUMANISH_STUDY_SCORER_BAD_REF"
       | "HUMANISH_STUDY_SCORER_NOT_FOUND"

@@ -606,6 +606,12 @@ export type StudyNetworkCapture = boolean | { origins?: string[] };
 
 export interface StudyExecution {
   target?: StudyExecutionTarget;
+  /**
+   * Where the study's own process runs. Unset: in a runner sandbox on the participants' provider
+   * when the study can, so it outlives this machine; false: always on this machine; true: only
+   * remotely, refused when the study cannot. `--local` and `--remote` override it for one run.
+   */
+  remote?: boolean;
   /** Actor session wall-clock budget. Consumed on the app-url route. */
   timeoutMs?: number;
   /** Forward-declared: no route reads it yet, so a set value warns. */

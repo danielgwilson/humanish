@@ -44,6 +44,7 @@ describe("starting a run from the terminal surface", () => {
       cwd,
       "--json",
       "--no-open",
+      "--local",
       "--",
       "signup-flow",
     ]);

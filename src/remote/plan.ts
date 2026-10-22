@@ -6,6 +6,7 @@ import path from "node:path";
 import type { SandboxProviderId } from "../run/sandbox-receipts.js";
 import type { StudyConfig } from "../study/types.js";
 import type { ComputerUsePlan, StudyPlan } from "../study/plan-types.js";
+import { analysisKeyNames } from "../keys/key-resolution.js";
 import { keyNamesOf } from "../study/requirements.js";
 import { participantList } from "../study/study-fields.js";
 
@@ -39,6 +40,8 @@ export interface RemotePlan {
   readonly uploadDirectories: readonly string[];
   /** The environment names the runner's run may receive, and nothing else. */
   readonly envNames: readonly string[];
+  /** Names of which only the first one set is sent, as the run reads only that one. */
+  readonly alternatives: readonly (readonly string[])[];
 }
 
 export type RemotePlanResult = { ok: true; plan: RemotePlan } | { ok: false; reason: string };
@@ -83,6 +86,8 @@ export function planRemoteRun(args: {
   if (config.review?.scorer !== undefined)
     return refuse("it loads a scorer module, which does not run remotely yet.");
   if (plan.rerun !== undefined) return refuse("a rerun reads a run on this machine.");
+  if (config.comms !== undefined)
+    return refuse("its email setup reads files and connections on this machine.");
 
   const study = inside(cwd, args.studyPath);
   if (study === undefined) return refuse("the study file is outside the project directory.");
@@ -114,6 +119,7 @@ export function planRemoteRun(args: {
       envNames: [
         ...new Set([...keyNamesOf(plan), ...PROVIDER_KEYS[runner.provider], ...PLAN_SETTINGS]),
       ].sort(),
+      alternatives: analystKeyNames(plan),
     },
   };
 }
@@ -155,4 +161,12 @@ function servedHere(appUrl: string): boolean {
     (a === 192 && b === 168) ||
     (a === 169 && b === 254)
   );
+}
+
+/** The analyst's key names, when it reads the first one set of several. */
+function analystKeyNames(plan: ComputerUsePlan): (readonly string[])[] {
+  const analyst = plan.analysis?.config.provider;
+  if (analyst === undefined || analyst === "codex") return [];
+  const names = analysisKeyNames(analyst);
+  return names.length > 1 ? [names] : [];
 }

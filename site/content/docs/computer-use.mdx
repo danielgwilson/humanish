@@ -382,19 +382,21 @@ nondeterminism candidate and does not license erasing the original red participa
 
 ## Keep a long study going when your machine sleeps
 
-Each participant's desktop runs on E2B or Modal, but by default its decisions (the screenshot,
-the model call, the next action) run in the `humanish` process on your machine. If that machine
-sleeps, the participants stop deciding and the run fails; its bundle records a `host.suspended`
-event with when and how long.
+Each participant's desktop runs on E2B or Modal, and its decisions (the screenshot, the model
+call, the next action) run in a `humanish` process. When that process runs on your machine and the
+machine sleeps, the participants stop deciding and the run fails; its bundle records a
+`host.suspended` event with when and how long.
 
-`--remote` moves that process to a sandbox on the participants' provider, the runner:
+So a study that can runs that process in a sandbox on the participants' provider, the runner, by
+default:
 
 ```bash
-npx humanish run humanish/studies/YOUR_STUDY.yaml --remote
+npx humanish run humanish/studies/YOUR_STUDY.yaml
 ```
 
 humanish plans the study here, so a refusal costs nothing, then creates the runner, installs this
-same humanish in it and starts the run there. While it runs:
+same humanish in it and starts the run there. The command first names the keys the runner
+receives. While it runs:
 
 - the command prints an Observer address on 127.0.0.1 that shows the run live, desktops included;
   the provider's own port authentication guards the runner, and the credential stays in this
@@ -413,9 +415,17 @@ The command exits with the run's own code.
 The runner receives the study file, the persona files and each `participants[].files` entry, and
 only the keys its plan reads, in its run's environment, in your own E2B or Modal account. It costs
 one more sandbox for the length of the study, and on E2B it counts against your concurrent
-sandboxes. `--remote` takes a computer-use study whose participants use `e2b-desktop` or
-`modal-desktop`, a model API key (not a local agent) and an `app-url` subject on the public
-internet; it refuses anything else before it creates the runner, and says why.
+sandboxes.
+
+A study runs remotely when it is a computer-use study whose participants use `e2b-desktop` or
+`modal-desktop`, with a model API key (not a local agent) and an `app-url` subject on the public
+internet, and the run uses none of `--scorer`, `--count`, `--rerun-failed-from`, `--participants`
+or `--expose`. Any other hosted study runs on this machine, and the command says why. To choose:
+
+- `--local` runs this one run on this machine; `execution.remote: false` in the study does it for
+  every run.
+- `--remote` requires a remote run and refuses, with the reason, a study that cannot have one;
+  `execution.remote: true` does it for every run.
 
 For any other study, run it on a machine that stays on, such as a cloud VM with Node and your
 provider keys, inside `tmux`:

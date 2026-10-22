@@ -56,6 +56,7 @@ const NOT_FREE_TEXT: Readonly<Record<string, readonly string[]>> = {
     "execution.desktop.recording",
     "execution.desktop.resolution",
     "execution.desktop.sandboxTimeoutMs",
+    "execution.remote",
     "execution.terminal.doNotTrack",
     "execution.timeoutMs",
     "participants.count",

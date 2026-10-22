@@ -43,6 +43,11 @@ export function parseExecution(
     }
     execution.target = target;
   }
+  if (raw.remote !== undefined) {
+    if (typeof raw.remote !== "boolean")
+      return invalid("`execution.remote` must be true or false.");
+    execution.remote = raw.remote;
+  }
   const timeoutMs = posInt(raw.timeoutMs);
   if (timeoutMs !== undefined) execution.timeoutMs = timeoutMs;
   const completionTimeoutMs = posInt(raw.completionTimeoutMs);
