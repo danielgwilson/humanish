@@ -136,6 +136,9 @@ Eleven offending observations read by hand, six from Taskly and five from the mo
 
 In none of the eleven did an extra citation contradict the statement.
 
+The rule now accepts a statement that cites at least one quote. The rerun under that rule is in
+[participant statements that cite captures](2026-10-22-statement-rule.md).
+
 ## Rubric version 2
 
 Rubric version 1 matched D5 only where the finding said Save did nothing in a few fixed forms. It

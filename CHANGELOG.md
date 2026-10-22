@@ -21,6 +21,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Changed
 
+- An analysis observation that reports what a participant said may now cite the captures or
+  actions they were speaking about, as long as it cites at least one of their own messages.
+  Before, any such extra citation failed the whole analysis, which caused nearly all
+  `gpt-6-luna` rejections on the benchmark recordings
+  ([participant statements that cite captures](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-10-22-statement-rule.md)).
+  The analysis prompt is unchanged.
 - Study analysis with `gpt-6-luna` sends `text.verbosity: "low"`. On the Taskly benchmark
   recordings at high effort, its median analysis took 110 s in place of 406 s, 22 of 24 analyses
   passed the evidence checks in place of 18 of 24, and the cost stayed under $0.01

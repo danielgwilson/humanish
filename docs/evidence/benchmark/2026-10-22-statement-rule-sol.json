@@ -1,0 +1,2226 @@
+{
+  "schema": "humanish.bench-result.v1",
+  "createdAt": "2026-10-22T08:27:44.130Z",
+  "humanish": {
+    "version": "0.141.0",
+    "source": "this checkout at a1be9ab09, src/ as of a1be9ab09"
+  },
+  "rubric": {
+    "id": "taskly-rubric",
+    "version": 2,
+    "sha256": "ae05cf421955ae4532b547b31785c87d8c768ea08b60613dd9e5eea0610d8394"
+  },
+  "fixture": {
+    "id": "taskly",
+    "digests": {
+      "plantedAppJs": "81d287dc902f0c27893c6d73f3b7bceceeed7310c18f6667e2b71449e34682e8",
+      "cleanAppJs": "7f9f16923c0fc87224b5d7447e87ce10f5963266b5f28eb909b497a31c7a2733",
+      "indexHtml": "ea196a9b8915c8e9f94dd70eb349111cd3fb072abb21bea4f63bf614479c4a13",
+      "persona": "c2a0b77b29b152d13c812682ba418bc9cb6eebd705141da94634993cdf559dbf"
+    },
+    "persona": "synthetic-new-user"
+  },
+  "mission": {
+    "id": "neutral",
+    "sha256": "989a6bde7cfc3406e32805c67f698c211fdb9731793c09c7adc10da886c7117f",
+    "text": "You are trying Taskly, a small web app for keeping a to-do list, for the first time. You have a handful of errands and chores to keep track of this week. Use Taskly for them the way you would actually use a list app, until you have decided whether you would keep using it. Report what worked, and describe anything that behaved differently from what you expected, in plain terms, saying what you did and what you saw."
+  },
+  "runsPerArm": 4,
+  "budget": {
+    "maxUsdPerBrain": 7,
+    "participantCapUsd": 0.6,
+    "analysisMaxUsd": 7,
+    "analysisAutoCap": true,
+    "worstCaseDesktopMinutes": 50,
+    "analysis": false
+  },
+  "brains": [
+    {
+      "brain": "openai-computer-use",
+      "participantModels": [
+        "gpt-5.6-sol"
+      ],
+      "analysis": {
+        "provider": null,
+        "model": null,
+        "promptVersion": null,
+        "maxCostUsd": null,
+        "maxOutputTokens": null
+      },
+      "stopped": null,
+      "spentUsd": {
+        "participant": 1.3916,
+        "desktop": 0.1068,
+        "analysis": 0,
+        "total": 1.4984,
+        "unpricedRuns": 0
+      },
+      "runs": [
+        {
+          "arm": "planted",
+          "index": 1,
+          "runId": "cua-2026-10-21T19-51-23-799Z-3ac18ca2",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.136952,
+            "desktopUsd": 0.012189,
+            "analysisUsd": null,
+            "totalUsd": 0.1491
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "on first opening, the empty list displayed undefined while saying 0 left.",
+                "D3": "the filters appeared reversed: active showed the completed tasks, while completed showed the unfinished tasks."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [
+                {
+                  "classId": "H4",
+                  "quote": "no terminal output appeared during the trial, so there was no terminal text to interpret."
+                }
+              ],
+              "unresolved": [],
+              "model": "gpt-5.6-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "clean",
+          "index": 1,
+          "runId": "cua-2026-10-21T19-52-52-373Z-f00aca1b",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.122284,
+            "desktopUsd": 0.013191,
+            "analysisUsd": null,
+            "totalUsd": 0.1355
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [
+                {
+                  "classId": "H4",
+                  "quote": "no terminal output appeared during this trial; everything happened in the browser, so there was no terminal output to interpret."
+                }
+              ],
+              "unresolved": [
+                "i hesitated over whether the list would survive closing or refreshing the page, so i refreshed it. all five tasks disappeared, including the three unfinished ones, and the screen returned to nothing here yet with 0 left. i expected a lis..."
+              ],
+              "model": "gpt-5.6-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "planted",
+          "index": 2,
+          "runId": "cua-2026-10-21T19-54-28-818Z-0856caa2",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.177041,
+            "desktopUsd": 0.012845,
+            "analysisUsd": null,
+            "totalUsd": 0.1899
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the empty list initially displayed undefined, which was confusing.",
+                "D3": "the filters appeared reversed: active showed completed, crossed-out tasks, while completed showed unfinished tasks."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "refreshing the page erased every task and brought back undefined with 0 left."
+                }
+              ],
+              "harness": [
+                {
+                  "classId": "H4",
+                  "quote": "no terminal output was shown."
+                }
+              ],
+              "unresolved": [],
+              "model": "gpt-5.6-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "clean",
+          "index": 2,
+          "runId": "cua-2026-10-21T19-56-02-122Z-8f868a43",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.158329,
+            "desktopUsd": 0.012611,
+            "analysisUsd": null,
+            "totalUsd": 0.1709
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "what behaved differently from expected: after refreshing the page, all three unfinished tasks disappeared and the list returned to 0 left."
+                },
+                {
+                  "classId": "B6",
+                  "quote": "i briefly hesitated when editing because the inline editor offered save but no cancel."
+                }
+              ],
+              "harness": [
+                {
+                  "classId": "H4",
+                  "quote": "i did not encounter or use any terminal output; all feedback appeared in the webpage and was clear until the refresh erased the list."
+                }
+              ],
+              "unresolved": [],
+              "model": "gpt-5.6-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "planted",
+          "index": 3,
+          "runId": "cua-2026-10-21T19-57-36-965Z-16ef98de",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.205532,
+            "desktopUsd": 0.013777,
+            "analysisUsd": null,
+            "totalUsd": 0.2193
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "detectedQuotes": {
+                "D4": "on first opening, the list showed undefined and 0 left.",
+                "D3": "the filters appeared reversed: active showed completed tasks, while completed showed unfinished tasks.",
+                "D1": "clear completed did not remove the checked tasks.",
+                "D5": "after saving an edit, the row stayed in editing mode with a save button."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B3",
+                  "quote": "delete had no confirmation, which made me hesitate."
+                },
+                {
+                  "classId": "B10",
+                  "quote": "after refreshing the page, all my tasks disappeared and the undefined item returned."
+                }
+              ],
+              "harness": [
+                {
+                  "classId": "H4",
+                  "quote": "i did not encounter any terminal output to interpret."
+                }
+              ],
+              "unresolved": [],
+              "model": "gpt-5.6-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "clean",
+          "index": 3,
+          "runId": "cua-2026-10-21T19-59-16-150Z-672572b0",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.180257,
+            "desktopUsd": 0.011785,
+            "analysisUsd": null,
+            "totalUsd": 0.192
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B3",
+                  "quote": "i hesitated slightly at clear completed because it removed the tasks immediately without confirmation."
+                },
+                {
+                  "classId": "B10",
+                  "quote": "the major problem appeared when i refreshed the page: all three remaining tasks disappeared, and the app returned to nothing here yet with 0 left."
+                }
+              ],
+              "harness": [
+                {
+                  "classId": "H4",
+                  "quote": "no terminal output was shown or used, so there was no terminal output to interpret."
+                }
+              ],
+              "unresolved": [],
+              "model": "gpt-5.6-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "planted",
+          "index": 4,
+          "runId": "cua-2026-10-21T20-00-44-146Z-d390e954",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.237443,
+            "desktopUsd": 0.017806,
+            "analysisUsd": null,
+            "totalUsd": 0.2552
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the empty list initially displayed undefined with 0 left.",
+                "D3": "the filters appeared reversed: active showed completed tasks, while completed showed unfinished tasks.",
+                "D1": "clear completed did nothing when clicked."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "refreshing the page erased every task and brought back undefined."
+                }
+              ],
+              "harness": [
+                {
+                  "classId": "H4",
+                  "quote": "there was no terminal output to interpret."
+                }
+              ],
+              "unresolved": [
+                "editing call dentist to book dentist appointment did not save. i clicked save twice, but the task later reverted."
+              ],
+              "model": "gpt-5.6-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "clean",
+          "index": 4,
+          "runId": "cua-2026-10-21T20-02-50-284Z-c2b04bd0",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.173751,
+            "desktopUsd": 0.012564,
+            "analysisUsd": null,
+            "totalUsd": 0.1863
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B1",
+                  "quote": "pressing enter saved a new task but did not save an edited task; i had to click save."
+                },
+                {
+                  "classId": "B3",
+                  "quote": "clear completed immediately removed completed items without confirmation."
+                },
+                {
+                  "classId": "B10",
+                  "quote": "most importantly, refreshing the page erased the three unfinished tasks as well."
+                },
+                {
+                  "classId": "B6",
+                  "quote": "i hesitated at the edit because there was no cancel option, but the main reason i would not keep using taskly is that the list did not survive a page refresh."
+                }
+              ],
+              "harness": [
+                {
+                  "classId": "H4",
+                  "quote": "i encountered no terminal output to interpret."
+                }
+              ],
+              "unresolved": [],
+              "model": "gpt-5.6-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        }
+      ],
+      "summary": {
+        "report": {
+          "plantedUnits": 4,
+          "cleanUnits": 4,
+          "recall": {
+            "D1": {
+              "hits": 2,
+              "of": 4
+            },
+            "D2": {
+              "hits": 0,
+              "of": 4
+            },
+            "D3": {
+              "hits": 4,
+              "of": 4
+            },
+            "D4": {
+              "hits": 4,
+              "of": 4
+            },
+            "D5": {
+              "hits": 1,
+              "of": 4
+            },
+            "total": {
+              "hits": 11,
+              "of": 20,
+              "wilson95": [
+                0.3421,
+                0.7418
+              ]
+            }
+          },
+          "d2Mechanism": {
+            "data_loss": 0,
+            "display": 0,
+            "ambiguous": 0,
+            "unspecified": 0
+          },
+          "falseAssurance": {
+            "claims": 0,
+            "unitsWith": 0
+          },
+          "invented": {
+            "planted": 0,
+            "clean": 0,
+            "unitsWith": 0
+          },
+          "harness": 8,
+          "unresolved": 2,
+          "supported": 12,
+          "engaged": {
+            "D1": {
+              "hits": 2,
+              "of": 4
+            },
+            "D2": {
+              "hits": 0,
+              "of": 4
+            },
+            "D3": {
+              "hits": 4,
+              "of": 4
+            },
+            "D4": {
+              "hits": 4,
+              "of": 4
+            },
+            "D5": {
+              "hits": 4,
+              "of": 4
+            }
+          }
+        },
+        "analysis": {
+          "plantedUnits": 0,
+          "cleanUnits": 0,
+          "recall": {
+            "D1": {
+              "hits": 0,
+              "of": 0
+            },
+            "D2": {
+              "hits": 0,
+              "of": 0
+            },
+            "D3": {
+              "hits": 0,
+              "of": 0
+            },
+            "D4": {
+              "hits": 0,
+              "of": 0
+            },
+            "D5": {
+              "hits": 0,
+              "of": 0
+            },
+            "total": {
+              "hits": 0,
+              "of": 0,
+              "wilson95": null
+            }
+          },
+          "d2Mechanism": {
+            "data_loss": 0,
+            "display": 0,
+            "ambiguous": 0,
+            "unspecified": 0
+          },
+          "falseAssurance": {
+            "claims": 0,
+            "unitsWith": 0
+          },
+          "invented": {
+            "planted": 0,
+            "clean": 0,
+            "unitsWith": 0
+          },
+          "harness": 0,
+          "unresolved": 0,
+          "supported": 0
+        }
+      },
+      "analysisModels": [
+        {
+          "spec": "gpt-6.1-sol@medium",
+          "provider": "openai",
+          "model": "gpt-6.1-sol",
+          "promptVersion": "study-evidence-9",
+          "states": {
+            "complete": 22,
+            "failed": 2
+          },
+          "summary": {
+            "plantedUnits": 12,
+            "cleanUnits": 10,
+            "recall": {
+              "D1": {
+                "hits": 5,
+                "of": 12
+              },
+              "D2": {
+                "hits": 0,
+                "of": 12
+              },
+              "D3": {
+                "hits": 12,
+                "of": 12
+              },
+              "D4": {
+                "hits": 12,
+                "of": 12
+              },
+              "D5": {
+                "hits": 5,
+                "of": 12
+              },
+              "total": {
+                "hits": 34,
+                "of": 60,
+                "wilson95": [
+                  0.441,
+                  0.6843
+                ]
+              }
+            },
+            "d2Mechanism": {
+              "data_loss": 0,
+              "display": 0,
+              "ambiguous": 0,
+              "unspecified": 0
+            },
+            "falseAssurance": {
+              "claims": 0,
+              "unitsWith": 0
+            },
+            "invented": {
+              "planted": 0,
+              "clean": 0,
+              "unitsWith": 0
+            },
+            "harness": 0,
+            "unresolved": 8,
+            "supported": 24
+          },
+          "spentUsd": {
+            "total": 1.4737,
+            "perAnalysis": 0.0614,
+            "unpriced": 0
+          },
+          "wallMs": {
+            "total": 1778542,
+            "perAnalysis": 74106
+          },
+          "analyses": [
+            {
+              "arm": "planted",
+              "index": 1,
+              "runId": "cua-2026-10-21T19-51-23-799Z-3ac18ca2",
+              "repeat": 1,
+              "state": "complete",
+              "analysisId": "analysis-7a569118-a700-498d-866e-102ad3d229c8",
+              "estimatedUsd": 0.088695,
+              "wallMs": 70520,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-7a569118-a700-498d-866e-102ad3d229c8",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": false
+                },
+                "impactByDefect": {
+                  "D3": "friction",
+                  "D4": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "The list was absent after refresh, prompting a decision not to continue",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Active and Completed showed the opposite task states",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "The empty list displayed “undefined” and was reported as looking broken",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 1,
+              "runId": "cua-2026-10-21T19-52-52-373Z-f00aca1b",
+              "repeat": 1,
+              "state": "complete",
+              "analysisId": "analysis-57376e01-f47c-4714-8e60-5b45601bacff",
+              "estimatedUsd": 0.069093,
+              "wallMs": 47874,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-57376e01-f47c-4714-8e60-5b45601bacff",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": false,
+                  "D4": false,
+                  "D5": false
+                },
+                "impactByDefect": {},
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "The list was empty after refresh, undermining reported trust",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "unresolved",
+                    "classes": [],
+                    "defects": []
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "planted",
+              "index": 2,
+              "runId": "cua-2026-10-21T19-54-28-818Z-0856caa2",
+              "repeat": 1,
+              "state": "complete",
+              "analysisId": "analysis-af0f5b72-9a95-4308-8641-32b5c28bc826",
+              "estimatedUsd": 0.098788,
+              "wallMs": 71867,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-af0f5b72-9a95-4308-8641-32b5c28bc826",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": false
+                },
+                "impactByDefect": {
+                  "D3": "friction",
+                  "D4": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Five tasks disappeared from the list after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Status-filter results contradicted their labels",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "The empty list displayed “undefined”",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 2,
+              "runId": "cua-2026-10-21T19-56-02-122Z-8f868a43",
+              "repeat": 1,
+              "state": "complete",
+              "analysisId": "analysis-f8cfaff9-9350-46e5-8aad-ba1dc51c4aa8",
+              "estimatedUsd": 0.094591,
+              "wallMs": 61053,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-f8cfaff9-9350-46e5-8aad-ba1dc51c4aa8",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": false,
+                  "D4": false,
+                  "D5": false
+                },
+                "impactByDefect": {},
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Unfinished list entries were no longer displayed after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "The participant reported hesitation over the editor's missing Cancel option",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B6"
+                    ],
+                    "defects": []
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "planted",
+              "index": 3,
+              "runId": "cua-2026-10-21T19-57-36-965Z-16ef98de",
+              "repeat": 1,
+              "state": "complete",
+              "analysisId": "analysis-098891aa-67ee-4416-8a38-84023f895de3",
+              "estimatedUsd": 0.120425,
+              "wallMs": 97147,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-098891aa-67ee-4416-8a38-84023f895de3",
+                "listed": {
+                  "D1": true,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": false
+                },
+                "impactByDefect": {
+                  "D1": "friction",
+                  "D3": "friction",
+                  "D4": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Remaining tasks disappeared from view after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Clear completed left the checked tasks visible",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D1"
+                    ],
+                    "defects": [
+                      "D1"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "Active and Completed displayed opposite task states",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F4",
+                    "title": "Editing required a retry and left an ambiguous Save state",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "unresolved",
+                    "classes": [],
+                    "defects": []
+                  },
+                  {
+                    "id": "F5",
+                    "title": "Initial list area displayed “undefined”",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 3,
+              "runId": "cua-2026-10-21T19-59-16-150Z-672572b0",
+              "repeat": 1,
+              "state": "complete",
+              "analysisId": "analysis-48962831-1885-4344-8841-29429b385181",
+              "estimatedUsd": 0.092468,
+              "wallMs": 64705,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-48962831-1885-4344-8841-29429b385181",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": false,
+                  "D4": false,
+                  "D5": false
+                },
+                "impactByDefect": {},
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Three remaining tasks were no longer displayed after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Immediate clearing prompted reported hesitation",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B3"
+                    ],
+                    "defects": []
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "planted",
+              "index": 4,
+              "runId": "cua-2026-10-21T20-00-44-146Z-d390e954",
+              "repeat": 1,
+              "state": "complete",
+              "analysisId": "analysis-2e910bb6-d446-4565-95ae-751dcd95eada",
+              "estimatedUsd": 0.126818,
+              "wallMs": 94556,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-2e910bb6-d446-4565-95ae-751dcd95eada",
+                "listed": {
+                  "D1": true,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": true
+                },
+                "impactByDefect": {
+                  "D5": "friction",
+                  "D3": "friction",
+                  "D1": "friction",
+                  "D4": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "The entered list disappeared from view after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "The dentist edit reverted after two Save attempts",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "Active and Completed displayed the opposite task states",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F4",
+                    "title": "Completed tasks remained after repeated Clear completed attempts",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D1"
+                    ],
+                    "defects": [
+                      "D1"
+                    ]
+                  },
+                  {
+                    "id": "F5",
+                    "title": "The empty state displayed “undefined” and caused reported uncertainty",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 4,
+              "runId": "cua-2026-10-21T20-02-50-284Z-c2b04bd0",
+              "repeat": 1,
+              "state": "complete",
+              "analysisId": "analysis-3dbae28f-f5d6-4bf3-97a0-6ef3a82b811f",
+              "estimatedUsd": 0.099205,
+              "wallMs": 72268,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-3dbae28f-f5d6-4bf3-97a0-6ef3a82b811f",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": false,
+                  "D4": false,
+                  "D5": false
+                },
+                "impactByDefect": {},
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "The list was empty after refresh, undermining the participant's willingness to return",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Editing required a different save interaction from adding tasks",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "unresolved",
+                    "classes": [],
+                    "defects": []
+                  },
+                  {
+                    "id": "F3",
+                    "title": "Immediate clearing of completed tasks prompted reported distrust",
+                    "impact": "friction",
+                    "confidence": "medium",
+                    "verdict": "supported",
+                    "classes": [
+                      "B3"
+                    ],
+                    "defects": []
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "planted",
+              "index": 1,
+              "runId": "cua-2026-10-21T19-51-23-799Z-3ac18ca2",
+              "repeat": 2,
+              "state": "complete",
+              "analysisId": "analysis-0c01c484-de7e-4772-8e7a-90b22b624ff5",
+              "estimatedUsd": 0.044986,
+              "wallMs": 79356,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-0c01c484-de7e-4772-8e7a-90b22b624ff5",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": false
+                },
+                "impactByDefect": {
+                  "D3": "friction",
+                  "D4": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "The task list disappeared from view after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Active and Completed displayed opposite task states",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "The empty list displayed “undefined”",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 1,
+              "runId": "cua-2026-10-21T19-52-52-373Z-f00aca1b",
+              "repeat": 2,
+              "state": "complete",
+              "analysisId": "analysis-9b0abf1b-dcc0-4df2-9310-4b33395aa5d7",
+              "estimatedUsd": 0.024888,
+              "wallMs": 44600,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-9b0abf1b-dcc0-4df2-9310-4b33395aa5d7",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": false,
+                  "D4": false,
+                  "D5": false
+                },
+                "impactByDefect": {},
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "The list appeared empty after refresh, undermining the participant's willingness to keep using it",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "unresolved",
+                    "classes": [],
+                    "defects": []
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "planted",
+              "index": 2,
+              "runId": "cua-2026-10-21T19-54-28-818Z-0856caa2",
+              "repeat": 2,
+              "state": "complete",
+              "analysisId": "analysis-1d1a9840-1731-45a3-b322-44203ac38974",
+              "estimatedUsd": 0.039436,
+              "wallMs": 68268,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-1d1a9840-1731-45a3-b322-44203ac38974",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": false
+                },
+                "impactByDefect": {
+                  "D3": "friction",
+                  "D4": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Five tasks disappeared from the displayed list after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Active and Completed displayed the opposite task states",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "The empty list displayed “undefined”",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 2,
+              "runId": "cua-2026-10-21T19-56-02-122Z-8f868a43",
+              "repeat": 2,
+              "state": "complete",
+              "analysisId": "analysis-bdd9d266-9195-4573-99e8-1dab6fe58677",
+              "estimatedUsd": 0.035375,
+              "wallMs": 62510,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-bdd9d266-9195-4573-99e8-1dab6fe58677",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": false,
+                  "D4": false,
+                  "D5": false
+                },
+                "impactByDefect": {},
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Three remaining tasks were no longer shown after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "No visible Cancel option prompted reported hesitation during editing",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B6"
+                    ],
+                    "defects": []
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "planted",
+              "index": 3,
+              "runId": "cua-2026-10-21T19-57-36-965Z-16ef98de",
+              "repeat": 2,
+              "state": "complete",
+              "analysisId": "analysis-2625fb91-f77f-447a-a222-c204a858d3e3",
+              "estimatedUsd": 0.057735,
+              "wallMs": 99356,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-2625fb91-f77f-447a-a222-c204a858d3e3",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": true
+                },
+                "impactByDefect": {
+                  "D4": "friction",
+                  "D3": "friction",
+                  "D5": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Remaining tasks were no longer displayed after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Active and Completed displayed opposite task states",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "Clear completed left checked tasks displayed",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "unresolved",
+                    "classes": [],
+                    "defects": []
+                  },
+                  {
+                    "id": "F4",
+                    "title": "Editing required a retry and Save remained visible",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
+                  },
+                  {
+                    "id": "F5",
+                    "title": "Initial and post-refresh list states displayed “undefined”",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 3,
+              "runId": "cua-2026-10-21T19-59-16-150Z-672572b0",
+              "repeat": 2,
+              "state": "failed",
+              "analysisId": "analysis-751ab067-0207-447a-af91-4dd96cbef32f",
+              "estimatedUsd": 0.02996,
+              "wallMs": 65202,
+              "error": "analysis_validation_failed_participant_coverage_invalid",
+              "analysis": null
+            },
+            {
+              "arm": "planted",
+              "index": 4,
+              "runId": "cua-2026-10-21T20-00-44-146Z-d390e954",
+              "repeat": 2,
+              "state": "complete",
+              "analysisId": "analysis-92c9007b-d466-477c-af17-0a09354f9198",
+              "estimatedUsd": 0.059892,
+              "wallMs": 100905,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-92c9007b-d466-477c-af17-0a09354f9198",
+                "listed": {
+                  "D1": true,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": true
+                },
+                "impactByDefect": {
+                  "D4": "friction",
+                  "D5": "friction",
+                  "D3": "friction",
+                  "D1": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Tasks were no longer displayed after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  },
+                  {
+                    "id": "F2",
+                    "title": "The dentist task edit reverted after two Save attempts",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "Active and Completed showed results opposite to their labels",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F4",
+                    "title": "Completed tasks remained after repeated clearing attempts",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D1"
+                    ],
+                    "defects": [
+                      "D1"
+                    ]
+                  },
+                  {
+                    "id": "F5",
+                    "title": "The initial empty state was unclear to the participant",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 4,
+              "runId": "cua-2026-10-21T20-02-50-284Z-c2b04bd0",
+              "repeat": 2,
+              "state": "complete",
+              "analysisId": "analysis-00cbd848-adac-4e11-a03f-10fe0c1717b9",
+              "estimatedUsd": 0.041155,
+              "wallMs": 69829,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-00cbd848-adac-4e11-a03f-10fe0c1717b9",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": false,
+                  "D4": false,
+                  "D5": false
+                },
+                "impactByDefect": {},
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "List became empty after refresh in this session",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "unresolved",
+                    "classes": [],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Editing required a different save interaction and offered no visible Cancel",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B6"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F3",
+                    "title": "Immediate clearing of completed tasks was reported as untrustworthy",
+                    "impact": "friction",
+                    "confidence": "medium",
+                    "verdict": "supported",
+                    "classes": [
+                      "B3"
+                    ],
+                    "defects": []
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "planted",
+              "index": 1,
+              "runId": "cua-2026-10-21T19-51-23-799Z-3ac18ca2",
+              "repeat": 3,
+              "state": "complete",
+              "analysisId": "analysis-c287292d-6616-4a7e-afe9-86b2b2230430",
+              "estimatedUsd": 0.047266,
+              "wallMs": 78084,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-c287292d-6616-4a7e-afe9-86b2b2230430",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": false
+                },
+                "impactByDefect": {
+                  "D3": "friction",
+                  "D4": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Five tasks were absent after refresh, prompting a reported decision not to continue",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Active and Completed displayed the opposite task states",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "The empty list displayed “undefined” and was reported as looking broken",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 1,
+              "runId": "cua-2026-10-21T19-52-52-373Z-f00aca1b",
+              "repeat": 3,
+              "state": "failed",
+              "analysisId": "analysis-9dfe1c29-8d48-4174-83aa-632748fa2f6a",
+              "estimatedUsd": 0.030678,
+              "wallMs": 55516,
+              "error": "analysis_validation_failed_participant_coverage_invalid",
+              "analysis": null
+            },
+            {
+              "arm": "planted",
+              "index": 2,
+              "runId": "cua-2026-10-21T19-54-28-818Z-0856caa2",
+              "repeat": 3,
+              "state": "complete",
+              "analysisId": "analysis-88b7a6cf-5179-47bf-9270-d58556ead9ab",
+              "estimatedUsd": 0.043086,
+              "wallMs": 76417,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-88b7a6cf-5179-47bf-9270-d58556ead9ab",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": false
+                },
+                "impactByDefect": {
+                  "D3": "friction",
+                  "D4": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "All five tasks were absent from the list after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Active and Completed displayed opposite task states",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "The empty list displayed “undefined”",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 2,
+              "runId": "cua-2026-10-21T19-56-02-122Z-8f868a43",
+              "repeat": 3,
+              "state": "complete",
+              "analysisId": "analysis-3a566ce5-4ae7-430d-a555-73ab639e036e",
+              "estimatedUsd": 0.034065,
+              "wallMs": 63922,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-3a566ce5-4ae7-430d-a555-73ab639e036e",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": false,
+                  "D4": false,
+                  "D5": false
+                },
+                "impactByDefect": {},
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Unfinished tasks were no longer displayed after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "No visible Cancel option prompted reported editing hesitation",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B6"
+                    ],
+                    "defects": []
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "planted",
+              "index": 3,
+              "runId": "cua-2026-10-21T19-57-36-965Z-16ef98de",
+              "repeat": 3,
+              "state": "complete",
+              "analysisId": "analysis-23b476d3-aa69-4aed-859d-940a082a35ab",
+              "estimatedUsd": 0.054565,
+              "wallMs": 93205,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-23b476d3-aa69-4aed-859d-940a082a35ab",
+                "listed": {
+                  "D1": true,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": true
+                },
+                "impactByDefect": {
+                  "D3": "friction",
+                  "D1": "friction",
+                  "D5": "friction",
+                  "D4": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "The remaining list disappeared from view after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Active and Completed displayed opposite task states",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "Clear completed left checked tasks visible",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D1"
+                    ],
+                    "defects": [
+                      "D1"
+                    ]
+                  },
+                  {
+                    "id": "F4",
+                    "title": "Editing required a retry and retained the Save state",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
+                  },
+                  {
+                    "id": "F5",
+                    "title": "The opening display showed an unexplained “undefined” value",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 3,
+              "runId": "cua-2026-10-21T19-59-16-150Z-672572b0",
+              "repeat": 3,
+              "state": "complete",
+              "analysisId": "analysis-60174c31-dec0-4430-9164-7395233eb4ce",
+              "estimatedUsd": 0.03899,
+              "wallMs": 69988,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-60174c31-dec0-4430-9164-7395233eb4ce",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": false,
+                  "D4": false,
+                  "D5": false
+                },
+                "impactByDefect": {},
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Three remaining tasks were absent after refresh in this session",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Immediate clearing prompted reported hesitation",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "unresolved",
+                    "classes": [],
+                    "defects": []
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "planted",
+              "index": 4,
+              "runId": "cua-2026-10-21T20-00-44-146Z-d390e954",
+              "repeat": 3,
+              "state": "complete",
+              "analysisId": "analysis-7c72aeb0-9ebc-41ea-91fa-89bf40bbe7e7",
+              "estimatedUsd": 0.053592,
+              "wallMs": 88389,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-7c72aeb0-9ebc-41ea-91fa-89bf40bbe7e7",
+                "listed": {
+                  "D1": true,
+                  "D2": false,
+                  "D3": true,
+                  "D4": true,
+                  "D5": true
+                },
+                "impactByDefect": {
+                  "D4": "friction",
+                  "D5": "friction",
+                  "D3": "friction",
+                  "D1": "friction"
+                },
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "The visible list reset after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  },
+                  {
+                    "id": "F2",
+                    "title": "A task rename reverted after repeated Save attempts",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D5"
+                    ],
+                    "defects": [
+                      "D5"
+                    ]
+                  },
+                  {
+                    "id": "F3",
+                    "title": "Active and Completed showed opposite task states",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D3"
+                    ],
+                    "defects": [
+                      "D3"
+                    ]
+                  },
+                  {
+                    "id": "F4",
+                    "title": "Completed tasks remained after repeated clearing attempts",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D1"
+                    ],
+                    "defects": [
+                      "D1"
+                    ]
+                  },
+                  {
+                    "id": "F5",
+                    "title": "The empty state was unclear to the participant",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "planted",
+                    "classes": [
+                      "D4"
+                    ],
+                    "defects": [
+                      "D4"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "arm": "clean",
+              "index": 4,
+              "runId": "cua-2026-10-21T20-02-50-284Z-c2b04bd0",
+              "repeat": 3,
+              "state": "complete",
+              "analysisId": "analysis-6b22801e-4a17-4409-a7db-40f70e09ab4c",
+              "estimatedUsd": 0.047955,
+              "wallMs": 83005,
+              "error": null,
+              "analysis": {
+                "analysisId": "analysis-6b22801e-4a17-4409-a7db-40f70e09ab4c",
+                "listed": {
+                  "D1": false,
+                  "D2": false,
+                  "D3": false,
+                  "D4": false,
+                  "D5": false
+                },
+                "impactByDefect": {},
+                "d2Mechanism": null,
+                "falseAssurance": [],
+                "findings": [
+                  {
+                    "id": "F1",
+                    "title": "Three unfinished tasks were no longer displayed after refresh",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "supported",
+                    "classes": [
+                      "B10"
+                    ],
+                    "defects": []
+                  },
+                  {
+                    "id": "F2",
+                    "title": "Enter did not finish an edit, requiring a switch to Save",
+                    "impact": "friction",
+                    "confidence": "high",
+                    "verdict": "unresolved",
+                    "classes": [],
+                    "defects": []
+                  },
+                  {
+                    "id": "F3",
+                    "title": "Immediate clearing of completed tasks prompted reported distrust",
+                    "impact": "friction",
+                    "confidence": "medium",
+                    "verdict": "supported",
+                    "classes": [
+                      "B3"
+                    ],
+                    "defects": []
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
