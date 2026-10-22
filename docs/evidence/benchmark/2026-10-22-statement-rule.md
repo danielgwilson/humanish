@@ -4,13 +4,32 @@ This follow-up to [gpt-6-luna with low text verbosity](2026-10-22-luna-verbosity
 `gpt-6-luna` at high effort and `gpt-6.1-sol` at medium effort, the default analyst, after one
 validation rule changed. It uses the same saved recordings as the two earlier reports.
 
-## What changed in humanish
+## What ships
+
+humanish ships the validation rule from this report with the earlier `study-evidence-8` prompt,
+which still asks for statements that cite only quote-eligible entries. The `study-evidence-9`
+prompt measured here changed what both analysts cite: every one of the 11 valid movie-game
+analyses, and 17 of 23 `gpt-6-luna` and 17 of 22 `gpt-6.1-sol` Taskly outputs, cite a capture or
+action from a statement, and `gpt-6.1-sol` lost 2 of 24 Taskly analyses to
+`participant_coverage_invalid` after passing all 72 earlier medium-effort analyses. Keeping the
+prompt keeps the default analyst's requests unchanged, and the looser rule accepts an analyst that
+adds a capture anyway.
+
+Validation is a pure function of the saved output, so its effect on `study-evidence-8` outputs is
+the replay in the [verbosity report](2026-10-22-luna-verbosity.md): every kept Taskly rejection
+for `statement_source_invalid` passes under this rule, and 6 of 7 kept movie-game ones do. Every
+`gpt-6.1-sol` analysis that passed the earlier rule passes this one, since it accepts a superset.
+
+`gpt-6-luna` stays opt-in. On the movie game it missed problems visible only in captures, which
+both `gpt-6.1-sol` analyses found, so the default analyst stays `gpt-6.1-sol` at medium effort.
+
+## What the measured build changed
 
 An observation with basis `participant_statement` now needs at least one quote-eligible citation
 and may also cite captures or actions (`src/analysis/validation.ts`). Before, any citation that was
 not quote-eligible failed the whole analysis with `analysis_validation_failed_statement_source_invalid`.
-The prompt is now `study-evidence-9`. It says a statement may cite the captures or actions the
-participant was speaking about, and it tells the analyst to label its own judgment `inference`.
+The measured build's prompt was `study-evidence-9`. It said a statement may cite the captures or actions the
+participant was speaking about, and it told the analyst to label its own judgment `inference`.
 humanish still sends `gpt-6-luna` `text.verbosity: "low"` and sends `gpt-6.1-sol` the default.
 
 ## How it ran
