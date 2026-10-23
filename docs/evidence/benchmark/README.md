@@ -284,6 +284,9 @@ recordings, and seven on three movie-game runs, in
 `text.verbosity: "low"` on the same recordings and rescores every analysis with rubric version 2.
 [2026-10-22-statement-rule.md](2026-10-22-statement-rule.md) reruns `gpt-6-luna` at high effort and
 `gpt-6.1-sol` at medium effort after a participant statement may also cite captures or actions.
+[2026-10-23-wait-time.md](2026-10-23-wait-time.md) times a one-participant study phase by phase,
+three times remote and three times local, and times `gpt-6.1-sol` at medium effort, at medium
+effort with low text verbosity, and at low effort on the same Taskly and movie-game recordings.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
