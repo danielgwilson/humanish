@@ -344,6 +344,24 @@ describe("the end of a live run", () => {
     });
   });
 
+  it("says under the analysis line that a request ran out of output and was sent again", async () => {
+    const { cwd, outcome } = await analyzedRun();
+    const retried =
+      "The analysis request ran out of output before it finished its report: 14336 of 14336 output tokens, 25754 input tokens, $0.21. humanish sent the same request once more; the attempt's usage counts both requests.";
+    const result = {
+      ok: true,
+      runId: RUN,
+      automaticAnalysis: { ...outcome, result: { ...outcome.result!, warnings: [retried] } },
+    };
+    const text = capture();
+    await writeRunResult(new Command(), text.io, cwd, result, human);
+    expect(text.out.join("").split("\n").slice(1, 4)).toEqual([
+      "analysis: partial, because it covered only part of the evidence",
+      `analysis: ${retried}`,
+      "findings: 1",
+    ]);
+  });
+
   it("names the command that analyzes a run skipped for a missing key", async () => {
     const { cwd } = await liveRun();
     const outcome = await runAutomaticAnalysis(

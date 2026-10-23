@@ -29,7 +29,7 @@ import { AnalysisSourceRefusedError, runFileTooLarge, throwAsAnalysisRefusal } f
 import { pathMissing, readBoundedFile, readBoundedFileResult } from "../run/evidence-files.js";
 import {
   estimateAnalysisAdmission,
-  preferLargerAnalysisOutput,
+  defaultAnalysisOutput,
   runAnalysis,
   ANALYSIS_PROMPT_VERSION,
   type AnalysisAdmission,
@@ -413,7 +413,7 @@ async function executeAnalysis(attempt: AnalyzeAttempt): Promise<AnalyzeResult> 
   const bytes = await readCompletedAnalysisSource(cwd, prepared);
   const input = await captureEvidence(prepared, bytes);
   if (input.evidence.length === 0) return fail(input.runId, dryRun, "ANALYSIS_NO_PARTICIPANTS");
-  if (options.preferLargerOutput) config = preferLargerAnalysisOutput(input, config);
+  if (options.preferLargerOutput) config = defaultAnalysisOutput(input, config);
   const admission = estimateAnalysisAdmission(input, config);
   const base: AnalyzeBase = {
     schema: ANALYZE_RESULT_SCHEMA as typeof ANALYZE_RESULT_SCHEMA,

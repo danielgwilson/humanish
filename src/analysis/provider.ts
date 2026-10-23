@@ -1,8 +1,8 @@
 // The analysis provider seam and the HTTP transport its API adapters share. Each API vendor owns
 // only its wire format (gemini-wire.ts, openai-wire.ts): the endpoint, the request body, and how a
 // response becomes a result. The transport owns what must hold for every vendor: one fixed endpoint
-// per vendor, request and response byte caps, the caller's wall-clock deadline, no retry, and a
-// closed error vocabulary that never carries provider error prose. The Codex account analyst is
+// per vendor, request and response byte caps, the caller's wall-clock deadline, one send per call
+// (runAnalysis decides whether to call again, in output-retry.ts), and a closed error vocabulary that never carries provider error prose. The Codex account analyst is
 // the third adapter at the same seam (restricted-codex.ts).
 
 import { Agent, fetch as undiciFetch, type Dispatcher } from "undici";
@@ -164,7 +164,7 @@ const WIRES: Readonly<Record<AnalysisApiVendor, AnalysisWire>> = {
   gemini: geminiWire,
 };
 
-/** One request to the vendor's fixed endpoint, never retried and never sent elsewhere. */
+/** One request to the vendor's fixed endpoint, sent once and never elsewhere. */
 export function createAnalysisProvider(options: {
   apiKey: string;
   /** Omitted is OpenAI, the analyst humanish has always called. */

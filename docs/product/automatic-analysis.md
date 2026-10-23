@@ -16,15 +16,17 @@ expected cost and a 600-second timeout. A study or command that names a model bu
 that model at high; only the default analyst, with no model named, runs at medium. On the same
 recordings it matched `gpt-6-astra` at high, the earlier default, at about one seventh of the cost
 ([analysis models on fixed recordings](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-10-22-analysis-models.md)). When no output limit is specified,
-humanish selects 32,768 tokens if the exact input's expected cost still fits that
-cap; otherwise it keeps the established 16,384-token allowance. This preserves
-previously admitted studies without increasing their spending limit. To customize it:
+humanish sizes it to the analysis: at low or medium effort, 12,288 tokens plus 2,048 per
+participant (14,336 for one), and 32,768 at high effort, on Gemini and past 16 participants. An
+allowance above 16,384 that the cap would refuse falls back to 16,384, so a study its cap admitted
+before stays admitted ([output limit](../contracts/study-analysis.md#invocation)). A
+request that runs out of output is sent once more while the cap admits it. To customize it:
 
 ```yaml
 review:
   analysis:
     maxCostUsd: 10
-    # Optional overrides. Omit maxOutputTokens for budget-aware selection.
+    # Optional overrides. Omit maxOutputTokens for a limit sized to the analysis.
     # A named model without reasoningEffort runs at high.
     model: gpt-6.1-sol
     reasoningEffort: medium
@@ -57,8 +59,9 @@ effort; on 24 Taskly analyses `gpt-6.1-sol` at medium wrote a mean 3,747 and cos
 evidence to inspect the expected cost, the worst case and the selected token
 allowance before deliberately choosing a larger budget. Explicit
 `maxOutputTokens` and `--max-output-tokens` limits are honored exactly. The output allowance
-includes reasoning as well as the report; exhausting it does not produce a usable
-report and never starts an automatic retry. Analysis
+includes reasoning as well as the report; a request that exhausts it has no usable report. It
+is sent once more when the spend so far and admission's figure for one more request fit the cap,
+and the CLI says so under the analysis line; the attempt's usage counts both requests. Analysis
 sends selected retained text and captures to OpenAI using `OPENAI_API_KEY`, or to Google with
 `provider: gemini`.
 Analysis runs in the humanish runner using its credentials. This setting adds no

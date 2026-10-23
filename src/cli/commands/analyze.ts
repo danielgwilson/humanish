@@ -95,7 +95,7 @@ export function registerAnalyzeCommand(parent: Command, io: CliIo): void {
     )
     .option(
       "--max-output-tokens <n>",
-      "OpenAI or Gemini response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex.",
+      "OpenAI or Gemini response-token limit including reasoning, 256–32768. Omit for a limit sized to the participants and effort. Unsupported for Codex.",
     )
     .option(
       "--dry-run",

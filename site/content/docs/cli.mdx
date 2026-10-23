@@ -227,7 +227,7 @@ humanish analyze [options] [command]
 | `--reasoning-effort <level>` | OpenAI reasoning.effort or Gemini thinking level, from none, minimal, low, medium, high, xhigh and max; each model takes only the levels its provider documents for it, and others are refused before any request. When omitted: medium for the default OpenAI analyst, high with --model or --provider gemini. Unsupported for Codex. |
 | `--question <text>` | Additional reviewer question; does not change participant instructions. |
 | `--timeout-ms <ms>` | Request timeout, at most 600000 ms. (default: "600000") |
-| `--max-output-tokens <n>` | OpenAI or Gemini response-token limit including reasoning, 256–32768. Omit for admission-based sizing. Unsupported for Codex. |
+| `--max-output-tokens <n>` | OpenAI or Gemini response-token limit including reasoning, 256–32768. Omit for a limit sized to the participants and effort. Unsupported for Codex. |
 | `--dry-run` | Capture and validate local input and estimate admission; no request or analysis artifact. |
 | `--rerun` | Create a new immutable version even when the same input and configuration were analyzed. |
 | `--json` | Print a machine-readable JSON response. |

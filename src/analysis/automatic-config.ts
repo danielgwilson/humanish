@@ -1,10 +1,7 @@
 import type { StudyRoute } from "../study/plan.js";
 import { CODEX_ANALYSIS_MODEL, codexAnalysisIdentity } from "./codex-config.js";
-import {
-  DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS,
-  MAX_ANALYSIS_OUTPUT_TOKENS,
-  analysisCostRange,
-} from "./execute.js";
+import { analysisCostRange } from "./execute.js";
+import { DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS, MAX_ANALYSIS_OUTPUT_TOKENS } from "./output-limit.js";
 import { analysisEffort, analysisEfforts, isSupportedAnalysisModel } from "./models.js";
 import { isReasoningEffort, type ReasoningEffort } from "../actors/reasoning-effort.js";
 import { admissionRule } from "./admission.js";

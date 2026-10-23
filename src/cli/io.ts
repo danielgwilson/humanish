@@ -328,6 +328,7 @@ export function writeResult<T>(
       if (refusal)
         io.writeOut(`analysis: refused before it started. ${refusal.text} ${refusal.command}\n`);
       else if (analysis) io.writeOut(`analysis: ${analysisOutcomeText(analysis)}\n`);
+      for (const warning of analysis?.result?.warnings ?? []) io.writeOut(`analysis: ${warning}\n`);
       const rejected = analysis?.result?.rejectedOutputPath;
       if (rejected)
         io.writeOut(

@@ -86,10 +86,12 @@ async function readRunReport(
   if (outcome === undefined || result.runId === undefined || result.runId === "not-created")
     return undefined;
   const outcomeLine = `analysis: ${analysisOutcomeText(outcome)}`;
+  // What the attempt warned about, such as a request sent again after it ran out of output.
+  const warningLines = (outcome.result?.warnings ?? []).map((warning) => `analysis: ${warning}`);
   const plain = {
     message: `The automatic analysis was ${analysisOutcomeText(outcome)}.`,
     nextCommand: null,
-    lines: [outcomeLine],
+    lines: [outcomeLine, ...warningLines],
   };
   // A dry run left no evidence, and its own output names the live run.
   if (outcome.reason === "AUTOMATIC_ANALYSIS_DRY_RUN") return plain;
@@ -112,7 +114,12 @@ async function readRunReport(
     return {
       message: view.message,
       nextCommand: review,
-      lines: [outcomeLine, ...rejectedLine, ...formatFindingsSummary(view, review)],
+      lines: [
+        outcomeLine,
+        ...warningLines,
+        ...rejectedLine,
+        ...formatFindingsSummary(view, review),
+      ],
       findings: findingsSummary(view, review, result.observer?.observerPath),
     };
   // The line reads "analysis: skipped because ...", as it does without the view.
@@ -122,6 +129,7 @@ async function readRunReport(
     nextCommand: view.next,
     lines: [
       `analysis: ${said}`,
+      ...warningLines,
       ...rejectedLine,
       ...(view.next === null ? [] : [`next: ${view.next}`]),
     ],
