@@ -25,6 +25,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   checks the screen, copies the files and provisions the subject in order before its browser or
   terminal opens. A recording without audio no longer changes the environment Chrome is launched
   with.
+- A remote run reaches its run about 4 s sooner. The runner downloads Node and installs
+  humanish's dependencies while this machine packs humanish, and the study's files upload beside
+  them; the packed humanish is then unpacked in place. On the release smoke study on E2B, command
+  start to run created took a median 8.8 s in place of 13.1 s.
+- A remote run ends about 3 s sooner after its analysis. The command reads the runner's run with
+  one command that answers within 0.2 s of a new state, a result or the run's process ending, in
+  place of four commands every 5 s. It copies the finished run back in one request per batch of
+  files in place of one per file. From the analysis job record to exit took a median 3.1 s in
+  place of 6.5 s.
+- A remote run reads the study's files before it creates the runner, so a study file that is a
+  link is refused before any sandbox exists.
 
 ## 0.145.0: A remote runner's keys stay in E2B's proxy (2026-10-22)
 
