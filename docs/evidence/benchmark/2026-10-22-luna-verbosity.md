@@ -73,7 +73,10 @@ At medium effort, low verbosity halved the decode speed and doubled the time, fr
 the control's 3,780, ran in a median 63 s against 97 s, and recalled 34 of 60 against 35 of 60.
 On the movie game it completed 6 of 6 in a median 158 s against the control's 184 s. humanish
 still sends `gpt-6.1-sol` the default verbosity: these are two sets of recordings in one window,
-and its findings with low verbosity were not graded.
+and its findings with low verbosity were not graded. A rerun on 2026-10-23 with one setting at a
+time found no speed difference: 62.4 s with low verbosity against 65.7 s for the control, at the
+same output rate. The 97 s control above ran with up to 19 analyses in flight
+([wait time](2026-10-23-wait-time.md)).
 
 ## Movie game
 
