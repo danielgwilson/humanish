@@ -8,6 +8,24 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A hosted computer-use participant on Chrome or Chromium starts its session once its launch page
+  has loaded and painted, in place of a fixed 8 s sleep after Chrome's DevTools answered. The wait
+  reads `document.readyState`, the page's visibility and its first contentful paint over DevTools,
+  gives up after 8 s, and records a `cua-lab.browser.page.completed` event with how long it took; a
+  page that has not loaded by then is a `warn` event and the participant starts as before. Firefox,
+  a terminal, and a desktop where the wait cannot run keep the fixed 8 s sleep.
+  On four live runs of a one-participant study, the page wait took 0.6 to 0.8 s, and DevTools
+  answering to session start took 3.2 to 5.8 s, against 10.5 to 13.5 s on 0.145.0.
+- On an `app-url` subject, Chrome starts while the screen check and the `participants[].files`
+  copy run, and a recording without audio starts beside Chrome. The files and the recording are
+  still in place before the session starts. An audible recording and speech still start before
+  Chrome, which is launched in their sound env. A clone, local-tree or desktop-cli subject still
+  checks the screen, copies the files and provisions the subject in order before its browser or
+  terminal opens. A recording without audio no longer changes the environment Chrome is launched
+  with.
+
 ## 0.145.0: A remote runner's keys stay in E2B's proxy (2026-10-22)
 
 humanish 0.145.0 keeps the OpenAI, Gemini and E2B keys out of a remote E2B runner's environment.

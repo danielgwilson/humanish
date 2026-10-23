@@ -55,22 +55,27 @@ export const TWO_TURN_SESSION = [
   },
 ];
 
+type CommandAnswer = { stdout: string; exitCode?: number; stderr?: string };
+
 export interface FanoutModuleOptions {
   /** Override the geometry a given sandbox reports (participantIndex from metadata). Default: matches. */
   geometryOverride?: (laneIndex: number, requested: [number, number]) => [number, number];
   /** Every kill by id throws, as when the provider cannot be reached at teardown. */
   killFails?: boolean;
-  /** Answers one participant's sandbox command; undefined falls through to the default reply. */
+  /**
+   * Answers one participant's sandbox command; undefined falls through to the default reply. A
+   * promise holds the command until it settles.
+   */
   commandHandler?: (
     laneIndex: number,
     command: string,
-  ) => { stdout: string; exitCode?: number; stderr?: string } | undefined;
+  ) => CommandAnswer | undefined | Promise<CommandAnswer | undefined>;
   /** Chrome launches and reports measured geometry (measured-chrome-desktop.ts). */
   measuredChrome?: boolean;
   /** The size files.getInfo reports for a written file; default its written size. */
   reportedFileSize?: (path: string, written: number) => number;
-  /** Called on each files.write, in order with the rest of the run. */
-  onFileWrite?: (sandboxId: string, path: string) => void;
+  /** Called on each files.write, in order with the rest of the run. A promise holds the write. */
+  onFileWrite?: (sandboxId: string, path: string) => unknown;
   /** Called on each desktop.wait with the participant's index and the time asked, in order. */
   onWait?: (laneIndex: number, ms: number) => void;
   /**
@@ -127,7 +132,7 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
       getInfo: async () => ({ cpuCount: 8, memoryMB: 8192 }),
       commands: {
         run: async (command: string, runOptions?: E2BCommandRunOptions) => {
-          const handled = options.commandHandler?.(laneIndex, command);
+          const handled = await options.commandHandler?.(laneIndex, command);
           if (handled) return { exitCode: 0, ...handled };
           const vnc = x11vnc(command);
           if (vnc !== undefined) return vnc;
@@ -150,7 +155,7 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
       },
       files: {
         write: async (path: string, data: string | ArrayBuffer) => {
-          options.onFileWrite?.(id, path);
+          await options.onFileWrite?.(id, path);
           const written = files.get(id) ?? new Map<string, Buffer>();
           files.set(id, written);
           written.set(path, Buffer.from(typeof data === "string" ? data : new Uint8Array(data)));

@@ -50,8 +50,11 @@ export interface ChromeCdpProbeArgs {
    * pausing it; it applies `emulation` (how a participant keeps the overrides for its whole life,
    * with a reload on each page) and `network` capture, either or both. "fidelity": read
    * back what the page reports about itself (UA, DPR, viewport, touch), the proof for the bundle.
+   * "load": poll the page until it has loaded and painted, or until `deadlineMs`.
    */
-  mode: "state" | "geometry" | "port" | "emulate" | "hold" | "fidelity";
+  mode: "state" | "geometry" | "port" | "emulate" | "hold" | "fidelity" | "load";
+  /** For "load": how long to poll before reporting the page as not loaded. */
+  deadlineMs?: number;
   /** For "emulate" and "hold": what to apply. */
   emulation?: ChromeMobileEmulationRequest;
   /** For "hold": capture each held page's requests to a sandbox file. */
@@ -61,6 +64,17 @@ export interface ChromeCdpProbeArgs {
 /** Mobile emulation request: the CDP Emulation domain applied to one page target. */
 export interface ChromeMobileEmulationRequest extends MobileEmulationRequest {
   platform?: string;
+}
+
+/**
+ * What the "load" mode saw. `loaded` is true once the page reports document.readyState complete,
+ * is visible and has a first contentful paint. `seen` describes the last read in words that name
+ * no URL.
+ */
+export interface ChromePageLoad {
+  loaded: boolean;
+  waitedMs: number;
+  seen: string;
 }
 
 /** What the page reports after emulation: the proof, never copied from the request. */
@@ -90,6 +104,8 @@ export interface ChromeCdpProbeResult {
   fidelity?: ChromeFidelityRead;
   /** "hold" with `network`: when capture started on the launch page, or why it could not. */
   network?: { startedAt: number } | { unavailable: string };
+  /** "load": whether the page loaded and painted before the deadline, and what the last read saw. */
+  load?: ChromePageLoad;
   /**
    * Seconds since the epoch on the sandbox clock when the probe printed, on every answer including
    * an unavailable one. It is the clock CDP `wallTime` uses, so a turn mark compares with request
@@ -295,6 +311,10 @@ GEOMETRY_EXPRESSION = (
     "({ browserWindow: { x: window.screenX, y: window.screenY, width: window.outerWidth, height: window.outerHeight }, "
     "viewport: { width: window.innerWidth, height: window.innerHeight, deviceScaleFactor: window.devicePixelRatio } })"
 )
+LOAD_EXPRESSION = (
+    "({ readyState: document.readyState, visible: document.visibilityState === 'visible', "
+    "painted: performance.getEntriesByType('paint').some(function (entry) { return entry.name === 'first-contentful-paint'; }) })"
+)
 FIDELITY_EXPRESSION = (
     "({ userAgent: navigator.userAgent, devicePixelRatio: window.devicePixelRatio, "
     "innerWidth: window.innerWidth, innerHeight: window.innerHeight, "
@@ -487,6 +507,50 @@ def follow_targets(ws, launch_id, request, log):
         if params.get("waitingForDebugger"):
             ws.send("Runtime.runIfWaitingForDebugger", {}, new_session)
 
+def page_ws_url(port, page):
+    # Chrome omits webSocketDebuggerUrl from /json while another DevTools client is attached to the
+    # page, or for a moment after one detaches; the page socket URL is still /devtools/page/<id>.
+    return page.get("webSocketDebuggerUrl") or (
+        "ws://127.0.0.1:%d/devtools/page/%s" % (port, page.get("id")) if page.get("id") else None
+    )
+
+def wait_for_load(port, args):
+    """Poll the page until document.readyState is complete, the page is visible and Chrome has
+    recorded its first contentful paint: the page has loaded and something of it is drawn. Stops at
+    deadlineMs and reports what the last read saw."""
+    started = time.monotonic()
+    deadline_ms = int(args.get("deadlineMs") or 0)
+    seen = "no http page yet"
+    page = None
+    loaded = False
+    while True:
+        try:
+            page = select_page(list_pages(port), args)
+            seen = "no http page yet" if page is None else seen
+        except Exception as error:
+            page, seen = None, "the DevTools endpoint did not answer (%s)" % type(error).__name__
+        ws_url = page_ws_url(port, page) if page is not None else None
+        state = evaluate(ws_url, LOAD_EXPRESSION) if ws_url else None
+        if isinstance(state, dict):
+            ready = str(state.get("readyState") or "unknown")
+            seen = "document.readyState %s, %s, %s" % (
+                ready,
+                "visible" if state.get("visible") else "hidden",
+                "first contentful paint recorded" if state.get("painted") else "no first contentful paint yet",
+            )
+            loaded = ready == "complete" and bool(state.get("visible")) and bool(state.get("painted"))
+            if loaded:
+                break
+        elif ws_url:
+            seen = "the page did not answer Runtime.evaluate"
+        if (time.monotonic() - started) * 1000 >= deadline_ms:
+            break
+        time.sleep(0.25)
+    answer = {"load": {"loaded": loaded, "waitedMs": int((time.monotonic() - started) * 1000), "seen": seen}}
+    if page is not None:
+        answer["targetId"] = str(page.get("id") or "")
+    emit(answer)
+
 def emit(answer):
     """Print one answer line stamped with this sandbox's clock. CDP wallTime uses the same clock, so
     a turn mark taken from it compares with request times without host skew, and the reading needs
@@ -500,6 +564,9 @@ def main():
     port = resolve_port(args)
     if mode == "port":
         emit({"cdpPort": port})
+        return
+    if mode == "load":
+        wait_for_load(port, args)
         return
     try:
         pages = list_pages(port)
@@ -523,11 +590,7 @@ def main():
     if page is None:
         emit({"unavailable": "no http page among %d CDP targets on 127.0.0.1:%d" % (len(pages), port)})
         return
-    # Chrome omits webSocketDebuggerUrl from /json while another DevTools client is attached to the
-    # page, or for a moment after one detaches; the page socket URL is still /devtools/page/<id>.
-    ws_url = page.get("webSocketDebuggerUrl") or (
-        "ws://127.0.0.1:%d/devtools/page/%s" % (port, page.get("id")) if page.get("id") else None
-    )
+    ws_url = page_ws_url(port, page)
     if mode == "emulate":
         applied, failure = emulate(ws_url, args.get("emulation") or {}) if ws_url else (None, "the page has no socket")
         if failure is not None:
@@ -579,6 +642,7 @@ export function chromeCdpProbeCommand(args: ChromeCdpProbeArgs): string {
   if (args.prefer !== undefined) payload.prefer = args.prefer;
   if (args.emulation !== undefined) payload.emulation = args.emulation;
   if (args.network !== undefined) payload.network = args.network;
+  if (args.deadlineMs !== undefined) payload.deadlineMs = args.deadlineMs;
   return `python3 -c ${shellQuote(CHROME_CDP_PROBE_PY)} ${shellQuote(JSON.stringify(payload))}`;
 }
 
@@ -606,6 +670,7 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
     typeof value === "number" && Number.isFinite(value) ? value : undefined;
   const now = numberOr(record.now);
   const network = networkOf(record.network);
+  const load = loadOf(record.load);
   if (typeof record.unavailable === "string") {
     return {
       unavailable: record.unavailable,
@@ -678,8 +743,22 @@ export function parseChromeCdpProbeOutput(stdout: string | undefined): ChromeCdp
     ...(browserWindow === undefined ? {} : { browserWindow }),
     ...(viewport === undefined ? {} : { viewport }),
     ...(network === undefined ? {} : { network }),
+    ...(load === undefined ? {} : { load }),
     ...(now === undefined ? {} : { now }),
   };
+}
+
+function loadOf(value: unknown): ChromePageLoad | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const source = value as Record<string, unknown>;
+  if (
+    typeof source.loaded !== "boolean" ||
+    typeof source.waitedMs !== "number" ||
+    !Number.isFinite(source.waitedMs) ||
+    typeof source.seen !== "string"
+  )
+    return undefined;
+  return { loaded: source.loaded, waitedMs: source.waitedMs, seen: source.seen };
 }
 
 function networkOf(value: unknown): ChromeCdpProbeResult["network"] {

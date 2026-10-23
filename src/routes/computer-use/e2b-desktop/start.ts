@@ -1,6 +1,6 @@
-// The second half of an E2B desktop participant's preparation, and the start of its session: speech and
-// recording, then the browser or terminal the participant sees, then the screen saver turned off,
-// then the live stream. Each step fills the participant's state.
+// The second half of an E2B desktop participant's preparation, and the start of its session: speech,
+// recording, the browser or terminal the participant sees, the wait for its page, the screen saver
+// turned off, then the live stream. Each step fills the participant's state.
 
 import { redactText, toErrorMessage } from "../../../evidence/redaction.js";
 import {
@@ -11,6 +11,7 @@ import {
   startDesktopStream,
   type ChromeDevToolsReadiness,
 } from "../../../substrates/e2b/desktop-browser.js";
+import { waitForChromePageLoad } from "../../../substrates/e2b/desktop-cdp.js";
 import { setPanelClockZone } from "../../../substrates/e2b/desktop-clock.js";
 import { captureDesktopBrowserGeometry } from "../../../substrates/e2b/desktop-geometry.js";
 import {
@@ -20,7 +21,7 @@ import {
 import { startE2BDesktopRecording } from "../../../substrates/e2b/desktop-recording.js";
 import { turnOffScreenSaver } from "../../../substrates/e2b/desktop-screen.js";
 import type { E2BDesktopSandbox } from "../../../substrates/e2b/sdk.js";
-import { applyParticipantMobileFidelity, mobileLaunchFlags } from "./fidelity.js";
+import { applyParticipantMobileFidelity, cdpEndpoint, mobileLaunchFlags } from "./fidelity.js";
 import {
   noteNetworkStart,
   readParticipantNetworkStart,
@@ -28,39 +29,54 @@ import {
 } from "./network.js";
 import type { E2BParticipantContext, E2BParticipantState } from "./state.js";
 
-/** Start the declared speech worker and screen recording. A recording that cannot start is a warning. */
-export async function startParticipantMedia(
+/** Start the declared speech worker. Chrome is launched in its sound env, so it starts first. */
+export async function startParticipantSpeech(
+  ctx: E2BParticipantContext,
+  state: E2BParticipantState,
+  desktop: E2BDesktopSandbox,
+): Promise<void> {
+  const requestedMedia = ctx.deps.residual.execution?.desktop?.media;
+  if (ctx.desktopCliRoute || requestedMedia?.microphone?.source !== "speech") return;
+  state.speech = await startE2BDesktopMedia({
+    desktop,
+    media: requestedMedia,
+    signal: state.mediaStop.signal,
+    onTerminal: () => state.mediaStop.abort(),
+    requestTimeoutMs: ctx.deps.requestTimeoutMs,
+  });
+}
+
+/**
+ * Whether the study records the desktop's sound. An audible recording runs its own sound server
+ * unless speech already did, and Chrome is launched in that server's env, so the recording starts
+ * before Chrome. A silent recording needs nothing from Chrome and starts beside it.
+ */
+export function recordsSound(ctx: E2BParticipantContext): boolean {
+  return ctx.deps.residual.execution?.desktop?.recording?.audio === true;
+}
+
+/** Start the declared screen recording. A recording that cannot start is a warning. */
+export async function startParticipantRecording(
   ctx: E2BParticipantContext,
   state: E2BParticipantState,
   desktop: E2BDesktopSandbox,
 ): Promise<void> {
   const { spec, deps, warnings } = ctx;
-  const requestedMedia = deps.residual.execution?.desktop?.media;
-  if (!ctx.desktopCliRoute && requestedMedia?.microphone?.source === "speech") {
-    state.speech = await startE2BDesktopMedia({
+  const requestedRecording = deps.residual.execution?.desktop?.recording;
+  if (!requestedRecording) return;
+  try {
+    state.recording = await startE2BDesktopRecording({
       desktop,
-      media: requestedMedia,
-      signal: state.mediaStop.signal,
-      onTerminal: () => state.mediaStop.abort(),
+      width: spec.planned.device.resolution[0],
+      height: spec.planned.device.resolution[1],
+      audio: requestedRecording.audio,
+      ...(state.speech === undefined ? {} : { pulseEnv: state.speech.env }),
       requestTimeoutMs: deps.requestTimeoutMs,
     });
-  }
-  const requestedRecording = deps.residual.execution?.desktop?.recording;
-  if (requestedRecording) {
-    try {
-      state.recording = await startE2BDesktopRecording({
-        desktop,
-        width: spec.planned.device.resolution[0],
-        height: spec.planned.device.resolution[1],
-        audio: requestedRecording.audio,
-        ...(state.speech === undefined ? {} : { pulseEnv: state.speech.env }),
-        requestTimeoutMs: deps.requestTimeoutMs,
-      });
-    } catch (error) {
-      warnings.push(
-        `Desktop recording startup failed; the study continues without video: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`,
-      );
-    }
+  } catch (error) {
+    warnings.push(
+      `Desktop recording startup failed; the study continues without video: ${redactText(deps.scrubKnownValues(toErrorMessage(error)))}`,
+    );
   }
 }
 
@@ -109,7 +125,8 @@ export async function openParticipantSurface(
   // The participant's time zone is TZ on the launch: the browser process and every renderer it
   // starts read it at startup, so every tab runs in the zone from the first page load. A CDP
   // timezone override holds only on the one tab whose DevTools session sets it, from after its load.
-  const mediaEnv = state.speech?.env ?? state.recording?.env;
+  // A silent recording may still be starting, and Chrome needs nothing from it.
+  const mediaEnv = state.speech?.env ?? (recordsSound(ctx) ? state.recording?.env : undefined);
   const browserLaunch = await openDesktopBrowserTarget(
     desktop,
     targetUrl,
@@ -137,9 +154,9 @@ export async function openParticipantSurface(
   const emulated = emulationFlags.length > 0;
   noteDevToolsReadiness(ctx, browserLaunch.devTools, emulated);
   // A mobile-emulated participant's holder captures too; any other gets a capture-only holder,
-  // started here so the settle wait covers its start.
+  // started here so it records the launch page's load while the page wait runs.
   if (!emulated) await startParticipantNetwork(ctx, state, desktop);
-  await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
+  await waitForParticipantPage(ctx, state, desktop, browserLaunch.devTools);
   if (!emulated) await readParticipantNetworkStart(ctx, state, desktop);
   const network = state.network;
   // Mobile fidelity is applied outside startParticipantStream's best-effort catch, so a request
@@ -165,12 +182,49 @@ export async function openParticipantSurface(
 }
 
 /**
+ * Hold the participant's first screenshot until its page has loaded and painted, so the participant
+ * does not start on a blank or half-drawn desktop. A Chromium page whose DevTools answered is read over DevTools for at most DESKTOP_SETTLE_MS, so no
+ * participant waits longer than the fixed settle this replaced, and the result is a timed phase in
+ * the bundle. Any other browser, and a page wait that cannot run, waits DESKTOP_SETTLE_MS.
+ */
+async function waitForParticipantPage(
+  ctx: E2BParticipantContext,
+  state: E2BParticipantState,
+  desktop: E2BDesktopSandbox,
+  devTools: ChromeDevToolsReadiness | undefined,
+): Promise<void> {
+  const { deps } = ctx;
+  const load =
+    state.launchedBrowserFamily === "chromium" && devTools?.state === "ready"
+      ? await waitForChromePageLoad(
+          desktop,
+          deps.requestTimeoutMs,
+          cdpEndpoint(state.browserLaunchIdentity, ctx.targetUrl),
+          DESKTOP_SETTLE_MS,
+        )
+      : undefined;
+  if (load === undefined) {
+    await desktop.wait(DESKTOP_SETTLE_MS).catch(() => undefined);
+    return;
+  }
+  ctx.onSubjectPhase({
+    at: new Date(deps.now()).toISOString(),
+    type: "cua-lab.browser.page.completed",
+    ok: load.loaded,
+    durationMs: load.waitedMs,
+    message: load.loaded
+      ? "The page loaded and painted"
+      : `The page had not loaded and painted when the wait ended (${load.seen}); the participant started anyway`,
+  });
+}
+
+/**
  * Turn the desktop's screen saver off, so the screen stays on while the participant waits without
  * input. The XFCE session sets the screen saver's timeout in its first seconds, and the last write
- * wins. Nothing waits for those writes: this runs after the browser or terminal has opened and the
- * desktop has waited DESKTOP_SETTLE_MS, and on 16 fresh desktops the last write came within 2.5 s
- * of a command sent as soon as the desktop was created. A screen saver that cannot be turned off
- * is a warning.
+ * wins. Nothing waits for those writes: this runs after a Chromium page has loaded, which needs
+ * DevTools to answer first (4.8 s or more after launch on live desktops), or after the fixed 8 s
+ * wait, and on 16 fresh desktops the last write came within 2.5 s of a command sent as soon as the
+ * desktop was created. A screen saver that cannot be turned off is a warning.
  */
 export async function keepParticipantScreenOn(
   ctx: E2BParticipantContext,

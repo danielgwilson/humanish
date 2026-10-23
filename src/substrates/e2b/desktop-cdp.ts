@@ -6,6 +6,7 @@ import {
   parseChromeCdpProbeOutput,
   type ChromeCdpProbeResult,
   type ChromeMobileEmulationRequest,
+  type ChromePageLoad,
 } from "./cdp-probe.js";
 import { failureTail, toErrorMessage } from "../../evidence/redaction.js";
 import type { RunDesktopGeometry } from "../../run/streams.js";
@@ -320,10 +321,37 @@ export async function applyMobileEmulation(
   };
 }
 
+/**
+ * Wait until the participant's launch page has loaded and painted, read over DevTools in the
+ * sandbox, for at most `deadlineMs`. Resolves with what the wait saw, or undefined when it could
+ * not run (no python3, a failed command, output that is not the probe's), so the caller can fall
+ * back to a fixed wait.
+ */
+export async function waitForChromePageLoad(
+  desktop: E2BDesktopSandbox,
+  requestTimeoutMs: number,
+  endpoint: ChromeCdpEndpoint,
+  deadlineMs: number,
+): Promise<ChromePageLoad | undefined> {
+  const result = await e2bShell(desktop)
+    .run(chromeCdpProbeCommand({ ...endpoint, prefer: "pinned", mode: "load", deadlineMs }), {
+      requestTimeoutMs,
+      // One poll can take 3.5 s past the deadline: a 2 s listing and a 1.5 s evaluate.
+      timeoutMs: deadlineMs + 10_000,
+    })
+    .catch(() => undefined);
+  if (result === undefined || result.exitCode !== 0) return undefined;
+  return parseChromeCdpProbeOutput(result.stdout).load;
+}
+
 /** The holder stops writing its events file at 32 MiB, so a read stops there too. */
 const NETWORK_EVENTS_MAX_BYTES = 32 * 1024 * 1024;
-/** How many times the capture holder's log is read for its announce, and how far apart. */
-const NETWORK_ANNOUNCE_READS = 6;
+/**
+ * How many times the capture holder's log is read for its announce, and how far apart. The reads
+ * start after the page wait, which can end within a second of the holder's start, so they cover
+ * the 11 s a holder had when a fixed 8 s settle came before 3 s of reads.
+ */
+const NETWORK_ANNOUNCE_READS = 22;
 const NETWORK_ANNOUNCE_EVERY_MS = 500;
 
 /**
@@ -349,7 +377,7 @@ export async function startNetworkCapture(
 
 /**
  * What the capture holder announced: when capture started on the launch page, on the sandbox
- * clock, or why it did not. Reads the holder's log up to 6 times, half a second apart by
+ * clock, or why it did not. Reads the holder's log up to 22 times, half a second apart by
  * `desktop.wait`, and reports a holder that printed nothing as unavailable.
  */
 export async function readNetworkCaptureStart(
@@ -371,7 +399,7 @@ export async function readNetworkCaptureStart(
     );
   }
   return {
-    unavailable: `the in-sandbox holder printed nothing within ${(NETWORK_ANNOUNCE_READS * NETWORK_ANNOUNCE_EVERY_MS) / 1000} s of the desktop settling`,
+    unavailable: `the in-sandbox holder printed nothing within ${(NETWORK_ANNOUNCE_READS * NETWORK_ANNOUNCE_EVERY_MS) / 1000} s of the page wait`,
   };
 }
 
