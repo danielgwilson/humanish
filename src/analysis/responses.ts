@@ -244,7 +244,7 @@ export function httpStatusWarning(
   if (response.httpStatus === undefined) return undefined;
   const api = config.provider === "gemini" ? "Gemini" : "OpenAI";
   const meaning = HTTP_STATUS_MEANINGS[response.httpStatus];
-  return `The ${api} API answered HTTP ${response.httpStatus}${meaning === undefined ? "" : ` (${meaning})`}. humanish does not retry an analysis request; run the command again to retry.`;
+  return `The ${api} API answered HTTP ${response.httpStatus}${meaning === undefined ? "" : ` (${meaning})`}. humanish sends a request again only when it ran out of output; run the command again to retry.`;
 }
 
 /** The warnings a Codex response carries about its CLI release and protocol. */

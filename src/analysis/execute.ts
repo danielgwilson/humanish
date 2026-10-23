@@ -1,8 +1,12 @@
 import { validCodexAnalysisConfig } from "./codex-config.js";
 import { INPUT_IMAGE_DATA_URL, highDetailImageTokens, imageTokenCeiling } from "./image-tokens.js";
-import { EXPECTED_OUTPUT_SCALE, estimateAnalysisCost } from "./admission.js";
+import {
+  EXPECTED_OUTPUT_SCALE,
+  estimateAnalysisCost,
+  type AnalysisCostEstimate,
+} from "./admission.js";
 import { createHash, randomUUID } from "node:crypto";
-import { modelRate } from "../run/pricing.js";
+import { modelRate, type ModelRate } from "../run/pricing.js";
 import { containsSensitive } from "../evidence/redaction.js";
 import { scanEncodedText } from "../evidence/encoded-text.js";
 import {
@@ -41,12 +45,10 @@ import {
 } from "./responses.js";
 import { mapWithConcurrency } from "../run/concurrency.js";
 import type { RejectedAnalysisOutput } from "./diagnostics.js";
+import { outputRetries } from "./output-retry.js";
+import { DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS, defaultOutputTokens } from "./output-limit.js";
 
 export const ANALYSIS_PROMPT_VERSION = "study-evidence-8";
-/** The API output limit when a study omits maxOutputTokens, and the most it may ask for. Gemini 4
- * returns at most 32,768 output tokens from one generateContent request. */
-export const DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 16_384;
-export const MAX_ANALYSIS_OUTPUT_TOKENS = 32_768;
 const MAX_EVIDENCE_BYTES = 1024 * 1024;
 /**
  * Cohort requests in flight at once. OpenAI's lowest paid tier allows gpt-6-astra 1,000,000 tokens
@@ -304,8 +306,31 @@ export function estimateAnalysisAdmission(
     rate.outputUsdPerToken < 0
   )
     return denied("analysis_rate_unknown");
+  const cost = analysisCost(input, config, rate);
+  if (!Number.isFinite(cost.worstCaseCostUsd)) return denied("analysis_rate_unknown");
+  const allowed = cost.admittedCostUsd <= config.maxCostUsd;
+  return {
+    allowed,
+    error: allowed ? null : "analysis_budget_exceeded",
+    inputTokenAllowance: cost.inputTokens,
+    outputTokenAllowance: config.maxOutputTokens,
+    estimatedCostUsd: cost.expectedCostUsd,
+    worstCaseCostUsd: cost.worstCaseCostUsd,
+    admittedCostUsd: cost.admittedCostUsd,
+    maxCostUsd: config.maxCostUsd,
+    ratesAsOf: rate.asOf,
+    requests,
+  };
+}
+
+/** Every request of an API analysis priced at `rate`: each cohort's, then the merge request's. */
+function analysisCost(
+  input: AnalysisInput,
+  config: Exclude<AnalysisConfig, { provider: "codex" }>,
+  rate: ModelRate,
+): AnalysisCostEstimate {
   const { maxOutputTokens } = config;
-  const cost = estimateAnalysisCost(rate, {
+  return estimateAnalysisCost(rate, {
     cohorts: cohortInputs(input).map((cohort) => {
       const request = cohortRequest(cohort, config);
       return {
@@ -322,20 +347,6 @@ export function estimateAnalysisAdmission(
     mergeTextBytes: requestBytes(mergeRequest(input, config, [])),
     outputScale: EXPECTED_OUTPUT_SCALE[config.provider ?? "openai"],
   });
-  if (!Number.isFinite(cost.worstCaseCostUsd)) return denied("analysis_rate_unknown");
-  const allowed = cost.admittedCostUsd <= config.maxCostUsd;
-  return {
-    allowed,
-    error: allowed ? null : "analysis_budget_exceeded",
-    inputTokenAllowance: cost.inputTokens,
-    outputTokenAllowance: config.maxOutputTokens,
-    estimatedCostUsd: cost.expectedCostUsd,
-    worstCaseCostUsd: cost.worstCaseCostUsd,
-    admittedCostUsd: cost.admittedCostUsd,
-    maxCostUsd: config.maxCostUsd,
-    ratesAsOf: rate.asOf,
-    requests,
-  };
 }
 
 /** Structure each evidence entry adds to the packet: ids, kind, timestamps and flags. The largest
@@ -398,8 +409,8 @@ export type AnalysisCostRange =
  * the image-token ceiling, and the range ends at the largest one admission admits, so it never
  * passes the cap. There is one packet per cohort, each a share of its own limits, and the merge
  * request when there is more than one cohort. With `preferLargerOutput` each request gets the
- * output allowance dispatch would give it (preferLargerAnalysisOutput). Undefined for Codex and
- * for a model without rates.
+ * output allowance dispatch would give it (defaultAnalysisOutput). Undefined for Codex and for a
+ * model without rates.
  */
 export function analysisCostRange(
   config: AnalysisConfig,
@@ -448,13 +459,17 @@ export function analysisCostRange(
     }
     return admitted;
   };
-  // Dispatch tries the larger allowance first. A smaller allowance costs no more, so it admits at
-  // least the same share, and the packets past the larger one's share get the smaller one.
-  const larger = preferLargerOutput ? largerOutput(config) : undefined;
-  const allowances = [
-    ...(larger === undefined ? [] : [larger.maxOutputTokens]),
-    config.maxOutputTokens,
-  ];
+  // Dispatch tries the sized allowance first. When it is the larger one, the smaller allowance
+  // costs no more, so it admits at least the same share, and the packets past the sized one's
+  // share get the smaller one. A sized allowance below the configured one is never refused where
+  // the configured one is admitted.
+  const sized = preferLargerOutput ? defaultOutput(config, covered) : undefined;
+  const allowances =
+    sized === undefined
+      ? [config.maxOutputTokens]
+      : sized.maxOutputTokens < config.maxOutputTokens
+        ? [sized.maxOutputTokens]
+        : [sized.maxOutputTokens, config.maxOutputTokens];
   const admitted = allowances.filter((allowance) => admits(0, allowance));
   if (admitted.length === 0)
     return { refusedFromUsd: request(0, config.maxOutputTokens).expectedCostUsd };
@@ -470,26 +485,32 @@ export function analysisCostRange(
   };
 }
 
-/** The larger output allowance an omitted output limit may get, or undefined when it may not. */
-function largerOutput(
+/** The output allowance sized for an omitted output limit (output-limit.ts), or undefined when the
+ * limit was declared. */
+function defaultOutput(
   config: AnalysisConfig,
+  participants: number,
 ): Extract<AnalysisConfig, { maxOutputTokens: number }> | undefined {
-  if (config.provider === "codex" || config.maxOutputTokens !== DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS)
+  const tokens = defaultOutputTokens(config, participants);
+  if (
+    config.provider === "codex" ||
+    tokens === undefined ||
+    config.maxOutputTokens !== DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS
+  )
     return undefined;
-  return { ...config, maxOutputTokens: MAX_ANALYSIS_OUTPUT_TOKENS };
+  return { ...config, maxOutputTokens: tokens };
 }
 
-/** Only for an omitted output limit. Preserve the established allowance when
- * more reasoning/report space would refuse a study its declared budget admits.
- * This is one pre-dispatch choice, never a fallback request or a budget increase. */
-export function preferLargerAnalysisOutput(
+/** Only for an omitted output limit, which configuration fills with the 16,384-token default.
+ * Gives the analysis the allowance sized to its participants, effort and analyst, and keeps the
+ * default when a larger sized allowance would refuse a study its declared budget admits. This is
+ * one pre-dispatch choice, never a fallback request or a budget increase. */
+export function defaultAnalysisOutput(
   input: AnalysisInput,
   config: AnalysisConfig,
 ): AnalysisConfig {
-  const expanded = largerOutput(config);
-  return expanded !== undefined && estimateAnalysisAdmission(input, expanded).allowed
-    ? expanded
-    : config;
+  const sized = defaultOutput(config, input.coverage.includedStreamIds.length);
+  return sized !== undefined && estimateAnalysisAdmission(input, sized).allowed ? sized : config;
 }
 
 export type AnalysisDispatchContext = Pick<
@@ -608,22 +629,23 @@ type RequestOutcome =
  * The attempt's requests: one per cohort, `COHORT_CONCURRENCY` at a time (one at a time for Codex),
  * then the merge request for more than one cohort. After one request fails no further request
  * starts, and the first failure in cohort order is the attempt's, with its cohort. `notSent` means
- * cancellation stopped a request from starting.
+ * cancellation stopped a request from starting. `send` gets each request's index: its cohort's,
+ * and the cohort count for the merge request.
  */
 async function requestReport(
   cohorts: readonly AnalysisInput[],
   input: AnalysisInput,
   config: AnalysisConfig,
-  send: (request: AnalysisRequest, part: AnalysisInput) => Promise<RequestOutcome>,
+  send: (request: AnalysisRequest, part: AnalysisInput, index: number) => Promise<RequestOutcome>,
   signal: AbortSignal | undefined,
 ): Promise<(RequestOutcome & { cohort?: AnalysisInput }) | { ok: false; notSent: true }> {
   let stopped = false;
   const outcomes = await mapWithConcurrency(
     [...cohorts],
     config.provider === "codex" ? 1 : COHORT_CONCURRENCY,
-    async (cohort): Promise<RequestOutcome | undefined> => {
+    async (cohort, index): Promise<RequestOutcome | undefined> => {
       if (stopped || signal?.aborted) return undefined;
-      const outcome = await send(cohortRequest(cohort, config), cohort);
+      const outcome = await send(cohortRequest(cohort, config), cohort, index);
       if (!outcome.ok) stopped = true;
       return outcome;
     },
@@ -635,7 +657,20 @@ async function requestReport(
   if (cohorts.length === 1) return outcomes[0]!;
   if (signal?.aborted) return { ok: false, notSent: true };
   // The merge request sends the cohort reports, no evidence entries or captures.
-  return send(mergeRequest(input, config, reports), { ...input, evidence: [], images: [] });
+  return send(
+    mergeRequest(input, config, reports),
+    { ...input, evidence: [], images: [] },
+    cohorts.length,
+  );
+}
+
+/** Request `index` of an attempt at the start of a sentence, numbered as requestReport numbers it. */
+function requestName(cohorts: readonly AnalysisInput[], index: number): string {
+  if (cohorts.length === 1) return "The analysis request";
+  if (index === cohorts.length)
+    return `The request that merges the ${cohorts.length} cohort reports`;
+  const total = cohorts.reduce((sum, cohort) => sum + cohort.participants.length, 0);
+  return `The request for one cohort (${cohorts[index]!.participants.length} of the ${total} participants)`;
 }
 
 /**
@@ -721,7 +756,16 @@ export async function runAnalysis(
   const provider = await analysisProvider(config, options);
   const cohorts = cohortInputs(input);
   const responses: AnalysisProviderResult[] = [];
-  const send = async (request: AnalysisRequest, part: AnalysisInput): Promise<RequestOutcome> => {
+  const retries =
+    config.provider === "codex"
+      ? undefined
+      : outputRetries(
+          config,
+          analysisCost(input, config, modelRate(config.model)!).requests,
+          (index) => requestName(cohorts, index),
+          options.warnings,
+        );
+  const dispatch = async (request: AnalysisRequest, part: AnalysisInput) => {
     progress("requesting", part);
     const response = await provider({
       model: config.model,
@@ -739,6 +783,18 @@ export async function runAnalysis(
     for (const warning of [...codexWarnings(config, response), httpStatusWarning(config, response)])
       if (warning !== undefined && !options.warnings?.includes(warning))
         options.warnings?.push(warning);
+    return response;
+  };
+  const send = async (
+    request: AnalysisRequest,
+    part: AnalysisInput,
+    index: number,
+  ): Promise<RequestOutcome> => {
+    let response = await dispatch(request, part);
+    // A request that ran out of output is sent once more while the cap admits it.
+    while (!options.signal?.aborted && retries?.retry(index, response, artifact.usage))
+      response = await dispatch(request, part);
+    retries?.settle(index);
     if (response.status !== "completed")
       return {
         ok: false,
@@ -767,12 +823,14 @@ export async function runAnalysis(
   artifact.result = outcome.result;
   artifact.status = input.coverage.complete ? "complete" : "partial";
   artifact.error = null;
-  // A bill above the expected cost is a normal outcome. Only one above the worst case or the cap
-  // shows the estimate was wrong.
+  // A bill above the expected cost is a normal outcome. Only one above the worst case, with the
+  // worst case of each request sent again, or above the cap shows the estimate was wrong.
+  const worstCaseUsd =
+    (admission.worstCaseCostUsd ?? config.maxCostUsd ?? 0) + (retries?.worstCaseUsd() ?? 0);
   if (
     config.provider !== "codex" &&
     (responses.some((response) => (response.usage?.output ?? 0) > config.maxOutputTokens) ||
-      (artifact.usage.estimatedCostUsd ?? 0) > (admission.worstCaseCostUsd ?? config.maxCostUsd) ||
+      (artifact.usage.estimatedCostUsd ?? 0) > worstCaseUsd ||
       (artifact.usage.estimatedCostUsd ?? 0) > config.maxCostUsd)
   ) {
     artifact.status = "partial";

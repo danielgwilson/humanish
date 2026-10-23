@@ -241,6 +241,13 @@ describe("admission for a run with more than 16 participants", () => {
     // 4.6585 plus 10% is 5.12435, rounded up to the micro-dollar.
     expect(estimate.admittedCostUsd).toBeGreaterThanOrEqual(5.12435);
     expect(estimate.admittedCostUsd).toBeLessThanOrEqual(5.124351);
+    // A request that runs out of output is sent again against its own costs.
+    expect(estimate.requests.map((request) => request.expectedCostUsd)).toEqual([
+      1.2006, 1.1506, 2.3073,
+    ]);
+    expect(estimate.requests.map((request) => request.worstCaseCostUsd)).toEqual([
+      1.789, 1.789, 2.4957,
+    ]);
   });
 
   it("counts the requests it prices: one up to 16 participants, then each cohort and the merge", () => {

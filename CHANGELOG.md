@@ -37,6 +37,22 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A remote run reads the study's files before it creates the runner, so a study file that is a
   link is refused before any sandbox exists.
 
+### Fixed
+
+- A study analysis request that runs out of output before it finishes its report is sent once
+  more, with the same input and a fresh deadline, when the spend so far plus admission's figure
+  for one more request fits the analysis's cost cap. The attempt's usage and cost count both
+  requests, and `analyze` and the live run's output say the request ran out and was sent again,
+  or why it was not. Codex account analysis, timeouts, HTTP errors and rejected reports are not
+  sent again. A default `gpt-6.1-sol` analysis at medium had written 32,768 output tokens over
+  374 s and cost $0.39 with no report; its finished reports use about 3,700.
+- An OpenAI analysis at none, low or medium effort with no declared output limit asks for 12,288
+  tokens plus 2,048 per participant (14,336 for one participant, 18,432 for three) in place of
+  32,768, so a request that runs away stops sooner. On the benchmark recordings the longest
+  finished report at those efforts used 8,354 tokens for one participant and 11,313 for three.
+  High effort, Gemini and runs of more than 16 participants keep 32,768, and an explicit
+  `maxOutputTokens` or `--max-output-tokens` is used as given.
+
 ## 0.145.0: A remote runner's keys stay in E2B's proxy (2026-10-22)
 
 humanish 0.145.0 keeps the OpenAI, Gemini and E2B keys out of a remote E2B runner's environment.

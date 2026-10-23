@@ -9,7 +9,7 @@ import {
   type AnalyzeDeps,
   type AnalyzeResult,
 } from "./service.js";
-import { preferLargerAnalysisOutput, ANALYSIS_PROMPT_VERSION } from "./execute.js";
+import { defaultAnalysisOutput, ANALYSIS_PROMPT_VERSION } from "./execute.js";
 import { captureEvidence } from "./evidence.js";
 import { analysisApiKey } from "../keys/key-resolution.js";
 import { loadRunTraces } from "../run/stream-trace.js";
@@ -163,7 +163,7 @@ async function readAutomaticSource(
       (!deps.defaultRequest || participantEvidence) &&
       hasKey
     ) {
-      config = preferLargerAnalysisOutput(await captureEvidence(prepared, bytes), config);
+      config = defaultAnalysisOutput(await captureEvidence(prepared, bytes), config);
     }
     return { participantEvidence, config };
   } catch {

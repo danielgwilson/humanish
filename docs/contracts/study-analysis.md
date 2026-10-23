@@ -27,8 +27,10 @@ cap; a refused dry run says why, and names the `--max-cost` that admits it.
 
 The default provider is `openai`; its default model is `gpt-6.1-sol`, at medium reasoning effort
 ([reasoning effort](#reasoning-effort)). A request sends selected retained text and
-captures to OpenAI, without tools, redirects, provider-side response storage, or
-automatic retries. `--question` adds a reviewer question; it never changes the
+captures to OpenAI, without tools, redirects or provider-side response storage. A request that
+runs out of output is sent once more while the cap admits it
+([a request that runs out of output](#a-request-that-runs-out-of-output)); no other failure is
+sent again. `--question` adds a reviewer question; it never changes the
 participant assignment. For OpenAI API analysis, `--max-cost` is required, including for dry-run
 admission. Admission refuses the request when both its worst case and its expected cost plus a
 10% margin are over it; the provider bill is not limited by it.
@@ -60,12 +62,39 @@ times for those billed $1 or more.
 A refusal's message gives the expected cost, the worst case, the cap, and
 `humanish analyze --run <id> --max-cost <n>` with `n` the worst case rounded up.
 
-The default deadline is ten minutes for each request. With no explicit output-token limit, analysis
-uses 32,768 tokens if admission fits the declared budget, or retains the prior
-16,384-token allowance otherwise. Explicit limits are never adjusted. Selection
-happens before dispatch; `admission.outputTokenAllowance` exposes it in dry-run,
-and the saved configuration, digest and automatic job bind the selected allowance.
-This selection never increases the spending limit or starts a retry.
+The default deadline is ten minutes for each request. With no explicit output-token limit,
+`src/analysis/output-limit.ts` sizes the allowance to the packet. An OpenAI analysis at none, low
+or medium effort of up to 16 participants gets 12,288 tokens plus 2,048 per participant, at most
+32,768: 14,336 for one participant and 18,432 for three. A high-effort analysis, a Gemini
+analysis and a run analysed in cohorts get 32,768. If admission refuses an allowance above
+16,384 under the declared budget, the analysis keeps 16,384. Explicit limits are never adjusted.
+Selection happens before dispatch; `admission.outputTokenAllowance` exposes it in dry-run, and
+the saved configuration, digest and automatic job bind the selected allowance. This selection
+never increases the spending limit.
+
+The sizes come from the finished reports on the 2026-10-22 and 2026-10-23 benchmark recordings:
+the Taskly analyses listed in `docs/evidence/benchmark/2026-10-2*.json`, one participant with 8 to
+14 captures, and the movie-game analyses of
+[analysis models on fixed recordings](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-10-22-analysis-models.md), three
+participants with 40 to 49 captures. Each analysis's output tokens are read from its retained
+artifact.
+
+| Analyst and effort   | One participant: passed, most output | Three participants: passed, most output |
+| -------------------- | ------------------------------------ | --------------------------------------- |
+| `gpt-6.1-sol` low    | 24, 4,308                            | 6, 6,391                                |
+| `gpt-6.1-sol` medium | 142, 5,659                           | 36, 9,000                               |
+| `gpt-6-luna` medium  | 27, 8,354                            | 2, 11,313                               |
+| `gpt-6.1-sol` high   | 22, 10,086                           | 6, 15,797                               |
+| `gpt-6-luna` high    | 78, 19,880                           | 9, 26,439                               |
+| `gemini-3.8-flash`   | 23, 29,739                           | 1, 26,154                               |
+
+At low and medium effort the sized limit is 1.7 times the most output of a finished report of
+one participant and 1.6 times that of three; for `gpt-6.1-sol` at medium it is 2.5 and 2.0 times.
+At high effort a finished `gpt-6-luna` report of three participants used 26,439 tokens, so 32,768
+has no room to lower. A `gpt-6.1-sol` analysis at medium that ran out of output on a
+one-participant run had used all 32,768 tokens in 374 seconds and cost $0.39; at 14,336 tokens the
+same request stops at 44% of that output.
+
 The configured wall-clock deadline covers the entire request, including waiting
 for response headers and reading the body. A request-scoped dispatcher prevents
 Node's separate fetch timeout from cutting a longer configured deadline short;
@@ -76,6 +105,29 @@ an unverified essential result remains unknown even if the participant reported
 success. Findings keep reported concerns and observed recovery distinct across
 participants. Other supported models can be selected explicitly, but evidence
 reference validation does not certify their interpretation of small visual details.
+
+## A request that runs out of output
+
+When an OpenAI or Gemini request ends with `output_incomplete`, humanish sends the same request
+once more, with a fresh deadline. It does so only when the spend so far, plus what admission
+holds for the attempt's requests still running and admission's figure for one more request (its
+expected cost plus 10%, or its worst case when that is lower), is within `maxCostUsd`. The spend
+so far counts every response of the attempt, the one that ran out included. When a response did
+not report its usage, the spend is unknown and the request is not sent again. A request is sent
+again at most once; when the second one also runs out, the attempt fails with
+`analysis_output_incomplete`. A cohort request and the merge request are each sent again the same
+way. Codex account analysis has no dollar cap to check and is never sent again. A timeout, an HTTP
+error and a rejected report are not sent again: a timed-out request has already used the
+ten-minute deadline.
+
+The attempt keeps one execution start, one receipt and one `analysis.json`. Their `usage` is the
+sum of every response, both requests of a retry included, and `estimatedCostUsd` prices each
+response as its own request. The schemas are unchanged. A warning in `warnings` (and in the human
+output of `analyze` and of a live run, under its `analysis:` line) names the request, the input
+and output tokens and the cost of the response that ran out, and says whether humanish sent it
+again; a refused retry gives the spend, the held amount and the cap. The result is partial with
+`analysis_admission_estimate_exceeded` only when the bill passes admission's worst case plus the
+worst case of each request sent again, or the cap.
 
 ## Runs with more than 16 participants
 
@@ -104,7 +156,8 @@ whole packet as a single request's report does.
 The attempt has one execution start, one receipt and one `analysis.json`, with the
 run's participants, coverage and evidence and the summed usage of every request
 sent. The artifact schema is unchanged. Its stored limits grew to hold eight
-cohorts: 6,400 evidence items, 320 captures and 16 MiB. If a cohort request fails
+cohorts: 6,400 evidence items, 320 captures and 16 MiB. A cohort request or the merge request that
+runs out of output is sent once more under the rule above. If a cohort request fails
 or is rejected, no further request starts, requests already sent finish, no merge
 request is sent and the attempt fails with that request's code, with no findings;
 a warning names the cohort's size. A failed merge request fails the attempt the same way. The usage

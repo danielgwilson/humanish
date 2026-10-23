@@ -774,7 +774,7 @@
         "requests": 1
       },
       "warnings": [
-        "The OpenAI API answered HTTP 503 (the model is overloaded or unavailable; a later attempt can succeed). humanish does not retry an analysis request; run the command again to retry."
+        "The OpenAI API answered HTTP 503 (the model is overloaded or unavailable; a later attempt can succeed). humanish sends a request again only when it ran out of output; run the command again to retry."
       ],
       "ok": false,
       "analysisId": "analysis-golden-1",

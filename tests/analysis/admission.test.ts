@@ -6,10 +6,7 @@ import {
   formatAutomaticAnalysisBudget,
   resolveAutomaticAnalysis,
 } from "../../src/analysis/automatic-config.js";
-import {
-  estimateAnalysisAdmission,
-  preferLargerAnalysisOutput,
-} from "../../src/analysis/execute.js";
+import { estimateAnalysisAdmission, defaultAnalysisOutput } from "../../src/analysis/execute.js";
 import type { AnalysisConfig, AnalysisInput } from "../../src/analysis/types.js";
 import { digestAnalysisInput } from "../../src/analysis/validation.js";
 import { MODEL_RATES } from "../../src/run/pricing.js";
@@ -201,7 +198,7 @@ describe("analysis admission estimate", () => {
   it("admits a 6-participant study's analysis under the default cap", () => {
     // 800 entries and 40 captures are the packet limits; the text matches a large retained run.
     const input = packet({ participants: 6, entries: 800, textBytes: 27_309, captures: 40 });
-    const config = preferLargerAnalysisOutput(input, astraConfig());
+    const config = defaultAnalysisOutput(input, astraConfig());
     const admission = estimateAnalysisAdmission(input, config);
     expect(admission).toMatchObject({ allowed: true, error: null, maxCostUsd: 10 });
     expect(admission.estimatedCostUsd).toBeLessThan(10);
@@ -212,7 +209,7 @@ describe("analysis admission estimate", () => {
     const input = packet({ participants: 8, entries: 800, textBytes: 27_309, captures: 40 });
     const base = { ...astraConfig(), maxOutputTokens: 16_384 };
     const larger = { ...base, maxOutputTokens: 32_768 };
-    expect(preferLargerAnalysisOutput(input, base)).toEqual(larger);
+    expect(defaultAnalysisOutput(input, base)).toEqual(larger);
     // Eight participants are expected to write more than 16,384 tokens, so the larger allowance
     // raises the expected cost as well as the worst case.
     const small = estimateAnalysisAdmission(input, { ...base, maxCostUsd: 1000 });
@@ -223,12 +220,12 @@ describe("analysis admission estimate", () => {
     expect(estimateAnalysisAdmission(input, { ...between, maxOutputTokens: 32_768 }).allowed).toBe(
       false,
     );
-    expect(preferLargerAnalysisOutput(input, between)).toEqual(between);
+    expect(defaultAnalysisOutput(input, between)).toEqual(between);
     const denied = { ...base, maxCostUsd: 0.000001 };
-    expect(preferLargerAnalysisOutput(input, denied)).toEqual(denied);
+    expect(defaultAnalysisOutput(input, denied)).toEqual(denied);
     expect(estimateAnalysisAdmission(input, denied).allowed).toBe(false);
     const explicit = { ...base, maxOutputTokens: 8192 };
-    expect(preferLargerAnalysisOutput(input, explicit)).toEqual(explicit);
+    expect(defaultAnalysisOutput(input, explicit)).toEqual(explicit);
   });
 
   it("gives study check a range that brackets a 6-participant study's packets when the cap admits them", () => {
@@ -239,7 +236,7 @@ describe("analysis admission estimate", () => {
     )?.expectedCostUsd;
     const config = { ...astraConfig(), maxCostUsd: 1000 };
     const expected = (shape: PacketShape) =>
-      estimateAnalysisAdmission(packet(shape), preferLargerAnalysisOutput(packet(shape), config))
+      estimateAnalysisAdmission(packet(shape), defaultAnalysisOutput(packet(shape), config))
         .estimatedCostUsd!;
     const smallest = expected({ participants: 6, entries: 6, textBytes: 60, captures: 0 });
     // The packet limits: 800 entries, 160 KiB of text and 40 captures.
@@ -281,9 +278,9 @@ describe("analysis admission estimate", () => {
       captures: 40,
     });
     const capped = { ...astraConfig(), maxCostUsd: 3 };
-    expect(
-      estimateAnalysisAdmission(limits, preferLargerAnalysisOutput(limits, capped)).allowed,
-    ).toBe(false);
+    expect(estimateAnalysisAdmission(limits, defaultAnalysisOutput(limits, capped)).allowed).toBe(
+      false,
+    );
   });
 
   it("admits a one-request analysis at the evidence limits under the default cap", () => {
@@ -300,7 +297,7 @@ describe("analysis admission estimate", () => {
       captures: 40,
     });
     expect(
-      estimateAnalysisAdmission(limits, preferLargerAnalysisOutput(limits, astraConfig())).allowed,
+      estimateAnalysisAdmission(limits, defaultAnalysisOutput(limits, astraConfig())).allowed,
     ).toBe(true);
   });
 
@@ -332,6 +329,7 @@ describe("the admitted cost", () => {
       expectedCostUsd: 0.8006,
       worstCaseCostUsd: 0.9698,
       admittedCostUsd: 0.88066,
+      requests: [{ expectedCostUsd: 0.8006, worstCaseCostUsd: 0.9698, admittedCostUsd: 0.88066 }],
     });
   });
 
@@ -382,5 +380,75 @@ describe("a cost refusal", () => {
     expect(costRefusal(cheap, "--run run-1 --cwd app", (rest) => `humanish ${rest}`).command).toBe(
       "humanish analyze --run run-1 --cwd app --max-cost 1",
     );
+  });
+});
+
+describe("the output limit of an analysis whose study declares none", () => {
+  /** The default analyst, gpt-6.1-sol at medium effort, as automatic analysis resolves it. */
+  function defaultConfig(): OpenAIConfig {
+    const resolved = resolveAutomaticAnalysis({ maxCostUsd: 10 });
+    if (!resolved.ok || !resolved.config || resolved.config.provider === "codex")
+      throw new Error("the default analyst did not resolve to OpenAI");
+    return resolved.config;
+  }
+  const shape = (participants: number) =>
+    packet({ participants, entries: 40 * participants, textBytes: 6_000, captures: 12 });
+
+  it.each([
+    [1, 14_336],
+    [2, 16_384],
+    [3, 18_432],
+    [9, 30_720],
+    [10, 32_768],
+    [16, 32_768],
+  ])("gives a low or medium effort analysis of %i participants %i tokens", (count, limit) => {
+    const input = shape(count);
+    expect(defaultAnalysisOutput(input, defaultConfig()).maxOutputTokens).toBe(limit);
+    expect(
+      defaultAnalysisOutput(input, { ...defaultConfig(), reasoningEffort: "low" }).maxOutputTokens,
+    ).toBe(limit);
+  });
+
+  it("gives a high effort analysis and a Gemini analysis 32,768 tokens", () => {
+    const input = shape(1);
+    expect(
+      defaultAnalysisOutput(input, { ...defaultConfig(), reasoningEffort: "high" }).maxOutputTokens,
+    ).toBe(32_768);
+    const luna = { ...defaultConfig(), model: "gpt-6-luna" };
+    delete luna.reasoningEffort;
+    expect(defaultAnalysisOutput(input, luna).maxOutputTokens).toBe(32_768);
+    const gemini = resolveAutomaticAnalysis({ provider: "gemini", maxCostUsd: 10 });
+    if (!gemini.ok || !gemini.config) throw new Error("Gemini did not resolve");
+    expect(defaultAnalysisOutput(input, gemini.config).maxOutputTokens).toBe(32_768);
+  });
+
+  it("gives a run analysed in cohorts 32,768 tokens for each request", () => {
+    expect(defaultAnalysisOutput(shape(17), defaultConfig()).maxOutputTokens).toBe(32_768);
+  });
+
+  it("keeps an explicit limit", () => {
+    const explicit = { ...defaultConfig(), maxOutputTokens: 8192 };
+    expect(defaultAnalysisOutput(shape(1), explicit)).toEqual(explicit);
+  });
+
+  it("keeps a sized limit that the cap admits when 32,768 would not be", () => {
+    const input = shape(1);
+    const sized = { ...defaultConfig(), maxOutputTokens: 14_336 };
+    // A cap between the worst cases of 14,336 and 32,768 output tokens.
+    const low = estimateAnalysisAdmission(input, { ...sized, maxCostUsd: 1000 }).worstCaseCostUsd!;
+    const capped = { ...defaultConfig(), maxCostUsd: Math.ceil(low * 100) / 100 };
+    expect(estimateAnalysisAdmission(input, { ...capped, maxOutputTokens: 14_336 }).allowed).toBe(
+      true,
+    );
+    expect(defaultAnalysisOutput(input, capped).maxOutputTokens).toBe(14_336);
+  });
+
+  it("gives study check a range for one participant at the sized limit", () => {
+    const range = automaticAnalysisBudget({ maxCostUsd: 10 }, "computer-use", 1)?.expectedCostUsd;
+    const smallest = estimateAnalysisAdmission(
+      packet({ participants: 1, entries: 1, textBytes: 10, captures: 0 }),
+      { ...defaultConfig(), maxOutputTokens: 14_336 },
+    ).estimatedCostUsd!;
+    expect(range!.low).toBeLessThanOrEqual(smallest);
   });
 });

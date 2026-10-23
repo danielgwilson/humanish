@@ -61,13 +61,19 @@ export interface AnalysisRequests {
   outputScale?: number;
 }
 
-export interface AnalysisCostEstimate {
-  inputTokens: number;
-  expectedOutputTokens: number;
+/** What one request is expected to cost, its worst case, and the figure admission compares. */
+export interface RequestCost {
   expectedCostUsd: number;
   worstCaseCostUsd: number;
   /** The expected cost with the margin, never above the worst case: what admission compares. */
   admittedCostUsd: number;
+}
+
+export interface AnalysisCostEstimate extends RequestCost {
+  inputTokens: number;
+  expectedOutputTokens: number;
+  /** Each request's own costs: the cohorts' in order, then the merge request's. */
+  requests: RequestCost[];
 }
 
 /** Rounded up to the micro-dollar, so a small positive boundary never rounds into admission. */
@@ -149,11 +155,18 @@ export function estimateAnalysisCost(
   return {
     inputTokens: sum("inputTokens"),
     expectedOutputTokens: sum("expectedOutputTokens"),
-    expectedCostUsd,
-    worstCaseCostUsd,
-    admittedCostUsd: Math.min(worstCaseCostUsd, roundUp(expectedCostUsd * ADMISSION_MARGIN)),
+    ...admitted(expectedCostUsd, worstCaseCostUsd),
+    requests: estimates.map((estimate) =>
+      admitted(estimate.expectedCostUsd, estimate.worstCaseCostUsd),
+    ),
   };
 }
+
+const admitted = (expectedCostUsd: number, worstCaseCostUsd: number): RequestCost => ({
+  expectedCostUsd,
+  worstCaseCostUsd,
+  admittedCostUsd: Math.min(worstCaseCostUsd, roundUp(expectedCostUsd * ADMISSION_MARGIN)),
+});
 
 /** The numbers a cost refusal reports. */
 export interface RefusedAnalysisCost {
