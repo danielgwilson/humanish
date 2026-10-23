@@ -8,50 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.146.0: Studies start and finish sooner (2026-10-23)
 
-- A hosted computer-use participant on Chrome or Chromium starts its session once its launch page
-  has loaded and painted, in place of a fixed 8 s sleep after Chrome's DevTools answered. The wait
-  reads `document.readyState`, the page's visibility and its first contentful paint over DevTools,
-  gives up after 8 s, and records a `cua-lab.browser.page.completed` event with how long it took; a
-  page that has not loaded by then is a `warn` event and the participant starts as before. Firefox,
-  a terminal, and a desktop where the wait cannot run keep the fixed 8 s sleep.
-  On four live runs of a one-participant study, the page wait took 0.6 to 0.8 s, and DevTools
-  answering to session start took 3.2 to 5.8 s, against 10.5 to 13.5 s on 0.145.0.
-- On an `app-url` subject, Chrome starts while the screen check and the `participants[].files`
-  copy run, and a recording without audio starts beside Chrome. The files and the recording are
-  still in place before the session starts. An audible recording and speech still start before
-  Chrome, which is launched in their sound env. A clone, local-tree or desktop-cli subject still
-  checks the screen, copies the files and provisions the subject in order before its browser or
-  terminal opens. A recording without audio no longer changes the environment Chrome is launched
-  with.
-- A remote run reaches its run about 4 s sooner. The runner downloads Node and installs
-  humanish's dependencies while this machine packs humanish, and the study's files upload beside
-  them; the packed humanish is then unpacked in place. On the release smoke study on E2B, command
-  start to run created took a median 8.8 s in place of 13.1 s.
-- A remote run ends about 3 s sooner after its analysis. The command reads the runner's run with
-  one command that answers within 0.2 s of a new state, a result or the run's process ending, in
-  place of four commands every 5 s. It copies the finished run back in one request per batch of
-  files in place of one per file. From the analysis job record to exit took a median 3.1 s in
-  place of 6.5 s.
-- A remote run reads the study's files before it creates the runner, so a study file that is a
-  link is refused before any sandbox exists.
+humanish 0.146.0 cuts the wait around a hosted study. A Chrome participant starts once its page
+has loaded, in place of a fixed 8 s sleep, and a remote run sets up its runner and returns its
+evidence faster; on a one-participant study, desktop to session start fell from about 29 s to 11
+to 18 s, and a remote run's overhead from 17.8 s to about 10 s. An analysis request that runs out
+of output is sent again once within its cost cap, and a low- or medium-effort analysis asks for an
+output limit sized to its participants, so a runaway request stops sooner.
 
-### Fixed
-
-- A study analysis request that runs out of output before it finishes its report is sent once
-  more, with the same input and a fresh deadline, when the spend so far plus admission's figure
-  for one more request fits the analysis's cost cap. The attempt's usage and cost count both
-  requests, and `analyze` and the live run's output say the request ran out and was sent again,
-  or why it was not. Codex account analysis, timeouts, HTTP errors and rejected reports are not
-  sent again. A default `gpt-6.1-sol` analysis at medium had written 32,768 output tokens over
-  374 s and cost $0.39 with no report; its finished reports use about 3,700.
-- An OpenAI analysis at none, low or medium effort with no declared output limit asks for 12,288
-  tokens plus 2,048 per participant (14,336 for one participant, 18,432 for three) in place of
-  32,768, so a request that runs away stops sooner. On the benchmark recordings the longest
-  finished report at those efforts used 8,354 tokens for one participant and 11,313 for three.
-  High effort, Gemini and runs of more than 16 participants keep 32,768, and an explicit
-  `maxOutputTokens` or `--max-output-tokens` is used as given.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.146.0)
 
 ## 0.145.0: A remote runner's keys stay in E2B's proxy (2026-10-22)
 
