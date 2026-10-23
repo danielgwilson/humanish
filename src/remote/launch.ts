@@ -23,24 +23,28 @@ import { loadModalShellModule } from "../substrates/modal/sandbox.js";
 import type { RemotePlan } from "./plan.js";
 import { serveObserverProxy, type ObserverProxy } from "./observer-proxy.js";
 import {
-  installHumanish,
   listRemoteRun,
   listSettledEvidence,
+  readProject,
   readRemoteBytes,
-  readRemoteFile,
-  readRemoteRun,
+  readRemoteFiles,
   RUNNER_OBSERVER_PORT,
   runnerOf,
+  setUpRunner,
   startRemoteRun,
   stopRemoteRun,
-  uploadProject,
+  waitForRemoteRun,
+  type RemoteFile,
+  type RemoteRunState,
   type Runner,
 } from "./runner.js";
 
-/** How often the launcher reads the runner's run while it follows it. */
-const POLL_MS = 5_000;
-/** Reads in a row the runner may leave unanswered before the launcher gives it up. */
-const UNANSWERED_LIMIT = 24;
+/** The longest one read of the runner's run waits there for a change. */
+const WAIT_MS = 5_000;
+/** How long the launcher waits after a read the runner did not answer before it reads again. */
+const RETRY_MS = 5_000;
+/** How long the runner may leave reads unanswered before the launcher gives it up. */
+const UNANSWERED_LIMIT_MS = 120_000;
 /** How long the run has to write its status record after it is started. */
 const START_DEADLINE_MS = 3 * 60_000;
 /** How often the launcher copies the run's settled evidence while it goes on. */
@@ -105,11 +109,14 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
   // Installed before the first sandbox exists, so a signal never ends this process while one is
   // being created without a cleanup.
   const signals = watchSignals();
-  let tarballDir: string | undefined;
   let proxy: ObserverProxy | undefined;
+  let tarball: Promise<Uint8Array> | undefined;
   try {
-    const tarball = await packThisHumanish();
-    tarballDir = tarball.dir;
+    // Read and checked before any sandbox exists, so a refused file costs nothing.
+    const project = await readProject(cwd, remote.uploads, remote.uploadDirectories);
+    // Packed while the runner is created and Node installs in it.
+    tarball = packThisHumanish();
+    tarball.catch(() => undefined);
     if (signals.requested !== undefined)
       return { runId, exitCode: signals.exitCode, error: "stopped before the runner was created" };
     const where = remote.provider === "modal" ? "a Modal sandbox" : "an E2B sandbox";
@@ -121,6 +128,14 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
         exitCode: signals.exitCode,
         error: "stopped before the run started",
       });
+    // Setting up can take minutes; a signal stops waiting for it, and the reclaim below stops the
+    // runner, and the setup with it. A setup left behind that way fails once its runner is gone.
+    const setup = setUpRunner(runner, {
+      tarball,
+      dependencies: [...(await ownDependencies()), await peerSpec(remote.provider)],
+      project,
+    });
+    setup.catch(() => undefined);
     await writeRemoteRecord(paths, {
       runId,
       provider: remote.provider,
@@ -131,24 +146,13 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
       await runner.sandbox.portAccess!(RUNNER_OBSERVER_PORT),
       launch.port,
     );
-    // Installing can take minutes; a signal stops waiting for it, and the reclaim below stops the
-    // runner, and the install with it.
-    const installing = installHumanish(runner, tarball.bytes, [await peerSpec(remote.provider)]);
-    // An install left behind by a signal fails once its runner is gone; that is expected.
-    installing.catch(() => undefined);
-    const version = await Promise.race([installing, signals.received.then(() => "")]);
+    const version = await Promise.race([setup, signals.received.then(() => "")]);
     if (signals.requested !== undefined)
       return await endRun(launch, runId, {
         exitCode: signals.exitCode,
         error: "stopped before the run started",
       });
-    say(`Installed humanish ${version} in the runner; uploading the study.`);
-    await uploadProject(runner, cwd, remote.uploads, remote.uploadDirectories);
-    if (signals.requested !== undefined)
-      return await endRun(launch, runId, {
-        exitCode: signals.exitCode,
-        error: "stopped before the run started",
-      });
+    say(`Installed humanish ${version} in the runner and uploaded the study; starting its run.`);
     await startRemoteRun(runner, {
       study: launch.study,
       runId,
@@ -169,7 +173,8 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
   } finally {
     signals.dispose();
     await proxy?.close();
-    if (tarballDir !== undefined) await rm(tarballDir, { recursive: true, force: true });
+    // A pack still going removes its directory when it ends; this process waits for that.
+    await tarball?.catch(() => undefined);
   }
 }
 
@@ -218,11 +223,24 @@ export async function followRemoteRun(args: {
   let syncAt = Date.now() + SYNC_EVERY_MS;
   let state: string | undefined;
   let stopAt: number | undefined;
-  let unanswered = 0;
+  let answeredAt = Date.now();
+  // The run was started just before, so it is taken as alive until a read says otherwise.
+  let alive = true;
   const startBy = Date.now() + START_DEADLINE_MS;
   for (;;) {
-    const run = await readRemoteRun(runner, runId).catch(() => undefined);
-    unanswered = run === undefined ? unanswered + 1 : 0;
+    const read = await readRun(runner, runId, { state, alive }, signals);
+    // A signal ends the read, and is handled below without one.
+    const run = read === "signal" ? undefined : read;
+    if (read === undefined) {
+      if (Date.now() - answeredAt < UNANSWERED_LIMIT_MS)
+        await Promise.race([
+          new Promise((resolve) => setTimeout(resolve, RETRY_MS)),
+          signals.requested === undefined ? signals.received : new Promise(() => undefined),
+        ]);
+    } else if (run !== undefined) {
+      answeredAt = Date.now();
+      alive = run.alive;
+    }
     if (run?.state !== undefined && state === undefined) {
       say(`Run ${runId} is running. Watch it live at ${args.proxyUrl}`);
       say("Closing this terminal leaves the study running; Ctrl-C stops it.");
@@ -270,8 +288,8 @@ export async function followRemoteRun(args: {
       await stopRemoteRun(runner).catch(() => undefined);
     }
     const ended =
-      unanswered >= UNANSWERED_LIMIT
-        ? `the runner sandbox stopped answering for ${(UNANSWERED_LIMIT * POLL_MS) / 1000} s`
+      Date.now() - answeredAt >= UNANSWERED_LIMIT_MS
+        ? `the runner sandbox stopped answering for ${UNANSWERED_LIMIT_MS / 1000} s`
         : run !== undefined && state !== undefined && !run.alive
           ? stopAt === undefined
             ? `the run ended without a result: ${run.errTail || "no output"}`
@@ -301,8 +319,22 @@ export async function followRemoteRun(args: {
       // Best effort: what this misses, the copy at the end takes.
       await copySettledEvidence(runner, paths, runId, copied).catch(() => undefined);
     }
-    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
   }
+}
+
+/**
+ * One read of the runner's run, waiting there for a change. The first signal ends the wait here,
+ * and the read left in the runner ends on its own. Undefined when the runner did not answer.
+ */
+async function readRun(
+  runner: Runner,
+  runId: string,
+  seen: { state: string | undefined; alive: boolean },
+  signals: Signals,
+): Promise<RemoteRunState | "signal" | undefined> {
+  const read = waitForRemoteRun(runner, runId, seen, WAIT_MS).catch(() => undefined);
+  if (signals.requested !== undefined) return await read;
+  return await Promise.race([read, signals.received.then(() => "signal" as const)]);
 }
 
 /**
@@ -317,30 +349,29 @@ async function copyRunBack(
 ): Promise<{ files: number; alreadyHere: number }> {
   const files = await listRemoteRun(runner, runId);
   let alreadyHere = 0;
+  const wanted: RemoteFile[] = [];
   for (const file of files) {
     if (file.path === "owner-key") continue;
     // Already here with the same bytes, copied while the run went on or by an earlier attempt.
     if (
       file.path !== SANDBOX_RECEIPTS_ARTIFACT &&
       (await localDigest(paths, file.path)) === file.sha256
-    ) {
+    )
       alreadyHere += 1;
-      continue;
-    }
-    const bytes = await readRemoteFile(runner, runId, file);
-    if (file.path === SANDBOX_RECEIPTS_ARTIFACT) {
-      const local = await readContainedRegularFile(paths, file.path, 16 * 1024 * 1024);
-      const mine = local.status === "read" ? Buffer.from(local.bytes).toString("utf8") : "";
-      await writeContainedOutputFile(
-        paths,
-        file.path,
-        joinJournals(mine, Buffer.from(bytes).toString("utf8")),
-        "utf8",
-      );
-      continue;
-    }
-    await writeContainedOutputFile(paths, file.path, bytes);
+    else wanted.push(file);
   }
+  await readRemoteFiles(runner, runId, wanted, async (file, bytes) => {
+    if (file.path !== SANDBOX_RECEIPTS_ARTIFACT)
+      return await writeContainedOutputFile(paths, file.path, bytes);
+    const local = await readContainedRegularFile(paths, file.path, 16 * 1024 * 1024);
+    const mine = local.status === "read" ? Buffer.from(local.bytes).toString("utf8") : "";
+    await writeContainedOutputFile(
+      paths,
+      file.path,
+      joinJournals(mine, Buffer.from(bytes).toString("utf8")),
+      "utf8",
+    );
+  });
   await pointLatestRunAt(paths, runId);
   return { files: files.length, alreadyHere };
 }
@@ -544,21 +575,39 @@ export function runsFromPackage(): boolean {
  * This machine's humanish as an npm tarball, so the runner runs exactly the same code. A run from
  * source has no built package to pack.
  */
-async function packThisHumanish(): Promise<{ bytes: Uint8Array; dir: string }> {
+function packThisHumanish(): Promise<Uint8Array> {
   const here = fileURLToPath(import.meta.url);
   const root = path.resolve(path.dirname(here), "..", "..");
+  // Thrown here, not from the promise, so it refuses the run before any sandbox exists.
   if (!runsFromPackage())
     throw new Error(
       "A remote run installs this humanish in the runner, and a run from source has no built package. Run `pnpm build`, then `node dist/cli.js`, or use an installed humanish.",
     );
+  return pack(root);
+}
+
+async function pack(root: string): Promise<Uint8Array> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-pack-"));
-  const { stdout } = await promisify(execFile)(
-    "npm",
-    ["pack", "--ignore-scripts", "--json", "--pack-destination", dir, root],
-    { maxBuffer: 16 * 1024 * 1024 },
-  );
-  const [packed] = JSON.parse(stdout) as [{ filename: string }];
-  return { bytes: await readFile(path.join(dir, packed.filename)), dir };
+  try {
+    const { stdout } = await promisify(execFile)(
+      "npm",
+      ["pack", "--ignore-scripts", "--json", "--pack-destination", dir, root],
+      { maxBuffer: 16 * 1024 * 1024 },
+    );
+    const [packed] = JSON.parse(stdout) as [{ filename: string }];
+    return await readFile(path.join(dir, packed.filename));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+/** The npm specs this humanish's package.json depends on, as name@range. */
+async function ownDependencies(): Promise<string[]> {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+  const manifest = JSON.parse(await readFile(path.join(root, "package.json"), "utf8")) as {
+    dependencies?: Record<string, string>;
+  };
+  return Object.entries(manifest.dependencies ?? {}).map(([name, range]) => `${name}@${range}`);
 }
 
 /** The provider SDK the runner's participants need, at the version this machine has. */

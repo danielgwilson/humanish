@@ -60,52 +60,28 @@ async function runOrFail(runner: Runner, step: string, command: string, timeoutM
   return result;
 }
 
-/**
- * Install Node and the humanish package `tarball` (this machine's own humanish, packed), with the
- * provider SDKs its participants need at `peers` (name@version). Returns the installed version.
- */
-export async function installHumanish(
-  runner: Runner,
-  tarball: Uint8Array,
-  peers: readonly string[],
-): Promise<string> {
-  await runner.shell.writeFile(`${RUNNER_STATE}/humanish.tgz`, toArrayBuffer(tarball));
-  const { version, sha256 } = NODE;
-  const script = [
-    "set -eu",
-    `cd "$HOME/${RUNNER_STATE}"`,
-    'case "$(uname -m)" in x86_64) arch=x64;; aarch64|arm64) arch=arm64;; *) echo "unsupported CPU $(uname -m)" >&2; exit 1;; esac',
-    `if [ "$arch" = x64 ]; then sum=${sha256.x64}; else sum=${sha256.arm64}; fi`,
-    `curl -fsSL -o node.tgz "https://nodejs.org/dist/v${version}/node-v${version}-linux-$arch.tar.gz"`,
-    'echo "$sum  node.tgz" | sha256sum -c - >/dev/null',
-    "mkdir -p node && tar -xzf node.tgz --strip-components=1 -C node && rm node.tgz",
-    `export PATH="$HOME/${RUNNER_STATE}/node/bin:$PATH" npm_config_prefix="$HOME/${RUNNER_STATE}/node"`,
-    `npm install -g --no-fund --no-audit --loglevel=error ./humanish.tgz ${peers.map(shellQuote).join(" ")}`,
-    "humanish --version",
-  ].join("\n");
-  const result = await runOrFail(
-    runner,
-    "Installing humanish",
-    `bash -c ${shellQuote(script)}`,
-    600_000,
-  );
-  return result.stdout.trim().split("\n").at(-1) ?? "";
+/** A study file read here, for the same place in the runner's project. */
+export interface ProjectFile {
+  /** Relative to the project, with `/` separators. */
+  path: string;
+  bytes: Uint8Array;
 }
 
 /**
- * Upload each project-relative file in `files`, and every file under each directory in
- * `directories` that exists here, to the same place in the runner's project.
+ * Read each project-relative file in `files`, and every file under each directory in `directories`
+ * that exists here, for upload to the runner. Read before any sandbox exists, so a refusal costs
+ * nothing.
  */
-export async function uploadProject(
-  runner: Runner,
+export async function readProject(
   cwd: string,
   files: readonly string[],
   directories: readonly string[],
-): Promise<number> {
+): Promise<ProjectFile[]> {
   const all = new Set(files);
   for (const directory of directories)
     for (const file of await filesUnder(cwd, directory)) all.add(file);
   const root = await realpath(cwd);
+  const read: ProjectFile[] = [];
   for (const file of all) {
     // A link could hand the runner a file from anywhere on this machine, such as a key file, so
     // only a regular file whose real path is where the study names it is uploaded.
@@ -114,10 +90,105 @@ export async function uploadProject(
       throw new Error(
         `${file} is a link or not a regular file, so it is not uploaded to the runner.`,
       );
-    const bytes = await readFile(real);
-    await runner.shell.writeFile(`${RUNNER_PROJECT}/${file}`, toArrayBuffer(bytes));
+    read.push({ path: file, bytes: await readFile(real) });
   }
-  return all.size;
+  return read;
+}
+
+/** What a runner is set up with. */
+export interface RunnerSetup {
+  /** This machine's humanish as an npm tarball; it may still be packing when setup starts. */
+  tarball: Promise<Uint8Array>;
+  /**
+   * The npm specs its package depends on, from its own package.json, and the provider SDK its
+   * participants need, as name@version.
+   */
+  dependencies: readonly string[];
+  project: readonly ProjectFile[];
+}
+
+/** Study files written to the runner at once. */
+const UPLOAD_CONCURRENCY = 8;
+/** The npm project in the runner that holds this humanish and its dependencies. */
+const RUNNER_APP = `${RUNNER_STATE}/app`;
+
+/**
+ * Install Node, this humanish's dependencies and this humanish in the runner, and upload the
+ * study's files. Node's download starts at once and the dependencies install as soon as it is
+ * there, while the tarball packs and uploads beside them; the tarball is then unpacked in place,
+ * so no install waits for the pack. Returns the installed version.
+ */
+export async function setUpRunner(runner: Runner, setup: RunnerSetup): Promise<string> {
+  const npm = `export PATH="$HOME/${RUNNER_STATE}/node/bin:$PATH"`;
+  const dependencies = [
+    "set -eu",
+    `mkdir -p "$HOME/${RUNNER_APP}"`,
+    `cd "$HOME/${RUNNER_APP}"`,
+    npm,
+    `printf '{"private":true}\\n' > package.json`,
+    `npm install --no-save --no-package-lock --no-fund --no-audit --update-notifier=false --loglevel=error ${setup.dependencies.map(shellQuote).join(" ")}`,
+  ].join("\n");
+  const steps = [
+    runOrFail(runner, "Installing Node", nodeInstallScript(), 600_000).then(() =>
+      runOrFail(
+        runner,
+        "Installing humanish's dependencies",
+        `bash -c ${shellQuote(dependencies)}`,
+        600_000,
+      ),
+    ),
+    setup.tarball.then((bytes) =>
+      runner.shell.writeFile(`${RUNNER_STATE}/humanish.tgz`, toArrayBuffer(bytes)),
+    ),
+    uploadProject(runner, setup.project),
+  ];
+  await Promise.all(steps);
+  // npm's own install would resolve every dependency again. Unpacked beside them, the package
+  // finds them as an installed one does, and its bin goes where npm puts a global one.
+  const unpack = [
+    "set -eu",
+    `cd "$HOME/${RUNNER_STATE}"`,
+    npm,
+    `package="$HOME/${RUNNER_APP}/node_modules/humanish"`,
+    'mkdir -p "$package" && tar -xzf humanish.tgz --strip-components=1 -C "$package"',
+    `bin="$package/$(node -p 'require(process.argv[1]).bin.humanish' "$package/package.json")"`,
+    'chmod +x "$bin" && ln -sf "$bin" node/bin/humanish',
+    `node -p 'require(process.argv[1]).version' "$package/package.json"`,
+  ].join("\n");
+  const result = await runOrFail(
+    runner,
+    "Installing humanish",
+    `bash -c ${shellQuote(unpack)}`,
+    600_000,
+  );
+  return result.stdout.trim().split("\n").at(-1) ?? "";
+}
+
+/** Download Node into the runner, check it against its published sha256 and extract it. */
+function nodeInstallScript(): string {
+  const { version, sha256 } = NODE;
+  const script = [
+    "set -eu",
+    `mkdir -p "$HOME/${RUNNER_STATE}"`,
+    `cd "$HOME/${RUNNER_STATE}"`,
+    'case "$(uname -m)" in x86_64) arch=x64;; aarch64|arm64) arch=arm64;; *) echo "unsupported CPU $(uname -m)" >&2; exit 1;; esac',
+    `if [ "$arch" = x64 ]; then sum=${sha256.x64}; else sum=${sha256.arm64}; fi`,
+    `curl -fsSL -o node.tgz "https://nodejs.org/dist/v${version}/node-v${version}-linux-$arch.tar.gz"`,
+    'echo "$sum  node.tgz" | sha256sum -c - >/dev/null',
+    "mkdir -p node && tar -xzf node.tgz --strip-components=1 -C node && rm node.tgz",
+  ].join("\n");
+  return `bash -c ${shellQuote(script)}`;
+}
+
+async function uploadProject(runner: Runner, files: readonly ProjectFile[]): Promise<void> {
+  for (let at = 0; at < files.length; at += UPLOAD_CONCURRENCY)
+    await Promise.all(
+      files
+        .slice(at, at + UPLOAD_CONCURRENCY)
+        .map((file) =>
+          runner.shell.writeFile(`${RUNNER_PROJECT}/${file.path}`, toArrayBuffer(file.bytes)),
+        ),
+    );
 }
 
 async function filesUnder(cwd: string, directory: string): Promise<string[]> {
@@ -197,33 +268,68 @@ export interface RemoteRunState {
   errTail: string;
 }
 
-export async function readRemoteRun(runner: Runner, runId: string): Promise<RemoteRunState> {
-  const read = async (file: string): Promise<string | undefined> => {
-    const result = await runner.shell.run(`cat -- ${shellQuote(file)} 2>/dev/null`, {
-      timeoutMs: 30_000,
-    });
-    return result.exitCode === 0 ? result.stdout : undefined;
-  };
-  const status = parseJson(await read(`${RUNNER_PROJECT}/.humanish/runs/${runId}/status.json`));
-  const result = parseJson(await read(`${RUNNER_STATE}/result.json`));
-  const err = await runner.shell.run(`tail -c 2000 ${RUNNER_STATE}/watch.err 2>/dev/null`, {
-    timeoutMs: 30_000,
+/** How often the runner checks its run while the launcher waits on it. */
+const WAIT_CHECK_SECONDS = 0.2;
+const SECTION = "--- humanish ";
+
+/**
+ * How the runner's run is going. The runner checks its run every 0.2 s for up to `waitMs` and
+ * answers as soon as it differs from `seen`: a new state, a result, or its process ending. One
+ * command answers each wait, so the launcher learns of a change within a check of it.
+ */
+export async function waitForRemoteRun(
+  runner: Runner,
+  runId: string,
+  seen: { state: string | undefined; alive: boolean },
+  waitMs: number,
+): Promise<RemoteRunState> {
+  const status = `$HOME/${RUNNER_PROJECT}/.humanish/runs/${runId}/status.json`;
+  const result = `$HOME/${RUNNER_STATE}/result.json`;
+  const checks = Math.max(1, Math.ceil(waitMs / 1000 / WAIT_CHECK_SECONDS));
+  // The first "state" in status.json is the run's own; its outcome and analysis come after it.
+  const script = [
+    `status="${status}" result="${result}"`,
+    `state() { grep -m1 -o '"state": *"[^"]*"' "$status" 2>/dev/null | sed 's/.*"\\([^"]*\\)"$/\\1/'; }`,
+    "alive() { if pgrep -f '[h]umanish watch' >/dev/null; then echo 1; else echo 0; fi; }",
+    `i=0; while [ "$i" -lt ${checks} ]; do`,
+    '  [ -s "$result" ] && break',
+    `  [ "$(state)" != ${shellQuote(seen.state ?? "")} ] && break`,
+    `  [ "$(alive)" != ${seen.alive ? 1 : 0} ] && break`,
+    `  sleep ${WAIT_CHECK_SECONDS}; i=$((i + 1))`,
+    "done",
+    `echo "${SECTION}alive $(alive)"`,
+    `echo "${SECTION}status"; cat "$status" 2>/dev/null`,
+    `echo; echo "${SECTION}result"; cat "$result" 2>/dev/null`,
+    `echo; echo "${SECTION}err"; tail -c 2000 "$HOME/${RUNNER_STATE}/watch.err" 2>/dev/null`,
+    "exit 0",
+  ].join("\n");
+  const answer = await runner.shell.run(`bash -c ${shellQuote(script)}`, {
+    timeoutMs: waitMs + 30_000,
   });
-  const alive = await runner.shell.run("pgrep -f '[h]umanish watch' >/dev/null", {
-    timeoutMs: 30_000,
-  });
+  if (answer.exitCode !== 0) throw new RunnerCommandError("Reading the run", answer);
+  const sections = new Map<string, string>();
+  let name: string | undefined;
+  for (const line of answer.stdout.split("\n")) {
+    if (line.startsWith(SECTION)) {
+      const [key = "", ...rest] = line.slice(SECTION.length).split(" ");
+      name = key;
+      sections.set(key, rest.join(" "));
+    } else if (name !== undefined) sections.set(name, `${sections.get(name)}${line}\n`);
+  }
+  const state = parseJson(sections.get("status"));
+  const ended = parseJson(sections.get("result"));
   return {
-    ...(typeof status?.state === "string" ? { state: status.state } : {}),
-    ...(typeof result?.exitCode === "number"
-      ? { result: { exitCode: result.exitCode, result: result.result } }
+    ...(typeof state?.state === "string" ? { state: state.state } : {}),
+    ...(typeof ended?.exitCode === "number"
+      ? { result: { exitCode: ended.exitCode, result: ended.result } }
       : {}),
-    alive: alive.exitCode === 0,
-    errTail: tailOf(err.stdout),
+    alive: sections.get("alive")?.trim() === "1",
+    errTail: tailOf(sections.get("err")),
   };
 }
 
 function parseJson(text: string | undefined): Record<string, unknown> | undefined {
-  if (text === undefined) return undefined;
+  if (text === undefined || text.trim() === "") return undefined;
   try {
     const value: unknown = JSON.parse(text);
     return value !== null && typeof value === "object"
@@ -234,40 +340,45 @@ function parseJson(text: string | undefined): Record<string, unknown> | undefine
   }
 }
 
-/** One file of the runner's run directory: its path in the directory and its sha256. */
+/** One file of the runner's run directory: its path in the directory, its size and its sha256. */
 export interface RemoteFile {
   path: string;
+  size: number;
   sha256: string;
 }
 
 /**
- * The regular files of the runner's run directory and their digests. Refuses a directory that holds
- * a link, which a run never writes.
+ * The regular files of the runner's run directory, with their sizes and digests. Refuses a
+ * directory that holds a link, which a run never writes.
  */
 export async function listRemoteRun(runner: Runner, runId: string): Promise<RemoteFile[]> {
   const dir = `${RUNNER_PROJECT}/.humanish/runs/${runId}`;
-  const links = await runOrFail(
-    runner,
-    "Listing the run",
-    `cd ${shellQuote(dir)} && find . ! -type f ! -type d -print -quit`,
-    60_000,
-  );
-  if (links.stdout.trim() !== "")
-    throw new Error(
-      `The runner's run directory holds something other than files and folders (${tailOf(links.stdout)}), so it is not copied.`,
-    );
   const listed = await runOrFail(
     runner,
     "Listing the run",
-    `cd ${shellQuote(dir)} && find . -type f -print0 | xargs -0 -r sha256sum`,
+    `cd ${shellQuote(dir)} && find . ! -type f ! -type d -print -quit && echo "${SECTION}sizes" && find . -type f -printf '%s %p\\n' && echo "${SECTION}digests" && find . -type f -print0 | xargs -0 -r sha256sum`,
     300_000,
   );
-  return parseDigests(listed.stdout);
+  const [links = "", rest = ""] = listed.stdout.split(`${SECTION}sizes\n`);
+  if (links.trim() !== "")
+    throw new Error(
+      `The runner's run directory holds something other than files and folders (${tailOf(links)}), so it is not copied.`,
+    );
+  const [sizes = "", digests = ""] = rest.split(`${SECTION}digests\n`);
+  const size = new Map<string, number>();
+  for (const line of sizes.split("\n")) {
+    const match = /^(\d+) \.\/(.+)$/.exec(line);
+    if (match !== null) size.set(match[2]!, Number(match[1]));
+  }
+  return parseDigests(digests).flatMap((file) => {
+    const bytes = size.get(file.path);
+    return bytes === undefined ? [] : [{ ...file, size: bytes }];
+  });
 }
 
-/** sha256sum lines, `<hex>  ./<path>`, as RemoteFiles with paths relative to the directory. */
-export function parseDigests(output: string): RemoteFile[] {
-  const files: RemoteFile[] = [];
+/** sha256sum lines, `<hex>  ./<path>`, with paths relative to the directory. */
+export function parseDigests(output: string): Omit<RemoteFile, "size">[] {
+  const files: Omit<RemoteFile, "size">[] = [];
   for (const line of output.split("\n")) {
     const match = /^([0-9a-f]{64}) [ *]\.\/(.+)$/.exec(line);
     if (match === null) continue;
@@ -311,29 +422,89 @@ export async function readRemoteBytes(
   runId: string,
   file: string,
 ): Promise<Uint8Array> {
+  return readRunnerBytes(runner, `${RUNNER_PROJECT}/.humanish/runs/${runId}/${file}`);
+}
+
+/** The bytes of a runner file, by its path under the sandbox user's home. */
+async function readRunnerBytes(runner: Runner, file: string): Promise<Uint8Array> {
   const read = runner.sandbox.files.read;
   if (read === undefined) throw new Error("This sandbox cannot read files back.");
-  const stream = await read.call(
-    runner.sandbox.files,
-    `${RUNNER_PROJECT}/.humanish/runs/${runId}/${file}`,
-    { format: "stream", requestTimeoutMs: 300_000 },
-  );
+  const stream = await read.call(runner.sandbox.files, file, {
+    format: "stream",
+    requestTimeoutMs: 300_000,
+  });
   const parts: Uint8Array[] = [];
   for await (const chunk of stream) parts.push(chunk);
   return Buffer.concat(parts);
 }
 
-/** The bytes of one file of the runner's run directory, checked against its listed digest. */
-export async function readRemoteFile(
+/** The most bytes one batch of a copy joins into one runner file. */
+const COPY_BATCH_BYTES = 64 * 1024 * 1024;
+/** The most files one batch of a copy names on its command line. */
+const COPY_BATCH_FILES = 200;
+/** The runner file a batch is joined into, under the sandbox user's home. */
+const COPY_FILE = `${RUNNER_STATE}/copy.bin`;
+
+/**
+ * Read `files` of the runner's run directory and hand each to `take`, checked against its listed
+ * digest. The files go in batches, each joined into one runner file and read back in one request,
+ * so a batch costs two round trips whatever its number of files.
+ */
+export async function readRemoteFiles(
   runner: Runner,
   runId: string,
-  file: RemoteFile,
-): Promise<Uint8Array> {
-  const bytes = await readRemoteBytes(runner, runId, file.path);
-  const digest = createHash("sha256").update(bytes).digest("hex");
-  if (digest !== file.sha256)
-    throw new Error(`${file.path} changed or arrived damaged while it was copied from the runner.`);
-  return bytes;
+  files: readonly RemoteFile[],
+  take: (file: RemoteFile, bytes: Uint8Array) => Promise<void>,
+): Promise<void> {
+  const dir = `${RUNNER_PROJECT}/.humanish/runs/${runId}`;
+  for (const batch of batches(files)) {
+    // Each file's end offset in the joined file, so a file that changed size since the listing
+    // still splits where it ends; its digest then refuses it.
+    const joined = await runOrFail(
+      runner,
+      "Copying the run",
+      `cd ${shellQuote(dir)} && : > "$HOME/${COPY_FILE}" && for f in ${batch.map((file) => shellQuote(file.path)).join(" ")}; do cat -- "$f" >> "$HOME/${COPY_FILE}" && wc -c < "$HOME/${COPY_FILE}" || exit 1; done`,
+      300_000,
+    );
+    const ends = joined.stdout.trim().split("\n").map(Number);
+    const bytes = await readRunnerBytes(runner, COPY_FILE);
+    if (ends.length !== batch.length || ends.at(-1) !== bytes.byteLength)
+      throw new Error("A batch of the run's files arrived incomplete from the runner.");
+    let start = 0;
+    for (const [index, file] of batch.entries()) {
+      const part = bytes.subarray(start, ends[index]);
+      start = ends[index]!;
+      if (createHash("sha256").update(part).digest("hex") !== file.sha256)
+        throw new Error(
+          `${file.path} changed or arrived damaged while it was copied from the runner.`,
+        );
+      await take(file, part);
+    }
+  }
+  if (files.length > 0)
+    await runner.shell
+      .run(`rm -f "$HOME/${COPY_FILE}"`, { timeoutMs: 30_000 })
+      .catch(() => undefined);
+}
+
+function batches(files: readonly RemoteFile[]): RemoteFile[][] {
+  const all: RemoteFile[][] = [];
+  let batch: RemoteFile[] = [];
+  let bytes = 0;
+  for (const file of files) {
+    if (
+      batch.length > 0 &&
+      (bytes + file.size > COPY_BATCH_BYTES || batch.length >= COPY_BATCH_FILES)
+    ) {
+      all.push(batch);
+      batch = [];
+      bytes = 0;
+    }
+    batch.push(file);
+    bytes += file.size;
+  }
+  if (batch.length > 0) all.push(batch);
+  return all;
 }
 
 /**
