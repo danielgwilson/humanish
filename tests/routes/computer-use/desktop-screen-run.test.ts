@@ -3,7 +3,7 @@
 // xfce4-screensaver sets 300 s, xfce4-power-manager sets 600 s, and an autostart entry runs
 // `xset s off`. The last one wins, and a timeout of 300 s turns a waiting participant's screen
 // black after 5 minutes without input. humanish turns the screen saver off once the participant's
-// browser has opened and the desktop has waited 8 s to settle.
+// browser has opened and its page has loaded, or, as on these fakes, the desktop has waited 8 s.
 
 import { execFile } from "node:child_process";
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";

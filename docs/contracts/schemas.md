@@ -212,7 +212,7 @@ The rest of this section names keys by their v3 spelling:
   browser target; `entry` is a shared-world participant's same-origin path;
 - `participants[].files` (computer-use on `execution.target: e2b-desktop` only):
   1 to 20 `{ from, as }` entries, each a file copied onto that participant's desktop
-  before its browser opens. `from` is relative to the folder that holds the study file
+  before its session starts. `from` is relative to the folder that holds the study file
   (`cwd` for a library config); `as` is relative to the desktop user's home folder.
   The parser refuses an absolute path, a `.`, `..` or empty part, a backslash, an `as`
   that starts with `~`, lands in `subject/` or on a name starting with `.humanish`, looks

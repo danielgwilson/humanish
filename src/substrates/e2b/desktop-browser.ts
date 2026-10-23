@@ -14,8 +14,10 @@ import type { DesktopMediaEvidence } from "./desktop-media.js";
 import { externalLinkHandlerSetup } from "./desktop-handoff.js";
 import { e2bShell } from "./shell.js";
 
-// Settle after opening the browser or the terminal, before the first screenshot: long enough for
-// a cold browser and page load to paint (2 s captured a blank desktop; the render needs 6-9 s).
+// The wait before the first screenshot. After a terminal opens, or a browser without a DevTools
+// read, it is a fixed sleep: long enough for a cold browser and page load to paint (2 s captured a
+// blank desktop; the render needs 6-9 s). A Chromium participant waits for its page to load and
+// paint (waitForChromePageLoad) and gives up after this long.
 export const DESKTOP_SETTLE_MS = 8_000;
 
 /** The DevTools port every Chromium participant launches with; see `chrome_debug_flags` below. */

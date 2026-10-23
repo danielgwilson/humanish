@@ -226,7 +226,7 @@ On `computer-use`, a participant whose desktop fails to start is recorded as fai
 
 ### Give a participant files to upload
 
-A participant on a hosted desktop starts with an empty home folder, so a flow that asks for a profile photo or a signed form needs the file put there first. `participants[].files` copies each file onto that participant's desktop before its browser opens, and the browser's file chooser finds it:
+A participant on a hosted desktop starts with an empty home folder, so a flow that asks for a profile photo or a signed form needs the file put there first. `participants[].files` copies each file onto that participant's desktop before its session starts, and the browser's file chooser finds it:
 
 ```yaml
 participants:

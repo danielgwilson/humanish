@@ -193,8 +193,10 @@ export async function verifyParticipantScreen(
 
 /**
  * Copy the participant's files (participants[].files) into its home folder and confirm each one's
- * size there, before the subject and the browser start. A file that does not land whole fails the
- * participant before its first turn. The state records each confirmed file as it lands.
+ * size there, before a provisioned subject starts and before the session. For an app that is only
+ * opened it runs while the browser starts: the browser reads the folder only when the participant
+ * opens a file chooser. A file that does not land whole fails the participant before its first
+ * turn. The state records each confirmed file as it lands.
  */
 export async function placeParticipantFiles(
   ctx: E2BParticipantContext,
