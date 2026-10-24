@@ -25,10 +25,17 @@ function png(): Buffer {
 /** A transcoder whose frames finish when the test says, or never, or fail. */
 function controlled() {
   const pending: { resolve: (webp: Buffer) => void; reject: (error: Error) => void }[] = [];
+  const abandoned: number[] = [];
   const transcoder: WebpTranscoder = {
-    transcode: () => new Promise((resolve, reject) => void pending.push({ resolve, reject })),
+    transcode: () => {
+      const index = pending.length;
+      return {
+        webp: new Promise((resolve, reject) => void pending.push({ resolve, reject })),
+        abandon: () => void abandoned.push(index),
+      };
+    },
   };
-  return { transcoder, pending };
+  return { transcoder, pending, abandoned };
 }
 
 const shot = (id: string, framePath: string): ActorTraceItem => ({
@@ -58,7 +65,7 @@ it("references each frame as PNG until the session ends, then by its WebP where 
   const trace = {
     items: [shot("a", "screenshots/p01/turn-01.png"), shot("b", "screenshots/p01/turn-02.png")],
   } as ActorTrace;
-  const remove = await frames.finish(trace);
+  const replaced = await frames.finish(trace);
   expect(trace.items.map((item) => item.screenshotRef?.path)).toEqual([
     "screenshots/p01/turn-01.webp",
     "screenshots/p01/turn-02.png",
@@ -68,12 +75,13 @@ it("references each frame as PNG until the session ends, then by its WebP where 
     "screenshots/p01/turn-02.png",
     "screenshots/p01/turn-03.webp",
   ]);
-  // The PNGs stay until the trace naming the WebP is written.
-  expect(await readdir(path.join(dir, "run", "screenshots", "p01"))).toHaveLength(5);
-  await remove();
+  // The PNGs stay for the run to remove once its final bundle names the WebP.
+  expect(replaced.sort()).toEqual(["screenshots/p01/turn-01.png", "screenshots/p01/turn-03.png"]);
   expect((await readdir(path.join(dir, "run", "screenshots", "p01"))).sort()).toEqual([
+    "turn-01.png",
     "turn-01.webp",
     "turn-02.png",
+    "turn-03.png",
     "turn-03.webp",
   ]);
 });
@@ -87,16 +95,14 @@ it("keeps a frame the worker did not take as PNG", async () => {
   );
   await frames.write("turn-01.png", png());
   const trace = { items: [shot("a", "screenshots/turn-01.png")] } as ActorTrace;
-  await (
-    await frames.finish(trace)
-  )();
+  expect(await frames.finish(trace)).toEqual([]);
   expect(trace.items[0]!.screenshotRef?.path).toBe("screenshots/turn-01.png");
   expect(await readdir(path.join(dir, "run", "screenshots"))).toEqual(["turn-01.png"]);
 });
 
 it("keeps a frame still encoding when the session ends as PNG, and never writes its late WebP", async () => {
   const root = await prepareSelectedOutputDirectory(dir, "run");
-  const { transcoder, pending } = controlled();
+  const { transcoder, pending, abandoned } = controlled();
   const frames = participantFrames(
     root,
     { screenshotDir: "" },
@@ -104,9 +110,9 @@ it("keeps a frame still encoding when the session ends as PNG, and never writes 
   );
   await frames.write("turn-01.png", png());
   const trace = { items: [shot("a", "screenshots/turn-01.png")] } as ActorTrace;
-  await (
-    await frames.finish(trace)
-  )();
+  expect(await frames.finish(trace)).toEqual([]);
+  // No one waits for the frame now, so it stops holding the process open.
+  expect(abandoned).toEqual([0]);
   pending[0]!.resolve(Buffer.from("late"));
   await new Promise((resolve) => setTimeout(resolve, 20));
   expect(trace.items[0]!.screenshotRef?.path).toBe("screenshots/turn-01.png");
@@ -120,8 +126,6 @@ it("keeps every frame of a study that blurs its screenshots as PNG", async () =>
   await frames.write("turn-01.png", png());
   expect(pending).toHaveLength(0);
   const trace = { items: [shot("a", "screenshots/turn-01.png")] } as ActorTrace;
-  await (
-    await frames.finish(trace)
-  )();
+  expect(await frames.finish(trace)).toEqual([]);
   expect(trace.items[0]!.screenshotRef?.path).toBe("screenshots/turn-01.png");
 });

@@ -14,8 +14,11 @@ type Reply = { id: number; webp: Uint8Array } | { id: number; error: string };
 type Ready = { ready: true } | { ready: false; error: string };
 
 export interface WebpTranscoder {
-  /** The frame's WebP bytes, or undefined when the queue is full or the encoder failed. */
-  transcode(png: Buffer): Promise<Buffer> | undefined;
+  /**
+   * The frame's WebP bytes, or undefined when the queue is full or the encoder failed. `abandon`
+   * drops a frame no one waits for any more, so it no longer keeps the process alive.
+   */
+  transcode(png: Buffer): { webp: Promise<Buffer>; abandon: () => void } | undefined;
 }
 
 class WorkerTranscoder implements WebpTranscoder {
@@ -30,8 +33,6 @@ class WorkerTranscoder implements WebpTranscoder {
 
   constructor(entry: URL) {
     this.worker = new Worker(entry);
-    // An idle worker never keeps the process alive; a waiting frame does (track).
-    this.worker.unref();
     this.worker.on("message", (message: Reply | Ready) => {
       if ("ready" in message) {
         if (!message.ready) this.fail(new Error(message.error));
@@ -48,17 +49,29 @@ class WorkerTranscoder implements WebpTranscoder {
     this.worker.on("exit", (code) =>
       this.fail(new Error(`The WebP worker exited with code ${code}.`)),
     );
+    // An idle worker never keeps the process alive; a waiting frame does. Adding a message listener
+    // refs the worker, so this comes after the listeners.
+    this.worker.unref();
   }
 
-  transcode(png: Buffer): Promise<Buffer> | undefined {
+  transcode(png: Buffer): { webp: Promise<Buffer>; abandon: () => void } | undefined {
     if (this.failed || this.queuedBytes + png.length > QUEUE_BYTE_BUDGET) return undefined;
     const id = this.nextId++;
     if (this.waiting.size === 0) this.worker.ref();
     this.queuedBytes += png.length;
-    return new Promise((resolve, reject) => {
+    const webp = new Promise<Buffer>((resolve, reject) => {
       this.waiting.set(id, { size: png.length, resolve, reject });
       this.worker.postMessage({ id, png: new Uint8Array(png) });
     });
+    return {
+      webp,
+      abandon: () => {
+        const job = this.waiting.get(id);
+        if (job === undefined) return;
+        this.settle(id, job.size);
+        job.reject(new Error("The frame's WebP was abandoned."));
+      },
+    };
   }
 
   private settle(id: number, size: number): void {

@@ -9,7 +9,6 @@ import { assertScreenshotEvidence, stripPngMetadataChunks } from "../../evidence
 import { webpTranscoder, type WebpTranscoder } from "../../evidence/webp-transcoder.js";
 import {
   assertSafeOutputPathSegment,
-  removeContainedOutputFile,
   writeContainedOutputFile,
   type PreparedOutputRoot,
 } from "../../run/contained-output.js";
@@ -54,10 +53,10 @@ export interface ParticipantFrames {
   readonly screenshots: string[];
   /**
    * Waits up to FINISH_WAIT_MS for the frames still queued, then points `trace` and `screenshots`
-   * at each frame's WebP. Returns the step that removes those PNGs, to run once the trace that
-   * names the WebP is written.
+   * at each frame's WebP. Returns the PNGs those WebP replace, which the run removes once its final
+   * bundle is written: until then the live trace in run.json still names them.
    */
-  finish(trace: ActorTrace | undefined): Promise<() => Promise<void>>;
+  finish(trace: ActorTrace | undefined): Promise<string[]>;
 }
 
 /**
@@ -73,7 +72,7 @@ export function participantFrames(
   const finishWaitMs = options.finishWaitMs ?? FINISH_WAIT_MS;
   const screenshots: string[] = [];
   const writePng = makeParticipantWriteScreenshot(artifactRoot, spec, screenshots);
-  const queued: Promise<void>[] = [];
+  const queued: { done: Promise<void>; abandon: () => void }[] = [];
   /** Each frame whose WebP is written: its PNG path and its WebP path. */
   const done = new Map<string, string>();
   // Once the session's references are settled, a late WebP is not written: nothing would name it.
@@ -84,24 +83,24 @@ export function participantFrames(
       const rel = await writePng(name, bytes);
       const webpRel = rel.replace(/\.png$/, ".webp");
       const job = webpRel === rel ? undefined : transcoder?.transcode(bytes);
-      // A frame the worker cannot take, or fails to encode, stays PNG.
+      // A frame the worker cannot take, or fails to encode or write, stays PNG.
       if (job !== undefined)
-        queued.push(
-          job.then(
-            async (webp) => {
+        queued.push({
+          done: job.webp
+            .then(async (webp) => {
               if (finished) return;
               await writeContainedOutputFile(artifactRoot, webpRel, webp);
               done.set(rel, webpRel);
-            },
-            () => undefined,
-          ),
-        );
+            })
+            .catch(() => undefined),
+          abandon: job.abandon,
+        });
       return rel;
     },
     async finish(trace) {
       let timer: NodeJS.Timeout | undefined;
       await Promise.race([
-        Promise.allSettled(queued),
+        Promise.all(queued.map((job) => job.done)),
         new Promise((resolve) => (timer = setTimeout(resolve, finishWaitMs))),
       ]);
       clearTimeout(timer);
@@ -119,9 +118,8 @@ export function participantFrames(
         screenshots.length,
         ...screenshots.map((rel) => replaced.get(rel) ?? rel),
       );
-      return async () => {
-        for (const png of replaced.keys()) await removeContainedOutputFile(artifactRoot, png);
-      };
+      for (const job of queued) job.abandon();
+      return [...replaced.keys()];
     },
   };
 }

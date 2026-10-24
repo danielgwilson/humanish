@@ -118,9 +118,8 @@ export async function runCuaParticipant(
     if (session?.status === "passed") warnings.push(desktopFailure);
     else sessionError = desktopFailure;
   }
-  const removeReplacedFrames = await frames.finish(session?.trace);
+  const replacedFrames = await frames.finish(session?.trace);
   if (session) await recordParticipantTrace(spec, deps, session, warnings);
-  await removeReplacedFrames();
   const { noEngagement, selfReportedBlocker, reportedFriction } = judgeParticipantSession(
     session,
     deps,
@@ -144,6 +143,7 @@ export async function runCuaParticipant(
     ...desktopEvidence,
     killed: released,
     screenshots: frames.screenshots,
+    replacedFrames,
     warnings,
     noEngagement,
     selfReportedBlocker,

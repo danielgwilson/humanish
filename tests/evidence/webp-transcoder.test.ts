@@ -20,7 +20,7 @@ function frame(width: number, height: number): Buffer {
 
 it("encodes frames in its worker as lossless WebP that decodes to the same pixels", async () => {
   const pngs = [frame(320, 200), frame(64, 48), frame(1, 1)];
-  const webps = await Promise.all(pngs.map((png) => webpTranscoder().transcode(png)!));
+  const webps = await Promise.all(pngs.map((png) => webpTranscoder().transcode(png)!.webp));
   for (const [index, webp] of webps.entries()) {
     expect(webpStructure(webp).error).toBeNull();
     const decoded = await decodeWebp(webp);
@@ -29,7 +29,13 @@ it("encodes frames in its worker as lossless WebP that decodes to the same pixel
 });
 
 it("rejects bytes that are not a PNG and goes on encoding", async () => {
-  await expect(webpTranscoder().transcode(Buffer.from("not a png"))!).rejects.toThrow(/./);
-  const webp = await webpTranscoder().transcode(frame(8, 8))!;
+  await expect(webpTranscoder().transcode(Buffer.from("not a png"))!.webp).rejects.toThrow(/./);
+  const webp = await webpTranscoder().transcode(frame(8, 8))!.webp;
   expect(webpStructure(webp).error).toBeNull();
+});
+
+it("stops waiting for an abandoned frame", async () => {
+  const job = webpTranscoder().transcode(frame(64, 64))!;
+  job.abandon();
+  await expect(job.webp).rejects.toThrow(/abandoned/);
 });

@@ -1,3 +1,4 @@
+import { removeContainedOutputFile } from "../../run/contained-output.js";
 import { adapterScoreFailureMessage, applyBrowserScorer } from "../../study/adapter-extension.js";
 import { redactText } from "../../evidence/redaction.js";
 import type { ObserverResult } from "../../observer/render.js";
@@ -359,6 +360,11 @@ export async function finishCuaRun(
     execution,
     policy,
   });
+  // The final bundle names each replaced frame's WebP, so its PNG goes before the Observer
+  // verifies the run directory.
+  for (const outcome of outcomes ?? [])
+    for (const png of outcome.replacedFrames ?? [])
+      await removeContainedOutputFile(finished.paths, png);
   const observer = await finished.renderObserver();
   // A caller's renderer runs with this process's file access, so after one that reports success
   // the run directory is checked again before the result points anyone at it. A failed render is
