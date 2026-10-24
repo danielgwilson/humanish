@@ -35,8 +35,11 @@ try {
   await mkdir(join(installed, "node_modules"), { recursive: true });
   await cp(join(root, "dist"), join(installed, "dist"), { recursive: true });
   await cp(join(root, "package.json"), join(installed, "package.json"));
-  for (const name of Object.keys(manifest.dependencies))
+  for (const name of Object.keys(manifest.dependencies)) {
+    // A scoped name links inside its scope's folder.
+    await mkdir(dirname(join(installed, "node_modules", name)), { recursive: true });
     await symlink(join(root, "node_modules", name), join(installed, "node_modules", name), "dir");
+  }
   await writeFile(
     join(app, "package.json"),
     JSON.stringify({ name: "skill-proof-app", private: true, devDependencies: { humanish: "*" } }),
