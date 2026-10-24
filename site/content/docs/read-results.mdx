@@ -87,7 +87,7 @@ npx humanish feedback issue --cwd ./shared-study --run YOUR_RUN_ID --repo your-o
 
 The new directory contains a standalone `.humanish/runs/YOUR_RUN_ID/` bundle. Your original keeps its readable screenshots; the copy contains blurred thumbnails and a `derivation.json` receipt. The copied study retains its identity and outcomes. It is not another participant or a new attempt in your original run history.
 
-Export rebuilds Observer and independently verifies the copy before publishing it. It refuses an existing destination, incomplete or invalid evidence, unsupported image formats and embedded image payloads. PNG screenshots are supported; the copy's text and findings still need your review before sharing. The copy drops a PNG that nothing in `run.json` cites, and export refuses a run whose feedback, adapter or stream evidence cites an image that is not a participant's screenshot. A `blocked` bundle must be corrected at its source. Do not change a stored grade to force it through.
+Export rebuilds Observer and independently verifies the copy before publishing it. It refuses an existing destination, incomplete or invalid evidence, unsupported image formats and embedded image payloads. PNG and lossless WebP screenshots are supported, and the copy holds each as a blurred PNG; the copy's text and findings still need your review before sharing. The copy drops an image that nothing in `run.json` cites, and export refuses a run whose feedback, adapter or stream evidence cites an image that is not a participant's screenshot. A `blocked` bundle must be corrected at its source. Do not change a stored grade to force it through.
 
 ## Export or compare evidence
 

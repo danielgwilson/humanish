@@ -149,17 +149,16 @@ describe("screenshot evidence", () => {
   it.each([
     ["jpg", Buffer.from([0xff, 0xd8, 0xff])],
     ["jpeg", Buffer.from([0xff, 0xd8, 0xff])],
-    ["webp", Buffer.from("RIFF0000WEBP", "ascii")],
     ["gif", Buffer.from("GIF89a", "ascii")],
   ])("rejects signature-only .%s evidence", async (extension, bytes) => {
     expect(await screenshotEvidenceError(`screenshots/image.${extension}`, bytes)).toBe(
-      `unsupported screenshot extension .${extension}; only decoded PNG evidence is supported`,
+      `unsupported screenshot extension .${extension}; screenshot evidence is PNG or lossless WebP`,
     );
   });
 
   it("rejects an unknown screenshot extension with a clear message", async () => {
     expect(await screenshotEvidenceError("screenshots/tiny.bmp", encodePng())).toBe(
-      "unsupported screenshot extension .bmp; only decoded PNG evidence is supported",
+      "unsupported screenshot extension .bmp; screenshot evidence is PNG or lossless WebP",
     );
   });
 

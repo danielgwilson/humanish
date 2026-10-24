@@ -1092,11 +1092,18 @@ an unclaimed frame on a raw, silent or live-only trace, and `ocr_scrubbed`, whic
 the trace contract reserves but no writer produces. An aggregate raw declaration
 wins over every frame claim.
 
-A screenshot is a non-interlaced PNG whose first chunk is a 13-byte IHDR, whose
-IEND is empty, and which holds image data only. A chunk outside IHDR, PLTE, IDAT,
-IEND, tRNS, cHRM, gAMA, sBIT, sRGB, pHYs and bKGD (text chunks, ICC profiles,
-Exif, timestamps, private chunks) fails verification. The harness writers drop
-those chunks before writing a frame.
+A screenshot is a PNG or, at a path ending `.webp`, a lossless WebP. A PNG
+screenshot is non-interlaced, its first chunk is a 13-byte IHDR, its IEND is
+empty, and it holds image data only. A chunk outside IHDR, PLTE, IDAT, IEND,
+tRNS, cHRM, gAMA, sBIT, sRGB, pHYs and bKGD (text chunks, ICC profiles, Exif,
+timestamps, private chunks) fails verification. The harness writers drop those
+chunks before writing a frame. A WebP screenshot is the simple lossless form: a
+RIFF container holding one VP8L chunk that ends the file, with version 0 and
+dimensions under the PNG pixel cap. The extended form (VP8X), which carries Exif,
+XMP, ICC profiles and animation, fails verification. Verify reads a WebP's
+structure without decoding its pixels, so a WebP frame is always full-fidelity
+evidence: only a PNG in the redactor's shape counts as blurred. Earlier humanish
+versions do not accept WebP screenshots.
 
 The public-safety scan classifies a run file by its bytes, not its name. It scans
 a file for secret and path patterns only when the bytes are strict UTF-8 with no
@@ -1175,7 +1182,8 @@ Its `derivation.json` uses schema `humanish.redacted-derivation.v1` and records:
   rows, sorted by path using JavaScript string order;
 - `files[]`: source-relative `path`, `sourceSha256`, action (`copied`, `updated`,
   `blurred`, or `omitted`), and `outputSha256` for retained files or a reason for
-  omission;
+  omission; `outputPath` when the copy holds the file at another path, as it does a
+  WebP frame;
 - `generated[]`: paths and SHA256s of rebuilt Observer projections.
 
 The receipt describes the transformation; it does not attest that a participant's
@@ -1195,11 +1203,16 @@ An id that appears only in free text, in a run with no receipts, is not known to
 export. `sandbox-receipts.ndjson` is omitted, and the source keeps its raw ids,
 which reclaim reads.
 
-PNG files that actor traces reference as stream screenshots are re-encoded as
-blurred thumbnails. A PNG that nothing in `run.json` cites is omitted and
-inventoried. Export refuses a run whose feedback candidates, adapter artifacts or
-stream artifact entries cite a PNG that is not a stream screenshot, since verify
-cannot read that image and dropping it would change the evidence.
+PNG and WebP files that actor traces reference as stream screenshots are
+re-encoded as blurred PNG thumbnails. A WebP frame's thumbnail is written at the
+same path ending `.png`, and the copy's actor traces, stream artifacts, feedback
+evidence and adapter artifacts name that path. Export refuses a run that already
+holds a file at that path, and a run whose other copied text names the WebP frame,
+since the copy could not resolve that reference. An image that nothing in
+`run.json` cites is omitted and inventoried. Export refuses a run whose feedback
+candidates, adapter artifacts or stream artifact entries cite an image that is not
+a stream screenshot, since verify cannot read that image and dropping it would
+change the evidence.
 Known actor screenshot declarations describe export-time blur while retaining the
 original redaction notes. Observer is rebuilt; old feedback outputs, local process
 status and the operational sandbox journal are omitted and inventoried. A derivative

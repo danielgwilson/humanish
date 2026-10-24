@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- `verify`, study analysis and `export --format bundle` accept lossless WebP screenshots at
+  `screenshots/**/*.webp` beside PNG ones. Verify reads a WebP frame's structure: a RIFF file
+  holding one lossless VP8L chunk, with no Exif, XMP or ICC data, under the PNG pixel cap. A WebP
+  frame is always full-fidelity evidence, so only a blurred PNG counts as blurred. Analysis sends a
+  WebP capture as `image/webp`. Export blurs a WebP frame to a PNG at the same path ending `.png`
+  and points the copy's references at it. Earlier humanish versions refuse WebP screenshots.
+
 ## 0.146.0: Studies start and finish sooner (2026-10-23)
 
 humanish 0.146.0 cuts the wait around a hosted study. A Chrome participant starts once its page

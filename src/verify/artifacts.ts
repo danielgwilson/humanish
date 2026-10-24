@@ -276,7 +276,10 @@ export function streamScreenshotPaths(bundle: RunBundle): Set<string> {
 }
 
 function isHarnessScreenshotPath(normalized: string): boolean {
-  return normalized.startsWith("screenshots/") && normalized.toLowerCase().endsWith(".png");
+  const lower = normalized.toLowerCase();
+  return (
+    normalized.startsWith("screenshots/") && (lower.endsWith(".png") || lower.endsWith(".webp"))
+  );
 }
 
 function isRunRootEvidenceReference(value: unknown): value is string {

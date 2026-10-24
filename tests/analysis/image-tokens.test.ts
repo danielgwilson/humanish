@@ -26,6 +26,22 @@ describe("high-detail image tokens", () => {
     expect(highDetailImageTokens("gpt-6-astra", pngUrl(100_000, 10))).toBe(3000);
   });
 
+  it("sizes a lossless WebP capture from its VP8L header, as it sizes a PNG from its IHDR", () => {
+    const webpUrl = (width: number, height: number) => {
+      const bytes = Buffer.alloc(30);
+      bytes.write("RIFF", 0, "latin1");
+      bytes.write("WEBPVP8L", 8, "latin1");
+      bytes[20] = 0x2f;
+      bytes.writeUInt32LE((width - 1) | ((height - 1) << 14), 21);
+      return `data:image/webp;base64,${bytes.toString("base64")}`;
+    };
+    expect(highDetailImageTokens("gpt-6.1-sol", webpUrl(1440, 950))).toBe(1620);
+    expect(highDetailImageTokens("gpt-6.1-sol", webpUrl(500, 896))).toBe(538);
+    // A lossy WebP has no VP8L header, so its size is unknown.
+    const lossy = `data:image/webp;base64,${Buffer.from("RIFF\0\0\0\0WEBPVP8 \0\0\0\0\0\0\0\0\0\0\0\0\0\0", "latin1").toString("base64")}`;
+    expect(highDetailImageTokens("gpt-6.1-sol", lossy)).toBe(3000);
+  });
+
   it.each(["gpt-6-luna", "gpt-6.1-sol"])("sizes %s images the way OpenAI billed them", (model) => {
     // Billed image tokens measured on 2026-10-21 were 1,229, 1,621, 2,458 and 3,001; the guide
     // allows billing to differ from the formula by one token.

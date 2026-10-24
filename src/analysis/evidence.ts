@@ -509,13 +509,13 @@ function packEvidence(
             eventId: source.eventId,
             path: source.capturePath!,
             sha256: sha256(bytes),
-            mimeType: "image/png" as const,
+            mimeType: captureMimeType(source.capturePath!),
           }
         : null;
-      if (bytes)
+      if (capture)
         images.push({
           evidenceId: id,
-          dataUrl: `data:image/png;base64,${bytes.toString("base64")}`,
+          dataUrl: `data:${capture.mimeType};base64,${bytes!.toString("base64")}`,
         });
       evidence.push({
         id,
@@ -641,7 +641,7 @@ export async function validateAnalysisEvidence(
         source.capturePath === null ||
         entry.capture.path !== source.capturePath ||
         entry.capture.eventId !== source.eventId ||
-        entry.capture.mimeType !== "image/png"
+        entry.capture.mimeType !== captureMimeType(source.capturePath)
       )
         throw new Error("ANALYSIS_CAPTURE_REFERENCE_INVALID");
       let hash = checkedCaptures.get(source.capturePath);
@@ -671,4 +671,9 @@ export async function validateAnalysisEvidence(
 
   const current = await readBoundedFile(prepared, RUN_BUNDLE_FILE, EVIDENCE_LIMITS.sourceBytes);
   if (!current?.equals(bundleBytes)) throw new Error("ANALYSIS_SOURCE_CHANGED");
+}
+
+/** A capture's image type, from the extension screenshotEvidenceError checked it against. */
+function captureMimeType(capturePath: string): "image/png" | "image/webp" {
+  return capturePath.toLowerCase().endsWith(".webp") ? "image/webp" : "image/png";
 }

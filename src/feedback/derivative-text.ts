@@ -47,7 +47,13 @@ function decodeText(file: TextFile): string {
   return decoded.text;
 }
 
-function updateScreenshotDeclarations(value: unknown, imagePaths: ReadonlySet<string>): unknown {
+/**
+ * Each kept image's source path and the path the copy holds it at; they differ for a WebP frame,
+ * which the copy holds as a blurred PNG.
+ */
+type ImagePaths = ReadonlyMap<string, string>;
+
+function updateScreenshotDeclarations(value: unknown, imagePaths: ImagePaths): unknown {
   if (Array.isArray(value))
     return value.map((entry) => updateScreenshotDeclarations(entry, imagePaths));
   if (value === null || typeof value !== "object") return value;
@@ -81,14 +87,17 @@ function updateScreenshotDeclarations(value: unknown, imagePaths: ReadonlySet<st
             "Actor screenshot reference must resolve to a PNG transformed from this run's inventory.",
           );
         }
-        return { ...entry, screenshotRef: { ...ref, redaction: "blurred" } };
+        return {
+          ...entry,
+          screenshotRef: { ...ref, path: imagePaths.get(ref.path), redaction: "blurred" },
+        };
       });
     }
   }
   return result;
 }
 
-export function transformText(file: TextFile, imagePaths: ReadonlySet<string>): Buffer {
+export function transformText(file: TextFile, imagePaths: ImagePaths): Buffer {
   const text = decodeText(file);
   const extension = path.extname(file.path).toLowerCase();
   if (extension === ".json") {
@@ -139,7 +148,7 @@ export function assertRewritableNumbers(json: string): void {
 }
 
 /** The loaded source bundle as the copy records it: screenshots declared and labelled blurred. */
-export function derivedBundle(bundle: RunBundle, imagePaths: ReadonlySet<string>): RunBundle {
+export function derivedBundle(bundle: RunBundle, imagePaths: ImagePaths): RunBundle {
   const transformed = redactSandboxIds(
     updateScreenshotDeclarations(bundle, imagePaths),
   ) as RunBundle;
@@ -147,11 +156,16 @@ export function derivedBundle(bundle: RunBundle, imagePaths: ReadonlySet<string>
     status: "passed",
     notes: `${bundle.redaction.notes} Exported copy: screenshots were blurred during export; the original capture is retained separately. See derivation.json.`,
   };
+  const renamed = (cite: string): string => imagePaths.get(path.posix.normalize(cite)) ?? cite;
   for (const stream of transformed.streams) {
     for (const artifact of stream.artifacts) {
+      artifact.path = renamed(artifact.path);
       if (artifact.kind === "screenshot")
         artifact.label = artifact.label.replace(/\((raw|blurred)\)/g, "(blurred at export)");
     }
   }
+  for (const candidate of transformed.feedbackCandidates)
+    for (const evidence of candidate.evidence) evidence.path = renamed(evidence.path);
+  for (const artifact of transformed.adapterArtifacts ?? []) artifact.path = renamed(artifact.path);
   return transformed;
 }
