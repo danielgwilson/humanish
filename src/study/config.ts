@@ -72,6 +72,7 @@ import {
   desktopMediaValidationReason,
   networkCaptureValidationReason,
   outputTokenLimitValidationReason,
+  serviceTierValidationReason,
   receivingEmailValidationReason,
   smtpValidationReason,
   taskProtocolValidationReason,
@@ -293,6 +294,9 @@ function checkStudyConfig(config: StudyConfig): StudyParseResult {
 
   const outputLimitReason = outputTokenLimitValidationReason(config);
   if (outputLimitReason) return invalid(outputLimitReason);
+
+  const serviceTierReason = serviceTierValidationReason(config);
+  if (serviceTierReason) return invalid(serviceTierReason);
 
   const waitLimitReason = waitLimitValidationReason(config);
   if (waitLimitReason) return invalid(waitLimitReason);

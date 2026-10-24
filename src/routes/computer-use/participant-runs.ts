@@ -199,6 +199,9 @@ function planEntry(spec: DesktopParticipantRun): CuaParticipantPlanEntry {
     ...(spec.planned.limits.maxOutputTokens === undefined
       ? {}
       : { maxOutputTokens: spec.planned.limits.maxOutputTokens }),
+    ...(spec.planned.limits.serviceTier === undefined
+      ? {}
+      : { serviceTier: spec.planned.limits.serviceTier }),
     ...(spec.planned.targetUrl === undefined
       ? {}
       : { targetDigest: digestUrl(spec.planned.targetUrl) }),
@@ -232,6 +235,7 @@ export function formatParticipantPlanEntry(entry: CuaParticipantPlanEntry): stri
     entry.surface ? `surface=${entry.surface}` : undefined,
     entry.caseGroup ? `case=${entry.caseGroup}` : undefined,
     entry.reasoningEffort ? `effort=${entry.reasoningEffort}` : undefined,
+    entry.serviceTier ? `tier=${entry.serviceTier}` : undefined,
     entry.startAfterMs === undefined ? undefined : `start=+${formatDuration(entry.startAfterMs)}`,
     entry.endAfterMs === undefined ? undefined : `end=+${formatDuration(entry.endAfterMs)}`,
     entry.maxSessionMs === undefined ? undefined : `cap=${formatDuration(entry.maxSessionMs)}`,

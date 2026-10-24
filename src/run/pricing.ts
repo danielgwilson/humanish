@@ -47,6 +47,12 @@ export interface ModelRate {
   until?: string;
   /** The rates the sheet publishes from the day after `until`. */
   after?: Pick<ModelRate, "inputUsdPerToken" | "outputUsdPerToken" | "cachedInputUsdPerToken">;
+  /** Fast mode rates (OpenAI `service_tier: "fast"`, served as `fast` or `priority`), when the
+   *  sheet publishes them. The long-context multipliers apply on top. */
+  fast?: Pick<
+    ModelRate,
+    "inputUsdPerToken" | "outputUsdPerToken" | "cachedInputUsdPerToken" | "cacheWriteUsdPerToken"
+  > & { source?: string };
   /** The `YYYY-MM-DD` date the entry was last checked against `source`. */
   asOf: string;
   /** Public pricing page the number came from (a comment/URL, never a secret). */
@@ -118,6 +124,8 @@ export interface ActorEstimatedCost {
     /** How many requests crossed the long-context threshold and were re-tiered. Present only
      *  when per-request `turns` records made exact tiering possible. */
     longContextTurns?: number;
+    /** How many requests the provider served in Fast mode and were priced at its rates. */
+    fastTurns?: number;
   };
 }
 
@@ -195,6 +203,36 @@ function geminiRate(
   };
 }
 
+// Fast mode: OpenAI's `service_tier: "fast"` (formerly priority processing), billed per token at
+// its own rates with the cached-input discount and the long-context tier. gpt-5.6-sol's fast rates
+// are twice every standard rate ("For GPT-5.6 Sol, Fast mode costs twice the corresponding Standard
+// rate", developers.openai.com/api/docs/guides/fast-mode, read 2026-10-24); the 6-series rates are
+// the Fast tab of developers.openai.com/api/docs/pricing?latest-pricing=fast, read 2026-10-24.
+const FAST_MODE_GUIDE =
+  "developers.openai.com/api/docs/guides/fast-mode (gpt-5.6-sol, 2x standard)";
+const FAST_MODE_SHEET = "developers.openai.com/api/docs/pricing?latest-pricing=fast (fast tier)";
+
+/** A rate with Fast mode rates per 1M tokens: input, cached input, cache write and output. */
+function withFast(
+  rate: ModelRate,
+  inPer1M: number,
+  cachedPer1M: number,
+  writePer1M: number,
+  outPer1M: number,
+  source: string,
+): ModelRate {
+  return {
+    ...rate,
+    fast: {
+      inputUsdPerToken: inPer1M * 1e-6,
+      cachedInputUsdPerToken: cachedPer1M * 1e-6,
+      cacheWriteUsdPerToken: writePer1M * 1e-6,
+      outputUsdPerToken: outPer1M * 1e-6,
+      source,
+    },
+  };
+}
+
 // gpt-5.6-sol promotional rates (live sheet 2026-09-03: $4 / $0.40 cached / $5 write / $20 out,
 // "available at least through November 21, 2026"). Re-verify against the sheet after Nov 21.
 const GPT56_SOL_PROMO_AS_OF = "2026-09-03";
@@ -226,10 +264,24 @@ export const MODEL_RATES: Record<string, ModelRate> = {
   // the longContext block prices the >272K re-tier when per-request turns are recorded).
   // sol = flagship (the shipped CUA default), terra = cost-balanced, luna = high-volume,
   // cyber = the Daybreak frontier tier.
-  "gpt-5.6-sol": rateWithLongContextTier(4, 0.4, 5, 20, GPT56_SOL_PROMO_AS_OF),
+  "gpt-5.6-sol": withFast(
+    rateWithLongContextTier(4, 0.4, 5, 20, GPT56_SOL_PROMO_AS_OF),
+    8,
+    0.8,
+    10,
+    40,
+    FAST_MODE_GUIDE,
+  ),
   // "gpt-5.6" is OpenAI's own alias for gpt-5.6-sol (models index); priced identically so a
   // study configured with the alias never reads as unpriced.
-  "gpt-5.6": rateWithLongContextTier(4, 0.4, 5, 20, GPT56_SOL_PROMO_AS_OF),
+  "gpt-5.6": withFast(
+    rateWithLongContextTier(4, 0.4, 5, 20, GPT56_SOL_PROMO_AS_OF),
+    8,
+    0.8,
+    10,
+    40,
+    FAST_MODE_GUIDE,
+  ),
   "gpt-5.6-terra": rateWithLongContextTier(2, 0.2, 2.5, 12),
   "gpt-5.6-luna": rateWithLongContextTier(0.2, 0.02, 0.25, 1.2),
   "gpt-5.6-cyber": rateWithLongContextTier(12.5, 1.25, 15.625, 75),
@@ -242,24 +294,31 @@ export const MODEL_RATES: Record<string, ModelRate> = {
   // as the 5.6 family on the sheet: writes at 1.25x, >272K re-tiers at 2x input-side / 1.5x
   // output ($20 / $2 / $25 / $75 long-context columns). These rates cover explicit study
   // model choices and the study-analysis default; the computer-use default is separate.
-  "gpt-6-astra": rateWithLongContextTier(10, 1, 12.5, 50, GPT6_ASTRA_AS_OF, GPT6_ASTRA_SOURCE),
+  "gpt-6-astra": withFast(
+    rateWithLongContextTier(10, 1, 12.5, 50, GPT6_ASTRA_AS_OF, GPT6_ASTRA_SOURCE),
+    20,
+    2,
+    25,
+    100,
+    FAST_MODE_SHEET,
+  ),
   // gpt-6.1-sol and gpt-6-luna: the same write and long-context mechanics on the sheet and each
   // model page. 6.1 Sol bills cache reads at 5% of input ($0.10), where the others bill 10%.
-  "gpt-6.1-sol": rateWithLongContextTier(
-    2,
-    0.1,
-    2.5,
-    10,
-    GPT6_SOL_LUNA_AS_OF,
-    GPT6_SOL_LUNA_SOURCE,
+  "gpt-6.1-sol": withFast(
+    rateWithLongContextTier(2, 0.1, 2.5, 10, GPT6_SOL_LUNA_AS_OF, GPT6_SOL_LUNA_SOURCE),
+    4,
+    0.2,
+    5,
+    20,
+    FAST_MODE_SHEET,
   ),
-  "gpt-6-luna": rateWithLongContextTier(
-    0.1,
-    0.01,
-    0.125,
-    0.5,
-    GPT6_SOL_LUNA_AS_OF,
-    GPT6_SOL_LUNA_SOURCE,
+  "gpt-6-luna": withFast(
+    rateWithLongContextTier(0.1, 0.01, 0.125, 0.5, GPT6_SOL_LUNA_AS_OF, GPT6_SOL_LUNA_SOURCE),
+    0.2,
+    0.02,
+    0.25,
+    1,
+    FAST_MODE_SHEET,
   ),
   // Gemini analysis models, paid standard tier. Thinking tokens bill as output. No long-context
   // tier is published for them. Cached input is the implicit context-cache rate. On the free tier
@@ -476,18 +535,33 @@ export function estimateActorCost(
   // 3.5-5x and tripping caps early. Inconsistent evidence falls back to the totals path, which
   // honors the declared splits on the base tier.
   const tiered =
-    rate.longContext !== undefined &&
+    (rate.longContext !== undefined || turns.some((turn) => isFastServiceTier(turn.serviceTier))) &&
     turns.length > 0 &&
     sumOf("input") === inTok &&
     sumOf("output") === outTok &&
     sumOf("cachedInput") === (tokenUsage.cachedInput ?? 0) &&
     sumOf("cacheWriteInput") === (tokenUsage.cacheWriteInput ?? 0);
 
+  // A request served in Fast mode bills at the fast rates. Totals that the ledger does not
+  // decompose price at the fast rate when any request was served fast: the over-estimate direction.
+  const fastTotals = !tiered && turns.some((turn) => isFastServiceTier(turn.serviceTier));
+  // A request served fast on a model with no Fast mode rate has no rate in this table.
+  if (rate.fast === undefined && turns.some((turn) => isFastServiceTier(turn.serviceTier))) {
+    return {
+      schema: ACTOR_ESTIMATED_COST_SCHEMA,
+      estimatedCostUsd: null,
+      reason: "no_rate_for_model",
+      ratesAsOf: null,
+      ...(modelId ? { modelId } : {}),
+    };
+  }
+
   let inputUsd = 0;
   let outputUsd = 0;
   let cachedTotal = 0;
   let writeTotal = 0;
   let longContextTurns = 0;
+  let fastTurns = 0;
 
   // Price one request's usage at one tier. Cached input is billed at a fraction of the full rate,
   // and on a session that threads provider state it is the majority of input, and pricing it at the
@@ -498,7 +572,10 @@ export function estimateActorCost(
   const priceRequest = (
     usage: { input?: number; cachedInput?: number; cacheWriteInput?: number; output?: number },
     tierable: boolean,
+    fast: boolean,
   ): void => {
+    const sheet = fast && rate.fast !== undefined ? { ...rate, ...rate.fast } : rate;
+    if (fast) fastTurns += 1;
     const reqIn = usage.input ?? 0;
     const reqOut = usage.output ?? 0;
     // Tiering applies only to a real per-request record: session totals crossing the threshold
@@ -509,7 +586,7 @@ export function estimateActorCost(
     const outMul = long ? rate.longContext!.outputMultiplier : 1;
     if (long) longContextTurns += 1;
     const cached =
-      rate.cachedInputUsdPerToken === undefined
+      sheet.cachedInputUsdPerToken === undefined
         ? 0
         : Math.min(reqIn, Math.max(0, usage.cachedInput ?? 0));
     const writes = Math.min(reqIn - cached, Math.max(0, usage.cacheWriteInput ?? 0));
@@ -517,14 +594,14 @@ export function estimateActorCost(
     cachedTotal += cached;
     writeTotal += writes;
     inputUsd +=
-      full * rate.inputUsdPerToken * inMul +
-      cached * (rate.cachedInputUsdPerToken ?? 0) * inMul +
-      writes * (rate.cacheWriteUsdPerToken ?? rate.inputUsdPerToken) * inMul;
-    outputUsd += reqOut * rate.outputUsdPerToken * outMul;
+      full * sheet.inputUsdPerToken * inMul +
+      cached * (sheet.cachedInputUsdPerToken ?? 0) * inMul +
+      writes * (sheet.cacheWriteUsdPerToken ?? sheet.inputUsdPerToken) * inMul;
+    outputUsd += reqOut * sheet.outputUsdPerToken * outMul;
   };
 
   if (tiered) {
-    for (const turn of turns) priceRequest(turn, true);
+    for (const turn of turns) priceRequest(turn, true, isFastServiceTier(turn.serviceTier));
   } else {
     priceRequest(
       {
@@ -536,6 +613,7 @@ export function estimateActorCost(
           : { cacheWriteInput: tokenUsage.cacheWriteInput }),
       },
       false,
+      fastTotals,
     );
   }
 
@@ -545,7 +623,7 @@ export function estimateActorCost(
     schema: ACTOR_ESTIMATED_COST_SCHEMA,
     estimatedCostUsd: round6(inputUsd + outputUsd),
     ratesAsOf: rate.asOf,
-    source: rate.source,
+    source: fastTurns > 0 && rate.fast?.source !== undefined ? rate.fast.source : rate.source,
     ...(modelId ? { modelId } : {}),
     ...(rate.placeholder ? { placeholder: true } : {}),
     breakdown: {
@@ -556,8 +634,15 @@ export function estimateActorCost(
       ...(cachedTotal > 0 ? { cachedInputTokens: cachedTotal } : {}),
       ...(writeTotal > 0 ? { cacheWriteInputTokens: writeTotal } : {}),
       ...(longContextTurns > 0 ? { longContextTurns } : {}),
+      ...(fastTurns > 0 ? { fastTurns } : {}),
     },
   };
+}
+
+/** Whether a provider-reported tier bills at Fast mode rates. GPT-5.6 reports `priority` for a
+ *  request that asked for `fast`. */
+function isFastServiceTier(tier: string | undefined): boolean {
+  return tier === "fast" || tier === "priority";
 }
 
 /**

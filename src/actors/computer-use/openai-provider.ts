@@ -228,6 +228,8 @@ export interface OpenAiResponsesProviderOptions {
   reasoningEffort?: ReasoningEffort;
   /** Optional positive integer output limit per response, including reasoning. Not a spend cap. */
   maxOutputTokens?: number;
+  /** OpenAI Fast mode on every request; absent sends no `service_tier`. */
+  serviceTier?: "fast";
   /**
    * Reasoning-summary capture. Defaults to "auto" (the provider picks the best
    * summarizer the model supports); "off" never asks. If the account/model rejects the
@@ -543,6 +545,7 @@ export function createOpenAiResponsesProvider(
     ...(options.safetyIdentifier === undefined
       ? {}
       : { safetyIdentifier: options.safetyIdentifier }),
+    ...(options.serviceTier === undefined ? {} : { serviceTier: options.serviceTier }),
     reasoningSummary:
       options.reasoningSummary === "off" ? undefined : (options.reasoningSummary ?? "auto"),
     zeroDataRetention: options.zeroDataRetention === true,
@@ -618,6 +621,7 @@ export function createOpenAiResponsesProvider(
     modelSettings: {
       reasoningEffort,
       ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
+      ...(options.serviceTier === undefined ? {} : { serviceTier: options.serviceTier }),
     },
     capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
     // This is a vision provider: nextTurn sends the screenshot as the computer_call_output, so

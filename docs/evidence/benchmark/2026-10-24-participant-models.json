@@ -1,0 +1,10433 @@
+{
+ "schema": "humanish.bench.participant-models.v1",
+ "date": "2026-10-24",
+ "humanish": "0.146.0 plus actor.serviceTier (commit cdf3b42e5)",
+ "analyst": "gpt-6.1-sol@medium (CLI default)",
+ "mission": "neutral",
+ "rubric": "taskly-rubric v2 (bench/taskly/answer-key.ts)",
+ "concurrency": "one bench invocation per arm, all five at once; each invocation runs one participant at a time, starts at least 40 s apart",
+ "arms": {
+  "A0": {
+   "participant": "gpt-5.6-sol@medium",
+   "metrics": {
+    "arm": "A0",
+    "runs": 40,
+    "traced": 40,
+    "step_median": 4.384999990463257,
+    "step_p90": 6.754799890518189,
+    "steps_n": 425,
+    "model_median": 2.948000192642212,
+    "model_p90": 3.958399915695191,
+    "model_est_median": 2.9549999237060547,
+    "model_est_p90": 3.976399946212769,
+    "model_est_n": 425,
+    "model_exact_median": 3.25,
+    "model_exact_n": 234,
+    "turns_median": 11.0,
+    "session_median_s": 58.829499999999996,
+    "outcomes": {
+     "abandoned/gave_up": 4,
+     "passed/goal_satisfied": 36
+    },
+    "cost_median": 0.177722,
+    "cost_mean": 0.190437625,
+    "cost_total": 7.6175049999999995,
+    "cost_unpriced": 0,
+    "acts_per_turn_mean": 2.48,
+    "acts_per_turn_median": 2,
+    "acts_per_turn_multi_share": 0.5670588235294117,
+    "acts_per_turn_max": 15,
+    "out_tokens_median": 81,
+    "exec_median": {
+     "screenshot": 0.001,
+     "click": 0.353,
+     "type": 1.038,
+     "keypress": 0.101,
+     "wait": 0.581
+    },
+    "stall_notices": 0,
+    "failed_actions": 0
+   },
+   "recall": {
+    "report": {
+     "plantedUnits": 20,
+     "recall": {
+      "D1": "8/20",
+      "D2": "0/20",
+      "D3": "20/20",
+      "D4": "20/20",
+      "D5": "13/20"
+     },
+     "total": "61/100",
+     "total_rate": 0.61,
+     "wilson": [
+      0.512,
+      0.7
+     ],
+     "falseAssurance": {
+      "claims": 2,
+      "unitsWith": 2
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 1
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 1
+     },
+     "harness": 40,
+     "unresolved": 14,
+     "engaged": {
+      "D1": "12/20",
+      "D2": "0/20",
+      "D3": "20/20",
+      "D4": "20/20",
+      "D5": "20/20"
+     }
+    },
+    "analysis": {
+     "plantedUnits": 20,
+     "recall": {
+      "D1": "8/20",
+      "D2": "0/20",
+      "D3": "20/20",
+      "D4": "19/20",
+      "D5": "12/20"
+     },
+     "total": "59/100",
+     "total_rate": 0.59,
+     "wilson": [
+      0.492,
+      0.681
+     ],
+     "falseAssurance": {
+      "claims": 0,
+      "unitsWith": 0
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 0
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 0
+     },
+     "harness": 0,
+     "unresolved": 0
+    }
+   },
+   "spend": {
+    "participantUsd": 7.6175,
+    "desktopUsd": 0.4887,
+    "analysisUsd": 3.9885,
+    "totalUsd": 12.0946
+   }
+  },
+  "A1": {
+   "participant": "gpt-5.6-sol@medium, service_tier fast",
+   "metrics": {
+    "arm": "A1",
+    "runs": 40,
+    "traced": 40,
+    "step_median": 3.7690000534057617,
+    "step_p90": 6.105599975585938,
+    "steps_n": 433,
+    "model_median": 2.4659998416900635,
+    "model_p90": 3.1303999900817874,
+    "model_est_median": 2.4690001010894775,
+    "model_est_p90": 3.123800039291382,
+    "model_est_n": 433,
+    "model_exact_median": 2.7209999561309814,
+    "model_exact_n": 235,
+    "turns_median": 12.0,
+    "session_median_s": 50.701499999999996,
+    "outcomes": {
+     "abandoned/gave_up": 2,
+     "passed/goal_satisfied": 38
+    },
+    "cost_median": 0.382816,
+    "cost_mean": 0.387883975,
+    "cost_total": 15.515359,
+    "cost_unpriced": 0,
+    "acts_per_turn_mean": 2.491916859122402,
+    "acts_per_turn_median": 2,
+    "acts_per_turn_multi_share": 0.5658198614318707,
+    "acts_per_turn_max": 15,
+    "out_tokens_median": 79,
+    "exec_median": {
+     "screenshot": 0.001,
+     "type": 1.034,
+     "click": 0.35,
+     "keypress": 0.1,
+     "wait": 0.582
+    },
+    "stall_notices": 0,
+    "failed_actions": 0
+   },
+   "recall": {
+    "report": {
+     "plantedUnits": 20,
+     "recall": {
+      "D1": "13/20",
+      "D2": "0/20",
+      "D3": "20/20",
+      "D4": "20/20",
+      "D5": "13/20"
+     },
+     "total": "66/100",
+     "total_rate": 0.66,
+     "wilson": [
+      0.563,
+      0.745
+     ],
+     "falseAssurance": {
+      "claims": 0,
+      "unitsWith": 0
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 2
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 2
+     },
+     "harness": 38,
+     "unresolved": 13,
+     "engaged": {
+      "D1": "13/20",
+      "D2": "0/20",
+      "D3": "20/20",
+      "D4": "20/20",
+      "D5": "19/20"
+     }
+    },
+    "analysis": {
+     "plantedUnits": 20,
+     "recall": {
+      "D1": "13/20",
+      "D2": "0/20",
+      "D3": "20/20",
+      "D4": "12/20",
+      "D5": "12/20"
+     },
+     "total": "57/100",
+     "total_rate": 0.57,
+     "wilson": [
+      0.472,
+      0.663
+     ],
+     "falseAssurance": {
+      "claims": 0,
+      "unitsWith": 0
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 0
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 0
+     },
+     "harness": 0,
+     "unresolved": 0
+    }
+   },
+   "spend": {
+    "participantUsd": 15.5154,
+    "desktopUsd": 0.4452,
+    "analysisUsd": 4.0446,
+    "totalUsd": 20.0052
+   }
+  },
+  "A2": {
+   "participant": "gpt-6.1-sol@low",
+   "metrics": {
+    "arm": "A2",
+    "runs": 40,
+    "traced": 40,
+    "step_median": 4.454500079154968,
+    "step_p90": 7.447999954223633,
+    "steps_n": 306,
+    "model_median": 2.793000102043152,
+    "model_p90": 3.620000123977661,
+    "model_est_median": 2.799999952316284,
+    "model_est_p90": 3.6425000429153442,
+    "model_est_n": 306,
+    "model_exact_median": 9.469500064849854,
+    "model_exact_n": 2,
+    "turns_median": 8.0,
+    "session_median_s": 48.587500000000006,
+    "outcomes": {
+     "abandoned/gave_up": 28,
+     "passed/goal_satisfied": 12
+    },
+    "cost_median": 0.051654500000000006,
+    "cost_mean": 0.055685125,
+    "cost_total": 2.227405,
+    "cost_unpriced": 0,
+    "acts_per_turn_mean": 2.866013071895425,
+    "acts_per_turn_median": 3.0,
+    "acts_per_turn_multi_share": 0.630718954248366,
+    "acts_per_turn_max": 7,
+    "out_tokens_median": 58,
+    "exec_median": {
+     "type": 1.22,
+     "click": 0.354,
+     "keypress": 0.103,
+     "screenshot": 2.61
+    },
+    "stall_notices": 0,
+    "failed_actions": 0
+   },
+   "recall": {
+    "report": {
+     "plantedUnits": 20,
+     "recall": {
+      "D1": "0/20",
+      "D2": "5/20",
+      "D3": "20/20",
+      "D4": "20/20",
+      "D5": "0/20"
+     },
+     "total": "45/100",
+     "total_rate": 0.45,
+     "wilson": [
+      0.356,
+      0.548
+     ],
+     "falseAssurance": {
+      "claims": 0,
+      "unitsWith": 0
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 0
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 0
+     },
+     "harness": 24,
+     "unresolved": 58,
+     "engaged": {
+      "D1": "0/20",
+      "D2": "0/20",
+      "D3": "3/20",
+      "D4": "20/20",
+      "D5": "19/20"
+     }
+    },
+    "analysis": {
+     "plantedUnits": 20,
+     "recall": {
+      "D1": "0/20",
+      "D2": "5/20",
+      "D3": "20/20",
+      "D4": "20/20",
+      "D5": "12/20"
+     },
+     "total": "57/100",
+     "total_rate": 0.57,
+     "wilson": [
+      0.472,
+      0.663
+     ],
+     "falseAssurance": {
+      "claims": 0,
+      "unitsWith": 0
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 0
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 0
+     },
+     "harness": 0,
+     "unresolved": 0
+    }
+   },
+   "spend": {
+    "participantUsd": 2.2274,
+    "desktopUsd": 0.4085,
+    "analysisUsd": 3.4296,
+    "totalUsd": 6.0654
+   }
+  },
+  "A3": {
+   "participant": "gpt-6.1-sol@medium",
+   "metrics": {
+    "arm": "A3",
+    "runs": 40,
+    "traced": 40,
+    "step_median": 4.487500071525574,
+    "step_p90": 7.395699977874755,
+    "steps_n": 394,
+    "model_median": 2.828000068664551,
+    "model_p90": 4.091000127792358,
+    "model_est_median": 2.850000023841858,
+    "model_est_p90": 4.126500082015991,
+    "model_est_n": 394,
+    "model_exact_median": 4.109499931335449,
+    "model_exact_n": 40,
+    "turns_median": 11.0,
+    "session_median_s": 59.557,
+    "outcomes": {
+     "abandoned/gave_up": 31,
+     "passed/goal_satisfied": 9
+    },
+    "cost_median": 0.07050000000000001,
+    "cost_mean": 0.07138905,
+    "cost_total": 2.855562,
+    "cost_unpriced": 0,
+    "acts_per_turn_mean": 2.472081218274112,
+    "acts_per_turn_median": 2.0,
+    "acts_per_turn_multi_share": 0.5710659898477157,
+    "acts_per_turn_max": 9,
+    "out_tokens_median": 56,
+    "exec_median": {
+     "type": 1.227,
+     "click": 0.353,
+     "keypress": 0.101,
+     "screenshot": 2.46
+    },
+    "stall_notices": 0,
+    "failed_actions": 0
+   },
+   "recall": {
+    "report": {
+     "plantedUnits": 20,
+     "recall": {
+      "D1": "0/20",
+      "D2": "4/20",
+      "D3": "20/20",
+      "D4": "20/20",
+      "D5": "3/20"
+     },
+     "total": "47/100",
+     "total_rate": 0.47,
+     "wilson": [
+      0.375,
+      0.567
+     ],
+     "falseAssurance": {
+      "claims": 1,
+      "unitsWith": 1
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 0
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 0
+     },
+     "harness": 19,
+     "unresolved": 73,
+     "engaged": {
+      "D1": "0/20",
+      "D2": "0/20",
+      "D3": "3/20",
+      "D4": "20/20",
+      "D5": "20/20"
+     }
+    },
+    "analysis": {
+     "plantedUnits": 20,
+     "recall": {
+      "D1": "0/20",
+      "D2": "11/20",
+      "D3": "20/20",
+      "D4": "19/20",
+      "D5": "12/20"
+     },
+     "total": "62/100",
+     "total_rate": 0.62,
+     "wilson": [
+      0.522,
+      0.709
+     ],
+     "falseAssurance": {
+      "claims": 0,
+      "unitsWith": 0
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 0
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 0
+     },
+     "harness": 0,
+     "unresolved": 0
+    }
+   },
+   "spend": {
+    "participantUsd": 2.8556,
+    "desktopUsd": 0.4979,
+    "analysisUsd": 3.8387,
+    "totalUsd": 7.1921
+   }
+  },
+  "A4": {
+   "participant": "gpt-6-luna@medium",
+   "metrics": {
+    "arm": "A4",
+    "runs": 40,
+    "traced": 40,
+    "step_median": 4.04200005531311,
+    "step_p90": 6.142000150680542,
+    "steps_n": 425,
+    "model_median": 2.802999973297119,
+    "model_p90": 3.7894001483917235,
+    "model_est_median": 2.7920000553131104,
+    "model_est_p90": 3.7882001399993896,
+    "model_est_n": 425,
+    "model_exact_median": 3.0209999084472656,
+    "model_exact_n": 276,
+    "turns_median": 11.5,
+    "session_median_s": 58.7505,
+    "outcomes": {
+     "abandoned/gave_up": 4,
+     "passed/goal_satisfied": 36
+    },
+    "cost_median": 0.0047995,
+    "cost_mean": 0.0048828,
+    "cost_total": 0.19531199999999999,
+    "cost_unpriced": 0,
+    "acts_per_turn_mean": 2.192941176470588,
+    "acts_per_turn_median": 1,
+    "acts_per_turn_multi_share": 0.42823529411764705,
+    "acts_per_turn_max": 12,
+    "out_tokens_median": 79,
+    "exec_median": {
+     "screenshot": 0.001,
+     "click": 0.353,
+     "type": 0.954,
+     "keypress": 0.1,
+     "wait": 0.583
+    },
+    "stall_notices": 0,
+    "failed_actions": 0
+   },
+   "recall": {
+    "report": {
+     "plantedUnits": 20,
+     "recall": {
+      "D1": "1/20",
+      "D2": "0/20",
+      "D3": "20/20",
+      "D4": "20/20",
+      "D5": "2/20"
+     },
+     "total": "43/100",
+     "total_rate": 0.43,
+     "wilson": [
+      0.337,
+      0.528
+     ],
+     "falseAssurance": {
+      "claims": 1,
+      "unitsWith": 1
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 1
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 1
+     },
+     "harness": 40,
+     "unresolved": 12,
+     "engaged": {
+      "D1": "6/20",
+      "D2": "0/20",
+      "D3": "20/20",
+      "D4": "20/20",
+      "D5": "18/20"
+     }
+    },
+    "analysis": {
+     "plantedUnits": 19,
+     "recall": {
+      "D1": "3/19",
+      "D2": "0/19",
+      "D3": "19/19",
+      "D4": "19/19",
+      "D5": "14/19"
+     },
+     "total": "55/95",
+     "total_rate": 0.579,
+     "wilson": [
+      0.478,
+      0.673
+     ],
+     "falseAssurance": {
+      "claims": 0,
+      "unitsWith": 0
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 0
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 0
+     },
+     "harness": 0,
+     "unresolved": 0
+    }
+   },
+   "spend": {
+    "participantUsd": 0.1953,
+    "desktopUsd": 0.4784,
+    "analysisUsd": 3.9019,
+    "totalUsd": 4.5757
+   }
+  }
+ },
+ "execMedianPooledS": {
+  "screenshot": 0.0009999275207519531,
+  "click": 0.3529999256134033,
+  "type": 1.0989999771118164,
+  "keypress": 0.10099983215332031,
+  "wait": 0.5820000171661377
+ },
+ "runs": [
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-29-26-654Z-98aea050",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 29,
+   "durationS": 78.401,
+   "costUsd": 0.260636,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-32-17-283Z-a93dd60e",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 33,
+   "durationS": 70.782,
+   "costUsd": 0.217027,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 9,
+   "clicks": 15,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    4,
+    2,
+    1,
+    2,
+    3,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-35-08-530Z-08188e20",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 27,
+   "durationS": 71.144,
+   "costUsd": 0.214885,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    2,
+    1,
+    1,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-37-59-322Z-14542ae3",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 23,
+   "durationS": 48.486,
+   "costUsd": 0.12649,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    6,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-24T00-40-05-212Z-d883f7f6",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 33,
+   "durationS": 76.909,
+   "costUsd": 0.257299,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 16,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    1,
+    4,
+    2,
+    2,
+    2,
+    1,
+    1,
+    2,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-24T00-43-05-437Z-893ad375",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 23,
+   "durationS": 47.792,
+   "costUsd": 0.137804,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    6,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-52-36-662Z-0e89e9a5",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 16,
+   "actions": 34,
+   "durationS": 81.038,
+   "costUsd": 0.282625,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 17,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    2,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-55-42-565Z-73e1fa74",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 60.517,
+   "costUsd": 0.176215,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    2,
+    1,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-58-36-105Z-25ad96fc",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 31,
+   "durationS": 78.478,
+   "costUsd": 0.252238,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1,
+    1,
+    4,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T01-01-30-162Z-a2e6b8bd",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 24,
+   "durationS": 51.949,
+   "costUsd": 0.140398,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    5,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-24T01-03-55-001Z-07893810",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 23,
+   "durationS": 54.197,
+   "costUsd": 0.17279,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-24T01-06-39-341Z-fa331cab",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 23,
+   "durationS": 54.289,
+   "costUsd": 0.139455,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 7,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    4,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 4,
+   "runId": "cua-2026-10-24T01-09-00-247Z-47c3db76",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 30,
+   "durationS": 75.322,
+   "costUsd": 0.254721,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    11,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    1,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 4,
+   "runId": "cua-2026-10-24T01-12-01-440Z-f544fd60",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 26,
+   "durationS": 54.725,
+   "costUsd": 0.174655,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    3,
+    1,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 5,
+   "runId": "cua-2026-10-24T01-14-19-056Z-03fa0657",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 26,
+   "durationS": 70.589,
+   "costUsd": 0.233632,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1,
+    1,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 5,
+   "runId": "cua-2026-10-24T01-17-16-622Z-507247df",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 24,
+   "durationS": 50.415,
+   "costUsd": 0.157871,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    3,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 6,
+   "runId": "cua-2026-10-24T01-19-23-042Z-2a980edb",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 59.603,
+   "costUsd": 0.173955,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    4,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 6,
+   "runId": "cua-2026-10-24T01-22-00-973Z-1afbe3a7",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 26,
+   "durationS": 56.909,
+   "costUsd": 0.177815,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 7,
+   "runId": "cua-2026-10-24T01-24-14-397Z-26a8ccc3",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 23,
+   "durationS": 45.394,
+   "costUsd": 0.124189,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    3,
+    1,
+    2,
+    5
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 7,
+   "runId": "cua-2026-10-24T01-26-21-610Z-640965c9",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 23,
+   "durationS": 51.459,
+   "costUsd": 0.157848,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 8,
+   "runId": "cua-2026-10-24T01-28-52-429Z-41b33fd5",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 16,
+   "actions": 29,
+   "durationS": 73.43,
+   "costUsd": 0.273607,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 15,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    4,
+    1,
+    2,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 8,
+   "runId": "cua-2026-10-24T01-31-39-599Z-62707d04",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 31,
+   "durationS": 64.822,
+   "costUsd": 0.232407,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 9,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    4,
+    1,
+    1,
+    1,
+    4,
+    2,
+    3,
+    6,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 9,
+   "runId": "cua-2026-10-24T01-34-29-156Z-4401bfd9",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 30,
+   "durationS": 73.353,
+   "costUsd": 0.237616,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 9,
+   "runId": "cua-2026-10-24T01-38-03-629Z-33c777b7",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 22,
+   "durationS": 53.176,
+   "costUsd": 0.143502,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 7,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 10,
+   "runId": "cua-2026-10-24T01-40-45-184Z-38a5e3a5",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 26,
+   "durationS": 48.643,
+   "costUsd": 0.128191,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 2,
+   "clicks": 17,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    12,
+    2,
+    1,
+    2,
+    5
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 10,
+   "runId": "cua-2026-10-24T01-43-03-439Z-04f2f9a5",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 31,
+   "durationS": 64.171,
+   "costUsd": 0.212998,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    4,
+    1,
+    1,
+    3,
+    5
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 11,
+   "runId": "cua-2026-10-24T01-45-42-525Z-966cda41",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 43,
+   "durationS": 71.543,
+   "costUsd": 0.197761,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 15,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    4,
+    4,
+    7,
+    2,
+    8,
+    4,
+    4,
+    2,
+    3,
+    4
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 11,
+   "runId": "cua-2026-10-24T01-48-36-585Z-6f5ca024",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 32,
+   "durationS": 69.075,
+   "costUsd": 0.198625,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 10,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    1,
+    4,
+    2,
+    1,
+    3,
+    6
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 12,
+   "runId": "cua-2026-10-24T01-51-20-876Z-2c0757ca",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 113.471,
+   "costUsd": 0.176719,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    2,
+    1,
+    2,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 12,
+   "runId": "cua-2026-10-24T01-55-14-817Z-2c35d716",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 26,
+   "durationS": 58.056,
+   "costUsd": 0.177629,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    1,
+    5,
+    2,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 13,
+   "runId": "cua-2026-10-24T01-58-08-656Z-5f65bcf6",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 30,
+   "durationS": 56.959,
+   "costUsd": 0.179443,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 3,
+   "clicks": 19,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    15,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 13,
+   "runId": "cua-2026-10-24T02-00-44-570Z-f54c4cc4",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 26,
+   "durationS": 55.512,
+   "costUsd": 0.176703,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 14,
+   "runId": "cua-2026-10-24T02-03-11-921Z-1b4a1e75",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 29,
+   "durationS": 71.0,
+   "costUsd": 0.233211,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 15,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    2,
+    4,
+    1,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 14,
+   "runId": "cua-2026-10-24T02-06-18-760Z-ac669339",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 20,
+   "durationS": 48.574,
+   "costUsd": 0.139561,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 7,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 15,
+   "runId": "cua-2026-10-24T02-08-52-245Z-ba1c5957",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 36,
+   "durationS": 73.199,
+   "costUsd": 0.225139,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 9,
+   "clicks": 18,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    6,
+    6,
+    1,
+    6,
+    3,
+    2,
+    1,
+    4,
+    2,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 15,
+   "runId": "cua-2026-10-24T02-11-50-699Z-93ccd96b",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 56.21,
+   "costUsd": 0.175117,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    3,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 16,
+   "runId": "cua-2026-10-24T02-14-22-540Z-5421099f",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 25,
+   "durationS": 55.001,
+   "costUsd": 0.194275,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    4,
+    1,
+    2,
+    1,
+    2,
+    4,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 16,
+   "runId": "cua-2026-10-24T02-17-05-031Z-f0e2f5da",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 23,
+   "durationS": 45.165,
+   "costUsd": 0.139968,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    6,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 17,
+   "runId": "cua-2026-10-24T02-19-07-709Z-eb83cc4b",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 32,
+   "durationS": 70.403,
+   "costUsd": 0.203727,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 3,
+   "clicks": 20,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    15,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 17,
+   "runId": "cua-2026-10-24T02-22-07-058Z-e1194398",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 23,
+   "durationS": 46.777,
+   "costUsd": 0.138758,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    6,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A0"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-37-06-826Z-38ede16f",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 7,
+   "actions": 27,
+   "durationS": 37.735,
+   "costUsd": 0.236241,
+   "fastTurns": 8,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 2,
+   "clicks": 18,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    15,
+    3,
+    1,
+    2,
+    5
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-39-08-352Z-499aae70",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 26,
+   "durationS": 45.588,
+   "costUsd": 0.289512,
+   "fastTurns": 10,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    5,
+    1,
+    1,
+    6
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-41-08-904Z-0531945b",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 38,
+   "durationS": 63.413,
+   "costUsd": 0.466923,
+   "fastTurns": 15,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    4,
+    4,
+    7,
+    2,
+    5,
+    2,
+    2,
+    2,
+    3,
+    2,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-44-25-572Z-613a83fe",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 24,
+   "durationS": 43.362,
+   "costUsd": 0.30731,
+   "fastTurns": 11,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    3,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-24T00-46-38-257Z-1e47cf98",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 23,
+   "durationS": 41.362,
+   "costUsd": 0.312116,
+   "fastTurns": 11,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    4,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-24T00-48-51-973Z-3481fc17",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 23,
+   "durationS": 38.16,
+   "costUsd": 0.279849,
+   "fastTurns": 10,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    2,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-52-44-851Z-e04dbe84",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 25,
+   "durationS": 44.198,
+   "costUsd": 0.314169,
+   "fastTurns": 11,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    4,
+    2,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-54-59-467Z-262f3cba",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 27,
+   "durationS": 56.596,
+   "costUsd": 0.391144,
+   "fastTurns": 13,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    4,
+    2,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-57-55-762Z-8586fb4d",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 26,
+   "durationS": 51.861,
+   "costUsd": 0.383054,
+   "fastTurns": 13,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T01-00-14-730Z-47aebad2",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 27,
+   "durationS": 55.111,
+   "costUsd": 0.418622,
+   "fastTurns": 14,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    2,
+    1,
+    1,
+    1,
+    1,
+    3,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-24T01-03-00-092Z-e7fa4604",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 26,
+   "durationS": 54.224,
+   "costUsd": 0.429086,
+   "fastTurns": 14,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-24T01-05-45-506Z-cf1e0a73",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 25,
+   "durationS": 45.097,
+   "costUsd": 0.322093,
+   "fastTurns": 11,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    1,
+    4,
+    2,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 4,
+   "runId": "cua-2026-10-24T01-08-13-770Z-b8b846a1",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 29,
+   "durationS": 59.012,
+   "costUsd": 0.50198,
+   "fastTurns": 16,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    1,
+    2,
+    1,
+    1,
+    1,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 4,
+   "runId": "cua-2026-10-24T01-10-50-914Z-c437cc57",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 26,
+   "durationS": 50.137,
+   "costUsd": 0.350708,
+   "fastTurns": 12,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    3,
+    1,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 5,
+   "runId": "cua-2026-10-24T01-13-09-801Z-3190a4de",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 27,
+   "durationS": 49.682,
+   "costUsd": 0.386506,
+   "fastTurns": 13,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    1,
+    2,
+    2,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 5,
+   "runId": "cua-2026-10-24T01-15-58-277Z-6545d07e",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 30,
+   "durationS": 52.183,
+   "costUsd": 0.358481,
+   "fastTurns": 12,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 9,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    1,
+    4,
+    3,
+    1,
+    1,
+    2,
+    5
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 6,
+   "runId": "cua-2026-10-24T01-18-17-498Z-626c1c40",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 26,
+   "durationS": 48.713,
+   "costUsd": 0.386353,
+   "fastTurns": 13,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    4,
+    2,
+    1,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 6,
+   "runId": "cua-2026-10-24T01-20-40-294Z-76e26eef",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 7,
+   "actions": 27,
+   "durationS": 39.931,
+   "costUsd": 0.22473,
+   "fastTurns": 8,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 2,
+   "clicks": 17,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    15,
+    1,
+    6,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 7,
+   "runId": "cua-2026-10-24T01-22-35-115Z-c01657ee",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 16,
+   "actions": 46,
+   "durationS": 76.475,
+   "costUsd": 0.562804,
+   "fastTurns": 17,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 17,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    2,
+    4,
+    4,
+    5,
+    2,
+    7,
+    5,
+    3,
+    2,
+    2,
+    3,
+    2,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 7,
+   "runId": "cua-2026-10-24T01-25-42-466Z-63215d4f",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 23,
+   "durationS": 43.48,
+   "costUsd": 0.316896,
+   "fastTurns": 11,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 8,
+   "runId": "cua-2026-10-24T01-27-48-679Z-0463e5e1",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 16,
+   "actions": 31,
+   "durationS": 67.721,
+   "costUsd": 0.548299,
+   "fastTurns": 17,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 16,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    1,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 8,
+   "runId": "cua-2026-10-24T01-31-13-839Z-1d17862b",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 27,
+   "durationS": 63.317,
+   "costUsd": 0.389744,
+   "fastTurns": 13,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    2,
+    2,
+    1,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 9,
+   "runId": "cua-2026-10-24T01-33-45-918Z-482fa50b",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 12,
+   "actions": 32,
+   "durationS": 90.559,
+   "costUsd": 0.395146,
+   "fastTurns": 13,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 4,
+   "clicks": 19,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    12,
+    1,
+    5,
+    4,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 9,
+   "runId": "cua-2026-10-24T01-37-07-663Z-a7fc8795",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 30,
+   "durationS": 67.667,
+   "costUsd": 0.360279,
+   "fastTurns": 12,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 2,
+   "clicks": 21,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    12,
+    1,
+    5,
+    1,
+    1,
+    1,
+    4,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 10,
+   "runId": "cua-2026-10-24T01-39-50-947Z-a27f2b42",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 32,
+   "durationS": 61.722,
+   "costUsd": 0.480092,
+   "fastTurns": 15,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 3,
+   "clicks": 21,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    12,
+    3,
+    1,
+    4,
+    1,
+    2,
+    1,
+    1,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 10,
+   "runId": "cua-2026-10-24T01-43-04-790Z-52419d4f",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 24,
+   "durationS": 43.951,
+   "costUsd": 0.319265,
+   "fastTurns": 11,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    2,
+    4,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 11,
+   "runId": "cua-2026-10-24T01-45-42-192Z-a5b1230f",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 34,
+   "durationS": 58.382,
+   "costUsd": 0.450017,
+   "fastTurns": 14,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 20,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    12,
+    3,
+    1,
+    6,
+    3,
+    1,
+    1,
+    1,
+    1,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 11,
+   "runId": "cua-2026-10-24T01-48-19-653Z-86927178",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 26,
+   "durationS": 48.023,
+   "costUsd": 0.349591,
+   "fastTurns": 12,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    3,
+    1,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 12,
+   "runId": "cua-2026-10-24T01-50-49-438Z-4b67e586",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 24,
+   "durationS": 49.919,
+   "costUsd": 0.384889,
+   "fastTurns": 13,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 12,
+   "runId": "cua-2026-10-24T01-53-53-714Z-2af07b2a",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 27,
+   "durationS": 41.594,
+   "costUsd": 0.282318,
+   "fastTurns": 10,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 3,
+   "clicks": 16,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    12,
+    3,
+    2,
+    1,
+    1,
+    5,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 13,
+   "runId": "cua-2026-10-24T01-56-18-235Z-5c152a76",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 17,
+   "actions": 32,
+   "durationS": 72.942,
+   "costUsd": 0.595602,
+   "fastTurns": 18,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 15,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    4,
+    1,
+    1,
+    2,
+    1,
+    1,
+    2,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 13,
+   "runId": "cua-2026-10-24T01-59-29-459Z-21daf1a7",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 26,
+   "durationS": 47.053,
+   "costUsd": 0.382578,
+   "fastTurns": 13,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    4,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 14,
+   "runId": "cua-2026-10-24T02-01-46-895Z-a7295a13",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 31,
+   "durationS": 62.218,
+   "costUsd": 0.505565,
+   "fastTurns": 16,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    2,
+    1,
+    1,
+    2,
+    1,
+    2,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 14,
+   "runId": "cua-2026-10-24T02-04-20-467Z-f4fbc16e",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 51.266,
+   "costUsd": 0.358891,
+   "fastTurns": 12,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    4,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 15,
+   "runId": "cua-2026-10-24T02-06-30-156Z-d8359e1b",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 32,
+   "durationS": 65.255,
+   "costUsd": 0.518134,
+   "fastTurns": 16,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 16,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    3,
+    1,
+    1,
+    1,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 15,
+   "runId": "cua-2026-10-24T02-09-51-374Z-1ed9fd06",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 24,
+   "durationS": 43.565,
+   "costUsd": 0.309065,
+   "fastTurns": 11,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    1,
+    4,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 16,
+   "runId": "cua-2026-10-24T02-12-30-035Z-dabd9c85",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 30,
+   "durationS": 62.417,
+   "costUsd": 0.508527,
+   "fastTurns": 16,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    1,
+    2,
+    2,
+    1,
+    1,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 16,
+   "runId": "cua-2026-10-24T02-15-48-688Z-3a06798a",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 27,
+   "durationS": 46.737,
+   "costUsd": 0.35041,
+   "fastTurns": 12,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    5,
+    1,
+    1,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 17,
+   "runId": "cua-2026-10-24T02-18-41-743Z-7b7da138",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 31,
+   "durationS": 58.92,
+   "costUsd": 0.473374,
+   "fastTurns": 15,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    6,
+    3,
+    1,
+    1,
+    1,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 17,
+   "runId": "cua-2026-10-24T02-21-36-531Z-13419ce2",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 24,
+   "durationS": 42.871,
+   "costUsd": 0.314996,
+   "fastTurns": 11,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    3,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A1"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-29-36-742Z-bbabefc7",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 45.65,
+   "costUsd": 0.053976,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-31-49-896Z-65ee6267",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 26,
+   "durationS": 51.897,
+   "costUsd": 0.063315,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    3,
+    3,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-33-47-141Z-8a4860b1",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 25,
+   "durationS": 55.571,
+   "costUsd": 0.064485,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-36-23-322Z-f96b715c",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 45.951,
+   "costUsd": 0.050892,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    5,
+    3,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-24T00-38-25-478Z-41845c29",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 48.713,
+   "costUsd": 0.051294,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-24T00-41-28-329Z-a84b5796",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 45.92,
+   "costUsd": 0.050794,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-52-51-105Z-23a23987",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 48.915,
+   "costUsd": 0.051536,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-55-46-241Z-199c38c7",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 47.316,
+   "costUsd": 0.050746,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-57-48-834Z-243b8b74",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 46.808,
+   "costUsd": 0.051164,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T01-00-12-053Z-9f56217b",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 24,
+   "durationS": 56.007,
+   "costUsd": 0.06304,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-24T01-02-40-561Z-517a043b",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 25,
+   "durationS": 52.495,
+   "costUsd": 0.057886,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-24T01-05-22-615Z-dc7c53d5",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 22,
+   "durationS": 55.205,
+   "costUsd": 0.058214,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 4,
+   "runId": "cua-2026-10-24T01-07-44-351Z-a4eec755",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 26,
+   "durationS": 50.44,
+   "costUsd": 0.057875,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    5,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 4,
+   "runId": "cua-2026-10-24T01-10-39-925Z-46ee5dd2",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 24,
+   "durationS": 53.891,
+   "costUsd": 0.062625,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 5,
+   "runId": "cua-2026-10-24T01-12-41-197Z-2726d4e4",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 25,
+   "durationS": 55.908,
+   "costUsd": 0.05848,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    5,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 5,
+   "runId": "cua-2026-10-24T01-15-17-978Z-08c338ab",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 45.951,
+   "costUsd": 0.050762,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 6,
+   "runId": "cua-2026-10-24T01-17-18-006Z-3f0a6ab9",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 46.251,
+   "costUsd": 0.051575,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 6,
+   "runId": "cua-2026-10-24T01-19-32-438Z-7e5a8bcd",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 7,
+   "actions": 22,
+   "durationS": 42.762,
+   "costUsd": 0.044968,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    7,
+    6,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 7,
+   "runId": "cua-2026-10-24T01-21-38-231Z-ddda4e52",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 25,
+   "durationS": 55.702,
+   "costUsd": 0.064361,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    3,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 7,
+   "runId": "cua-2026-10-24T01-24-20-727Z-ef3f0cda",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 47.267,
+   "costUsd": 0.05119,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    5,
+    3,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 8,
+   "runId": "cua-2026-10-24T01-26-35-983Z-23398420",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 7,
+   "actions": 20,
+   "durationS": 42.288,
+   "costUsd": 0.044866,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 4,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    5,
+    3,
+    6,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 8,
+   "runId": "cua-2026-10-24T01-28-47-764Z-16f6737f",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 12,
+   "actions": 28,
+   "durationS": 62.413,
+   "costUsd": 0.076644,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    1,
+    2,
+    3,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 9,
+   "runId": "cua-2026-10-24T01-34-04-606Z-d4e5228f",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 47.264,
+   "costUsd": 0.051734,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 9,
+   "runId": "cua-2026-10-24T01-36-33-408Z-104f136c",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 23,
+   "durationS": 50.261,
+   "costUsd": 0.051448,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    7,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 10,
+   "runId": "cua-2026-10-24T01-38-34-956Z-5da14dd2",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 48.456,
+   "costUsd": 0.051281,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    5,
+    3,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 10,
+   "runId": "cua-2026-10-24T01-41-04-221Z-b138e7bd",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 46.831,
+   "costUsd": 0.050784,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 11,
+   "runId": "cua-2026-10-24T01-43-53-379Z-10549c9c",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 25,
+   "durationS": 55.666,
+   "costUsd": 0.064323,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 11,
+   "runId": "cua-2026-10-24T01-46-47-822Z-2cc0d58c",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 24,
+   "durationS": 48.462,
+   "costUsd": 0.051482,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    7,
+    6,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 12,
+   "runId": "cua-2026-10-24T01-48-54-419Z-acac190a",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 25,
+   "durationS": 53.278,
+   "costUsd": 0.058164,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 12,
+   "runId": "cua-2026-10-24T01-51-33-893Z-240bb75b",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 44.004,
+   "costUsd": 0.050695,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 13,
+   "runId": "cua-2026-10-24T01-53-33-136Z-cffa69e4",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 45.012,
+   "costUsd": 0.051303,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 13,
+   "runId": "cua-2026-10-24T01-56-20-380Z-85fc8d99",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 43.549,
+   "costUsd": 0.050673,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 14,
+   "runId": "cua-2026-10-24T01-58-16-526Z-12a869f8",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 25,
+   "durationS": 53.312,
+   "costUsd": 0.05771,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 14,
+   "runId": "cua-2026-10-24T02-00-53-599Z-c7775ffc",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 44.312,
+   "costUsd": 0.05042,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 15,
+   "runId": "cua-2026-10-24T02-03-05-864Z-a96fac7e",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 25,
+   "durationS": 51.685,
+   "costUsd": 0.05821,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    5,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 15,
+   "runId": "cua-2026-10-24T02-05-42-755Z-fcfbd165",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 22,
+   "durationS": 46.852,
+   "costUsd": 0.057015,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 16,
+   "runId": "cua-2026-10-24T02-08-03-875Z-8baba02b",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 27,
+   "durationS": 54.868,
+   "costUsd": 0.05832,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    5,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 16,
+   "runId": "cua-2026-10-24T02-10-43-393Z-716d76fd",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 28,
+   "durationS": 73.821,
+   "costUsd": 0.074522,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 8,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    7,
+    6,
+    1,
+    3,
+    3,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 17,
+   "runId": "cua-2026-10-24T02-13-18-822Z-d4668307",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 24,
+   "durationS": 51.567,
+   "costUsd": 0.057402,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 17,
+   "runId": "cua-2026-10-24T02-15-55-679Z-af4df1aa",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 8,
+   "actions": 21,
+   "durationS": 48.105,
+   "costUsd": 0.051231,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A2"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-29-47-695Z-6924e32e",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 26,
+   "durationS": 55.707,
+   "costUsd": 0.061909,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    5,
+    3,
+    6,
+    1,
+    5,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-32-08-850Z-2f31bc42",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 26,
+   "durationS": 51.337,
+   "costUsd": 0.064127,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    2,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-34-22-580Z-7a47d4f6",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 26,
+   "durationS": 52.087,
+   "costUsd": 0.06519,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    5,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-37-30-009Z-d88dee37",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 61.67,
+   "costUsd": 0.070014,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-24T00-40-42-546Z-1eaa0abb",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 65.654,
+   "costUsd": 0.0726,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    4,
+    1,
+    6,
+    1,
+    3,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-24T00-43-58-398Z-4ab00365",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 57.797,
+   "costUsd": 0.070137,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-53-00-098Z-c0142bb9",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 14,
+   "actions": 28,
+   "durationS": 110.287,
+   "costUsd": 0.097361,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-56-54-802Z-456ccf59",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 27,
+   "durationS": 67.525,
+   "costUsd": 0.071062,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    2,
+    1,
+    2,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-59-27-338Z-17900535",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 25,
+   "durationS": 65.596,
+   "costUsd": 0.064453,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    3,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T01-02-52-671Z-1178143f",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 13,
+   "actions": 26,
+   "durationS": 69.982,
+   "costUsd": 0.084494,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    1,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-24T01-05-56-486Z-781af69c",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 27,
+   "durationS": 63.208,
+   "costUsd": 0.066832,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-24T01-09-00-911Z-16ac57b7",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 62.727,
+   "costUsd": 0.070042,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    2,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 4,
+   "runId": "cua-2026-10-24T01-11-21-889Z-90d6a05f",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 12,
+   "actions": 27,
+   "durationS": 64.551,
+   "costUsd": 0.0788,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 4,
+   "runId": "cua-2026-10-24T01-13-55-634Z-337f8465",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 12,
+   "actions": 25,
+   "durationS": 63.879,
+   "costUsd": 0.077682,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 5,
+   "runId": "cua-2026-10-24T01-16-15-283Z-990b2554",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 25,
+   "durationS": 63.591,
+   "costUsd": 0.077907,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    4,
+    1,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 5,
+   "runId": "cua-2026-10-24T01-19-06-153Z-54f37ef7",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 27,
+   "durationS": 58.472,
+   "costUsd": 0.071007,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    2,
+    1,
+    2,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 6,
+   "runId": "cua-2026-10-24T01-21-37-961Z-a1e6e307",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 54.936,
+   "costUsd": 0.07122,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 6,
+   "runId": "cua-2026-10-24T01-24-14-105Z-cb5894b2",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 13,
+   "actions": 28,
+   "durationS": 73.51,
+   "costUsd": 0.086215,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    1,
+    2,
+    3,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 7,
+   "runId": "cua-2026-10-24T01-26-47-181Z-f3b5eb66",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 25,
+   "durationS": 57.785,
+   "costUsd": 0.064981,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 7,
+   "runId": "cua-2026-10-24T01-29-45-247Z-78e5932f",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 57.523,
+   "costUsd": 0.070155,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    2,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 8,
+   "runId": "cua-2026-10-24T01-32-07-266Z-898063d3",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 12,
+   "actions": 25,
+   "durationS": 63.616,
+   "costUsd": 0.079818,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    4,
+    1,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 8,
+   "runId": "cua-2026-10-24T01-35-36-071Z-99caa1d7",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 22,
+   "durationS": 56.497,
+   "costUsd": 0.057044,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 9,
+   "runId": "cua-2026-10-24T01-37-42-154Z-571b1686",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 12,
+   "actions": 27,
+   "durationS": 72.229,
+   "costUsd": 0.078172,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 9,
+   "runId": "cua-2026-10-24T01-40-43-177Z-21f91f3c",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 26,
+   "durationS": 56.287,
+   "costUsd": 0.064349,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    2,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 10,
+   "runId": "cua-2026-10-24T01-43-14-531Z-468c194c",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 12,
+   "actions": 27,
+   "durationS": 74.189,
+   "costUsd": 0.083891,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    3,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 10,
+   "runId": "cua-2026-10-24T01-46-14-091Z-ff1aeb62",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 24,
+   "durationS": 55.563,
+   "costUsd": 0.063901,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 11,
+   "runId": "cua-2026-10-24T01-48-31-733Z-461bdcff",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 27,
+   "durationS": 59.703,
+   "costUsd": 0.070845,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 11,
+   "runId": "cua-2026-10-24T01-51-36-672Z-0efb4af6",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 26,
+   "durationS": 52.177,
+   "costUsd": 0.064041,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    2,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 12,
+   "runId": "cua-2026-10-24T01-53-46-035Z-a782f462",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 25,
+   "durationS": 52.001,
+   "costUsd": 0.05912,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 12,
+   "runId": "cua-2026-10-24T01-56-38-781Z-d30a8040",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 54.142,
+   "costUsd": 0.069852,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 13,
+   "runId": "cua-2026-10-24T01-58-46-004Z-9e9f4554",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 59.411,
+   "costUsd": 0.07154,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    4,
+    1,
+    6,
+    1,
+    3,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 13,
+   "runId": "cua-2026-10-24T02-02-02-921Z-2269f19c",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 25,
+   "durationS": 79.973,
+   "costUsd": 0.081265,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    2,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 14,
+   "runId": "cua-2026-10-24T02-05-14-114Z-7f48c2b2",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 27,
+   "durationS": 60.815,
+   "costUsd": 0.072954,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 14,
+   "runId": "cua-2026-10-24T02-08-15-829Z-cd03f0e2",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 26,
+   "durationS": 51.698,
+   "costUsd": 0.059404,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    3,
+    6,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 15,
+   "runId": "cua-2026-10-24T02-10-37-211Z-8b20cb60",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 27,
+   "durationS": 57.305,
+   "costUsd": 0.065741,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    4,
+    3,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 15,
+   "runId": "cua-2026-10-24T02-13-17-507Z-5c4c847f",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 24,
+   "durationS": 50.853,
+   "costUsd": 0.063919,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 16,
+   "runId": "cua-2026-10-24T02-15-40-400Z-8974ebad",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 9,
+   "actions": 25,
+   "durationS": 52.984,
+   "costUsd": 0.05924,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 16,
+   "runId": "cua-2026-10-24T02-18-34-891Z-e1107532",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 12,
+   "actions": 26,
+   "durationS": 63.624,
+   "costUsd": 0.077896,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    2,
+    1,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 17,
+   "runId": "cua-2026-10-24T02-21-35-097Z-ff3f64f0",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 12,
+   "actions": 28,
+   "durationS": 63.989,
+   "costUsd": 0.078703,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    7,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 17,
+   "runId": "cua-2026-10-24T02-24-56-803Z-ea8958a4",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 12,
+   "actions": 26,
+   "durationS": 58.8,
+   "costUsd": 0.077679,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    2,
+    1,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A3"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-29-57-061Z-f5bfe901",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 26,
+   "durationS": 65.508,
+   "costUsd": 0.005294,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    2,
+    4,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-32-38-301Z-7b381f80",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 18,
+   "durationS": 54.188,
+   "costUsd": 0.003397,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 7,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    2,
+    4,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-34-51-387Z-419665e1",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 17,
+   "durationS": 45.353,
+   "costUsd": 0.003188,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 6,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    2,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-36-46-564Z-0e68f603",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 20,
+   "durationS": 51.842,
+   "costUsd": 0.004072,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-24T00-39-32-007Z-7048b6bc",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 26,
+   "durationS": 64.81,
+   "costUsd": 0.0059,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 13,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-24T00-42-34-053Z-696e4775",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 19,
+   "durationS": 46.802,
+   "costUsd": 0.004004,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 6,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "pilot-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-53-08-095Z-d05f1814",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 25,
+   "durationS": 65.614,
+   "costUsd": 0.005565,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T00-56-35-108Z-2669efcd",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 7,
+   "actions": 21,
+   "durationS": 49.084,
+   "costUsd": 0.00281,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 1,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    12,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T00-58-33-329Z-7c3a4801",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 26,
+   "durationS": 66.191,
+   "costUsd": 0.005994,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T01-01-54-812Z-4e6ef328",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 16,
+   "durationS": 41.125,
+   "costUsd": 0.00312,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 5,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    1,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-24T01-04-19-101Z-db88618d",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 30,
+   "durationS": 71.522,
+   "costUsd": 0.006195,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 2,
+   "clicks": 21,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    12,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-24T01-07-00-607Z-6910733b",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 61.443,
+   "costUsd": 0.004796,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 3,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    8,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 4,
+   "runId": "cua-2026-10-24T01-09-58-633Z-df134bcf",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 28,
+   "durationS": 61.031,
+   "costUsd": 0.005127,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 2,
+   "clicks": 19,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    12,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 4,
+   "runId": "cua-2026-10-24T01-12-20-425Z-844838a4",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 21,
+   "durationS": 51.747,
+   "costUsd": 0.003829,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 7,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 5,
+   "runId": "cua-2026-10-24T01-15-01-090Z-edf7a3fc",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 25,
+   "durationS": 60.096,
+   "costUsd": 0.005004,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    2,
+    4,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 5,
+   "runId": "cua-2026-10-24T01-17-29-490Z-c52045f3",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 37,
+   "durationS": 67.732,
+   "costUsd": 0.004803,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 12,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    1,
+    1,
+    4,
+    2,
+    11,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 6,
+   "runId": "cua-2026-10-24T01-20-31-257Z-84036c8a",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 16,
+   "actions": 28,
+   "durationS": 72.47,
+   "costUsd": 0.007012,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    1,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 6,
+   "runId": "cua-2026-10-24T01-23-31-838Z-bf52bc1a",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 15,
+   "durationS": 41.398,
+   "costUsd": 0.0039,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 4,
+   "clicks": 6,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    2,
+    2,
+    1,
+    1,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 7,
+   "runId": "cua-2026-10-24T01-25-31-042Z-1b674d29",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 17,
+   "durationS": 44.744,
+   "costUsd": 0.003606,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 4,
+   "clicks": 7,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 7,
+   "runId": "cua-2026-10-24T01-27-36-923Z-de90efb7",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 25,
+   "durationS": 49.879,
+   "costUsd": 0.004009,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    2,
+    1,
+    1,
+    2,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 8,
+   "runId": "cua-2026-10-24T01-29-49-750Z-00935bee",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 25,
+   "durationS": 66.688,
+   "costUsd": 0.005667,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 8,
+   "runId": "cua-2026-10-24T01-32-23-576Z-9e57bde1",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 20,
+   "durationS": 56.784,
+   "costUsd": 0.004361,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    2,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 9,
+   "runId": "cua-2026-10-24T01-35-20-985Z-47ce39b7",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 28,
+   "durationS": 74.267,
+   "costUsd": 0.006612,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 3,
+   "clicks": 19,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    1,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 9,
+   "runId": "cua-2026-10-24T01-38-11-888Z-b0c9aae8",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 23,
+   "durationS": 57.467,
+   "costUsd": 0.004606,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 10,
+   "runId": "cua-2026-10-24T01-41-07-223Z-699d84aa",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 22,
+   "durationS": 63.083,
+   "costUsd": 0.00546,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    4,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 10,
+   "runId": "cua-2026-10-24T01-44-09-604Z-940fa056",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 10,
+   "actions": 22,
+   "durationS": 51.865,
+   "costUsd": 0.004064,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 7,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    1,
+    4,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 11,
+   "runId": "cua-2026-10-24T01-46-47-600Z-27143e13",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 26,
+   "durationS": 84.076,
+   "costUsd": 0.006569,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 4,
+   "clicks": 15,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 11,
+   "runId": "cua-2026-10-24T01-49-51-591Z-7929e99e",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 21,
+   "durationS": 46.473,
+   "costUsd": 0.004158,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    6,
+    2,
+    1,
+    1,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 12,
+   "runId": "cua-2026-10-24T01-52-16-792Z-af35002d",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 27,
+   "durationS": 66.095,
+   "costUsd": 0.006195,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 3,
+   "clicks": 18,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 12,
+   "runId": "cua-2026-10-24T01-55-06-512Z-a0b09210",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 30,
+   "durationS": 56.772,
+   "costUsd": 0.004231,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 11,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    1,
+    2,
+    4,
+    1,
+    9
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 13,
+   "runId": "cua-2026-10-24T01-57-06-342Z-dadfdf56",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 29,
+   "durationS": 61.728,
+   "costUsd": 0.006002,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 14,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    1,
+    1,
+    4,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 13,
+   "runId": "cua-2026-10-24T01-59-47-589Z-9c646d9d",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 23,
+   "durationS": 50.912,
+   "costUsd": 0.004493,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 6,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 14,
+   "runId": "cua-2026-10-24T02-02-09-078Z-1656ea82",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 24,
+   "durationS": 56.242,
+   "costUsd": 0.005423,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 14,
+   "runId": "cua-2026-10-24T02-04-34-906Z-29bc8a56",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 20,
+   "durationS": 51.133,
+   "costUsd": 0.004443,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 4,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    4,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 15,
+   "runId": "cua-2026-10-24T02-06-48-279Z-50063c84",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 27,
+   "durationS": 57.074,
+   "costUsd": 0.004945,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 2,
+   "clicks": 18,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    12,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 15,
+   "runId": "cua-2026-10-24T02-09-45-563Z-005b9e95",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 35,
+   "durationS": 65.159,
+   "costUsd": 0.005233,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 2,
+   "clicks": 23,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    12,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 16,
+   "runId": "cua-2026-10-24T02-12-09-751Z-e819b45f",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 26,
+   "durationS": 62.465,
+   "costUsd": 0.006003,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 16,
+   "runId": "cua-2026-10-24T02-14-54-545Z-efa61f04",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 27,
+   "durationS": 60.034,
+   "costUsd": 0.004614,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 1,
+   "clicks": 19,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    12,
+    1,
+    1,
+    2,
+    4,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 17,
+   "runId": "cua-2026-10-24T02-18-05-297Z-3683b70b",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 30,
+   "durationS": 66.668,
+   "costUsd": 0.006091,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 7,
+   "clicks": 15,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    1,
+    1,
+    2,
+    1,
+    5,
+    2,
+    2,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 17,
+   "runId": "cua-2026-10-24T02-21-00-937Z-7a5a74bc",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 23,
+   "durationS": 54.049,
+   "costUsd": 0.004517,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "synthetic-new-user",
+   "keypresses": 5,
+   "clicks": 11,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "recall-A4"
+  }
+ ],
+ "fidelityRuns": [
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-31-55-871Z-9c42d286",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 28,
+   "durationS": 68.809,
+   "costUsd": 0.221964,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 10,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    2,
+    1,
+    1,
+    3,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-34-49-931Z-0dff9e96",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 34,
+   "durationS": 65.787,
+   "costUsd": 0.202411,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 19,
+   "clicks": 7,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    11,
+    6,
+    2,
+    1,
+    4,
+    1,
+    2,
+    2,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-37-23-193Z-49076fcc",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 40,
+   "durationS": 72.811,
+   "costUsd": 0.219456,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 23,
+   "clicks": 6,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    3,
+    6,
+    2,
+    2,
+    2,
+    3,
+    4,
+    2,
+    4
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-40-28-262Z-7b939d73",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 58,
+   "durationS": 85.17,
+   "costUsd": 0.272449,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 36,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    11,
+    6,
+    13,
+    1,
+    5,
+    7,
+    1,
+    3,
+    4,
+    2,
+    2,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A0"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-32-03-856Z-6c4a760c",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 38,
+   "durationS": 61.924,
+   "costUsd": 0.465422,
+   "fastTurns": 14,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "skeptical-power-user",
+   "keypresses": 22,
+   "clicks": 7,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    11,
+    3,
+    5,
+    2,
+    1,
+    3,
+    4,
+    4,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-35-27-173Z-4aa91b85",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 39,
+   "durationS": 62.65,
+   "costUsd": 0.439917,
+   "fastTurns": 14,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "skeptical-power-user",
+   "keypresses": 24,
+   "clicks": 4,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    10,
+    6,
+    3,
+    1,
+    3,
+    4,
+    2,
+    3,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-38-04-566Z-83c18634",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 34,
+   "durationS": 54.122,
+   "costUsd": 0.397151,
+   "fastTurns": 13,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "skeptical-power-user",
+   "keypresses": 18,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    9,
+    1,
+    7,
+    3,
+    4,
+    1,
+    2,
+    2,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-40-55-977Z-2f7b420d",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 39,
+   "durationS": 63.2,
+   "costUsd": 0.487193,
+   "fastTurns": 15,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "skeptical-power-user",
+   "keypresses": 21,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    9,
+    6,
+    3,
+    2,
+    1,
+    3,
+    4,
+    2,
+    1,
+    4,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A1"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-32-11-911Z-4e421870",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 29,
+   "durationS": 75.966,
+   "costUsd": 0.07926,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 14,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    11,
+    3,
+    0,
+    2,
+    4,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-35-13-385Z-1cfe1edf",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 32,
+   "durationS": 52.786,
+   "costUsd": 0.065515,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 19,
+   "clicks": 7,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    11,
+    3,
+    1,
+    4,
+    5,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-37-42-716Z-9a29af53",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 11,
+   "actions": 30,
+   "durationS": 58.565,
+   "costUsd": 0.072849,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 15,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    11,
+    3,
+    1,
+    4,
+    2,
+    0,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-40-18-266Z-ed23d9e4",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 29,
+   "durationS": 49.938,
+   "costUsd": 0.052645,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 15,
+   "clicks": 7,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    9,
+    6,
+    5,
+    4,
+    3,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A2"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-32-19-957Z-567f1ccd",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "abandoned",
+   "completionReason": "gave_up",
+   "turns": 12,
+   "actions": 31,
+   "durationS": 62.23,
+   "costUsd": 0.082955,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 15,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    11,
+    3,
+    1,
+    4,
+    2,
+    0,
+    1,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-35-06-740Z-be53b5f6",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 36,
+   "durationS": 67.41,
+   "costUsd": 0.08643,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 23,
+   "clicks": 5,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    7,
+    2,
+    1,
+    4,
+    1,
+    3,
+    1,
+    3,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-37-30-859Z-43fe62e6",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 30,
+   "durationS": 59.546,
+   "costUsd": 0.073098,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 15,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    6,
+    4,
+    1,
+    2,
+    1,
+    2,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-40-31-660Z-94311180",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 8,
+   "actions": 28,
+   "durationS": 51.614,
+   "costUsd": 0.053742,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 15,
+   "clicks": 5,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    5,
+    6,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A3"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-32-27-887Z-a329c5e1",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 56,
+   "durationS": 147.683,
+   "costUsd": 0.006584,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 25,
+   "clicks": 10,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    4,
+    8,
+    7,
+    2,
+    2,
+    3,
+    5,
+    2,
+    5,
+    2,
+    9,
+    6
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-36-38-866Z-9cd4e12e",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 44,
+   "durationS": 90.684,
+   "costUsd": 0.006252,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 23,
+   "clicks": 8,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    4,
+    4,
+    1,
+    5,
+    2,
+    1,
+    2,
+    11,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-39-54-254Z-352ba1d4",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 16,
+   "actions": 47,
+   "durationS": 110.189,
+   "costUsd": 0.007346,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 12,
+   "clicks": 12,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    4,
+    7,
+    2,
+    2,
+    2,
+    2,
+    2,
+    5,
+    2,
+    3,
+    3,
+    2,
+    10
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-43-33-105Z-8d4808ce",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 40,
+   "durationS": 83.852,
+   "costUsd": 0.006309,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "skeptical-power-user",
+   "keypresses": 19,
+   "clicks": 9,
+   "zoomTurns": [],
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    1,
+    2,
+    2,
+    4,
+    1,
+    1,
+    11,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-keyboard-A4"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-46-47-042Z-047dc9db",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 18,
+   "actions": 35,
+   "durationS": 87.724,
+   "costUsd": 0.327554,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 12,
+   "clicks": 10,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    4,
+    3,
+    8,
+    1,
+    1,
+    1,
+    1,
+    1,
+    2,
+    1,
+    1,
+    4,
+    1,
+    1,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-50-20-685Z-9c3290e6",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 28,
+   "durationS": 65.931,
+   "costUsd": 0.204257,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 9,
+   "clicks": 11,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    3,
+    6,
+    2,
+    1,
+    4,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-53-08-933Z-a2b9a198",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 17,
+   "actions": 34,
+   "durationS": 90.93,
+   "costUsd": 0.31613,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 11,
+   "clicks": 13,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    8,
+    1,
+    1,
+    1,
+    2,
+    4,
+    1,
+    2,
+    1,
+    1,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A0"
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-56-55-181Z-1b0e5e75",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 28,
+   "durationS": 59.228,
+   "costUsd": 0.181182,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 10,
+   "clicks": 10,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    3,
+    11,
+    2,
+    1,
+    1,
+    4,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A0"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-46-55-014Z-cc6440a1",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 31,
+   "durationS": 67.779,
+   "costUsd": 0.494824,
+   "fastTurns": 15,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "low-vision-reader",
+   "keypresses": 12,
+   "clicks": 9,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    4,
+    3,
+    8,
+    2,
+    1,
+    4,
+    1,
+    2,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-49-51-822Z-2bd5efe6",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 29,
+   "durationS": 60.09,
+   "costUsd": 0.466389,
+   "fastTurns": 15,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "low-vision-reader",
+   "keypresses": 11,
+   "clicks": 9,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    4,
+    3,
+    8,
+    1,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-52-31-488Z-832097df",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 16,
+   "actions": 34,
+   "durationS": 70.383,
+   "costUsd": 0.553916,
+   "fastTurns": 17,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "low-vision-reader",
+   "keypresses": 11,
+   "clicks": 13,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    8,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    2,
+    1,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A1"
+  },
+  {
+   "arm": "A1",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-56-02-400Z-d83b19bd",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192,
+    "serviceTier": "fast"
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 27,
+   "durationS": 49.68,
+   "costUsd": 0.352428,
+   "fastTurns": 12,
+   "servedTiers": [
+    "priority"
+   ],
+   "persona": "low-vision-reader",
+   "keypresses": 10,
+   "clicks": 9,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    3,
+    11,
+    2,
+    1,
+    1,
+    4,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A1"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-47-03-024Z-c31d9465",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 29,
+   "durationS": 57.044,
+   "costUsd": 0.069225,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 10,
+   "clicks": 12,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    4,
+    3,
+    7,
+    1,
+    6,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-49-49-014Z-91446465",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 32,
+   "durationS": 63.759,
+   "costUsd": 0.067494,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 12,
+   "clicks": 11,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    4,
+    3,
+    9,
+    1,
+    6,
+    4,
+    3,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-52-32-999Z-b1886511",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 24,
+   "durationS": 54.548,
+   "costUsd": 0.059546,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 8,
+   "clicks": 10,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A2"
+  },
+  {
+   "arm": "A2",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-55-18-024Z-bfc19c2e",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "low",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 25,
+   "durationS": 54.082,
+   "costUsd": 0.059193,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 10,
+   "clicks": 8,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    4,
+    3,
+    8,
+    1,
+    6,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A2"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-47-11-024Z-03a68195",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 31,
+   "durationS": 79.188,
+   "costUsd": 0.090353,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 10,
+   "clicks": 13,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    4,
+    3,
+    7,
+    1,
+    6,
+    1,
+    3,
+    1,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-50-45-530Z-cf0f8db2",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 29,
+   "durationS": 60.778,
+   "costUsd": 0.072757,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 10,
+   "clicks": 11,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    4,
+    3,
+    9,
+    1,
+    6,
+    1,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-53-09-949Z-dd3f3099",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 32,
+   "durationS": 72.67,
+   "costUsd": 0.087807,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 11,
+   "clicks": 12,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    4,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    3,
+    1,
+    2,
+    0
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A3"
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-56-33-204Z-39b1b881",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 30,
+   "durationS": 68.372,
+   "costUsd": 0.081021,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 10,
+   "clicks": 11,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    4,
+    3,
+    3,
+    6,
+    1,
+    5,
+    2,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A3"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-47-19-027Z-a4ca3f04",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 36,
+   "durationS": 79.773,
+   "costUsd": 0.00695,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 7,
+   "clicks": 21,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    4,
+    3,
+    12,
+    1,
+    1,
+    4,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-24T02-50-25-590Z-35e27b42",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 60.687,
+   "costUsd": 0.004631,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 8,
+   "clicks": 9,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    3,
+    6,
+    1,
+    1,
+    4,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-52-57-414Z-435eba41",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 19,
+   "actions": 59,
+   "durationS": 109.165,
+   "costUsd": 0.009123,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 7,
+   "clicks": 36,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    15,
+    2,
+    1,
+    4,
+    1,
+    1,
+    1,
+    2,
+    1,
+    1,
+    1,
+    1,
+    1,
+    18,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A4"
+  },
+  {
+   "arm": "A4",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-24T02-57-27-684Z-287555ae",
+   "model": "gpt-6-luna",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 28,
+   "durationS": 60.552,
+   "costUsd": 0.004711,
+   "fastTurns": null,
+   "servedTiers": [],
+   "persona": "low-vision-reader",
+   "keypresses": 4,
+   "clicks": 17,
+   "zoomTurns": [
+    1
+   ],
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    12,
+    1,
+    1,
+    1,
+    1,
+    4,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "workdir": "fid-lowvision-A4"
+  }
+ ]
+}

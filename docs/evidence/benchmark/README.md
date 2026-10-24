@@ -32,6 +32,9 @@ cost projection. It needs no keys and spends nothing. The live command writes
 | `--dotenv <path>`          | none                  | Passed to `humanish run` and `humanish reclaim`; loaded by Node for `analyze`  |
 | `--cli <path>`             | `dist/cli.js`         | Another humanish build, such as an installed package's `dist/cli.js`          |
 | `--participant-cap <usd>`  | 0.6                   | The generated study's `caps.maxUsd` for a priced participant                  |
+| `--participant <model[@effort]>` | the CLI's default | The `openai-computer-use` participant's `actor.model` and `actor.reasoningEffort` |
+| `--service-tier fast`      | none                  | The participant's `actor.serviceTier`: OpenAI Fast mode on every request      |
+| `--persona <file>`         | `humanish/personas/synthetic-new-user.yaml` | The persona file the generated studies copy and name                |
 | `--analysis-max-usd <usd>` | the admitted cost     | Override the automatic per-run cap with a fixed `humanish analyze --max-cost` |
 | `--analysis-max-output-tokens <n>` | 16384 | Each analysis's output limit, 256 to 32768, passed to `humanish analyze --max-output-tokens` |
 | `--no-analysis`            | off                   | Score participant reports only                                                |
@@ -287,6 +290,10 @@ recordings, and seven on three movie-game runs, in
 [2026-10-23-wait-time.md](2026-10-23-wait-time.md) times a one-participant study phase by phase,
 three times remote and three times local, and times `gpt-6.1-sol` at medium effort, at medium
 effort with low text verbosity, and at low effort on the same Taskly and movie-game recordings.
+[2026-10-24-participant-models.md](2026-10-24-participant-models.md) compares five participant
+settings over 40 runs each: `gpt-5.6-sol` at medium effort with and without Fast mode,
+`gpt-6.1-sol` at low and medium effort, and `gpt-6-luna` at medium effort, with latency, recall,
+false assurance, persona fidelity and cost per participant.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where

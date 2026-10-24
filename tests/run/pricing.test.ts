@@ -332,6 +332,85 @@ describe("estimateActorCost: cache writes + long-context tiering", () => {
   });
 });
 
+describe("estimateActorCost: Fast mode", () => {
+  // A fake sheet with the shape of gpt-5.6-sol's Fast mode: every rate twice the standard one.
+  const rate: ModelRate = {
+    inputUsdPerToken: 4e-6,
+    cachedInputUsdPerToken: 0.4e-6,
+    cacheWriteUsdPerToken: 5e-6,
+    outputUsdPerToken: 20e-6,
+    fast: {
+      inputUsdPerToken: 8e-6,
+      cachedInputUsdPerToken: 0.8e-6,
+      cacheWriteUsdPerToken: 10e-6,
+      outputUsdPerToken: 40e-6,
+    },
+    longContext: { thresholdInputTokens: 1000, inputMultiplier: 2, outputMultiplier: 1.5 },
+    asOf: "2026-10-24",
+    source: "fake-sheet://fast",
+  };
+  const rates = { "fast-model": rate };
+
+  it("prices each request at the tier the provider served it at", () => {
+    const cost = estimateActorCost(
+      {
+        input: 600,
+        output: 20,
+        cachedInput: 200,
+        turns: [
+          { input: 300, cachedInput: 100, output: 10, serviceTier: "priority" },
+          { input: 300, cachedInput: 100, output: 10, serviceTier: "default" },
+        ],
+      },
+      "fast-model",
+      rates,
+    );
+    // Fast: 200*8e-6 + 100*0.8e-6 + 10*40e-6 = 0.00208. Standard: 200*4e-6 + 100*0.4e-6 + 10*20e-6 = 0.00104.
+    expect(cost.estimatedCostUsd).toBeCloseTo(0.00312, 6);
+    expect(cost.breakdown?.fastTurns).toBe(1);
+  });
+
+  it("applies the long-context tier on top of the fast rate", () => {
+    const cost = estimateActorCost(
+      { input: 1200, output: 10, turns: [{ input: 1200, output: 10, serviceTier: "fast" }] },
+      "fast-model",
+      rates,
+    );
+    // 1200*8e-6*2 + 10*40e-6*1.5 = 0.0192 + 0.0006.
+    expect(cost.estimatedCostUsd).toBeCloseTo(0.0198, 6);
+  });
+
+  it("prices totals at the fast rate when a request was served fast and the ledger does not add up", () => {
+    const cost = estimateActorCost(
+      { input: 1000, output: 10, turns: [{ input: 400, output: 10, serviceTier: "fast" }] },
+      "fast-model",
+      rates,
+    );
+    expect(cost.estimatedCostUsd).toBeCloseTo(1000 * 8e-6 + 10 * 40e-6, 6);
+  });
+
+  it("declares a fast request on a model with no fast rate unpriced", () => {
+    const { fast: _fast, ...standard } = rate;
+    const cost = estimateActorCost(
+      { input: 300, output: 10, turns: [{ input: 300, output: 10, serviceTier: "fast" }] },
+      "fast-model",
+      { "fast-model": standard },
+    );
+    expect(cost.estimatedCostUsd).toBeNull();
+    expect(cost.reason).toBe("no_rate_for_model");
+  });
+
+  it("prices gpt-5.6-sol Fast mode at twice its standard rate", () => {
+    const usage = { input: 1000, output: 100, turns: [{ input: 1000, output: 100 }] };
+    const fastUsage = { ...usage, turns: [{ ...usage.turns[0]!, serviceTier: "priority" }] };
+    const standard = estimateActorCost(usage, "gpt-5.6-sol").estimatedCostUsd!;
+    expect(estimateActorCost(fastUsage, "gpt-5.6-sol").estimatedCostUsd).toBeCloseTo(
+      standard * 2,
+      9,
+    );
+  });
+});
+
 describe("estimateAggregatedTurnCost", () => {
   // Codex turn.completed usage from a 0.107.0 live terminal run: one turn summing every request.
   const turn = { input: 294_603, cachedInput: 262_238, cacheWriteInput: 32_329, output: 1_526 };

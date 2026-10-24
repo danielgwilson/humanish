@@ -21,6 +21,10 @@ import { DEFAULT_ANALYSIS_SPEC, parseAnalysisSpecs, refusedSpecs, runAnalysisMat
 import {
   BRAINS,
   analysisCostFor,
+  parseParticipant,
+  withParticipant,
+  type Brain,
+  type ParticipantSettings,
   canStartParticipant,
   SpendLedger,
   capThatFits,
@@ -34,7 +38,14 @@ import {
   type BrainId,
   type BudgetSettings,
 } from "./lib/plan.js";
-import { REPO_ROOT, fixtureDigests, studyId, writeProject } from "./lib/project.js";
+import {
+  DEFAULT_PERSONA_FILE,
+  REPO_ROOT,
+  fixtureDigests,
+  personaId,
+  studyId,
+  writeProject,
+} from "./lib/project.js";
 import {
   MANIFEST_SCHEMA,
   analysisRefusalLines,
@@ -59,6 +70,9 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
   --dotenv <path>          passed to the humanish CLI, which loads keys without printing them
   --cli <path>             humanish CLI to run (default: this checkout's dist/cli.js)
   --participant-cap <usd>  the study's caps.maxUsd for a priced participant (default 0.6)
+  --participant <model[@effort]> the participant model and reasoning effort (default: the CLI's)
+  --service-tier fast      send participant requests in OpenAI Fast mode
+  --persona <file>         persona file the studies use (default: humanish/personas/synthetic-new-user.yaml)
   --analysis-max-usd <usd> per-run cap override (default: the admitted cost analyze --dry-run reports)
   --analysis-max-output-tokens <n> each analysis's output limit, 256 to 32768 (default 16384)
   --no-analysis            skip the analysis step
@@ -105,6 +119,9 @@ const { values } = parseArgs({
     cli: { type: "string", default: path.join(REPO_ROOT, "dist", "cli.js") },
     "participant-cap": { type: "string", default: "0.6" },
     "analysis-max-usd": { type: "string" },
+    participant: { type: "string" },
+    "service-tier": { type: "string" },
+    persona: { type: "string" },
     "analysis-max-output-tokens": { type: "string" },
     "no-analysis": { type: "boolean", default: false },
     "work-dir": { type: "string" },
@@ -123,10 +140,19 @@ if (values.help) {
   process.exit(0);
 }
 
+/** The results file's participant suffix, such as `-gpt-6.1-sol@low-fast`. */
+function participantLabel(settings: ParticipantSettings | undefined): string {
+  if (settings === undefined) return "";
+  const effort = settings.reasoningEffort === undefined ? "" : `@${settings.reasoningEffort}`;
+  return `-${settings.model}${effort}${settings.serviceTier === undefined ? "" : `-${settings.serviceTier}`}`;
+}
+
 function writeResults(projectDir: string, manifest: Manifest, outDir: string): void {
   const result = buildResult(projectDir, manifest);
   const stem =
     `${result.createdAt.slice(0, 10)}-${result.humanish.version}-${manifest.mission}-${manifest.brains.join("+")}` +
+    participantLabel(manifest.participant) +
+    (manifest.persona === undefined || manifest.persona === "synthetic-new-user" ? "" : `-${manifest.persona}`) +
     (manifest.analysisMatrix ? "-analysis-models" : "");
   mkdirSync(outDir, { recursive: true });
   const jsonPath = path.join(outDir, `${stem}.json`);
@@ -336,6 +362,20 @@ for (const brain of brainIds) {
   if (!isBrainId(brain)) fail(`Unknown brain ${brain}. Choose from: ${Object.keys(BRAINS).join(", ")}.`);
 }
 const brains = brainIds as BrainId[];
+let participant: ParticipantSettings | undefined;
+if (values.participant !== undefined || values["service-tier"] !== undefined) {
+  try {
+    participant = parseParticipant(values.participant ?? "gpt-5.6-sol", values["service-tier"]);
+    for (const brain of brains) withParticipant(BRAINS[brain], participant);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
+}
+/** The brain with this invocation's participant settings. */
+const brainFor = (id: BrainId): Brain =>
+  participant === undefined ? BRAINS[id] : withParticipant(BRAINS[id], participant);
+const personaFile = path.resolve(values.persona ?? DEFAULT_PERSONA_FILE);
+if (!existsSync(personaFile)) fail(`No persona file at ${personaFile}.`);
 const runsPerArm = Number(values.runs);
 if (!Number.isSafeInteger(runsPerArm) || runsPerArm < 1) fail(`--runs must be a whole number of at least 1.`);
 if (values.mission !== "neutral" && values.mission !== "walked") fail(`--mission must be neutral or walked.`);
@@ -362,16 +402,17 @@ const outDir = path.resolve(values.out ?? workDir);
 mkdirSync(projectDir, { recursive: true });
 writeProject(
   projectDir,
-  brains.map((brain) => BRAINS[brain]),
+  brains.map(brainFor),
   mission,
   positiveNumber(values["participant-cap"], "--participant-cap"),
+  personaFile,
 );
 
 // The CLI's own dry run checks each generated study and reports its worst-case desktop minutes.
 let worstCaseDesktopMinutes = 0;
 for (const brain of brains) {
   for (const arm of ["planted", "clean"] as const) {
-    const id = studyId(BRAINS[brain], arm);
+    const id = studyId(brainFor(brain), arm);
     const check = await runCli(cliPath, ["run", id, "--cwd", projectDir, "--dry-run", "--no-open", "--detach", "--json"], {
       logFile,
       timeoutMs: SHORT_TIMEOUT_MS,
@@ -398,15 +439,15 @@ process.stdout.write(
       : "\n"),
 );
 for (const brain of brains) {
-  const projection = projectBrain(BRAINS[brain], runsPerArm * 2, budget);
+  const projection = projectBrain(brainFor(brain), runsPerArm * 2, budget);
   process.stdout.write(
     `${brain}: ${projection.runs} runs planned. At typical spend, ${projection.participantsFit} runs` +
       `${budget.analysis ? ` and ${projection.analysesFit} analyses` : ""} fit under $${budget.maxUsdPerBrain}, about $${projection.typicalUsd.toFixed(2)}. ` +
       `Worst case for the whole plan: $${projection.boundUsd.toFixed(2)}.` +
-      `${BRAINS[brain].priced ? "" : " Participant model spend is unpriced and not bounded by the cap."}\n`,
+      `${brainFor(brain).priced ? "" : " Participant model spend is unpriced and not bounded by the cap."}\n`,
   );
   if (projection.participantsFit < projection.runs || (budget.analysis && projection.analysesFit < projection.runs)) {
-    const needed = capThatFits(BRAINS[brain], runsPerArm * 2, budget);
+    const needed = capThatFits(brainFor(brain), runsPerArm * 2, budget);
     process.stdout.write(
       `  The plan does not fit $${budget.maxUsdPerBrain}: every run and analysis starts at --max-usd ${needed}, or lower --runs.\n`,
     );
@@ -444,7 +485,9 @@ const manifest: Manifest = {
   brains,
   runsPerArm,
   budget,
-  fixture: fixtureDigests(),
+  fixture: fixtureDigests(personaFile),
+  ...(participant === undefined ? {} : { participant }),
+  persona: personaId(personaFile),
   stopped: {},
   runs: [],
 };
@@ -465,7 +508,7 @@ const runDirectories = (): Set<string> =>
   new Set(existsSync(runsRoot) ? readdirSync(runsRoot).filter((name) => name !== "latest.json") : []);
 
 for (const planned of planRuns(brains, runsPerArm)) {
-  const brain = BRAINS[planned.brain];
+  const brain = brainFor(planned.brain);
   if (interrupted) manifest.stopped[planned.brain] ??= "interrupted";
   if (manifest.stopped[planned.brain]) continue;
   const spentSoFar = spent[planned.brain] ?? 0;

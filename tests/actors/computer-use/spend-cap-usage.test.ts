@@ -48,6 +48,7 @@ interface LoopRun {
   /** Requests (1-based) that never answer, so the turn bound reads them as stalled. */
   stall?: number[];
   priorUnknown?: boolean;
+  serviceTier?: "fast";
 }
 
 async function run(reply: (request: number) => CuaTurn, options: LoopRun = {}) {
@@ -74,10 +75,16 @@ async function run(reply: (request: number) => CuaTurn, options: LoopRun = {}) {
       id: "spend-cap-fixture",
       version: MODEL,
       capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
-      ...(options.maxOutputTokens === undefined
+      ...(options.maxOutputTokens === undefined && options.serviceTier === undefined
         ? {}
         : {
-            modelSettings: { reasoningEffort: "medium", maxOutputTokens: options.maxOutputTokens },
+            modelSettings: {
+              reasoningEffort: "medium",
+              ...(options.maxOutputTokens === undefined
+                ? {}
+                : { maxOutputTokens: options.maxOutputTokens }),
+              ...(options.serviceTier === undefined ? {} : { serviceTier: options.serviceTier }),
+            },
           }),
       ...(options.priorUnknown ? { interactionUsageIncomplete: true } : {}),
       nextTurn: async () => {
@@ -335,5 +342,43 @@ describe("a capped OpenAI session whose transport fails", () => {
     expect(result.dispatches).toBe(3 + IMPRESSIONS_REQUEST);
     expect(result.trace.completionReason).toBe("goal_satisfied");
     expect(result.trace.interactionUsageIncomplete).toBe(true);
+  });
+});
+
+describe("a participant in Fast mode", () => {
+  const servedFast = (): CuaTurn => {
+    const turn = structuredClone(captured);
+    return { ...turn, usage: { ...turn.usage, serviceTier: "priority" } };
+  };
+
+  it("records the requested tier and the tier each request was served at", async () => {
+    const result = await run((n) => (n < 2 ? servedFast() : finished(servedFast())), {
+      serviceTier: "fast",
+    });
+    expect(result.trace.modelSettings).toEqual({ reasoningEffort: "medium", serviceTier: "fast" });
+    expect(result.trace.tokenUsage?.turns?.map((turn) => turn.serviceTier)).toEqual([
+      "priority",
+      "priority",
+    ]);
+  });
+
+  it("stops on the cap at the fast rate where the standard rate would go on", async () => {
+    // One captured reply is about $0.017 at the standard rate and twice that served fast.
+    const standard = await run(() => structuredClone(captured), { maxUsd: 0.025 });
+    const fast = await run(servedFast, { maxUsd: 0.025, serviceTier: "fast" });
+    expect(standard.calls.requests).toBeGreaterThan(1);
+    expect(fast.calls.requests).toBe(1);
+    expect(fast.trace.stopCause).toBe("spend_limit");
+  });
+
+  it("books a lost request at the fast rate", async () => {
+    const result = await run((n) => (n < 3 ? servedFast() : finished(servedFast())), {
+      maxUsd: 10,
+      maxOutputTokens: 1000,
+      serviceTier: "fast",
+      stall: [2],
+    });
+    const booked = result.priced.find((usage) => (usage.turns?.length ?? 0) === 2);
+    expect(booked?.turns?.[1]).toMatchObject({ output: 1000, serviceTier: "fast" });
   });
 });

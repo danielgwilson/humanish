@@ -92,6 +92,7 @@ const NOT_FREE_TEXT: Readonly<Record<string, readonly string[]>> = {
     "actor.dwell.then",
     "actor.localAgent",
     "actor.reasoningEffort",
+    "actor.serviceTier",
     "comms.email.kind",
     "execution.desktop.browser",
     "execution.desktop.device",

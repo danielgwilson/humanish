@@ -187,12 +187,15 @@ export interface CuaTurn {
     output?: number;
     cachedInput?: number;
     cacheWriteInput?: number;
+    /** The processing tier that served this request, when the session asked for one. */
+    serviceTier?: string;
     /** Per model inference inside this provider interaction. */
     turns?: Array<{
       input?: number;
       output?: number;
       cachedInput?: number;
       cacheWriteInput?: number;
+      serviceTier?: string;
     }>;
   };
   /** True when the model reported a natural endpoint (no further action). */
@@ -231,6 +234,8 @@ export interface CuaProvider {
   readonly modelSettings?: {
     readonly reasoningEffort: ReasoningEffort;
     readonly maxOutputTokens?: number;
+    /** The processing tier every request asks for; absent asks for none. */
+    readonly serviceTier?: "fast";
   };
   readonly capabilities: ActorCapabilities;
   /**

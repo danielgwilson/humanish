@@ -22,7 +22,7 @@ import {
   type AnalysisArtifact,
   type RunBundle,
 } from "./bundle.js";
-import type { BrainId, BudgetSettings } from "./plan.js";
+import type { BrainId, BudgetSettings, ParticipantSettings } from "./plan.js";
 import { round } from "./plan.js";
 import { REPO_ROOT, sha256, type FixtureDigests } from "./project.js";
 import {
@@ -124,6 +124,10 @@ export interface Manifest {
   runs: RunRecord[];
   /** Present when `--analysis-models`, `--analysis-repeats` or `--reanalyze` ran the matrix. */
   analysisMatrix?: MatrixAnalysis[];
+  /** The `--participant` and `--service-tier` settings; absent means the CLI's defaults. */
+  participant?: ParticipantSettings;
+  /** The persona id the studies named; absent means synthetic-new-user. */
+  persona?: string;
 }
 
 export interface ScoredRun {
@@ -204,6 +208,7 @@ export interface BenchResult {
   humanish: Manifest["humanish"];
   rubric: { id: string; version: number; sha256: string };
   fixture: { id: "taskly"; digests: FixtureDigests; persona: string };
+  participant?: ParticipantSettings;
   mission: { id: MissionId; sha256: string; text: string };
   runsPerArm: number;
   budget: BudgetSettings;
@@ -399,7 +404,8 @@ export function buildResult(projectDir: string, manifest: Manifest): BenchResult
     createdAt: new Date().toISOString(),
     humanish: manifest.humanish,
     rubric: { id: RUBRIC_ID, version: RUBRIC_VERSION, sha256: sha256(answerKey) },
-    fixture: { id: "taskly", digests: manifest.fixture, persona: "synthetic-new-user" },
+    fixture: { id: "taskly", digests: manifest.fixture, persona: manifest.persona ?? "synthetic-new-user" },
+    ...(manifest.participant === undefined ? {} : { participant: manifest.participant }),
     mission: { id: mission.id, sha256: sha256(mission.text), text: mission.text },
     runsPerArm: manifest.runsPerArm,
     budget: manifest.budget,

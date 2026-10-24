@@ -168,6 +168,8 @@ export interface CuaParticipantPlanEntry {
    *  you read before spending money, so a declared per-participant difference has to be visible there. */
   reasoningEffort?: string;
   maxOutputTokens?: number;
+  /** The declared OpenAI service tier, which bills at its own rate. */
+  serviceTier?: string;
   /** Present only when a participant overrides subject.appUrl; digest avoids leaking preview hosts in plan logs. */
   targetDigest?: string;
   /** The participant's declared start, in ms after the run starts its participants. */

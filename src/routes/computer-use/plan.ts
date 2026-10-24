@@ -44,6 +44,7 @@ import {
   desktopMediaValidationReason,
   networkCaptureValidationReason,
   outputTokenLimitValidationReason,
+  serviceTierValidationReason,
   receivingEmailValidationReason,
   taskProtocolValidationReason,
   waitLimitValidationReason,
@@ -206,6 +207,7 @@ function unsupportedDeclarationReason(
     desktopMediaValidationReason(config) ||
     networkCaptureValidationReason(config, "computer-use") ||
     outputTokenLimitValidationReason(config) ||
+    serviceTierValidationReason(config) ||
     waitLimitValidationReason(config);
   if (reason) return invalid(reason);
   if (
@@ -215,6 +217,11 @@ function unsupportedDeclarationReason(
     return invalid(
       "maxOutputTokens cannot be enforced by a custom runSession/provider/executor route.",
     );
+  if (
+    config.actor?.serviceTier !== undefined &&
+    (hasRunSession || driving.createProvider || driving.inProcess)
+  )
+    return invalid("serviceTier is not sent by a custom runSession/provider/executor route.");
   const receivingReason = receivingEmailValidationReason(config);
   if (receivingReason) return invalid(receivingReason);
   if (inProcessRoute && config.comms?.email?.kind === "real")

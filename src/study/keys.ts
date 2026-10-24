@@ -137,6 +137,7 @@ export const ACTOR = {
   clock: { timeZone: true },
   localAgent: true,
   reasoningEffort: true,
+  serviceTier: true,
   stopWhen: STOP_WHEN,
   dwell: DWELL,
   tasks: { id: true, goal: true, success: STOP_WHEN } satisfies Keys<StudyTask>,

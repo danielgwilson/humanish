@@ -37,17 +37,23 @@ function normalizedUsageTurns(usage: TurnUsage): UsageTurns | undefined {
     )
       return undefined;
     if ((raw.cachedInput ?? 0) + (raw.cacheWriteInput ?? 0) > (raw.input ?? 0)) return undefined;
-    turns.push(
-      Object.fromEntries(
+    turns.push({
+      ...Object.fromEntries(
         fields.flatMap((field) => (raw[field] === undefined ? [] : [[field, raw[field]]])),
       ),
-    );
+      ...servedTier(raw.serviceTier),
+    });
   }
   return fields.every(
     (field) => turns.reduce((sum, turn) => sum + (turn[field] ?? 0), 0) === (usage[field] ?? 0),
   )
     ? turns
     : undefined;
+}
+
+/** The served-tier field of a usage record, kept only when the provider named one. */
+function servedTier(tier: unknown): { serviceTier?: string } {
+  return typeof tier === "string" && tier !== "" ? { serviceTier: tier } : {};
 }
 
 export function isCompleteTurnUsage(usage: CuaTurn["usage"]): usage is CompleteTurnUsage {
@@ -170,7 +176,7 @@ export class UsageLedger {
     this.cachedInput += usage.cachedInput ?? 0;
     this.cacheWriteInput += usage.cacheWriteInput ?? 0;
     this.output += usage.output ?? 0;
-    if (raw.turns === undefined) this.turns.push(usage);
+    if (raw.turns === undefined) this.turns.push({ ...usage, ...servedTier(raw.serviceTier) });
     else if (turns !== undefined) this.turns.push(...turns);
   }
 
@@ -272,6 +278,7 @@ export class UsageLedger {
       output,
       cachedInput: 0,
       cacheWriteInput: input,
+      ...servedTier(this.provider.modelSettings?.serviceTier),
     }));
     const sum = (field: "input" | "output" | "cacheWriteInput"): number =>
       booked.reduce((total, turn) => total + turn[field], 0);
