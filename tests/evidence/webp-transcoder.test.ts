@@ -39,3 +39,15 @@ it("stops waiting for an abandoned frame", async () => {
   job.abandon();
   await expect(job.webp).rejects.toThrow(/abandoned/);
 });
+
+it("counts an abandoned frame's bytes against its queue until the worker answers", async () => {
+  // Two 36 MB frames, stored uncompressed, are over the 64 MB queue together.
+  const image = new PNG({ width: 3000, height: 3000 });
+  image.data.fill(90);
+  const large = PNG.sync.write(image, { deflateLevel: 0 });
+  const first = webpTranscoder().transcode(large)!;
+  first.abandon();
+  await expect(first.webp).rejects.toThrow(/abandoned/);
+  // The worker still holds the first frame, so the second one does not fit.
+  expect(webpTranscoder().transcode(large)).toBeUndefined();
+});

@@ -23,11 +23,21 @@ export interface WebpTranscoder {
 
 class WorkerTranscoder implements WebpTranscoder {
   private readonly worker: Worker;
-  private readonly waiting = new Map<
+  /**
+   * Every frame posted to the worker until it answers. An abandoned frame still holds its bytes
+   * there, so it counts against the budget, but it no longer keeps the process alive.
+   */
+  private readonly posted = new Map<
     number,
-    { size: number; resolve: (webp: Buffer) => void; reject: (error: Error) => void }
+    {
+      size: number;
+      abandoned: boolean;
+      resolve: (webp: Buffer) => void;
+      reject: (error: Error) => void;
+    }
   >();
   private queuedBytes = 0;
+  private wanted = 0;
   private nextId = 0;
   private failed = false;
 
@@ -38,9 +48,12 @@ class WorkerTranscoder implements WebpTranscoder {
         if (!message.ready) this.fail(new Error(message.error));
         return;
       }
-      const job = this.waiting.get(message.id);
+      const job = this.posted.get(message.id);
       if (job === undefined) return;
-      this.settle(message.id, job.size);
+      this.posted.delete(message.id);
+      this.queuedBytes -= job.size;
+      if (job.abandoned) return;
+      this.release();
       if ("error" in message) job.reject(new Error(message.error));
       else
         job.resolve(Buffer.from(message.webp.buffer, message.webp.byteOffset, message.webp.length));
@@ -57,36 +70,36 @@ class WorkerTranscoder implements WebpTranscoder {
   transcode(png: Buffer): { webp: Promise<Buffer>; abandon: () => void } | undefined {
     if (this.failed || this.queuedBytes + png.length > QUEUE_BYTE_BUDGET) return undefined;
     const id = this.nextId++;
-    if (this.waiting.size === 0) this.worker.ref();
+    if (this.wanted++ === 0) this.worker.ref();
     this.queuedBytes += png.length;
     const webp = new Promise<Buffer>((resolve, reject) => {
-      this.waiting.set(id, { size: png.length, resolve, reject });
+      this.posted.set(id, { size: png.length, abandoned: false, resolve, reject });
       this.worker.postMessage({ id, png: new Uint8Array(png) });
     });
     return {
       webp,
       abandon: () => {
-        const job = this.waiting.get(id);
-        if (job === undefined) return;
-        this.settle(id, job.size);
+        const job = this.posted.get(id);
+        if (job === undefined || job.abandoned) return;
+        job.abandoned = true;
+        this.release();
         job.reject(new Error("The frame's WebP was abandoned."));
       },
     };
   }
 
-  private settle(id: number, size: number): void {
-    this.waiting.delete(id);
-    this.queuedBytes -= size;
-    if (this.waiting.size === 0) this.worker.unref();
+  /** One frame fewer that someone waits for; with none left the worker stops holding the process. */
+  private release(): void {
+    if (--this.wanted === 0) this.worker.unref();
   }
 
   private fail(error: Error): void {
     if (this.failed) return;
     this.failed = true;
-    for (const [id, job] of this.waiting) {
-      this.settle(id, job.size);
-      job.reject(error);
-    }
+    for (const job of this.posted.values()) if (!job.abandoned) job.reject(error);
+    this.posted.clear();
+    this.queuedBytes = 0;
+    this.wanted = 0;
     void this.worker.terminate();
   }
 }
