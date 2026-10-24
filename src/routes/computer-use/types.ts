@@ -572,6 +572,8 @@ export interface SandboxReleaseFact {
 /** One participant's end-to-end run outcome (internal; projected into CuaParticipantResult + the bundle). */
 export interface ParticipantRunOutcome {
   spec: DesktopParticipantRun;
+  /** The PNG frames its WebP replaced, which the run removes once its final bundle is written. */
+  replacedFrames?: string[];
   session?: CuaLoopResult;
   /** The harness failed before the session reached a terminal status. */
   sessionError?: string;

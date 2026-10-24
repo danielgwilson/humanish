@@ -8,6 +8,8 @@
         "src/guest-media-worker.ts",
         // Started by path, detached, by the update check.
         "src/cli/update-check-worker.ts",
+        // Started by URL as a worker thread by src/evidence/webp-transcoder.ts.
+        "src/evidence/webp-encode-worker.ts",
         "scripts/**/*.{mjs,ts}",
         "runtime/**/*.mjs",
         // Served to the browser by bench and fixture labs.

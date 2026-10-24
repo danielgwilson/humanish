@@ -204,7 +204,7 @@
         "lifecycle": "completed",
         "title": "turn-00-start",
         "screenshotRef": {
-          "path": "screenshots/turn-00-start.png",
+          "path": "screenshots/turn-00-start.webp",
           "redaction": "none"
         },
         "page": {
@@ -230,7 +230,7 @@
         "lifecycle": "completed",
         "title": "turn-01",
         "screenshotRef": {
-          "path": "screenshots/turn-01.png",
+          "path": "screenshots/turn-01.webp",
           "redaction": "none"
         },
         "page": {
@@ -300,12 +300,12 @@
     "artifacts": [
       {
         "label": "screenshot 01 (raw)",
-        "path": "screenshots/turn-00-start.png",
+        "path": "screenshots/turn-00-start.webp",
         "kind": "screenshot"
       },
       {
         "label": "screenshot 02 (raw)",
-        "path": "screenshots/turn-01.png",
+        "path": "screenshots/turn-01.webp",
         "kind": "screenshot"
       }
     ]
@@ -573,7 +573,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "screenshot",
-          "url": "screenshots/turn-01.png",
+          "url": "screenshots/turn-01.webp",
           "title": "Desktop (raw)"
         },
         "viewport": {
@@ -613,7 +613,7 @@
           "intent": "Watch the computer-use actor drive the subject app in a hosted desktop browser.",
           "state": "Done.",
           "actorStatus": "passed",
-          "screenshotUrl": "screenshots/turn-01.png"
+          "screenshotUrl": "screenshots/turn-01.webp"
         },
         "actor": {
           "schema": "humanish.actor-trace.v1",
@@ -922,8 +922,8 @@
       "timeoutMs": 660000
     }
   ],
-  "screenshots/turn-00-start.png": "sha256:7659fb97ba139dedd84e9b8bf28965f4781fe7ef66269f78a31c08e519ed7a55",
-  "screenshots/turn-01.png": "sha256:ec7ce7bf9736663701ca6fad94d4c0aac645fa818ad78752bf4912ac64607325",
+  "screenshots/turn-00-start.webp": "sha256:d4c51de6946226a6616292a8af8978c427b324c2d35ddc519a05835b00e92df9",
+  "screenshots/turn-01.webp": "sha256:8d859f867342b4bb4379a4256f9f5ee00837ab5546df48d7b82ddbc40ca0b2ea",
   "status.json": {
     "schema": "humanish.run-status.v1",
     "runId": "[run]",

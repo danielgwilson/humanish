@@ -44,7 +44,7 @@ import { CUA_ACTOR_STUDY_PROVIDER_METADATA } from "../../../src/routes/computer-
 import { makeChromeBrowserStateObserver } from "../../../src/substrates/e2b/desktop-cdp.js";
 import { buildSingleParticipantBundle } from "../../../src/routes/computer-use/single-bundle.js";
 import { buildRunCostSummary } from "../../../src/run/cost-summary.js";
-import { makeParticipantWriteScreenshot } from "../../../src/routes/computer-use/participant-execution.js";
+import { makeParticipantWriteScreenshot } from "../../../src/routes/computer-use/participant-frames.js";
 import { pngTextChunk, withPngChunk } from "../../helpers/png-chunks.js";
 import {
   resolveSelfReportedBlocker,

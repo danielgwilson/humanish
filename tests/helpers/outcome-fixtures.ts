@@ -80,6 +80,11 @@ const clone = <T>(value: T): T => structuredClone(value);
 
 /** A blank 1x1 PNG, written where the golden holds a screenshot's digest. */
 const PLACEHOLDER_PNG = PNG.sync.write(new PNG({ width: 1, height: 1 }));
+/** A 4x3 lossless WebP, written for a frame the golden names `.webp`. */
+const PLACEHOLDER_WEBP = Buffer.from(
+  "UklGRjgAAABXRUJQVlA4TCsAAAAvA4AAAF9AkG0zxCLc3+MOwzN489+DDLBcAIIAEqUUUhhuhRVGjeh/UJcDAA==",
+  "base64",
+);
 
 function record(files: Record<string, unknown>, file: string): Record<string, unknown> {
   const value = files[file];
@@ -207,7 +212,7 @@ export async function outcomeCases(): Promise<OutcomeCase[]> {
 /**
  * Write one case as the only run of a new project under `root`, with the placeholders replaced by
  * readable values. A binary file the golden holds only as a digest (every one is a screenshot) is
- * written as a blank 1x1 PNG, so verify, which `humanish review` runs first, finds each referenced
+ * written as a blank image of its format, so verify, which `humanish review` runs first, finds each referenced
  * frame. The Observer page is left out: no reader here opens it.
  */
 export async function writeOutcomeCase(
@@ -224,7 +229,7 @@ export async function writeOutcomeCase(
     const target = path.resolve(runDir, file);
     await mkdir(path.dirname(target), { recursive: true });
     if (typeof value === "string" && value.startsWith("sha256:")) {
-      await writeFile(target, PLACEHOLDER_PNG);
+      await writeFile(target, file.endsWith(".webp") ? PLACEHOLDER_WEBP : PLACEHOLDER_PNG);
       continue;
     }
     const restored = restore(value, runId);

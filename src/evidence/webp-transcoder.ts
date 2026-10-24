@@ -1,0 +1,121 @@
+// Turns computer-use frames into lossless WebP in a worker thread, off the turn's path: a frame is
+// written and referenced as PNG first, and only a finished WebP replaces it (see
+// src/routes/computer-use/participant-frames.ts). The process shares one worker, so encoding uses
+// at most one core however many participants run.
+import { Worker } from "node:worker_threads";
+
+/**
+ * The PNG bytes that may wait for the worker at once. A frame past it stays PNG, so a busy runner
+ * keeps today's format for that frame instead of holding more frames in memory.
+ */
+const QUEUE_BYTE_BUDGET = 64 * 1024 * 1024;
+
+type Reply = { id: number; webp: Uint8Array } | { id: number; error: string };
+type Ready = { ready: true } | { ready: false; error: string };
+
+export interface WebpTranscoder {
+  /**
+   * The frame's WebP bytes, or undefined when the queue is full or the encoder failed. `abandon`
+   * drops a frame no one waits for any more, so it no longer keeps the process alive.
+   */
+  transcode(png: Buffer): { webp: Promise<Buffer>; abandon: () => void } | undefined;
+}
+
+class WorkerTranscoder implements WebpTranscoder {
+  private readonly worker: Worker;
+  /**
+   * Every frame posted to the worker until it answers. An abandoned frame still holds its bytes
+   * there, so it counts against the budget, but it no longer keeps the process alive.
+   */
+  private readonly posted = new Map<
+    number,
+    {
+      size: number;
+      abandoned: boolean;
+      resolve: (webp: Buffer) => void;
+      reject: (error: Error) => void;
+    }
+  >();
+  private queuedBytes = 0;
+  private wanted = 0;
+  private nextId = 0;
+  private failed = false;
+
+  constructor(entry: URL) {
+    this.worker = new Worker(entry);
+    this.worker.on("message", (message: Reply | Ready) => {
+      if ("ready" in message) {
+        if (!message.ready) this.fail(new Error(message.error));
+        return;
+      }
+      const job = this.posted.get(message.id);
+      if (job === undefined) return;
+      this.posted.delete(message.id);
+      this.queuedBytes -= job.size;
+      if (job.abandoned) return;
+      this.release();
+      if ("error" in message) job.reject(new Error(message.error));
+      else
+        job.resolve(Buffer.from(message.webp.buffer, message.webp.byteOffset, message.webp.length));
+    });
+    this.worker.on("error", (error) => this.fail(error));
+    this.worker.on("exit", (code) =>
+      this.fail(new Error(`The WebP worker exited with code ${code}.`)),
+    );
+    // An idle worker never keeps the process alive; a waiting frame does. Adding a message listener
+    // refs the worker, so this comes after the listeners.
+    this.worker.unref();
+  }
+
+  transcode(png: Buffer): { webp: Promise<Buffer>; abandon: () => void } | undefined {
+    if (this.failed || this.queuedBytes + png.length > QUEUE_BYTE_BUDGET) return undefined;
+    const id = this.nextId++;
+    if (this.wanted++ === 0) this.worker.ref();
+    this.queuedBytes += png.length;
+    const webp = new Promise<Buffer>((resolve, reject) => {
+      this.posted.set(id, { size: png.length, abandoned: false, resolve, reject });
+      this.worker.postMessage({ id, png: new Uint8Array(png) });
+    });
+    return {
+      webp,
+      abandon: () => {
+        const job = this.posted.get(id);
+        if (job === undefined || job.abandoned) return;
+        job.abandoned = true;
+        this.release();
+        job.reject(new Error("The frame's WebP was abandoned."));
+      },
+    };
+  }
+
+  /** One frame fewer that someone waits for; with none left the worker stops holding the process. */
+  private release(): void {
+    if (--this.wanted === 0) this.worker.unref();
+  }
+
+  private fail(error: Error): void {
+    if (this.failed) return;
+    this.failed = true;
+    for (const job of this.posted.values()) if (!job.abandoned) job.reject(error);
+    this.posted.clear();
+    this.queuedBytes = 0;
+    this.wanted = 0;
+    void this.worker.terminate();
+  }
+}
+
+let shared: WebpTranscoder | undefined;
+
+/**
+ * The process's transcoder, started on first use. From source the worker runs as TypeScript, which
+ * Node loads with its types stripped.
+ */
+export function webpTranscoder(): WebpTranscoder {
+  shared ??= new WorkerTranscoder(
+    new URL(
+      import.meta.url.endsWith(".ts") ? "./webp-encode-worker.ts" : "./webp-encode-worker.js",
+      import.meta.url,
+    ),
+  );
+  return shared;
+}
