@@ -162,6 +162,11 @@ export function derivedBundle(bundle: RunBundle, imagePaths: ImagePaths): RunBun
     return output !== undefined && output !== path.posix.normalize(cite) ? output : cite;
   };
   for (const stream of transformed.streams) {
+    // The stream's latest frame, as the Observer embeds it and its UI state names it.
+    if (stream.embed?.kind === "screenshot" && stream.embed.url !== undefined)
+      stream.embed.url = renamed(stream.embed.url);
+    if (stream.ui?.screenshotUrl !== undefined)
+      stream.ui.screenshotUrl = renamed(stream.ui.screenshotUrl);
     for (const artifact of stream.artifacts) {
       artifact.path = renamed(artifact.path);
       if (artifact.kind === "screenshot")

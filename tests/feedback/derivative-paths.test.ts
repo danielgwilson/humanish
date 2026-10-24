@@ -9,6 +9,8 @@ function bundle(): RunBundle {
     redaction: { status: "passed", notes: "Synthetic." },
     streams: [
       {
+        embed: { kind: "screenshot", url: "screenshots/later.webp" },
+        ui: { screenshotUrl: "screenshots/later.webp" },
         artifacts: [
           { kind: "screenshot", label: "frame (raw)", path: "screenshots/frame.png" },
           { kind: "screenshot", label: "frame (raw)", path: "screenshots/./frame.png" },
@@ -36,4 +38,6 @@ it("keeps the spelling of a cite whose frame keeps its path, and renames a WebP 
     "screenshots/later.png",
   ]);
   expect(derived.feedbackCandidates[0]!.evidence[0]!.path).toBe("screenshots/later.png");
+  expect(derived.streams[0]!.embed).toMatchObject({ url: "screenshots/later.png" });
+  expect(derived.streams[0]!.ui?.screenshotUrl).toBe("screenshots/later.png");
 });
