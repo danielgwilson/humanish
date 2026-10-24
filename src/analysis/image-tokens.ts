@@ -1,3 +1,5 @@
+import { WEBP_HEADER_BYTES, webpHeaderDimensions } from "../evidence/webp.js";
+
 /** An input image the analysis providers accept; the groups are the image type and its base64 bytes. */
 export const INPUT_IMAGE_DATA_URL = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
 
@@ -44,9 +46,15 @@ export const imageTokenCeiling = (model: string): number =>
   GEMINI_HIGH_RESOLUTION_IMAGE_TOKENS[model] ?? HIGH_DETAIL_IMAGE_TOKEN_CEILING;
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+/** Base64 characters that hold WEBP_HEADER_BYTES, rounded up to whole 3-byte groups. */
+const WEBP_HEADER_CHARS = Math.ceil(WEBP_HEADER_BYTES / 3) * 4;
 
-/** Width and height from a PNG data URL's IHDR chunk; undefined for anything else. */
-function pngDimensions(dataUrl: string): { width: number; height: number } | undefined {
+/** Width and height from a PNG data URL's IHDR chunk or a lossless WebP's VP8L header. */
+function imageDimensions(dataUrl: string): { width: number; height: number } | undefined {
+  const webp = new RegExp(`^data:image/webp;base64,([A-Za-z0-9+/]{${WEBP_HEADER_CHARS}})`).exec(
+    dataUrl,
+  );
+  if (webp) return webpHeaderDimensions(Buffer.from(webp[1]!, "base64"));
   const match = /^data:image\/png;base64,([A-Za-z0-9+/]{32})/.exec(dataUrl);
   if (!match) return undefined;
   const header = Buffer.from(match[1]!, "base64");
@@ -61,7 +69,7 @@ export function highDetailImageTokens(model: string, dataUrl: string): number {
   const fixed = GEMINI_HIGH_RESOLUTION_IMAGE_TOKENS[model];
   if (fixed !== undefined) return fixed;
   const sizing = HIGH_DETAIL_SIZING[model];
-  const size = sizing === undefined ? undefined : pngDimensions(dataUrl);
+  const size = sizing === undefined ? undefined : imageDimensions(dataUrl);
   if (sizing === undefined || size === undefined) return HIGH_DETAIL_IMAGE_TOKEN_CEILING;
   const patches = Math.ceil(size.width / 32) * Math.ceil(size.height / 32);
   // Integer tenths keep 1,350 × 1.2 at exactly 1,620 instead of a float just above it.

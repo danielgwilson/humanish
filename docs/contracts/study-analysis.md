@@ -314,8 +314,8 @@ stopped, an operator can remove the empty lock directory and retry.
 
 ## Evidence and findings
 
-Each request's packet admits up to 16 participants, 800 evidence items, 40 PNG
-captures, 160 KiB of text and 20 MiB of images. Individual source files, image
+Each request's packet admits up to 16 participants, 800 evidence items, 40
+captures (PNG or lossless WebP), 160 KiB of text and 20 MiB of images. Individual source files, image
 dimensions and result sizes have separate limits. Analysis reads run.json up to
 16 MiB and each participant's trace up to 32 MiB, as verify and the Observer do.
 It reads the traces one at a time and keeps of each only what selection can

@@ -9,7 +9,12 @@ import type { ExportFailure, ExportOptions, ExportResult } from "./export.js";
 import { renderObserver } from "../observer/render.js";
 import { inventorySandboxIds, publicSandboxView, scrubSandboxIdBytes } from "../run/sandbox-ids.js";
 import { splitStreamTraces } from "../run/stream-trace.js";
+import { PNG } from "pngjs";
+
+import { imageDimensionsError } from "../evidence/image.js";
 import { redactScreenshot, redactText } from "../evidence/redaction.js";
+import { readingsOf } from "../evidence/encoded-text.js";
+import { decodeWebp, webpStructure } from "../evidence/webp.js";
 import {
   assertRewritableNumbers,
   derivedBundle,
@@ -77,6 +82,8 @@ interface Inventory {
 }
 interface DerivationEntry {
   path: string;
+  /** Where the copy holds the file, when not at `path`: a WebP frame is blurred to a PNG. */
+  outputPath?: string;
   sourceSha256: string;
   outputSha256?: string;
   action: "copied" | "blurred" | "updated" | "omitted";
@@ -210,7 +217,11 @@ async function prospectivePhysicalPath(requested: string): Promise<string> {
   }
 }
 
-function assertFeedbackReferences(bundle: RunBundle, source: Inventory): void {
+function assertFeedbackReferences(
+  bundle: RunBundle,
+  source: Inventory,
+  imagePaths: ReadonlyMap<string, string>,
+): void {
   const retained = new Set(
     source.files.filter((file) => omittedReason(file.path) === undefined).map((file) => file.path),
   );
@@ -222,15 +233,20 @@ function assertFeedbackReferences(bundle: RunBundle, source: Inventory): void {
         throw new Error(
           "Feedback evidence must resolve to a retained or regenerated artifact in the derivative.",
         );
-      if (evidence.kind === "screenshot" && path.extname(evidence.path).toLowerCase() !== ".png") {
+      if (
+        evidence.kind === "screenshot" &&
+        path.extname(imagePaths.get(evidence.path) ?? evidence.path).toLowerCase() !== ".png"
+      ) {
         throw new Error("Feedback screenshot evidence must resolve to a transformed PNG.");
       }
     }
   }
 }
 
-/** PNG paths that run.json cites outside actor traces: feedback, adapter and stream artifacts. */
-function citedPngPaths(bundle: RunBundle): Set<string> {
+const IMAGE_EXTENSIONS = new Set([".png", ".webp"]);
+
+/** Image paths that run.json cites outside actor traces: feedback, adapter and stream artifacts. */
+function citedImagePaths(bundle: RunBundle): Set<string> {
   const cited = [
     ...bundle.feedbackCandidates.flatMap((candidate) => candidate.evidence.map(({ path }) => path)),
     ...(bundle.adapterArtifacts ?? []).map((artifact) => artifact.path),
@@ -239,26 +255,41 @@ function citedPngPaths(bundle: RunBundle): Set<string> {
   return new Set(
     cited
       .map((cite) => path.posix.normalize(cite))
-      .filter((cite) => path.extname(cite).toLowerCase() === ".png"),
+      .filter((cite) => IMAGE_EXTENSIONS.has(path.extname(cite).toLowerCase())),
   );
 }
 
 /**
- * The PNGs the derivative keeps. verify cannot read an image, so only one an actor trace registers
- * as a stream screenshot can be share_ready. A PNG nothing cites is dropped; a PNG that other
- * evidence cites refuses the export, since dropping it would change that evidence.
+ * The images the derivative keeps, each with the path the copy holds it at: a PNG at its own path,
+ * a WebP frame at the same path ending .png, since a blurred frame is a PNG. verify cannot read an
+ * image, so only one an actor trace registers as a stream screenshot can be share_ready. An image
+ * nothing cites is dropped; one that other evidence cites refuses the export, since dropping it
+ * would change that evidence.
  */
-function keptPngPaths(source: Inventory, bundle: RunBundle): Set<string> {
+function keptImagePaths(source: Inventory, bundle: RunBundle): Map<string, string> {
   const streamShots = streamScreenshotPaths(bundle);
-  const cited = citedPngPaths(bundle);
-  const kept = new Set<string>();
+  const cited = citedImagePaths(bundle);
+  const present = new Set(source.files.map((file) => file.path));
+  const kept = new Map<string, string>();
+  const outputs = new Set<string>();
   for (const file of source.files) {
-    if (path.extname(file.path).toLowerCase() !== ".png") continue;
-    // A file that only claims to be a PNG may conceal a payload; refuse it rather than drop it.
-    if (!file.bytes.subarray(0, 8).equals(PNG_MAGIC))
+    const extension = path.extname(file.path).toLowerCase();
+    if (!IMAGE_EXTENSIONS.has(extension)) continue;
+    // A file that only claims to be an image may conceal a payload; refuse it rather than drop it.
+    if (extension === ".png" && !file.bytes.subarray(0, 8).equals(PNG_MAGIC))
       throw new Error("PNG artifact has invalid signature.");
+    if (extension === ".webp" && webpStructure(file.bytes).error !== null)
+      throw new Error(`WebP artifact ${file.path} is not a lossless WebP frame.`);
     if (streamShots.has(file.path)) {
-      kept.add(file.path);
+      const output =
+        extension === ".webp" ? `${file.path.slice(0, -extension.length)}.png` : file.path;
+      if (output !== file.path && present.has(output))
+        throw new Error(
+          `${file.path} would be blurred to ${output}, which the run already holds; export refuses to overwrite it.`,
+        );
+      if (outputs.has(output)) throw new Error(`Two frames would be exported as ${output}.`);
+      outputs.add(output);
+      kept.set(file.path, output);
     } else if (cited.has(file.path)) {
       throw new Error(
         `Evidence cites ${file.path}, an image that is not a stream screenshot; verify cannot read it, so no export of this run can be share_ready.`,
@@ -268,13 +299,26 @@ function keptPngPaths(source: Inventory, bundle: RunBundle): Set<string> {
   return kept;
 }
 
+/** A WebP frame as the PNG redactScreenshot reads, after the same pixel cap a PNG meets. */
+async function webpAsPng(bytes: Buffer): Promise<Buffer> {
+  const structure = webpStructure(bytes);
+  const refusal =
+    structure.error ??
+    imageDimensionsError("WebP", structure.dimensions.width, structure.dimensions.height);
+  if (refusal !== null) throw new Error(`WebP artifact could not be decoded safely: ${refusal}.`);
+  const image = await decodeWebp(bytes);
+  const png = new PNG({ width: image.width, height: image.height });
+  image.data.copy(png.data);
+  return PNG.sync.write(png);
+}
+
 async function writeDerivative(
   source: Inventory,
   stagePaths: PreparedRunArtifactPaths,
   bundle: RunBundle,
 ): Promise<{ images: number; entries: DerivationEntry[] }> {
   const entries: DerivationEntry[] = [];
-  const imagePaths = keptPngPaths(source, bundle);
+  const imagePaths = keptImagePaths(source, bundle);
   const sandboxIds = inventorySandboxIds(source.files);
   // run.json and each trace file come from one rewritten bundle, so each trace's index binds the
   // bytes written here. A v1 source is written as v2.
@@ -285,12 +329,27 @@ async function writeDerivative(
     ["run.json", jsonBytes(derived.bundle)],
     ...derived.files.map((file): [string, Buffer] => [file.path, file.bytes]),
   ]);
+  // A file that still names a WebP frame would cite a frame the copy lacks. Its file name is
+  // matched in every reading verify decodes (escapes, percent-encoding), so an alias such as
+  // `screenshots/./frame.webp` or `%66rame.webp` is caught too.
+  const renamedNames = [...imagePaths]
+    .filter(([from, to]) => from !== to)
+    .map(([from]) => path.posix.basename(from).toLowerCase());
+  const assertNoRenamedSource = (relative: string, bytes: Buffer): void => {
+    if (renamedNames.length === 0) return;
+    const readings = readingsOf(bytes.toString("utf8")).map((reading) => reading.toLowerCase());
+    const named = renamedNames.find((name) => readings.some((reading) => reading.includes(name)));
+    if (named !== undefined)
+      throw new Error(
+        `${relative} names ${named}, a WebP frame the copy holds as a blurred PNG; export cannot rewrite that reference.`,
+      );
+  };
   let images = 0;
   for (const file of source.files) {
-    const isPng = path.extname(file.path).toLowerCase() === ".png";
+    const isImage = IMAGE_EXTENSIONS.has(path.extname(file.path).toLowerCase());
     const reason =
       omittedReason(file.path) ??
-      (isPng && !imagePaths.has(file.path)
+      (isImage && !imagePaths.has(file.path)
         ? "unreferenced image: nothing cites it and verify cannot read it"
         : undefined);
     if (reason) {
@@ -300,10 +359,13 @@ async function writeDerivative(
     const extension = path.extname(file.path).toLowerCase();
     let bytes: Buffer;
     let action: DerivationEntry["action"];
-    if (extension === ".png") {
-      if (!file.bytes.subarray(0, 8).equals(PNG_MAGIC))
+    const outputPath = imagePaths.get(file.path) ?? file.path;
+    if (extension === ".png" || extension === ".webp") {
+      if (extension === ".png" && !file.bytes.subarray(0, 8).equals(PNG_MAGIC))
         throw new Error("PNG artifact has invalid signature.");
-      const redacted = redactScreenshot(file.bytes);
+      const redacted = redactScreenshot(
+        extension === ".webp" ? await webpAsPng(file.bytes) : file.bytes,
+      );
       if (!redacted.decoded)
         throw new Error("PNG artifact could not be decoded safely; export refuses a placeholder.");
       bytes = redacted.buffer;
@@ -312,7 +374,7 @@ async function writeDerivative(
     } else {
       if (!TEXT_EXTENSIONS.has(extension))
         throw new Error(
-          `Unsupported artifact format ${extension || "(no extension)"}; bundle export supports PNG and UTF-8 text only.`,
+          `Unsupported artifact format ${extension || "(no extension)"}; bundle export supports PNG, lossless WebP frames and UTF-8 text only.`,
         );
       bytes = transformText(file, imagePaths);
       const rewritten = derivedFiles.get(file.path);
@@ -322,15 +384,23 @@ async function writeDerivative(
         derivedFiles.delete(file.path);
       }
       bytes = scrubSandboxIdBytes(file.path, bytes, sandboxIds);
+      assertNoRenamedSource(file.path, bytes);
       action = bytes.equals(file.bytes) ? "copied" : "updated";
     }
-    await writeContainedOutputFile(stagePaths, file.path, bytes);
-    entries.push({ path: file.path, sourceSha256: file.sha256, outputSha256: hash(bytes), action });
+    await writeContainedOutputFile(stagePaths, outputPath, bytes);
+    entries.push({
+      path: file.path,
+      ...(outputPath === file.path ? {} : { outputPath }),
+      sourceSha256: file.sha256,
+      outputSha256: hash(bytes),
+      action,
+    });
   }
   // A v1 source stream with no actor trace file gets one; its content came from run.json.
   const runJson = source.files.find((file) => file.path === "run.json");
   for (const [relative, bytes] of derivedFiles) {
     if (relative === "run.json" || runJson === undefined) continue;
+    assertNoRenamedSource(relative, bytes);
     await writeContainedOutputFile(stagePaths, relative, bytes);
     entries.push({
       path: relative,
@@ -567,7 +637,7 @@ async function verifyFrozenSource(
   const bundle = loaded.bundle;
   if (bundle.runId !== runId) throw new Error("Source run identity does not match its directory.");
   assertFinished(bundle);
-  assertFeedbackReferences(bundle, source);
+  assertFeedbackReferences(bundle, source, keptImagePaths(source, bundle));
   await removeOwnedDirectory(rawSnapshot, true);
   workspace.rawSnapshot = undefined;
   return { bundle };

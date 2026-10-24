@@ -36,6 +36,7 @@ import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../src/evidence/redacti
 import { computeStats } from "../../src/run/stats.js";
 import { storedCleanupSandbox, writeStoredCleanup } from "../helpers/stored-cleanup.js";
 import { createProgram } from "../../src/cli/program.js";
+import { pngToWebp } from "../helpers/webp.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -234,6 +235,83 @@ describe("redacted bundle export", () => {
   });
 
   // verify cannot read an image that no stream trace registers, so the copy leaves it out.
+  it("blurs a lossless WebP frame to a PNG beside it and points every reference at the PNG", async () => {
+    // The same frame as a computer-use participant writes it now: screenshots/frame.webp.
+    await writeFile(path.join(runDir, "screenshots", "frame.webp"), await pngToWebp(png));
+    await rm(path.join(runDir, "screenshots", "frame.png"));
+    for (const file of ["run.json", "actor.json"]) {
+      const text = await readFile(path.join(runDir, file), "utf8");
+      await writeFile(
+        path.join(runDir, file),
+        text.replaceAll("screenshots/frame.png", "screenshots/frame.webp"),
+      );
+    }
+    expect((await verifyRun(cwd, RUN)).shareSafety.status).toBe("local_only");
+    const result = await exportRun(cwd, RUN, OPTIONS);
+    if (!result.ok) throw new Error(result.error.message);
+    expect(result).toMatchObject({ embeddedImages: 1, shareSafety: { status: "share_ready" } });
+    const derivativeDir = path.join(cwd, "shared", ".humanish", "runs", RUN);
+    expect(await readdir(path.join(derivativeDir, "screenshots"))).toEqual(["frame.png"]);
+    const decoded = PNG.sync.read(
+      await readFile(path.join(derivativeDir, "screenshots", "frame.png")),
+    );
+    expect([decoded.width, decoded.height]).toEqual([96, 60]);
+    const derivative = await readRunWithTraces(derivativeDir);
+    expect(derivative.streams[0]!.actor!.items[0]!.screenshotRef).toEqual({
+      path: "screenshots/frame.png",
+      redaction: "blurred",
+    });
+    expect(derivative.streams[0]!.artifacts.map((artifact) => artifact.path)).toContain(
+      "screenshots/frame.png",
+    );
+    expect(derivative.feedbackCandidates[0]!.evidence[0]!.path).toBe("screenshots/frame.png");
+    const receipt = JSON.parse(await readFile(path.join(derivativeDir, "derivation.json"), "utf8"));
+    expect(receipt.files).toContainEqual(
+      expect.objectContaining({
+        path: "screenshots/frame.webp",
+        outputPath: "screenshots/frame.png",
+        action: "blurred",
+      }),
+    );
+  });
+
+  it("refuses a WebP export whose copied text names the frame in an encoded form", async () => {
+    await writeFile(path.join(runDir, "screenshots", "frame.webp"), await pngToWebp(png));
+    await rm(path.join(runDir, "screenshots", "frame.png"));
+    for (const file of ["run.json", "actor.json"]) {
+      const text = await readFile(path.join(runDir, file), "utf8");
+      await writeFile(
+        path.join(runDir, file),
+        text.replaceAll("screenshots/frame.png", "screenshots/frame.webp"),
+      );
+    }
+    await writeFile(
+      path.join(runDir, "notes.md"),
+      "See [the frame](screenshots/./%66rame.webp).\n",
+    );
+    const result = await exportRun(cwd, RUN, OPTIONS);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.message).toMatch(/notes\.md names frame\.webp/);
+  });
+
+  it("refuses a WebP frame whose PNG name the run already holds", async () => {
+    await writeFile(path.join(runDir, "screenshots", "frame.webp"), await pngToWebp(png));
+    const text = await readFile(path.join(runDir, "actor.json"), "utf8");
+    const actor = JSON.parse(text) as ActorTrace;
+    actor.items.push({
+      ...actor.items[0]!,
+      id: "frame-2",
+      screenshotRef: { path: "screenshots/frame.webp", redaction: "none" },
+    });
+    await writeFile(path.join(runDir, "actor.json"), JSON.stringify(actor));
+    const bundle = JSON.parse(await readFile(path.join(runDir, "run.json"), "utf8")) as RunBundle;
+    bundle.streams[0]!.actor = actor;
+    await writeFile(path.join(runDir, "run.json"), JSON.stringify(bundle));
+    const result = await exportRun(cwd, RUN, OPTIONS);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.message).toMatch(/already holds/);
+  });
+
   it("names no sandbox in the shared copy, and leaves the original's ids for cleanup", async () => {
     // Shaped like an E2B id and built at run time, so this file holds none for the scan to flag.
     const raw = ["i", "q7m2x9k4w8", "n1p3v6z5a"].join("");

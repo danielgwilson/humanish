@@ -23,8 +23,11 @@ async function preparePackage() {
   await cp(join(root, "dist"), join(current, "dist"), { recursive: true });
   await cp(join(root, "package.json"), join(current, "package.json"));
   await mkdir(join(current, "node_modules"));
-  for (const name of Object.keys(manifest.dependencies))
+  for (const name of Object.keys(manifest.dependencies)) {
+    // A scoped name links inside its scope's folder.
+    await mkdir(dirname(join(current, "node_modules", name)), { recursive: true });
     await symlink(join(root, "node_modules", name), join(current, "node_modules", name), "dir");
+  }
 }
 async function moveTo(packageDir) {
   await mkdir(dirname(packageDir), { recursive: true });

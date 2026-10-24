@@ -2,6 +2,8 @@ import { crc32, createInflate } from "node:zlib";
 
 import { PNG } from "pngjs";
 
+import { webpStructure } from "./webp.js";
+
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const PNG_IHDR_LENGTH = 13;
 
@@ -154,8 +156,9 @@ export async function screenshotEvidenceError(
 ): Promise<string | null> {
   const extension = relativePath.toLowerCase().split(".").pop() ?? "";
 
+  if (extension === "webp") return webpEvidenceError(bytes);
   if (extension !== "png") {
-    return `unsupported screenshot extension .${extension || "unknown"}; only decoded PNG evidence is supported`;
+    return `unsupported screenshot extension .${extension || "unknown"}; screenshot evidence is PNG or lossless WebP`;
   }
 
   const refusal = pngDecodeRefusal(bytes);
@@ -175,6 +178,20 @@ export async function screenshotEvidenceError(
   return chunks === null || !(await pngStructureHolds(bytes, chunks))
     ? "could not decode PNG evidence"
     : null;
+}
+
+/**
+ * Why a WebP frame is not screenshot evidence, read from its structure (webpStructure) without
+ * decoding it. A WebP frame is always raw evidence, which verify never grades share-ready, so a
+ * decode would add 17 to 20 ms a frame on the main thread and establish nothing more about bytes
+ * no one reviews.
+ */
+function webpEvidenceError(bytes: Buffer): string | null {
+  if (bytes.length > SCREENSHOT_MAX_BYTES)
+    return `WebP byte size exceeds ${SCREENSHOT_MAX_BYTES} byte limit`;
+  const structure = webpStructure(bytes);
+  if (structure.error !== null) return structure.error;
+  return imageDimensionsError("WebP", structure.dimensions.width, structure.dimensions.height);
 }
 
 /** The bit depths PNG allows for each color type. */
@@ -284,11 +301,16 @@ export async function assertScreenshotEvidence(relativePath: string, bytes: Buff
 }
 
 function pngDimensionsError(width: number, height: number): string | null {
+  return imageDimensionsError("PNG", width, height);
+}
+
+/** Why an image of these dimensions is refused before any decode, or null. */
+export function imageDimensionsError(format: string, width: number, height: number): string | null {
   if (width === 0 || height === 0) {
-    return "PNG dimensions must be greater than zero";
+    return `${format} dimensions must be greater than zero`;
   }
   if (width * height > SCREENSHOT_MAX_SOURCE_PIXELS) {
-    return `PNG pixel count exceeds ${SCREENSHOT_MAX_SOURCE_PIXELS} pixel limit`;
+    return `${format} pixel count exceeds ${SCREENSHOT_MAX_SOURCE_PIXELS} pixel limit`;
   }
   return null;
 }
