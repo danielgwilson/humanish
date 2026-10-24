@@ -156,7 +156,11 @@ export function derivedBundle(bundle: RunBundle, imagePaths: ImagePaths): RunBun
     status: "passed",
     notes: `${bundle.redaction.notes} Exported copy: screenshots were blurred during export; the original capture is retained separately. See derivation.json.`,
   };
-  const renamed = (cite: string): string => imagePaths.get(path.posix.normalize(cite)) ?? cite;
+  // Only a path whose output differs is rewritten; every other cite keeps its exact spelling.
+  const renamed = (cite: string): string => {
+    const output = imagePaths.get(path.posix.normalize(cite));
+    return output !== undefined && output !== path.posix.normalize(cite) ? output : cite;
+  };
   for (const stream of transformed.streams) {
     for (const artifact of stream.artifacts) {
       artifact.path = renamed(artifact.path);

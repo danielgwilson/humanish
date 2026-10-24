@@ -13,6 +13,7 @@ import { PNG } from "pngjs";
 
 import { imageDimensionsError } from "../evidence/image.js";
 import { redactScreenshot, redactText } from "../evidence/redaction.js";
+import { readingsOf } from "../evidence/encoded-text.js";
 import { decodeWebp, webpStructure } from "../evidence/webp.js";
 import {
   assertRewritableNumbers,
@@ -328,13 +329,19 @@ async function writeDerivative(
     ["run.json", jsonBytes(derived.bundle)],
     ...derived.files.map((file): [string, Buffer] => [file.path, file.bytes]),
   ]);
-  // A file that still names a WebP frame by its source path would cite a frame the copy lacks.
-  const renamedSources = [...imagePaths].filter(([from, to]) => from !== to).map(([from]) => from);
+  // A file that still names a WebP frame would cite a frame the copy lacks. Its file name is
+  // matched in every reading verify decodes (escapes, percent-encoding), so an alias such as
+  // `screenshots/./frame.webp` or `%66rame.webp` is caught too.
+  const renamedNames = [...imagePaths]
+    .filter(([from, to]) => from !== to)
+    .map(([from]) => path.posix.basename(from).toLowerCase());
   const assertNoRenamedSource = (relative: string, bytes: Buffer): void => {
-    const named = renamedSources.find((from) => bytes.includes(from));
+    if (renamedNames.length === 0) return;
+    const readings = readingsOf(bytes.toString("utf8")).map((reading) => reading.toLowerCase());
+    const named = renamedNames.find((name) => readings.some((reading) => reading.includes(name)));
     if (named !== undefined)
       throw new Error(
-        `${relative} names ${named}, which the copy holds as a blurred PNG; export cannot rewrite that reference.`,
+        `${relative} names ${named}, a WebP frame the copy holds as a blurred PNG; export cannot rewrite that reference.`,
       );
   };
   let images = 0;

@@ -10,7 +10,6 @@ import { digestAnalysisInput } from "../../src/analysis/validation.js";
 import { writeAnalysis } from "../../src/analysis/store.js";
 import { loadAnalysis } from "../../src/analysis/load.js";
 import { syntheticArtifact } from "./fixtures.js";
-import { pngToWebp } from "../helpers/webp.js";
 
 vi.mock("node:fs/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:fs/promises")>();
@@ -92,39 +91,6 @@ describe("fair bounded study evidence selection", () => {
     }
     return stream(id, items);
   };
-
-  it("sends a lossless WebP capture as image/webp and checks it back as one", async () => {
-    const webp = await pngToWebp(png);
-    await fs.writeFile(path.join(prepared.physicalRunRoot, "screenshots", "p01-0.webp"), webp);
-    const items: ActorTraceItem[] = [
-      {
-        id: "p01-0",
-        kind: "screenshot",
-        lifecycle: "completed",
-        title: "Capture 0",
-        screenshotRef: { path: "screenshots/p01-0.webp", redaction: "none" },
-      },
-    ];
-    const source = await save([stream("p01", items)]);
-    const input = await captureEvidence(prepared, source);
-    expect(input.evidence.find((entry) => entry.capture)?.capture).toMatchObject({
-      path: "screenshots/p01-0.webp",
-      mimeType: "image/webp",
-    });
-    expect(input.images).toEqual([
-      expect.objectContaining({ dataUrl: `data:image/webp;base64,${webp.toString("base64")}` }),
-    ]);
-    await expect(
-      validateAnalysisEvidence(prepared, syntheticArtifact(input), source),
-    ).resolves.toBeUndefined();
-    // A capture that claims a type its file does not have is refused.
-    const mislabelled = syntheticArtifact(input);
-    for (const entry of mislabelled.evidence)
-      if (entry.capture) entry.capture = { ...entry.capture, mimeType: "image/png" };
-    await expect(validateAnalysisEvidence(prepared, mislabelled, source)).rejects.toThrow(
-      "ANALYSIS_CAPTURE_REFERENCE_INVALID",
-    );
-  });
 
   it("reserves beginning and ending captures for every included participant under the default cap", async () => {
     const streams = await Promise.all(

@@ -275,6 +275,25 @@ describe("redacted bundle export", () => {
     );
   });
 
+  it("refuses a WebP export whose copied text names the frame in an encoded form", async () => {
+    await writeFile(path.join(runDir, "screenshots", "frame.webp"), await pngToWebp(png));
+    await rm(path.join(runDir, "screenshots", "frame.png"));
+    for (const file of ["run.json", "actor.json"]) {
+      const text = await readFile(path.join(runDir, file), "utf8");
+      await writeFile(
+        path.join(runDir, file),
+        text.replaceAll("screenshots/frame.png", "screenshots/frame.webp"),
+      );
+    }
+    await writeFile(
+      path.join(runDir, "notes.md"),
+      "See [the frame](screenshots/./%66rame.webp).\n",
+    );
+    const result = await exportRun(cwd, RUN, OPTIONS);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.message).toMatch(/notes\.md names frame\.webp/);
+  });
+
   it("refuses a WebP frame whose PNG name the run already holds", async () => {
     await writeFile(path.join(runDir, "screenshots", "frame.webp"), await pngToWebp(png));
     const text = await readFile(path.join(runDir, "actor.json"), "utf8");
