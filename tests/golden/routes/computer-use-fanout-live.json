@@ -353,7 +353,7 @@
         "lifecycle": "completed",
         "title": "turn-00-start",
         "screenshotRef": {
-          "path": "screenshots/mobile-newcomer/turn-00-start.png",
+          "path": "screenshots/mobile-newcomer/turn-00-start.webp",
           "redaction": "none"
         },
         "page": {
@@ -379,7 +379,7 @@
         "lifecycle": "completed",
         "title": "turn-01",
         "screenshotRef": {
-          "path": "screenshots/mobile-newcomer/turn-01.png",
+          "path": "screenshots/mobile-newcomer/turn-01.webp",
           "redaction": "none"
         },
         "page": {
@@ -449,12 +449,12 @@
     "artifacts": [
       {
         "label": "participant mobile-newcomer screenshot 01 (raw)",
-        "path": "screenshots/mobile-newcomer/turn-00-start.png",
+        "path": "screenshots/mobile-newcomer/turn-00-start.webp",
         "kind": "screenshot"
       },
       {
         "label": "participant mobile-newcomer screenshot 02 (raw)",
-        "path": "screenshots/mobile-newcomer/turn-01.png",
+        "path": "screenshots/mobile-newcomer/turn-01.webp",
         "kind": "screenshot"
       }
     ]
@@ -527,7 +527,7 @@
         "lifecycle": "completed",
         "title": "turn-00-start",
         "screenshotRef": {
-          "path": "screenshots/small-skimmer/turn-00-start.png",
+          "path": "screenshots/small-skimmer/turn-00-start.webp",
           "redaction": "none"
         },
         "page": {
@@ -553,7 +553,7 @@
         "lifecycle": "completed",
         "title": "turn-01",
         "screenshotRef": {
-          "path": "screenshots/small-skimmer/turn-01.png",
+          "path": "screenshots/small-skimmer/turn-01.webp",
           "redaction": "none"
         },
         "page": {
@@ -623,12 +623,12 @@
     "artifacts": [
       {
         "label": "participant small-skimmer screenshot 01 (raw)",
-        "path": "screenshots/small-skimmer/turn-00-start.png",
+        "path": "screenshots/small-skimmer/turn-00-start.webp",
         "kind": "screenshot"
       },
       {
         "label": "participant small-skimmer screenshot 02 (raw)",
-        "path": "screenshots/small-skimmer/turn-01.png",
+        "path": "screenshots/small-skimmer/turn-01.webp",
         "kind": "screenshot"
       }
     ]
@@ -701,7 +701,7 @@
         "lifecycle": "completed",
         "title": "turn-00-start",
         "screenshotRef": {
-          "path": "screenshots/desktop-power/turn-00-start.png",
+          "path": "screenshots/desktop-power/turn-00-start.webp",
           "redaction": "none"
         },
         "page": {
@@ -727,7 +727,7 @@
         "lifecycle": "completed",
         "title": "turn-01",
         "screenshotRef": {
-          "path": "screenshots/desktop-power/turn-01.png",
+          "path": "screenshots/desktop-power/turn-01.webp",
           "redaction": "none"
         },
         "page": {
@@ -797,12 +797,12 @@
     "artifacts": [
       {
         "label": "participant desktop-power screenshot 01 (raw)",
-        "path": "screenshots/desktop-power/turn-00-start.png",
+        "path": "screenshots/desktop-power/turn-00-start.webp",
         "kind": "screenshot"
       },
       {
         "label": "participant desktop-power screenshot 02 (raw)",
-        "path": "screenshots/desktop-power/turn-01.png",
+        "path": "screenshots/desktop-power/turn-01.webp",
         "kind": "screenshot"
       }
     ]
@@ -875,7 +875,7 @@
         "lifecycle": "completed",
         "title": "turn-00-start",
         "screenshotRef": {
-          "path": "screenshots/wide-researcher/turn-00-start.png",
+          "path": "screenshots/wide-researcher/turn-00-start.webp",
           "redaction": "none"
         },
         "page": {
@@ -901,7 +901,7 @@
         "lifecycle": "completed",
         "title": "turn-01",
         "screenshotRef": {
-          "path": "screenshots/wide-researcher/turn-01.png",
+          "path": "screenshots/wide-researcher/turn-01.webp",
           "redaction": "none"
         },
         "page": {
@@ -971,12 +971,12 @@
     "artifacts": [
       {
         "label": "participant wide-researcher screenshot 01 (raw)",
-        "path": "screenshots/wide-researcher/turn-00-start.png",
+        "path": "screenshots/wide-researcher/turn-00-start.webp",
         "kind": "screenshot"
       },
       {
         "label": "participant wide-researcher screenshot 02 (raw)",
-        "path": "screenshots/wide-researcher/turn-01.png",
+        "path": "screenshots/wide-researcher/turn-01.webp",
         "kind": "screenshot"
       }
     ]
@@ -1300,7 +1300,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "screenshot",
-          "url": "screenshots/mobile-newcomer/turn-01.png",
+          "url": "screenshots/mobile-newcomer/turn-01.webp",
           "title": "Desktop (raw)"
         },
         "viewport": {
@@ -1345,7 +1345,7 @@
           "intent": "Watch participant mobile-newcomer (first-time-visitor/mobile) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
-          "screenshotUrl": "screenshots/mobile-newcomer/turn-01.png"
+          "screenshotUrl": "screenshots/mobile-newcomer/turn-01.webp"
         },
         "actor": {
           "schema": "humanish.actor-trace.v1",
@@ -1483,7 +1483,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "screenshot",
-          "url": "screenshots/small-skimmer/turn-01.png",
+          "url": "screenshots/small-skimmer/turn-01.webp",
           "title": "Desktop (raw)"
         },
         "viewport": {
@@ -1528,7 +1528,7 @@
           "intent": "Watch participant small-skimmer (impatient-skimmer/small-mobile) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
-          "screenshotUrl": "screenshots/small-skimmer/turn-01.png"
+          "screenshotUrl": "screenshots/small-skimmer/turn-01.webp"
         },
         "actor": {
           "schema": "humanish.actor-trace.v1",
@@ -1666,7 +1666,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "screenshot",
-          "url": "screenshots/desktop-power/turn-01.png",
+          "url": "screenshots/desktop-power/turn-01.webp",
           "title": "Desktop (raw)"
         },
         "viewport": {
@@ -1706,7 +1706,7 @@
           "intent": "Watch participant desktop-power (power-user/desktop) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
-          "screenshotUrl": "screenshots/desktop-power/turn-01.png"
+          "screenshotUrl": "screenshots/desktop-power/turn-01.webp"
         },
         "actor": {
           "schema": "humanish.actor-trace.v1",
@@ -1844,7 +1844,7 @@
         "updatedAt": "[ts]",
         "embed": {
           "kind": "screenshot",
-          "url": "screenshots/wide-researcher/turn-01.png",
+          "url": "screenshots/wide-researcher/turn-01.webp",
           "title": "Desktop (raw)"
         },
         "viewport": {
@@ -1884,7 +1884,7 @@
           "intent": "Watch participant wide-researcher (comparison-shopper/wide) drive the subject app in its own hosted desktop.",
           "state": "Done.",
           "actorStatus": "passed",
-          "screenshotUrl": "screenshots/wide-researcher/turn-01.png"
+          "screenshotUrl": "screenshots/wide-researcher/turn-01.webp"
         },
         "actor": {
           "schema": "humanish.actor-trace.v1",
@@ -2457,14 +2457,14 @@
       "timeoutMs": 660000
     }
   ],
-  "screenshots/desktop-power/turn-00-start.png": "sha256:7659fb97ba139dedd84e9b8bf28965f4781fe7ef66269f78a31c08e519ed7a55",
-  "screenshots/desktop-power/turn-01.png": "sha256:ec7ce7bf9736663701ca6fad94d4c0aac645fa818ad78752bf4912ac64607325",
-  "screenshots/mobile-newcomer/turn-00-start.png": "sha256:7659fb97ba139dedd84e9b8bf28965f4781fe7ef66269f78a31c08e519ed7a55",
-  "screenshots/mobile-newcomer/turn-01.png": "sha256:ec7ce7bf9736663701ca6fad94d4c0aac645fa818ad78752bf4912ac64607325",
-  "screenshots/small-skimmer/turn-00-start.png": "sha256:7659fb97ba139dedd84e9b8bf28965f4781fe7ef66269f78a31c08e519ed7a55",
-  "screenshots/small-skimmer/turn-01.png": "sha256:ec7ce7bf9736663701ca6fad94d4c0aac645fa818ad78752bf4912ac64607325",
-  "screenshots/wide-researcher/turn-00-start.png": "sha256:7659fb97ba139dedd84e9b8bf28965f4781fe7ef66269f78a31c08e519ed7a55",
-  "screenshots/wide-researcher/turn-01.png": "sha256:ec7ce7bf9736663701ca6fad94d4c0aac645fa818ad78752bf4912ac64607325",
+  "screenshots/desktop-power/turn-00-start.webp": "sha256:d4c51de6946226a6616292a8af8978c427b324c2d35ddc519a05835b00e92df9",
+  "screenshots/desktop-power/turn-01.webp": "sha256:8d859f867342b4bb4379a4256f9f5ee00837ab5546df48d7b82ddbc40ca0b2ea",
+  "screenshots/mobile-newcomer/turn-00-start.webp": "sha256:d4c51de6946226a6616292a8af8978c427b324c2d35ddc519a05835b00e92df9",
+  "screenshots/mobile-newcomer/turn-01.webp": "sha256:8d859f867342b4bb4379a4256f9f5ee00837ab5546df48d7b82ddbc40ca0b2ea",
+  "screenshots/small-skimmer/turn-00-start.webp": "sha256:d4c51de6946226a6616292a8af8978c427b324c2d35ddc519a05835b00e92df9",
+  "screenshots/small-skimmer/turn-01.webp": "sha256:8d859f867342b4bb4379a4256f9f5ee00837ab5546df48d7b82ddbc40ca0b2ea",
+  "screenshots/wide-researcher/turn-00-start.webp": "sha256:d4c51de6946226a6616292a8af8978c427b324c2d35ddc519a05835b00e92df9",
+  "screenshots/wide-researcher/turn-01.webp": "sha256:8d859f867342b4bb4379a4256f9f5ee00837ab5546df48d7b82ddbc40ca0b2ea",
   "status.json": {
     "schema": "humanish.run-status.v1",
     "runId": "[run]",

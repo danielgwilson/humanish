@@ -9,7 +9,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { readContainedRegularFile, writeContainedOutputFile } from "../run/contained-output.js";
+import {
+  readContainedRegularFile,
+  removeContainedOutputFile,
+  writeContainedOutputFile,
+} from "../run/contained-output.js";
 import { createRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { reclaimRunSandboxes } from "../run/reclaim.js";
 import { pointLatestRunAt } from "../run/run.js";
@@ -216,7 +220,7 @@ export async function followRemoteRun(args: {
   // Evidence already copied while the run went on, by path, with its size then.
   const copied = new Map<string, number>();
   const copy = async () => {
-    const { files, alreadyHere } = await copyRunBack(runner, paths, runId);
+    const { files, alreadyHere } = await copyRunBack(runner, paths, runId, copied);
     if (alreadyHere > 0) say(`${alreadyHere} of its ${files} files were already here.`);
     return files;
   };
@@ -340,12 +344,14 @@ async function readRun(
 /**
  * Copy every file of the runner's run directory into this machine's run directory, each checked
  * against the digest the runner listed. The sandbox journal keeps this machine's lines (the
- * runner's own receipt) and adds the runner's (its participants').
+ * runner's own receipt) and adds the runner's (its participants'). A file copied while the run went
+ * on that the runner no longer has, a frame's PNG replaced by its WebP, is removed here too.
  */
 async function copyRunBack(
   runner: Runner,
   paths: PreparedRunArtifactPaths,
   runId: string,
+  copiedWhileRunning: ReadonlyMap<string, number>,
 ): Promise<{ files: number; alreadyHere: number }> {
   const files = await listRemoteRun(runner, runId);
   let alreadyHere = 0;
@@ -372,6 +378,9 @@ async function copyRunBack(
       "utf8",
     );
   });
+  const listed = new Set(files.map((file) => file.path));
+  for (const file of copiedWhileRunning.keys())
+    if (!listed.has(file)) await removeContainedOutputFile(paths, file);
   await pointLatestRunAt(paths, runId);
   return { files: files.length, alreadyHere };
 }

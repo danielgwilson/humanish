@@ -1103,7 +1103,11 @@ dimensions under the PNG pixel cap. The extended form (VP8X), which carries Exif
 XMP, ICC profiles and animation, fails verification. Verify reads a WebP's
 structure without decoding its pixels, so a WebP frame is always full-fidelity
 evidence: only a PNG in the redactor's shape counts as blurred. Earlier humanish
-versions do not accept WebP screenshots.
+versions do not accept WebP screenshots. A computer-use participant writes each
+frame as PNG during its session and, when the session ends, references the
+lossless WebP of each frame encoded by then in place of its PNG, which it
+removes. A run interrupted before then, and a study that blurs its screenshots,
+keeps PNG frames.
 
 The public-safety scan classifies a run file by its bytes, not its name. It scans
 a file for secret and path patterns only when the bytes are strict UTF-8 with no

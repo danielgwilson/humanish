@@ -2,6 +2,8 @@ import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
+
+import { decodeWebp } from "../../../src/evidence/webp.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import type { StudyDeps } from "../../../src/study/study-deps.js";
@@ -625,10 +627,12 @@ describe("ready desktop participant contract", () => {
     const trace = JSON.parse(await readFile(path.join(f.cwd, "artifacts/actor.json"), "utf8"));
     expect(trace).toEqual(result.session?.trace);
     expect(result.screenshots.length).toBeGreaterThan(0);
+    // The session's frames end as lossless WebP, each decoding to the PNG frame's size.
     for (const screenshot of result.screenshots) {
-      expect(PNG.sync.read(await readFile(path.join(f.cwd, "artifacts", screenshot))).width).toBe(
-        16,
-      );
+      expect(screenshot).toMatch(/\.webp$/);
+      expect(
+        (await decodeWebp(await readFile(path.join(f.cwd, "artifacts", screenshot)))).width,
+      ).toBe(16);
     }
   });
 

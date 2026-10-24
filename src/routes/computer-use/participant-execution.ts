@@ -3,16 +3,10 @@ import { judgeParticipantRecords } from "../../run/judge.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { createE2BParticipantDesktop } from "./e2b-desktop/desktop.js";
 import { createInProcessDesktop } from "./in-process-desktop.js";
-import path from "node:path";
 import { cuaParticipantDiagnostics } from "./diagnostics.js";
 import { pastEndReason, runOnSchedule, type ParticipantArrival } from "../../study/arrivals.js";
-import { assertScreenshotEvidence, stripPngMetadataChunks } from "../../evidence/image.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
-import {
-  assertSafeOutputPathSegment,
-  writeContainedOutputFile,
-  type PreparedOutputRoot,
-} from "../../run/contained-output.js";
+import { participantFrames } from "./participant-frames.js";
 import { participantOutcomeOk, participantFactsOf } from "./participant-facts.js";
 import {
   closeParticipantModel,
@@ -30,33 +24,6 @@ import type {
   ParticipantRunOutcome,
 } from "./types.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
-
-/** Build a participant's writeScreenshot closure: writes under screenshots/<screenshotDir>/ and records
- *  the relative path the trace references (screenshots/<name> at N=1; screenshots/<laneId>/<name>
- *  at N>1). */
-export function makeParticipantWriteScreenshot(
-  artifactRoot: PreparedOutputRoot,
-  spec: { screenshotDir: string },
-  screenshots: string[],
-): (name: string, bytes: Buffer) => Promise<string> {
-  if (spec.screenshotDir) {
-    assertSafeOutputPathSegment(spec.screenshotDir, "Screenshot participant id");
-  }
-  const dirParts = spec.screenshotDir ? ["screenshots", spec.screenshotDir] : ["screenshots"];
-  const relPrefix = spec.screenshotDir
-    ? path.posix.join("screenshots", spec.screenshotDir)
-    : "screenshots";
-  return async (name: string, bytes: Buffer): Promise<string> => {
-    assertSafeOutputPathSegment(name, "Screenshot name");
-    const rel = path.posix.join(relPrefix, name);
-    // Evidence holds image data only, whatever the executor's frames carried.
-    const frame = stripPngMetadataChunks(bytes);
-    await assertScreenshotEvidence(rel, frame);
-    await writeContainedOutputFile(artifactRoot, path.join(...dirParts, name), frame);
-    screenshots.push(rel);
-    return rel;
-  };
-}
 
 /** A blocked participant outcome: the pipeline gate or the study budget skipped it. */
 function skippedOutcome(
@@ -101,8 +68,8 @@ export async function runCuaParticipant(
   if (pastEnd !== undefined) return skippedOutcome(spec, pastEnd);
   let model: ParticipantModel = {};
   const warnings: string[] = [];
-  const screenshots: string[] = [];
-  const writeScreenshot = makeParticipantWriteScreenshot(deps.artifactRoot, spec, screenshots);
+  const frames = participantFrames(deps.artifactRoot, spec, { blurred: deps.redactScreenshots });
+  const writeScreenshot = frames.write;
   let session: CuaLoopResult | undefined;
   let sessionError: string | undefined;
   let providerCleanupError: string | undefined;
@@ -151,7 +118,9 @@ export async function runCuaParticipant(
     if (session?.status === "passed") warnings.push(desktopFailure);
     else sessionError = desktopFailure;
   }
+  const removeReplacedFrames = await frames.finish(session?.trace);
   if (session) await recordParticipantTrace(spec, deps, session, warnings);
+  await removeReplacedFrames();
   const { noEngagement, selfReportedBlocker, reportedFriction } = judgeParticipantSession(
     session,
     deps,
@@ -174,7 +143,7 @@ export async function runCuaParticipant(
     ...(providerPolicyError === undefined ? {} : { providerPolicyError }),
     ...desktopEvidence,
     killed: released,
-    screenshots,
+    screenshots: frames.screenshots,
     warnings,
     noEngagement,
     selfReportedBlocker,
