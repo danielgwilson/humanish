@@ -142,6 +142,13 @@ export function parseActorFields(
     }
     actor.reasoningEffort = entry.reasoningEffort;
   }
+  if (entry.serviceTier !== undefined) {
+    if (entry.serviceTier !== "fast")
+      return invalid(
+        `${path}.serviceTier must be "fast" (OpenAI Fast mode), or left out for the standard tier.`,
+      );
+    actor.serviceTier = entry.serviceTier;
+  }
   const stopWhenResult = parseStopWhen(entry.stopWhen, `${path}.stopWhen`);
   if (!stopWhenResult.ok) return stopWhenResult;
   if (stopWhenResult.value !== undefined) actor.stopWhen = stopWhenResult.value;

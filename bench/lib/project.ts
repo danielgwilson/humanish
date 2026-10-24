@@ -12,7 +12,9 @@ import type { Mission } from "../taskly/missions.js";
 import type { Brain } from "./plan.js";
 
 export const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
-const PERSONA_ID = "synthetic-new-user";
+
+/** The benchmark's persona, which every published result before 2026-10-24 used. */
+export const DEFAULT_PERSONA_FILE = path.join(REPO_ROOT, "humanish", "personas", "synthetic-new-user.yaml");
 const BUILD_DIR: Record<Arm, string> = { planted: "build-a", clean: "build-b" };
 /** The participant's session limit, matching humanish/studies/detect-taskly-*.yaml. */
 export const SESSION_TIMEOUT_MS = 600_000;
@@ -28,13 +30,20 @@ export interface FixtureDigests {
   persona: string;
 }
 
-export function fixtureDigests(): FixtureDigests {
+/** The persona id a persona file declares, which the generated studies name. */
+export function personaId(personaFile: string): string {
+  const id = /^id:\s*([a-z0-9][a-z0-9-]*)\s*$/m.exec(readFileSync(personaFile, "utf8"))?.[1];
+  if (id === undefined) throw new Error(`${personaFile} declares no persona id.`);
+  return id;
+}
+
+export function fixtureDigests(personaFile: string = DEFAULT_PERSONA_FILE): FixtureDigests {
   const read = (relative: string): Buffer => readFileSync(path.join(REPO_ROOT, relative));
   return {
     plantedAppJs: sha256(read("bench/taskly-planted/app.js")),
     cleanAppJs: sha256(read("bench/taskly-clean/app.js")),
     indexHtml: sha256(read("bench/taskly-planted/index.html")),
-    persona: sha256(read(`humanish/personas/${PERSONA_ID}.yaml`)),
+    persona: sha256(readFileSync(personaFile)),
   };
 }
 
@@ -48,6 +57,7 @@ export function studyYaml(
   arm: Arm,
   mission: Mission,
   participantCapUsd: number,
+  persona = "synthetic-new-user",
 ): string {
   const id = studyId(brain, arm);
   const actor = Object.entries(brain.actor)
@@ -67,7 +77,7 @@ subject:
     url: http://127.0.0.1:8000/
 actor:
 ${actor}
-  persona: ${PERSONA_ID}
+  persona: ${persona}
   mission: ${JSON.stringify(mission.text)}
 ${caps}execution:
   target: e2b-desktop
@@ -88,7 +98,9 @@ export function writeProject(
   brains: readonly Brain[],
   mission: Mission,
   participantCapUsd: number,
+  personaFile: string = DEFAULT_PERSONA_FILE,
 ): void {
+  const persona = personaId(personaFile);
   mkdirSync(path.join(projectDir, "humanish", "studies"), { recursive: true });
   mkdirSync(path.join(projectDir, "humanish", "personas"), { recursive: true });
   cpSync(path.join(REPO_ROOT, "bench", "taskly-planted"), path.join(projectDir, BUILD_DIR.planted), {
@@ -97,15 +109,12 @@ export function writeProject(
   cpSync(path.join(REPO_ROOT, "bench", "taskly-clean"), path.join(projectDir, BUILD_DIR.clean), {
     recursive: true,
   });
-  cpSync(
-    path.join(REPO_ROOT, "humanish", "personas", `${PERSONA_ID}.yaml`),
-    path.join(projectDir, "humanish", "personas", `${PERSONA_ID}.yaml`),
-  );
+  cpSync(personaFile, path.join(projectDir, "humanish", "personas", `${persona}.yaml`));
   for (const brain of brains) {
     for (const arm of ["planted", "clean"] as const) {
       writeFileSync(
         path.join(projectDir, "humanish", "studies", `${studyId(brain, arm)}.yaml`),
-        studyYaml(brain, arm, mission, participantCapUsd),
+        studyYaml(brain, arm, mission, participantCapUsd, persona),
       );
     }
   }

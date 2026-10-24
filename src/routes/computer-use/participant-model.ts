@@ -161,6 +161,9 @@ export function participantSessionOptions(
       ...(spec.planned.limits.maxOutputTokens === undefined
         ? {}
         : { maxOutputTokens: spec.planned.limits.maxOutputTokens }),
+      ...(spec.planned.limits.serviceTier === undefined
+        ? {}
+        : { serviceTier: spec.planned.limits.serviceTier }),
     },
     ...(maxUsd === undefined
       ? {}

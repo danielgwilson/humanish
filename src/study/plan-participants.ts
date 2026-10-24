@@ -49,6 +49,8 @@ export interface DesktopParticipant extends Participant {
     readonly dwell?: DwellWindow;
     readonly reasoningEffort?: ReasoningEffort;
     readonly maxOutputTokens?: number;
+    /** actor.serviceTier: OpenAI Fast mode on every request. */
+    readonly serviceTier?: "fast";
     /** actor.maxWaitMs: the longest one wait or one turn of only waits lasts. */
     readonly maxWaitMs?: number;
     /**
@@ -121,6 +123,7 @@ function desktopParticipant(
   const dwell = entry?.dwell ?? actor?.dwell;
   const reasoningEffort = entry?.reasoningEffort ?? actor?.reasoningEffort;
   const maxOutputTokens = actor?.maxOutputTokens;
+  const serviceTier = actor?.serviceTier;
   const maxWaitMs = actor?.maxWaitMs;
   const idleWaitMs = entry?.idleWaitMs ?? actor?.idleWaitMs;
   const timeZone = entry?.clock?.timeZone ?? actor?.clock?.timeZone;
@@ -143,6 +146,7 @@ function desktopParticipant(
       ...(dwell === undefined ? {} : { dwell }),
       ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
       ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
+      ...(serviceTier === undefined ? {} : { serviceTier }),
       ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
       ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
       ...(timeZone === undefined ? {} : { timeZone }),

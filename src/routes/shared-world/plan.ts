@@ -36,6 +36,7 @@ import {
   networkCaptureValidationReason,
   externalPublicSharedWorldValidationReason,
   outputTokenLimitValidationReason,
+  serviceTierValidationReason,
   receivingEmailValidationReason,
   taskProtocolValidationReason,
   waitLimitValidationReason,
@@ -135,6 +136,7 @@ export function planSharedWorldStudy(
     // A library caller's config skips the parser, which refuses these first.
     studyUrlCredentialReason(config) ??
     outputTokenLimitValidationReason(config) ??
+    serviceTierValidationReason(config) ??
     waitLimitValidationReason(config) ??
     (externalPublic
       ? externalPublicSharedWorldValidationReason(config)
@@ -142,6 +144,8 @@ export function planSharedWorldStudy(
   if (invalidReason) return refuse(invalid, invalidReason, actor);
   if (config.actor?.maxOutputTokens !== undefined && input.hasRunSession === true)
     return refuse(invalid, "maxOutputTokens cannot be enforced by a custom runSession.", actor);
+  if (config.actor?.serviceTier !== undefined && input.hasRunSession === true)
+    return refuse(invalid, "serviceTier is not sent by a custom runSession.", actor);
 
   // A live cap is priced here, at plan time, so its refusal wins over the route's key checks.
   const unpriced = input.dryRun

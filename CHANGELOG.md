@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `actor.serviceTier: fast` sends every OpenAI computer-use participant request in Fast mode
+  (`service_tier: "fast"`). The spend estimate and caps price each request at the tier the response
+  says served it, from the Fast mode rates now in the rate table for gpt-5.6-sol, gpt-6.1-sol,
+  gpt-6-luna and gpt-6-astra. The trace records the requested tier in `modelSettings.serviceTier`
+  and the served tier on each `tokenUsage.turns` record. A study that asks for Fast mode on a model
+  without a Fast mode rate, or on a route that does not send it, is refused before it starts. The
+  benchmark takes `--participant`, `--service-tier` and `--persona`.
+
 ### Changed
 
 - A computer-use participant's screenshots end as lossless WebP, about half the bytes of PNG: 0.47

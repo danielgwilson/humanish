@@ -258,6 +258,10 @@ export interface ActorTokenUsage {
     cachedInput?: number;
     cacheWriteInput?: number;
     output?: number;
+    /** The processing tier the provider reported serving this request at (OpenAI `service_tier`:
+     *  `default`, `priority`, `fast`). Recorded when the participant asked for a tier; Fast mode
+     *  can fall back to `default`, which bills the standard rate. */
+    serviceTier?: string;
   }>;
   total?: number;
   costUsd?: number;
@@ -550,7 +554,7 @@ export interface ActorTrace {
    * tuned (docs/principles/actor-fidelity.md), so a trace that does not carry it is a result with
    * half its sample description missing, and two such traces cannot be compared.
    */
-  modelSettings?: { reasoningEffort: string; maxOutputTokens?: number };
+  modelSettings?: { reasoningEffort: string; maxOutputTokens?: number; serviceTier?: string };
   /**
    * Additive + optional: the wait lengths the computer-use loop applied, defaults included. Absent
    * on other producers and on bundles written before it was recorded.

@@ -1275,7 +1275,7 @@
     "name": "unknown actor key: participants in a v2 actor",
     "from": "a v2-only rule",
     "v2": {"schema":"humanish.lab.v2","id":"refusal-cu","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"openai-computer-use","mission":"Explore the app.","participants":2}],"execution":{"target":"e2b-desktop"}},
-    "refused": "it does not parse: Unknown study field in `actors[0]`: participants. Known fields: type, count, lanes, roster, persona, mission, model, maxOutputTokens, localAgent, reasoningEffort, stopWhen, dwell, tasks, laneFocus."
+    "refused": "it does not parse: Unknown study field in `actors[0]`: participants. Known fields: type, count, lanes, roster, persona, mission, model, maxOutputTokens, localAgent, reasoningEffort, serviceTier, stopWhen, dwell, tasks, laneFocus."
   },
   {
     "name": "unknown laneFocus key",

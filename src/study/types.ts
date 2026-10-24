@@ -471,6 +471,13 @@ export interface StudyActor {
    */
   reasoningEffort?: ReasoningEffort;
   /**
+   * `fast` sends every participant request in OpenAI Fast mode (`service_tier: "fast"`), which
+   * bills at its own per-token rates. Absent sends no tier. `openai-computer-use` only, and only for
+   * a model whose Fast mode rate src/run/pricing.ts carries, so the spend estimate and caps price it.
+   * Each request's trace usage records the tier that served it.
+   */
+  serviceTier?: "fast";
+  /**
    * Deterministic completion guard used as the default for CUA participants. A `participants` entry's stopWhen
    * overrides this value.
    */

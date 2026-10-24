@@ -2,6 +2,7 @@
 // are testable without a provider.
 
 import { DEFAULT_ANALYSIS_EFFORT, DEFAULT_ANALYSIS_MODEL } from "../../src/analysis/automatic-config.js";
+import { isReasoningEffort, reasoningEffortNames, type ReasoningEffort } from "../../src/actors/reasoning-effort.js";
 import { MODEL_RATES, type ModelRate } from "../../src/run/pricing.js";
 import type { Arm } from "../taskly/answer-key.js";
 
@@ -41,6 +42,36 @@ export const BRAINS: Record<BrainId, Brain> = {
 
 export function isBrainId(value: string): value is BrainId {
   return Object.hasOwn(BRAINS, value);
+}
+
+/** The participant model settings one benchmark invocation sends, beside the brain's own actor block. */
+export interface ParticipantSettings {
+  model: string;
+  reasoningEffort?: ReasoningEffort;
+  serviceTier?: "fast";
+}
+
+/** Parse `--participant <model[@effort]>` and `--service-tier`; throws on a value the CLI would refuse. */
+export function parseParticipant(spec: string, serviceTier?: string): ParticipantSettings {
+  const [model, effort, extra] = spec.trim().split("@");
+  if (model === undefined || model === "" || extra !== undefined)
+    throw new Error(`--participant takes model or model@effort, got ${spec}.`);
+  if (effort !== undefined && !isReasoningEffort(effort))
+    throw new Error(`--participant effort must be one of: ${reasoningEffortNames()}, got ${effort}.`);
+  if (serviceTier !== undefined && serviceTier !== "fast")
+    throw new Error(`--service-tier takes fast, got ${serviceTier}.`);
+  return {
+    model,
+    ...(effort === undefined ? {} : { reasoningEffort: effort }),
+    ...(serviceTier === undefined ? {} : { serviceTier }),
+  };
+}
+
+/** The brain with the participant settings in its actor block. Only the API brain sends them. */
+export function withParticipant(brain: Brain, settings: ParticipantSettings): Brain {
+  if (brain.id !== "openai-computer-use")
+    throw new Error(`--participant applies to openai-computer-use only, not ${brain.id}.`);
+  return { ...brain, actor: { ...brain.actor, ...settings } };
 }
 
 /** E2B desktop compute at the observed 8 CPU / 8 GiB allocation (src/run/pricing.ts rates). */

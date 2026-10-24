@@ -64,11 +64,12 @@ export function bookLostRequest(
   }
   const input = session.usage.lastReportedInput();
   session.usage.reserve(input, maxOutputTokens);
+  const serviceTier = session.provider.modelSettings?.serviceTier;
+  const booked = { input, output: maxOutputTokens, cachedInput: 0, cacheWriteInput: input };
   const usd = session.settings.estimateTurnCostUsd?.({
-    input,
-    output: maxOutputTokens,
-    cachedInput: 0,
-    cacheWriteInput: input,
+    ...booked,
+    // A request in Fast mode is booked at the fast rate, which a per-request record selects.
+    ...(serviceTier === undefined ? {} : { turns: [{ ...booked, serviceTier }] }),
   });
   const charge = `${input} input tokens at the highest input rate and ${maxOutputTokens} output tokens${typeof usd === "number" ? ` ($${usd})` : ""}`;
   const over = spendStop(session);

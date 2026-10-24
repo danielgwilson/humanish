@@ -13,6 +13,8 @@ import {
   projectAnalyses,
   projectBrain,
   SpendLedger,
+  parseParticipant,
+  withParticipant,
   type BudgetSettings,
 } from "../../bench/lib/plan.js";
 import { studyYaml } from "../../bench/lib/project.js";
@@ -62,6 +64,37 @@ describe("the generated benchmark studies", () => {
       expect(study.caps.maxUsd).toBe(0.6);
       expect(study.review.analysis).toBe(false);
     }
+  });
+
+  it("sends a declared participant model, effort and service tier to the study", () => {
+    const brain = withParticipant(
+      BRAINS["openai-computer-use"],
+      parseParticipant("gpt-6.1-sol@low", "fast"),
+    );
+    const study = parse(studyYaml(brain, "planted", MISSIONS.neutral, 0.6)) as {
+      actor: Record<string, unknown>;
+    };
+    expect(study.actor).toMatchObject({
+      type: "openai-computer-use",
+      model: "gpt-6.1-sol",
+      reasoningEffort: "low",
+      serviceTier: "fast",
+    });
+  });
+
+  it("names the persona file the project copies", () => {
+    const study = parse(
+      studyYaml(BRAINS["openai-computer-use"], "clean", MISSIONS.neutral, 0.6, "keyboard-tester"),
+    ) as { actor: { persona: string } };
+    expect(study.actor.persona).toBe("keyboard-tester");
+  });
+
+  it("refuses a participant setting the brain cannot send", () => {
+    expect(() =>
+      withParticipant(BRAINS["local-agent-codex"], parseParticipant("gpt-6.1-sol")),
+    ).toThrow(/openai-computer-use/);
+    expect(() => parseParticipant("gpt-6.1-sol@quick")).toThrow(/effort/);
+    expect(() => parseParticipant("gpt-6.1-sol", "turbo")).toThrow(/fast/);
   });
 
   it("gives an unpriced local agent no dollar cap", () => {

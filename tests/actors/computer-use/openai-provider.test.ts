@@ -538,6 +538,52 @@ describe("createOpenAiResponsesProvider", () => {
     },
   );
 
+  it("asks for Fast mode on every request and records the tier each reply was served at", async () => {
+    const usage = { input_tokens: 100, output_tokens: 10 };
+    const { fetchFn, bodies } = scriptedFetch([
+      {
+        id: "resp_1",
+        service_tier: "priority",
+        usage,
+        output: [{ type: "computer_call", call_id: "call_1", actions: [{ type: "screenshot" }] }],
+      },
+      {
+        id: "resp_2",
+        service_tier: "default",
+        usage,
+        output: [{ type: "message", content: [{ type: "output_text", text: "Finished." }] }],
+      },
+    ]);
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "test-key",
+      fetchFn,
+      serviceTier: "fast",
+    });
+    const first = await provider.nextTurn(request(), neverAbort);
+    const second = await provider.nextTurn(request(), neverAbort);
+    expect(
+      bodies.map((body) => (JSON.parse(body) as { service_tier?: string }).service_tier),
+    ).toEqual(["fast", "fast"]);
+    expect(first.usage).toEqual({ input: 100, output: 10, serviceTier: "priority" });
+    expect(second.usage).toEqual({ input: 100, output: 10, serviceTier: "default" });
+    expect(provider.modelSettings).toEqual({ reasoningEffort: "medium", serviceTier: "fast" });
+  });
+
+  it("sends no service tier and records none when the study asks for none", async () => {
+    const { fetchFn, bodies } = scriptedFetch([
+      {
+        id: "resp_1",
+        service_tier: "default",
+        usage: { input_tokens: 100, output_tokens: 10 },
+        output: [{ type: "message", content: [{ type: "output_text", text: "Finished." }] }],
+      },
+    ]);
+    const provider = createOpenAiResponsesProvider({ apiKey: "test-key", fetchFn });
+    const turn = await provider.nextTurn(request(), neverAbort);
+    expect(JSON.parse(bodies[0] ?? "{}")).not.toHaveProperty("service_tier");
+    expect(turn.usage).toEqual({ input: 100, output: 10 });
+  });
+
   it("drives multiple turns and threads call output + previous_response_id", async () => {
     const { fetchFn, bodies } = scriptedFetch([
       {

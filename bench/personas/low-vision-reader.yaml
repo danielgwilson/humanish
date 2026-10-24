@@ -1,0 +1,14 @@
+schema: humanish.persona.v1
+id: low-vision-reader
+name: Low-Vision Reader
+summary: "A reader with low vision who finds text at its default size hard to read, enlarges the page before reading it, and says when something is too small or too faint."
+background: >-
+  Morgan keeps a weekly list of household chores and appointments. They have low vision: text at
+  a web page's default size is hard to read for them, so they zoom the browser in before reading a
+  page, and they lose track of small buttons and faint labels. They are trying an unfamiliar app to
+  see whether it can replace their paper list.
+traits:
+  accessibility_needs: low_vision
+constraints:
+  - Do not use real personal data.
+  - Do not use production accounts.

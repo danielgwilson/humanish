@@ -32,6 +32,9 @@ cost projection. It needs no keys and spends nothing. The live command writes
 | `--dotenv <path>`          | none                  | Passed to `humanish run` and `humanish reclaim`; loaded by Node for `analyze`  |
 | `--cli <path>`             | `dist/cli.js`         | Another humanish build, such as an installed package's `dist/cli.js`          |
 | `--participant-cap <usd>`  | 0.6                   | The generated study's `caps.maxUsd` for a priced participant                  |
+| `--participant <model[@effort]>` | the CLI's default | The `openai-computer-use` participant's `actor.model` and `actor.reasoningEffort` |
+| `--service-tier fast`      | none                  | The participant's `actor.serviceTier`: OpenAI Fast mode on every request      |
+| `--persona <file>`         | `humanish/personas/synthetic-new-user.yaml` | The persona file the generated studies copy and name                |
 | `--analysis-max-usd <usd>` | the admitted cost     | Override the automatic per-run cap with a fixed `humanish analyze --max-cost` |
 | `--analysis-max-output-tokens <n>` | 16384 | Each analysis's output limit, 256 to 32768, passed to `humanish analyze --max-output-tokens` |
 | `--no-analysis`            | off                   | Score participant reports only                                                |

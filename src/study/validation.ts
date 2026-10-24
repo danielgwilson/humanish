@@ -1,4 +1,6 @@
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
+import { DEFAULT_OPENAI_CU_MODEL } from "../actors/computer-use/openai-provider.js";
+import { MODEL_RATES, participantRate } from "../run/pricing.js";
 import { MAX_RECEIVING_INBOXES } from "../comms/receiving-types.js";
 import { waitFieldsReason } from "../actors/computer-use/wait.js";
 import { PARTICIPANT_ID_MAX_CHARS, PARTICIPANT_ID_PATTERN } from "./parse/actors.js";
@@ -327,6 +329,29 @@ export function outputTokenLimitValidationReason(config: StudyConfig): string | 
     config.subject.source === "local-app"
   ) {
     return "actor.maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it.";
+  }
+  return null;
+}
+
+/**
+ * Refuse a Fast mode request humanish cannot send or price: the first-party OpenAI computer-use
+ * route sends it, and the spend estimate needs the model's Fast mode rate.
+ */
+export function serviceTierValidationReason(config: StudyConfig): string | null {
+  const actor = config.actor;
+  if (actor?.serviceTier === undefined) return null;
+  if (
+    actor.type !== "openai-computer-use" ||
+    !isComputerUseComposition(config) ||
+    config.subject.source === "local-app"
+  )
+    return "actor.serviceTier is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes do not send it.";
+  const model = actor.model ?? DEFAULT_OPENAI_CU_MODEL;
+  if (participantRate(model)?.fast === undefined) {
+    const priced = Object.keys(MODEL_RATES)
+      .filter((id) => participantRate(id)?.fast !== undefined)
+      .sort();
+    return `actor.serviceTier: fast needs a Fast mode rate for model "${model}", and humanish has none, so it could not price the run. Models with a Fast mode rate: ${priced.join(", ")}. Use one of them, or remove serviceTier.`;
   }
   return null;
 }

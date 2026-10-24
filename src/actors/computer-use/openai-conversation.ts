@@ -37,6 +37,8 @@ export interface OpenAiConversationSettings {
   readonly reasoningEffort: ReasoningEffort;
   readonly maxOutputTokens?: number;
   readonly safetyIdentifier?: string;
+  /** OpenAI Fast mode for every request of the session. */
+  readonly serviceTier?: "fast";
   /** The summaries to ask for until the account or model rejects them; undefined asks for none. */
   readonly reasoningSummary: OpenAiReasoningSummary | undefined;
   /** Carry the conversation on the client from the first request (explicit_context). */
@@ -147,7 +149,7 @@ export class OpenAiConversation {
     // Recorded before the reply is accepted, as a participant turn is.
     if (closing === "impressions") this.evidence.requested(this.mode, this.carried, sent, closing);
     const completed = asRecord(reply).status === "completed";
-    const parsed = parseOpenAiResponse(reply);
+    const parsed = this.parse(reply);
     const account = completed ? closingAccount(parsed.turn.message, closing, strict) : undefined;
     // A refusal would most likely stand under the strict schema too, so it is not asked again.
     if (completed && account === undefined && !strict && !refused(reply)) {
@@ -241,6 +243,22 @@ export class OpenAiConversation {
       ...(settings.safetyIdentifier === undefined
         ? {}
         : { safetyIdentifier: settings.safetyIdentifier }),
+      ...(settings.serviceTier === undefined ? {} : { serviceTier: settings.serviceTier }),
+    };
+  }
+
+  /**
+   * A reply, parsed. When the session asked for a tier, the reply's usage records the tier that
+   * served it, which is what the request bills at: Fast mode can fall back to `default`.
+   */
+  private parse(reply: unknown): ParsedOpenAiResponse {
+    const parsed = parseOpenAiResponse(reply);
+    const { usage } = parsed.turn;
+    if (this.settings.serviceTier === undefined || usage === undefined) return parsed;
+    if (parsed.serviceTier === undefined) return parsed;
+    return {
+      ...parsed,
+      turn: { ...parsed.turn, usage: { ...usage, serviceTier: parsed.serviceTier } },
     };
   }
 
@@ -292,7 +310,7 @@ export class OpenAiConversation {
     // Recorded before the reply is accepted: accepting can cut the carried history, and the record
     // counts what this request carried.
     this.evidence.requested(this.mode, this.carried, sent);
-    const parsed = parseOpenAiResponse(reply);
+    const parsed = this.parse(reply);
     if (parsed.turn.interruption === "output_limit") return parsed.turn;
     this.moveOn(parsed, sent);
     return parsed.turn;

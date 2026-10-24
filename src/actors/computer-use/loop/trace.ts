@@ -171,6 +171,9 @@ export function loopResult(
             ...(provider.modelSettings.maxOutputTokens === undefined
               ? {}
               : { maxOutputTokens: provider.modelSettings.maxOutputTokens }),
+            ...(provider.modelSettings.serviceTier === undefined
+              ? {}
+              : { serviceTier: provider.modelSettings.serviceTier }),
           },
         }),
     waitSettings: {

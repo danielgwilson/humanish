@@ -125,6 +125,8 @@ export interface ParsedOpenAiResponse {
   /** The function calls, in reply order, each owed a function_call_output. */
   functionCalls: FunctionCall[];
   outputItems: unknown[];
+  /** The processing tier the reply says served it (`service_tier`), when it says one. */
+  serviceTier?: string;
 }
 
 /** A function call a reply made: its id, and its name, which is WAIT_TOOL_NAME unless it erred. */
@@ -312,7 +314,14 @@ export function parseOpenAiResponse(raw: unknown): ParsedOpenAiResponse {
     ...(usage === undefined ? {} : { usage }),
   };
 
-  return { turn, callIds, functionCalls, outputItems: output };
+  const serviceTier = optionalString(root.service_tier);
+  return {
+    turn,
+    callIds,
+    functionCalls,
+    outputItems: output,
+    ...(serviceTier === undefined ? {} : { serviceTier }),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -364,6 +373,8 @@ export interface OpenAiCuContext {
   /** When set, request provider-sanctioned reasoning summaries. Absent = do not ask. */
   reasoningSummary?: OpenAiReasoningSummary;
   safetyIdentifier?: string;
+  /** OpenAI Fast mode (`service_tier: "fast"`). Absent sends no tier: the project's default. */
+  serviceTier?: "fast";
 }
 
 // The fields shared by the initial and continuation requests: the tool spec,
@@ -391,6 +402,7 @@ function sharedRequestFields(ctx: OpenAiCuContext): Record<string, unknown> {
       ...(ctx.reasoningSummary === undefined ? {} : { summary: ctx.reasoningSummary }),
     },
     ...(ctx.safetyIdentifier === undefined ? {} : { safety_identifier: ctx.safetyIdentifier }),
+    ...(ctx.serviceTier === undefined ? {} : { service_tier: ctx.serviceTier }),
     ...(ctx.stateless === true ? { store: false, include: ["reasoning.encrypted_content"] } : {}),
   };
 }
