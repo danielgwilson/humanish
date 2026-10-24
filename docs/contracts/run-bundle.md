@@ -1104,10 +1104,11 @@ XMP, ICC profiles and animation, fails verification. Verify reads a WebP's
 structure without decoding its pixels, so a WebP frame is always full-fidelity
 evidence: only a PNG in the redactor's shape counts as blurred. Earlier humanish
 versions do not accept WebP screenshots. A computer-use participant writes each
-frame as PNG during its session and, when the session ends, references the
-lossless WebP of each frame encoded by then in place of its PNG, which it
-removes. A run interrupted before then, and a study that blurs its screenshots,
-keeps PNG frames.
+frame as PNG during its session. When the session ends, its trace references
+the lossless WebP of each frame encoded by then in place of its PNG, and the run
+removes those PNGs once its final bundle is written. A study that blurs its
+screenshots keeps PNG frames, and an interrupted run can hold both files of a
+frame, with run.json's live trace naming the PNG.
 
 The public-safety scan classifies a run file by its bytes, not its name. It scans
 a file for secret and path patterns only when the bytes are strict UTF-8 with no

@@ -13,10 +13,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A computer-use participant's screenshots end as lossless WebP, about half the bytes of PNG: 0.47
   to 0.55 of the PNG size on 511 retained frames, with the same pixels. Each frame is written as
   PNG during the session, as the live Observer reads it, and encoded in one worker thread off the
-  turn's path. When the participant ends, each frame whose WebP is written replaces its PNG in the
-  trace and on disk. A frame still encoding after 5 s, or past the worker's 64 MB queue, stays
-  PNG, and so does every frame of an interrupted run and of a study with
-  `policies.redactScreenshots: true`.
+  turn's path. When the participant ends, its trace names the WebP of each frame encoded by then,
+  and the run removes those PNGs once its final bundle is written. A frame still encoding after
+  5 s, or past the worker's 64 MB queue, stays PNG, and so does every frame of a study with
+  `policies.redactScreenshots: true`. An interrupted run keeps both files of a frame.
 - `verify`, study analysis and `export --format bundle` accept lossless WebP screenshots at
   `screenshots/**/*.webp` beside PNG ones. Verify reads a WebP frame's structure: a RIFF file
   holding one lossless VP8L chunk, with no Exif, XMP or ICC data, under the PNG pixel cap. A WebP
