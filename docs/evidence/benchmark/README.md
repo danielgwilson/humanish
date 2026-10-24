@@ -290,6 +290,10 @@ recordings, and seven on three movie-game runs, in
 [2026-10-23-wait-time.md](2026-10-23-wait-time.md) times a one-participant study phase by phase,
 three times remote and three times local, and times `gpt-6.1-sol` at medium effort, at medium
 effort with low text verbosity, and at low effort on the same Taskly and movie-game recordings.
+[2026-10-24-participant-models.md](2026-10-24-participant-models.md) compares five participant
+settings over 40 runs each: `gpt-5.6-sol` at medium effort with and without Fast mode,
+`gpt-6.1-sol` at low and medium effort, and `gpt-6-luna` at medium effort, with latency, recall,
+false assurance, persona fidelity and cost per participant.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
