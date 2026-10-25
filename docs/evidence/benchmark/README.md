@@ -304,6 +304,9 @@ effort with low text verbosity, and at low effort on the same Taskly and movie-g
 settings over 40 runs each: `gpt-5.6-sol` at medium effort with and without Fast mode,
 `gpt-6.1-sol` at low and medium effort, and `gpt-6-luna` at medium effort, with latency, recall,
 false assurance, persona fidelity and cost per participant.
+[2026-10-25-participant-default.md](2026-10-25-participant-default.md) reruns `gpt-5.6-sol` and
+`gpt-6.1-sol` at medium effort, 30 runs each, on the localStorage builds (`--storage local`), and is
+the basis for the `gpt-6.1-sol` participant default.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
