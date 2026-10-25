@@ -8,31 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.147.0: Screenshots take half the space (2026-10-25)
 
-- `actor.serviceTier: fast` sends every OpenAI computer-use participant request in Fast mode
-  (`service_tier: "fast"`). The spend estimate and caps price each request at the tier the response
-  says served it, from the Fast mode rates now in the rate table for gpt-5.6-sol, gpt-6.1-sol,
-  gpt-6-luna and gpt-6-astra. The trace records the requested tier in `modelSettings.serviceTier`
-  and the served tier on each `tokenUsage.turns` record. A study that asks for Fast mode on a model
-  without a Fast mode rate, or on a route that does not send it, is refused before it starts. The
-  benchmark takes `--participant`, `--service-tier` and `--persona`.
+humanish 0.147.0 keeps a computer-use participant's screenshots as lossless WebP, 0.47 to 0.55 of
+the PNG size with the same pixels, and `verify`, study analysis and export read them; earlier
+humanish versions refuse a bundle with WebP screenshots. `actor.serviceTier: fast` runs OpenAI
+computer-use participants in Fast mode. On the Taskly benchmark a Fast mode step took 14% less
+time at 2.15 times the participant cost, and each request is priced at the tier that served it.
 
-### Changed
-
-- A computer-use participant's screenshots end as lossless WebP, about half the bytes of PNG: 0.47
-  to 0.55 of the PNG size on 511 retained frames, with the same pixels. Each frame is written as
-  PNG during the session, as the live Observer reads it, and encoded in one worker thread off the
-  turn's path. When the participant ends, its trace names the WebP of each frame encoded by then,
-  and the run removes those PNGs once its final bundle is written. A frame still encoding after
-  5 s, or past the worker's 64 MB queue, stays PNG, and so does every frame of a study with
-  `policies.redactScreenshots: true`. An interrupted run keeps both files of a frame.
-- `verify`, study analysis and `export --format bundle` accept lossless WebP screenshots at
-  `screenshots/**/*.webp` beside PNG ones. Verify reads a WebP frame's structure: a RIFF file
-  holding one lossless VP8L chunk, with no Exif, XMP or ICC data, under the PNG pixel cap. A WebP
-  frame is always full-fidelity evidence, so only a blurred PNG counts as blurred. Analysis sends a
-  WebP capture as `image/webp`. Export blurs a WebP frame to a PNG at the same path ending `.png`
-  and points the copy's references at it. Earlier humanish versions refuse WebP screenshots.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.147.0)
 
 ## 0.146.0: Studies start and finish sooner (2026-10-23)
 
