@@ -11,6 +11,7 @@ import {
   RUBRIC_VERSION,
   type Arm,
   type EvidenceFacts,
+  type Storage,
 } from "../taskly/answer-key.js";
 import { MISSIONS, type MissionId } from "../taskly/missions.js";
 import {
@@ -128,6 +129,8 @@ export interface Manifest {
   participant?: ParticipantSettings;
   /** The persona id the studies named; absent means synthetic-new-user. */
   persona?: string;
+  /** Where the served builds kept tasks; absent means memory, as before `--storage` existed. */
+  storage?: Storage;
 }
 
 export interface ScoredRun {
@@ -207,7 +210,7 @@ export interface BenchResult {
   createdAt: string;
   humanish: Manifest["humanish"];
   rubric: { id: string; version: number; sha256: string };
-  fixture: { id: "taskly"; digests: FixtureDigests; persona: string };
+  fixture: { id: "taskly" | "taskly-local"; digests: FixtureDigests; persona: string };
   participant?: ParticipantSettings;
   mission: { id: MissionId; sha256: string; text: string };
   runsPerArm: number;
@@ -215,7 +218,13 @@ export interface BenchResult {
   brains: BrainResult[];
 }
 
-function scoreRun(projectDir: string, record: RunRecord, missionText: string, budget: BudgetSettings): ScoredRun {
+function scoreRun(
+  projectDir: string,
+  record: RunRecord,
+  missionText: string,
+  budget: BudgetSettings,
+  storage: Storage,
+): ScoredRun {
   const base: ScoredRun = {
     arm: record.arm,
     index: record.index,
@@ -250,7 +259,7 @@ function scoreRun(projectDir: string, record: RunRecord, missionText: string, bu
     analysisUsd: record.analysis.estimatedUsd,
     totalUsd: round(parts.reduce<number>((total, part) => total + (part ?? 0), 0)),
   };
-  const participants = participantsOf(bundle, missionText);
+  const participants = participantsOf(bundle, missionText, storage);
   base.participants = participants.map((participant) => {
     const stream = bundle.streams.find((candidate) => candidate.id === participant.streamId);
     return {
@@ -287,7 +296,7 @@ function scoreAnalysisModels(projectDir: string, manifest: Manifest, brain: Brai
   const factsOf = (runId: string): EvidenceFacts | null => {
     if (!facts.has(runId)) {
       try {
-        const participants = participantsOf(readRunBundle(projectDir, runId), missionText);
+        const participants = participantsOf(readRunBundle(projectDir, runId), missionText, manifest.storage ?? "memory");
         facts.set(runId, combineFacts(participants.map((participant) => participant.facts), missionText));
       } catch {
         facts.set(runId, null);
@@ -353,7 +362,7 @@ export function buildResult(projectDir: string, manifest: Manifest): BenchResult
   const brains = manifest.brains.map((brain): BrainResult => {
     const runs = manifest.runs
       .filter((record) => record.brain === brain)
-      .map((record) => scoreRun(projectDir, record, mission.text, manifest.budget));
+      .map((record) => scoreRun(projectDir, record, mission.text, manifest.budget, manifest.storage ?? "memory"));
     const analyses = manifest.runs
       .filter((record) => record.brain === brain && record.analysis.state === "complete" && record.runId)
       .map((record) => readAnalysis(projectDir, record.runId ?? "", record.analysis.analysisId ?? undefined))
@@ -404,7 +413,9 @@ export function buildResult(projectDir: string, manifest: Manifest): BenchResult
     createdAt: new Date().toISOString(),
     humanish: manifest.humanish,
     rubric: { id: RUBRIC_ID, version: RUBRIC_VERSION, sha256: sha256(answerKey) },
-    fixture: { id: "taskly", digests: manifest.fixture, persona: manifest.persona ?? "synthetic-new-user" },
+    fixture: {
+      id: manifest.storage === "local" ? "taskly-local" : "taskly",
+      digests: manifest.fixture, persona: manifest.persona ?? "synthetic-new-user" },
     ...(manifest.participant === undefined ? {} : { participant: manifest.participant }),
     mission: { id: mission.id, sha256: sha256(mission.text), text: mission.text },
     runsPerArm: manifest.runsPerArm,

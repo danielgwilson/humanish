@@ -56,6 +56,7 @@ import {
   type MatrixAnalysis,
   type RunRecord,
 } from "./lib/report.js";
+import type { Storage } from "./taskly/answer-key.js";
 import { MISSIONS, type MissionId } from "./taskly/missions.js";
 
 const USAGE = `Usage: pnpm bench [options]
@@ -73,6 +74,7 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
   --participant <model[@effort]> the participant model and reasoning effort (default: the CLI's)
   --service-tier fast      send participant requests in OpenAI Fast mode
   --persona <file>         persona file the studies use (default: humanish/personas/synthetic-new-user.yaml)
+  --storage <where>        memory (default): tasks are lost on reload; local: the builds keep them in localStorage
   --analysis-max-usd <usd> per-run cap override (default: the admitted cost analyze --dry-run reports)
   --analysis-max-output-tokens <n> each analysis's output limit, 256 to 32768 (default 16384)
   --no-analysis            skip the analysis step
@@ -122,6 +124,7 @@ const { values } = parseArgs({
     participant: { type: "string" },
     "service-tier": { type: "string" },
     persona: { type: "string" },
+    storage: { type: "string", default: "memory" },
     "analysis-max-output-tokens": { type: "string" },
     "no-analysis": { type: "boolean", default: false },
     "work-dir": { type: "string" },
@@ -153,6 +156,7 @@ function writeResults(projectDir: string, manifest: Manifest, outDir: string): v
     `${result.createdAt.slice(0, 10)}-${result.humanish.version}-${manifest.mission}-${manifest.brains.join("+")}` +
     participantLabel(manifest.participant) +
     (manifest.persona === undefined || manifest.persona === "synthetic-new-user" ? "" : `-${manifest.persona}`) +
+    (manifest.storage === "local" ? "-local-storage" : "") +
     (manifest.analysisMatrix ? "-analysis-models" : "");
   mkdirSync(outDir, { recursive: true });
   const jsonPath = path.join(outDir, `${stem}.json`);
@@ -380,6 +384,8 @@ const runsPerArm = Number(values.runs);
 if (!Number.isSafeInteger(runsPerArm) || runsPerArm < 1) fail(`--runs must be a whole number of at least 1.`);
 if (values.mission !== "neutral" && values.mission !== "walked") fail(`--mission must be neutral or walked.`);
 const mission = MISSIONS[values.mission as MissionId];
+if (values.storage !== "memory" && values.storage !== "local") fail(`--storage must be memory or local.`);
+const storage: Storage = values.storage;
 
 /** The checkout's commit, and the commit that last changed src/, which is what the build measures. */
 function gitState(): string {
@@ -406,6 +412,7 @@ writeProject(
   mission,
   positiveNumber(values["participant-cap"], "--participant-cap"),
   personaFile,
+  storage,
 );
 
 // The CLI's own dry run checks each generated study and reports its worst-case desktop minutes.
@@ -433,7 +440,7 @@ const budget: BudgetSettings = {
 };
 
 process.stdout.write(
-  `humanish ${version} (${source}), mission ${mission.id}, ${runsPerArm} run${runsPerArm === 1 ? "" : "s"} per arm, cap $${budget.maxUsdPerBrain} per brain` +
+  `humanish ${version} (${source}), mission ${mission.id}, ${storage === "local" ? "builds keeping tasks in localStorage, " : ""}${runsPerArm} run${runsPerArm === 1 ? "" : "s"} per arm, cap $${budget.maxUsdPerBrain} per brain` +
     (matrixMode
       ? ` and per analysis model, ${repeats} analys${repeats === 1 ? "is" : "es"} of each run per model after every participant has run\n`
       : "\n"),
@@ -485,7 +492,8 @@ const manifest: Manifest = {
   brains,
   runsPerArm,
   budget,
-  fixture: fixtureDigests(personaFile),
+  fixture: fixtureDigests(personaFile, storage),
+  ...(storage === "memory" ? {} : { storage }),
   ...(participant === undefined ? {} : { participant }),
   persona: personaId(personaFile),
   stopped: {},

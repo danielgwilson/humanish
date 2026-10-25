@@ -122,6 +122,72 @@ it("reports a forced cost refusal separately and excludes it from recall", async
   }
 });
 
+it("scores a recorded run against the localStorage builds the manifest names", () => {
+  const manifest: Manifest = {
+    schema: "humanish.bench-manifest.v1",
+    createdAt: "2026-10-25T00:00:00Z",
+    humanish: { version: "0.0.0", source: "synthetic test" },
+    mission: "neutral",
+    brains: ["openai-computer-use"],
+    runsPerArm: 1,
+    budget: {
+      maxUsdPerBrain: 7,
+      participantCapUsd: 0.6,
+      analysisMaxUsd: 1.75,
+      worstCaseDesktopMinutes: 50,
+      analysis: false,
+    },
+    fixture: fixtureDigests(undefined, "local"),
+    storage: "local",
+    stopped: {},
+    runs: [
+      {
+        brain: "openai-computer-use",
+        arm: "clean",
+        index: 1,
+        studyId: "bench-taskly-b-openai-computer-use",
+        runId: "run-local",
+        ok: true,
+        error: null,
+        startedAt: "2026-10-25T00:00:00Z",
+        finishedAt: "2026-10-25T00:01:00Z",
+        analysis: {
+          state: "skipped_disabled",
+          analysisId: null,
+          estimatedUsd: null,
+          admissionUsd: null,
+          error: null,
+        },
+        cleanup: null,
+      },
+    ],
+  };
+  const project = mkdtempSync(path.join(os.tmpdir(), "humanish-bench-local-"));
+  try {
+    const root = path.join(project, ".humanish", "runs", "run-local");
+    mkdirSync(root, { recursive: true });
+    writeFileSync(
+      path.join(root, "run.json"),
+      JSON.stringify({
+        runId: "run-local",
+        streams: [
+          {
+            id: "stream-001",
+            actor: { reason: "Refreshing the page erased the entire list.", items: [] },
+          },
+        ],
+      }),
+    );
+    const result = buildResult(project, manifest);
+    expect(result.fixture.id).toBe("taskly-local");
+    expect(
+      result.brains[0]?.runs[0]?.participants[0]?.invented.map((match) => match.classId),
+    ).toEqual(["B10"]);
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+  }
+});
+
 const FIXTURES = path.resolve("tests/fixtures/bench/taskly");
 // The six neutral-mission runs of 2026-10-04 and their gpt-6-astra analyses. labels.json scores
 // the analyses by hand: on the four planted runs, 18 of 20 defects listed (D1 and D2 each missed
