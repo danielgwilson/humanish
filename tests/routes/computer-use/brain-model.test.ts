@@ -207,6 +207,9 @@ async function run(
   return { result, sessions, flushModels };
 }
 
+// A caller or local-agent participant that declares no model is priced and labeled at these rates.
+const UNREPORTED_MODEL_RATE = "gpt-5.6-sol";
+
 /** The price the cap estimator puts on usage, against the price under `model`. */
 function expectPricedAt(session: CuaActorSessionOptions, model: string) {
   expect(session.estimateTurnCostUsd).toBeDefined();
@@ -263,7 +266,7 @@ describe("computer-use participant model, openai brain", () => {
 
 describe("computer-use participant model, caller brain", () => {
   it.each([undefined, NON_DEFAULT_MODEL].map((model) => ({ model, name: label(model) })))(
-    "keeps the caller's provider and prices at the declared model, else the default, on a local study desktop: $name",
+    "keeps the caller's provider and prices at the declared model, else gpt-5.6-sol rates, on a local study desktop: $name",
     async ({ model }) => {
       const provider = doneProvider("caller-provider");
       const { result, sessions, flushModels } = await run(
@@ -275,8 +278,8 @@ describe("computer-use participant model, caller brain", () => {
       expect(sessions[0]!.provider).toBe(provider);
       if (model) expect(sessions[0]!.openai!.model).toBe(model);
       else expect("model" in sessions[0]!.openai!).toBe(false);
-      expectPricedAt(sessions[0]!, model ?? DEFAULT_OPENAI_CU_MODEL);
-      expect(flushModels).toEqual([model ?? DEFAULT_OPENAI_CU_MODEL]);
+      expectPricedAt(sessions[0]!, model ?? UNREPORTED_MODEL_RATE);
+      expect(flushModels).toEqual([model ?? UNREPORTED_MODEL_RATE]);
     },
   );
 
@@ -297,7 +300,7 @@ describe("computer-use participant model, caller brain", () => {
       expect(sessions[0]!.provider).toBe(provider);
       if (model) expect(sessions[0]!.openai!.model).toBe(model);
       else expect("model" in sessions[0]!.openai!).toBe(false);
-      expectPricedAt(sessions[0]!, model ?? DEFAULT_OPENAI_CU_MODEL);
+      expectPricedAt(sessions[0]!, model ?? UNREPORTED_MODEL_RATE);
     },
   );
 });
@@ -315,7 +318,7 @@ describe("computer-use participant model, local-agent brain", () => {
       const options = vi.mocked(createRestrictedCodexParticipant).mock.calls[0]![0]!;
       if (model === undefined) expect("model" in options).toBe(false);
       else expect(options.model).toBe(model);
-      expect(flushModels).toEqual([model ?? DEFAULT_OPENAI_CU_MODEL]);
+      expect(flushModels).toEqual([model ?? UNREPORTED_MODEL_RATE]);
     },
   );
 

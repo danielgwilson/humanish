@@ -91,9 +91,9 @@ are a D5 report ("clicking save appeared to do nothing"), which is a detection, 
 assurance: "Clear completed removed finished tasks at first, but they returned after I reloaded
 the page." Clear completed does nothing on that build.
 
-A3 was faster here: 0.74 s less per step and 15.6 s less per session. On 10-24 the two were equal per
-step. These runs had two desktops in flight against five on 10-24; the cause of the change was not
-investigated.
+A3 was faster here: 0.74 s less per step and 15.6 s less per session. On 10-24 the two were equal
+per step. These runs had two desktops in flight against five on 10-24; the cause of the change was
+not investigated.
 
 ## How it ran
 
@@ -123,8 +123,9 @@ made no false assurance and no invented claim here, against one false assurance 
 third as much per participant and was not slower.
 
 On the planted build, `gpt-6.1-sol` stopped after the failed edit and the swapped filters in these
-runs, and no report or narration of its 35 planted runs over both days names Clear completed. A study that needs participants to
-keep going past early failures can name `gpt-5.6-sol` in `actor.model`.
+runs, and no report or narration of its 35 planted runs over both days names Clear completed. A
+study that needs participants to keep going past early failures can name `gpt-5.6-sol` in
+`actor.model`.
 
 ## What these numbers are not
 
