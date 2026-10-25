@@ -124,7 +124,7 @@
   "actor.json": {
     "schema": "humanish.actor-trace.v1",
     "provider": "openai-responses-cu",
-    "providerVersion": "gpt-5.6-sol",
+    "providerVersion": "gpt-6.1-sol",
     "conversation": {
       "mode": "threaded",
       "summarizedTurns": 0,
@@ -160,7 +160,7 @@
     "completionReason": "goal_satisfied",
     "reason": "Done.",
     "ids": {
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6.1-sol",
       "turnId": "resp_2"
     },
     "modelSettings": {
@@ -541,7 +541,7 @@
         "actor": {
           "schema": "humanish.actor-trace.v1",
           "provider": "openai-responses-cu",
-          "providerVersion": "gpt-5.6-sol",
+          "providerVersion": "gpt-6.1-sol",
           "conversation": {
             "mode": "threaded",
             "summarizedTurns": 0
@@ -565,7 +565,7 @@
           "completionReason": "goal_satisfied",
           "reason": "Done.",
           "ids": {
-            "model": "gpt-5.6-sol",
+            "model": "gpt-6.1-sol",
             "turnId": "resp_2"
           },
           "modelSettings": {
@@ -735,7 +735,7 @@
         {
           "kind": "model-tokens",
           "laneId": "lane-01",
-          "modelId": "gpt-5.6-sol",
+          "modelId": "gpt-6.1-sol",
           "estimatedCostUsd": null,
           "reason": "closing_usage_unreported",
           "ratesAsOf": null

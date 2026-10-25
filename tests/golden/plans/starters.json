@@ -41,7 +41,7 @@
           "provider": "e2b",
           "brain": {
             "kind": "openai",
-            "model": "gpt-5.6-sol"
+            "model": "gpt-6.1-sol"
           },
           "participants": [
             {
@@ -298,7 +298,7 @@
           "provider": "e2b",
           "brain": {
             "kind": "openai",
-            "model": "gpt-5.6-sol"
+            "model": "gpt-6.1-sol"
           },
           "participants": [
             {
@@ -413,7 +413,7 @@
           "provider": "e2b",
           "brain": {
             "kind": "openai",
-            "model": "gpt-5.6-sol"
+            "model": "gpt-6.1-sol"
           },
           "participants": [
             {
@@ -791,7 +791,7 @@
           "provider": "e2b",
           "brain": {
             "kind": "openai",
-            "model": "gpt-5.6-sol"
+            "model": "gpt-6.1-sol"
           },
           "participants": [
             {

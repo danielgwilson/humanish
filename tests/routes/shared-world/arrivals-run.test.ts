@@ -131,7 +131,7 @@ describe("a provisioned shared world with a declared schedule", () => {
     expect(bundle.simulations[1]?.arrival?.startedAt).toBeUndefined();
     // The participant's record says it was skipped, in the form a computer-use skip takes.
     expect(bundle.simulations[1]?.summary).toBe(
-      "Persona 02 was skipped: study budget reached before this participant started: the run's estimated model spend $4 crossed caps.maxTotalUsd=$0.01; no desktop was created.",
+      "Persona 02 was skipped: study budget reached before this participant started: the run's estimated model spend $2 crossed caps.maxTotalUsd=$0.01; no desktop was created.",
     );
     expect(bundle.review.summary).toBe(
       "1 participant used one shared app. 1 of 1 reached the goal. 1 participant was skipped before its session started; the gaps say why. The app's shared state changed 1 time during the run.",

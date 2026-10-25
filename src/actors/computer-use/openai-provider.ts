@@ -69,10 +69,18 @@ export const OPENAI_RESPONSES_CU_CAPABILITIES: ActorCapabilities = {
   license: "proprietary",
 };
 
-// The flagship 5.6-generation tier ("gpt-5.6" is OpenAI's alias for this exact id; the
-// computer-use guide's own examples run on it). Explicit tier id so trace provenance and the
-// rate-table key stay stable if OpenAI repoints the alias.
-export const DEFAULT_OPENAI_CU_MODEL = "gpt-5.6-sol";
+// The computer-use participant default. On the Taskly benchmark it matched gpt-5.6-sol's
+// analysis recall at about a third of the participant cost
+// (docs/evidence/benchmark/2026-10-25-participant-default.md). Explicit tier id so trace
+// provenance and the rate-table key stay stable if OpenAI repoints an alias.
+export const DEFAULT_OPENAI_CU_MODEL = "gpt-6.1-sol";
+
+/**
+ * The model the Codex terminal route passes when a study names none. The benchmark behind the
+ * computer-use default ran OpenAI computer-use participants only, so the terminal route keeps
+ * gpt-5.6-sol.
+ */
+export const DEFAULT_CODEX_MODEL = "gpt-5.6-sol";
 
 /**
  * The effort a request carries when a study declares none. Exported because a default that only

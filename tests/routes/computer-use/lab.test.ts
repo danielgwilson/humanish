@@ -7274,7 +7274,7 @@ describe("runCuaActorLab cost estimates", () => {
     const { module, killed } = makeFakeModule(makeFakeSandbox());
     const result = await runComputerUse({
       cwd,
-      config: configWithModel(), // default resolves to gpt-5.6-sol, the 5.6-generation flagship
+      config: configWithModel(), // the default resolves to gpt-6.1-sol
       dryRun: false,
       env: { OPENAI_API_KEY: "k", E2B_API_KEY: "k" },
       deps: {
@@ -7296,19 +7296,19 @@ describe("runCuaActorLab cost estimates", () => {
     expect(killed).toEqual(["fake-sandbox-001"]);
 
     const bundle = await readBundle(result.runId);
-    // Per-actor estimate on the persisted trace: labeled with provenance; gpt-5.6-sol is a
+    // Per-actor estimate on the persisted trace: labeled with provenance; gpt-6.1-sol is a
     // confirmed (non-placeholder) rate. The single 2M-input request crosses the 272K
     // long-context threshold, so the whole request re-tiers (2x input-side, 1.5x output):
     // exact because the trace now records per-request turns.
     const est = bundle.streams[0].actor.estimatedCost;
     expect(est.schema).toBe("humanish.actor-estimated-cost.v1");
-    // gpt-5.6-sol long tier (promo sheet 2026-09-03): 2_000_000*4e-6*2 + 4_000*20e-6*1.5
-    // = 16 + 0.12 = 16.12.
-    expect(est.estimatedCostUsd).toBeCloseTo(16.12, 6);
-    expect(est.ratesAsOf).toBe("2026-09-03");
+    // gpt-6.1-sol long tier (sheet 2026-10-21): 2_000_000*2e-6*2 + 4_000*10e-6*1.5
+    // = 8 + 0.06 = 8.06.
+    expect(est.estimatedCostUsd).toBeCloseTo(8.06, 6);
+    expect(est.ratesAsOf).toBe("2026-10-21");
     expect(est.source).toContain("developers.openai.com/api/docs/pricing");
     expect(est.placeholder).toBeUndefined();
-    expect(est.modelId).toBe("gpt-5.6-sol");
+    expect(est.modelId).toBe("gpt-6.1-sol");
     expect(est.breakdown.longContextTurns).toBe(1);
     // The trace file records the per-request usage ledger the tiering priced from: the
     // interaction, the final reply and the impressions-only request after it. run.json keeps the
@@ -7324,18 +7324,18 @@ describe("runCuaActorLab cost estimates", () => {
     expect(cost.tokenUsage).toEqual({ input: 2_000_000, output: 4_000, total: 2_004_000 });
     const modelLine = cost.breakdown.find((l: any) => l.kind === "model-tokens");
     const desktopLine = cost.breakdown.find((l: any) => l.kind === "desktop-minutes");
-    expect(modelLine.estimatedCostUsd).toBeCloseTo(16.12, 6);
-    expect(modelLine.ratesAsOf).toBe("2026-09-03");
+    expect(modelLine.estimatedCostUsd).toBeCloseTo(8.06, 6);
+    expect(modelLine.ratesAsOf).toBe("2026-10-21");
     expect(modelLine.source).toContain("developers.openai.com/api/docs/pricing");
     expect(desktopLine.estimatedCostUsd).toBeCloseTo(0.00888, 6);
     expect(desktopLine.desktop).toMatchObject({
       resources: { cpuCount: 8, memoryMiB: 8192 },
       resourceSource: "e2b.getInfo",
     });
-    expect(cost.estimatedTotalUsd).toBeCloseTo(16.12888, 6);
+    expect(cost.estimatedTotalUsd).toBeCloseTo(8.06888, 6);
     expect(cost.placeholder).toBe(false);
     expect(cost.fullyEstimated).toBe(true);
-    expect(cost.ratesAsOf).toBe("2026-09-03");
+    expect(cost.ratesAsOf).toBe("2026-09-05");
 
     const verify = await verifyRun(cwd, result.runId);
     expect(verify.checks.find((c) => c.name === "cost estimate labeling")?.ok).toBe(true);
