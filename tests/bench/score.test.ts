@@ -224,6 +224,42 @@ describe("the Taskly scorer on claims the recorded runs never made", () => {
     }
   });
 
+  it("reads an analysis title about Enter leaving an edit open as the clean build's Enter behavior", () => {
+    const score = scoreReport(
+      participant("Enter left an edit open; clicking Save completed it."),
+      "clean",
+    );
+    expect(score.supported.map((match) => match.classId)).toEqual(["B1"]);
+  });
+
+  it("reads reassurance and negated truncation as no problem", () => {
+    const score = scoreReport(
+      participant(
+        "The long task wrapped over four lines without being cut off. No issues blocked me, and I encountered no blockers or unclear error output.",
+      ),
+      "clean",
+    );
+    expect(score.unresolved).toEqual([]);
+    expect(score.invented).toEqual([]);
+  });
+
+  it("separates a data-loss reading of D2 from a display reading", () => {
+    const loss = scoreReport(
+      participant(
+        "The long task was cut off. Opening Edit confirmed only the first 30 characters were kept.",
+      ),
+      "planted",
+    );
+    const display = scoreReport(
+      participant("The long task was cut off visually instead of wrapping."),
+      "planted",
+    );
+    expect(loss.d2Mechanism).toBe("data_loss");
+    expect(display.d2Mechanism).toBe("display");
+  });
+});
+
+describe("the Taskly scorer on the localStorage builds", () => {
   it("counts a lost-on-reload claim as invented on the builds that keep tasks in localStorage", () => {
     for (const arm of ["planted", "clean"] as const) {
       const score = scoreReport(
@@ -257,40 +293,6 @@ describe("the Taskly scorer on claims the recorded runs never made", () => {
       local,
     );
     expect(score.findings.map((finding) => finding.verdict)).toEqual(["invented"]);
-  });
-
-  it("reads an analysis title about Enter leaving an edit open as the clean build's Enter behavior", () => {
-    const score = scoreReport(
-      participant("Enter left an edit open; clicking Save completed it."),
-      "clean",
-    );
-    expect(score.supported.map((match) => match.classId)).toEqual(["B1"]);
-  });
-
-  it("reads reassurance and negated truncation as no problem", () => {
-    const score = scoreReport(
-      participant(
-        "The long task wrapped over four lines without being cut off. No issues blocked me, and I encountered no blockers or unclear error output.",
-      ),
-      "clean",
-    );
-    expect(score.unresolved).toEqual([]);
-    expect(score.invented).toEqual([]);
-  });
-
-  it("separates a data-loss reading of D2 from a display reading", () => {
-    const loss = scoreReport(
-      participant(
-        "The long task was cut off. Opening Edit confirmed only the first 30 characters were kept.",
-      ),
-      "planted",
-    );
-    const display = scoreReport(
-      participant("The long task was cut off visually instead of wrapping."),
-      "planted",
-    );
-    expect(loss.d2Mechanism).toBe("data_loss");
-    expect(display.d2Mechanism).toBe("display");
   });
 });
 
