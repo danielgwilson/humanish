@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import { PNG } from "pngjs";
 import { describe, expect, it } from "vitest";
 
-import { AnthropicConversation } from "../../../src/actors/computer-use/anthropic-conversation.js";
+import {
+  AnthropicConversation,
+  type ConversationRequest,
+} from "../../../src/actors/computer-use/anthropic-conversation.js";
 import { HALT_TEXT } from "../../../src/actors/computer-use/anthropic-wire.js";
 import type {
   CuaActionAcknowledgement,
@@ -170,11 +173,7 @@ describe("an Anthropic participant's conversation", () => {
   it("answers a call it could not map with its reason, and the calls after it with the halt text", () => {
     const c = conversation();
     c.request(req()).accept(
-      reply("batch", [
-        call("type", { text: "milk" }),
-        call("zoom", { region: [0, 0, 10, 10] }),
-        call("screenshot"),
-      ]),
+      reply("batch", [call("type", { text: "milk" }), call("teleport"), call("screenshot")]),
     );
     const results = added(
       c.request(req({ previousExecution: acks("completed", "not_dispatched") })).body as Body,
@@ -184,7 +183,7 @@ describe("an Anthropic participant's conversation", () => {
     );
     expect(texts).toEqual([
       "OK",
-      "zoom is not available on this desktop. Use the other computer actions.",
+      'There is no computer action named "teleport".',
       HALT_TEXT,
       "This is the screen now.",
       undefined,
@@ -215,6 +214,79 @@ describe("an Anthropic participant's conversation", () => {
     const c = conversation();
     c.request(req()).accept(reply("end-turn"));
     expect(() => c.request(req({ instructions: "Something else." }))).toThrow(/one system prompt/);
+  });
+});
+
+describe("a read's answer", () => {
+  const ZOOMED = PNG.sync.write(new PNG({ width: 300, height: 150 }));
+  const readThenType = (
+    first: Block,
+    ack: CuaActionAcknowledgement,
+  ): { results: Block[]; next: ConversationRequest } => {
+    const c = conversation();
+    c.request(req()).accept(reply("batch", [first, call("type", { text: "milk" })]));
+    const previousExecution = { actions: [ack, { index: 1, status: "completed" as const }] };
+    const next = c.request(req({ previousExecution }));
+    return { results: added(next.body as Body), next };
+  };
+
+  it("gives cursor_position the pointer's coordinates", () => {
+    const { results } = readThenType(call("cursor_position"), {
+      index: 0,
+      status: "completed",
+      result: { kind: "pointer", x: 512, y: 384 },
+    });
+    expect(results[0]).toMatchObject({ content: [{ type: "text", text: "X=512, Y=384" }] });
+    expect(results[0]!.is_error).toBeUndefined();
+  });
+
+  it("gives zoom its image", () => {
+    const { results } = readThenType(call("zoom", { region: [0, 0, 300, 150] }), {
+      index: 0,
+      status: "completed",
+      result: { kind: "frame", screenshot: ZOOMED },
+    });
+    expect(results[0]!.content).toEqual([
+      { type: "text", text: "OK" },
+      expect.objectContaining({ type: "image" }),
+    ]);
+  });
+
+  it("is an error that halts nothing when the desktop returned nothing", () => {
+    const { results } = readThenType(call("cursor_position"), { index: 0, status: "completed" });
+    expect(
+      results.map((result) => [result.is_error ?? false, (result.content as Block[])[0]?.text]),
+    ).toEqual([
+      [true, "The desktop returned no pointer position."],
+      [false, "OK"],
+    ]);
+  });
+
+  it("moves the pointer a later coordinate-free click uses", () => {
+    const { next } = readThenType(call("cursor_position"), {
+      index: 0,
+      status: "completed",
+      result: { kind: "pointer", x: 70, y: 80 },
+    });
+    const turn = next.accept(reply("batch", [call("left_click")]));
+    expect(turn.actions).toEqual([{ kind: "click", x: 70, y: 80, button: "left" }]);
+  });
+
+  it("keeps the batch's last zoom image apart from the screen after the batch", () => {
+    const c = conversation();
+    c.request(req()).accept(reply("batch", [call("zoom", { region: [0, 0, 300, 150] })]));
+    const results = added(
+      c.request(
+        req({
+          previousExecution: {
+            actions: [
+              { index: 0, status: "completed", result: { kind: "frame", screenshot: ZOOMED } },
+            ],
+          },
+        }),
+      ).body as Body,
+    );
+    expect(results.map((block) => block.type)).toEqual(["tool_result", "text", "image"]);
   });
 });
 

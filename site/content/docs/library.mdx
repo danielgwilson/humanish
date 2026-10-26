@@ -108,9 +108,9 @@ own computer-use toolset, on `claude-haiku-5-5` unless `model` names another. It
 the key as `apiKey` and reads no environment variable. It sends effort `medium` and a 16,000-token
 output limit unless `reasoningEffort` and `maxOutputTokens` say otherwise, and records both on the
 trace. Screenshots go to the model at full size, so a desktop wider or taller than 2,000 px is
-refused before the first request. Six of Claude's actions (`triple_click`, `left_mouse_down`,
-`left_mouse_up`, `hold_key`, `cursor_position`, `zoom`) have no desktop action yet; the
-participant is told so and the session goes on. Under a spend cap (`maxUsd` or a study budget), a
+refused before the first request. Every one of Claude's 17 computer actions runs: `zoom` gets a
+fresh capture of its region and `cursor_position` the pointer's coordinates, and `hold_key`
+holds keys for up to 30 seconds. Under a spend cap (`maxUsd` or a study budget), a
 request that stalls or fails without a reply is never sent again: its cost cannot be bounded, so
 the session stops with `stopCause: "usage_unreported"`.
 Studies run on Claude in a later release.

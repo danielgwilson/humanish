@@ -1,4 +1,5 @@
 import type { CuaAction, CuaTurn } from "./loop.js";
+import { CUA_WAIT_LIMITS } from "./wait.js";
 import {
   isFiniteNumber,
   isNonNegativeSafeInteger,
@@ -147,15 +148,73 @@ const typeText: MemberMapper = (name, input) =>
     ? ran({ kind: "type", text: input.text })
     : rejected(`${name} needs text to type.`);
 
+/** The keys a `key` or `hold_key` call names in `text`, or undefined when it names none. */
+function keysOf(text: unknown): string[] | undefined {
+  if (typeof text !== "string" || text === "") return undefined;
+  // A plus sign joins two key names; a lone or trailing one is the plus key itself.
+  return text.length > 1 ? text.split(/\+(?!$)/) : [text];
+}
+
 const pressKey: MemberMapper = (name, input) => {
-  if (typeof input.text !== "string" || input.text === "")
+  const keys = keysOf(input.text);
+  if (keys === undefined)
     return rejected(`${name} needs text naming a key or a combination such as ctrl+s.`);
   const repeat = input.repeat ?? 1;
   if (!isPositiveSafeInteger(repeat) || repeat > MAX_KEY_REPEAT)
     return rejected(`${name} repeat must be a whole number from 1 to ${MAX_KEY_REPEAT}.`);
-  // A plus sign joins two key names; a lone or trailing one is the plus key itself.
-  const keys = input.text.length > 1 ? input.text.split(/\+(?!$)/) : [input.text];
   return ran(...Array.from({ length: repeat }, (): CuaAction => ({ kind: "keypress", keys })));
+};
+
+const tripleClick: MemberMapper = (name, input, pointer) => {
+  const at = targetOf(name, input, pointer);
+  return typeof at === "string"
+    ? rejected(at)
+    : ran({ kind: "triple_click", ...at, ...heldKeysOf(input) });
+};
+
+/** A left-button press or release, where the pointer is or at a named coordinate. */
+function leftButton(kind: "mouse_down" | "mouse_up"): MemberMapper {
+  return (name, input) => {
+    if (input.coordinate === undefined) return ran({ kind, button: "left" });
+    const at = pointOf(input.coordinate);
+    return at === undefined
+      ? rejected(`${name} needs coordinate as [x, y] in screenshot pixels, or none.`)
+      : ran({ kind, button: "left", ...at });
+  };
+}
+
+// The desktop holds keys for at most one desktop call; the toolset allows up to 300 seconds.
+const MAX_HOLD_MS = CUA_WAIT_LIMITS.stepMs;
+
+const holdKey: MemberMapper = (name, input) => {
+  const keys = keysOf(input.text);
+  if (keys === undefined)
+    return rejected(`${name} needs text naming a key or a combination such as shift.`);
+  if (!isFiniteNumber(input.duration) || input.duration <= 0)
+    return rejected(`${name} needs duration, the seconds to hold the keys.`);
+  const ms = Math.max(1, Math.round(input.duration * 1000));
+  return ms > MAX_HOLD_MS
+    ? rejected(`${name} holds keys for at most ${MAX_HOLD_MS / 1000} seconds on this desktop.`)
+    : ran({ kind: "hold_keys", keys, ms });
+};
+
+type Region = Extract<CuaAction, { kind: "zoom" }>["region"];
+
+/** `[x0, y0, x1, y1]` in screenshot pixels as a region of whole pixels, or undefined. */
+function regionOf(value: unknown): Region | undefined {
+  if (!Array.isArray(value) || value.length !== 4) return undefined;
+  if (!value.every((corner) => isFiniteNumber(corner) && corner >= 0)) return undefined;
+  const [x0, y0, x1, y1] = (value as number[]).map(Math.round) as [number, number, number, number];
+  return x1 > x0 && y1 > y0 ? { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } : undefined;
+}
+
+const zoom: MemberMapper = (name, input) => {
+  const region = regionOf(input.region);
+  return region === undefined
+    ? rejected(
+        `${name} needs region as [x0, y0, x1, y1], the top-left and bottom-right corners in screenshot pixels.`,
+      )
+    : ran({ kind: "zoom", region });
 };
 
 const wait: MemberMapper = (_name, input) =>
@@ -163,16 +222,10 @@ const wait: MemberMapper = (_name, input) =>
     ? ran({ kind: "wait", ms: Math.max(1, Math.round(input.duration * 1000)) })
     : ran({ kind: "wait" });
 
-function notOnThisDesktop(name: string): MemberMapper {
-  return () =>
-    rejected(`${name} is not available on this desktop. Use the other computer actions.`);
-}
-
 /**
  * Every member of computer_toolset_20260801 and the desktop actions it runs. The request offers
- * all of them, so the participant works with Claude's own action set. A member with no desktop
- * action yet answers the participant with a reason that names it; adding its CuaAction kind
- * replaces that entry here and nothing else in the provider.
+ * all of them, so the participant works with Claude's own action set. `cursor_position` and
+ * `zoom` read the desktop; the conversation answers them from what their acknowledgement read.
  */
 const COMPUTER_MEMBERS: Readonly<Record<string, MemberMapper>> = {
   screenshot: () => ran({ kind: "screenshot" }),
@@ -186,12 +239,12 @@ const COMPUTER_MEMBERS: Readonly<Record<string, MemberMapper>> = {
   type: typeText,
   key: pressKey,
   wait,
-  triple_click: notOnThisDesktop("triple_click"),
-  left_mouse_down: notOnThisDesktop("left_mouse_down"),
-  left_mouse_up: notOnThisDesktop("left_mouse_up"),
-  hold_key: notOnThisDesktop("hold_key"),
-  cursor_position: notOnThisDesktop("cursor_position"),
-  zoom: notOnThisDesktop("zoom"),
+  triple_click: tripleClick,
+  left_mouse_down: leftButton("mouse_down"),
+  left_mouse_up: leftButton("mouse_up"),
+  hold_key: holdKey,
+  cursor_position: () => ran({ kind: "read_pointer" }),
+  zoom,
 };
 
 /** Where the pointer is after `action` completes, or undefined when the action does not move it. */
@@ -199,9 +252,15 @@ export function pointerAfter(action: CuaAction): Point | undefined {
   switch (action.kind) {
     case "click":
     case "double_click":
+    case "triple_click":
     case "move":
     case "scroll":
       return { x: action.x, y: action.y };
+    case "mouse_down":
+    case "mouse_up":
+      return action.x === undefined || action.y === undefined
+        ? undefined
+        : { x: action.x, y: action.y };
     case "drag":
       return action.path.at(-1);
     default:

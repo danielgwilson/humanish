@@ -164,18 +164,47 @@ describe("member calls", () => {
     expect(calls.map((call) => call.positions)).toEqual([[0], [1], []]);
   });
 
+  it("run Claude's precise pointer and keyboard members as their desktop actions", () => {
+    const { turn } = parseMessage(
+      replyCalling([
+        ["triple_click", { text: "shift" }],
+        ["left_mouse_down", {}],
+        ["mouse_move", { coordinate: [600, 410] }],
+        ["left_mouse_up", { coordinate: [610, 410] }],
+        ["hold_key", { text: "ctrl+shift", duration: 1.5 }],
+      ]),
+      pointer,
+    );
+    expect(turn.actions).toEqual([
+      { kind: "triple_click", x: 300, y: 400, heldKeys: ["shift"] },
+      { kind: "mouse_down", button: "left" },
+      { kind: "move", x: 600, y: 410 },
+      { kind: "mouse_up", button: "left", x: 610, y: 410 },
+      { kind: "hold_keys", keys: ["ctrl", "shift"], ms: 1500 },
+    ]);
+  });
+
+  it("read the pointer and zoom into a region given by its corners", () => {
+    const { turn } = parseMessage(
+      replyCalling([
+        ["cursor_position", {}],
+        ["zoom", { region: [100, 200, 400, 350] }],
+      ]),
+      undefined,
+    );
+    expect(turn.actions).toEqual([
+      { kind: "read_pointer" },
+      { kind: "zoom", region: { x: 100, y: 200, width: 300, height: 150 } },
+    ]);
+  });
+
   it.each([
-    "zoom",
-    "triple_click",
-    "left_mouse_down",
-    "left_mouse_up",
-    "hold_key",
-    "cursor_position",
-  ])("answer %s, which has no desktop action yet, with a reason that names it", (name) => {
-    const { turn } = parseMessage(replyCalling([[name, {}]]), pointer);
-    expect(turn.actions).toEqual([]);
-    expect(turn.rejectedProposal?.reason).toMatch(new RegExp(`^${name} is not available`));
-    expect(turn.done).toBe(false);
+    ["zoom", { region: [400, 200, 100, 350] }, /^zoom needs region/],
+    ["hold_key", { text: "shift", duration: 45 }, /at most 30 seconds/],
+    ["hold_key", { text: "shift" }, /^hold_key needs duration/],
+  ] as const)("refuse %s %j, saying what it needs", (name, input, reason) => {
+    const { turn } = parseMessage(replyCalling([[name, input]]), pointer);
+    expect(turn.rejectedProposal?.reason).toMatch(reason);
   });
 
   it("refuse a member the toolset does not have", () => {

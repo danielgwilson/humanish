@@ -175,12 +175,18 @@ export class AnthropicConversation {
   private pointerAfterBatch(req: CuaTurnRequest): Point | undefined {
     const actions = this.latest?.turn.actions ?? [];
     if (actions.length === 0) return this.pointer;
-    const statuses = acknowledgements(req);
+    const acks = acknowledgements(req);
     let pointer = this.pointer;
     for (const [index, action] of actions.entries()) {
-      const status = statuses.get(index) ?? "not_dispatched";
-      if (status === "not_dispatched") continue;
-      pointer = status === "completed" ? (pointerAfter(action) ?? pointer) : undefined;
+      const ack = acks.get(index);
+      if (ack === undefined || ack.status === "not_dispatched") continue;
+      if (ack.status !== "completed") {
+        pointer = undefined;
+        continue;
+      }
+      const read =
+        ack.result?.kind === "pointer" ? { x: ack.result.x, y: ack.result.y } : undefined;
+      pointer = pointerAfter(action) ?? read ?? pointer;
     }
     return pointer;
   }
@@ -217,10 +223,10 @@ export class AnthropicConversation {
   }
 }
 
-type Statuses = ReadonlyMap<number, CuaActionAcknowledgement["status"]>;
+type Acknowledgements = ReadonlyMap<number, CuaActionAcknowledgement>;
 
-function acknowledgements(req: CuaTurnRequest): Statuses {
-  return new Map((req.previousExecution?.actions ?? []).map((ack) => [ack.index, ack.status]));
+function acknowledgements(req: CuaTurnRequest): Acknowledgements {
+  return new Map((req.previousExecution?.actions ?? []).map((ack) => [ack.index, ack]));
 }
 
 /** What a call that did not complete tells the model, by its first unfinished action's status. */
@@ -233,34 +239,69 @@ const NOT_COMPLETED: Readonly<
 };
 
 /**
- * One tool_result per call, in order. A call answers OK when every action it ran completed. The
- * first call that did not answers why, and every later one the halt text, as the toolset
- * documents for a batch that stops at its first failure. The screen after the batch goes into the
- * last result when that one completed; an error result may carry text only, so otherwise the
- * screen follows the results on its own.
+ * One tool_result per call, in order. A call answers OK when every action it ran completed, and
+ * a read answers with what it read: `cursor_position` the pointer's coordinates, `zoom` its
+ * image. The first call that did not complete answers why, and every later one the halt text, as
+ * the toolset documents for a batch that stops at its first failure. A read that completed but
+ * returned nothing answers as an error without halting the batch, whose later actions ran. The
+ * screen after the batch goes into the last result when that one completed and holds no image of
+ * its own; an error result may carry text only, so otherwise the screen follows the results.
  */
 function answers(
   calls: readonly MemberCall[],
-  statuses: Statuses,
+  acks: Acknowledgements,
   screen: Record<string, unknown>,
 ): unknown[] {
   let halted = false;
+  let screenInLast = false;
   const results = calls.map((call, index) => {
     if (halted) return toolResult(call, HALT_TEXT, { isError: true });
-    const unfinished = call.positions
-      .map((position) => statuses.get(position) ?? "not_dispatched")
-      .find((status) => status !== "completed");
-    if (call.rejected === undefined && unfinished === undefined) {
-      return index === calls.length - 1
-        ? toolResult(call, OK, { screen })
-        : toolResult(call, call.name === "screenshot" ? SCREEN_AT_END : OK);
+    const done = call.positions.map((position) => acks.get(position));
+    const unfinished = done.find((ack) => ack?.status !== "completed");
+    if (call.rejected !== undefined || unfinished !== undefined) {
+      halted = true;
+      const reason = call.rejected ?? NOT_COMPLETED[unfinishedStatus(unfinished)];
+      return toolResult(call, reason, { isError: true });
     }
-    halted = true;
-    return toolResult(call, call.rejected ?? NOT_COMPLETED[unfinished ?? "not_dispatched"], {
-      isError: true,
-    });
+    const read = readAnswer(call, done[0]);
+    if (read !== undefined) return read;
+    const last = index === calls.length - 1;
+    screenInLast = last;
+    if (last) return toolResult(call, OK, { screen });
+    return toolResult(call, call.name === "screenshot" ? SCREEN_AT_END : OK);
   });
-  return halted ? [...results, { type: "text", text: SCREEN_NOW }, screen] : results;
+  return screenInLast ? results : [...results, { type: "text", text: SCREEN_NOW }, screen];
+}
+
+function unfinishedStatus(
+  ack: CuaActionAcknowledgement | undefined,
+): Exclude<CuaActionAcknowledgement["status"], "completed"> {
+  return ack === undefined || ack.status === "completed" ? "not_dispatched" : ack.status;
+}
+
+/**
+ * The result of a completed read: `cursor_position` as `X=…, Y=…` in screenshot pixels, `zoom`
+ * as its image, or an error when the desktop returned nothing. Undefined for any other call.
+ */
+function readAnswer(
+  call: MemberCall,
+  ack: CuaActionAcknowledgement | undefined,
+): Record<string, unknown> | undefined {
+  const result = ack?.result;
+  if (call.name === "cursor_position") {
+    return result?.kind === "pointer"
+      ? toolResult(call, `X=${result.x}, Y=${result.y}`)
+      : toolResult(call, "The desktop returned no pointer position.", { isError: true });
+  }
+  if (call.name !== "zoom") return undefined;
+  if (result?.kind !== "frame")
+    return toolResult(call, "The desktop returned no image for this zoom.", { isError: true });
+  try {
+    return toolResult(call, OK, { screen: screenImage(result.screenshot) });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "The zoomed image could not be sent.";
+    return toolResult(call, reason, { isError: true });
+  }
 }
 
 function countImages(value: unknown): number {

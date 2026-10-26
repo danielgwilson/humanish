@@ -37,9 +37,9 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `createAnthropicMessagesProvider` builds a computer-use participant on Claude through the
   Anthropic Messages API and Claude's `computer_toolset_20260801`, on `claude-haiku-5-5` at effort
   `medium` with a 16,000-token output limit by default. A library caller passes it to
-  `runComputerUseLoop`; studies do not reach it yet. Six of Claude's actions (`triple_click`,
-  mouse down and up, `hold_key`, `cursor_position`, `zoom`) have no desktop action yet, and a
-  desktop over 2,000 px a side is refused.
+  `runComputerUseLoop`; studies do not reach it yet. All 17 of Claude's computer actions run,
+  `zoom` and `cursor_position` answered from what the desktop read, and a desktop over 2,000 px a
+  side is refused.
 - `claude-haiku-5-5` has a rate: $0.10 input, $0.01 cache read, $0.125 cache write and $0.50
   output per 1M tokens, 5x each for a request over 100,000 prompt tokens.
 - A `ComputerUseTurn` can carry `notices`, which the trace records as warnings. A trace's
