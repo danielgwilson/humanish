@@ -1,0 +1,2161 @@
+{
+  "comms-email-demo": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "signup-a": {},
+      "signup-b": {}
+    },
+    "sessions": {
+      "signup-a": {
+        "modelSettings": {
+          "reasoningEffort": "medium"
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:cbff4e63cb5cf911",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:cbff4e63cb5cf911"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:cbff4e63cb5cf911",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_1",
+              "input": [
+                {
+                  "type": "computer_call_output",
+                  "call_id": "c1",
+                  "output": {
+                    "type": "computer_screenshot",
+                    "image_url": "sha256:dee2cf44da855e33"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:cbff4e63cb5cf911",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_2",
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:cc849ab4724d0361"
+                    }
+                  ]
+                },
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:38248b2aba36718a"
+                    }
+                  ]
+                }
+              ],
+              "tool_choice": "none",
+              "max_output_tokens": 3072
+            }
+          }
+        ]
+      },
+      "signup-b": {
+        "modelSettings": {
+          "reasoningEffort": "medium"
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:fb18d7bbbd6490b1",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:fb18d7bbbd6490b1"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:fb18d7bbbd6490b1",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_1",
+              "input": [
+                {
+                  "type": "computer_call_output",
+                  "call_id": "c1",
+                  "output": {
+                    "type": "computer_screenshot",
+                    "image_url": "sha256:dee2cf44da855e33"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:fb18d7bbbd6490b1",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_2",
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:cc849ab4724d0361"
+                    }
+                  ]
+                },
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:38248b2aba36718a"
+                    }
+                  ]
+                }
+              ],
+              "tool_choice": "none",
+              "max_output_tokens": 3072
+            }
+          }
+        ]
+      }
+    }
+  },
+  "detect-taskly-clean": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "lane-01": {
+        "maxOutputTokens": 8192
+      }
+    },
+    "sessions": {
+      "lane-01": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:5505df3f32a00df8",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:5505df3f32a00df8"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "detect-taskly-planted": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "lane-01": {
+        "maxOutputTokens": 8192
+      }
+    },
+    "sessions": {
+      "lane-01": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:5505df3f32a00df8",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:5505df3f32a00df8"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "detect-todomvc": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "lane-01": {
+        "maxOutputTokens": 8192
+      }
+    },
+    "sessions": {
+      "lane-01": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:eb8ea822e212c2de",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:eb8ea822e212c2de"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "dwell-window-todomvc": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "lane-01": {
+        "dwell": {
+          "when": {
+            "any": [
+              {
+                "id": "one-left",
+                "textIncludes": "1 item left"
+              }
+            ]
+          },
+          "ms": 60000,
+          "everyMs": 10000,
+          "then": "continue"
+        },
+        "maxOutputTokens": 8192
+      }
+    },
+    "sessions": {
+      "lane-01": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:fc4b7b22265249dc",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:fc4b7b22265249dc"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "effort-contrast-demo": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "default-effort": {
+        "reasoningEffort": "medium",
+        "maxOutputTokens": 8192
+      },
+      "harder-effort": {
+        "reasoningEffort": "high",
+        "maxOutputTokens": 8192
+      }
+    },
+    "sessions": {
+      "default-effort": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:df36ceaa7c983c79",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:df36ceaa7c983c79"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "harder-effort": {
+        "modelSettings": {
+          "reasoningEffort": "high",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:df36ceaa7c983c79",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "high",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:df36ceaa7c983c79"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "fanout-demo": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "mobile-newcomer": {},
+      "small-mobile-skimmer": {},
+      "desktop-power": {},
+      "wide-researcher": {}
+    },
+    "sessions": {
+      "mobile-newcomer": {
+        "modelSettings": {
+          "reasoningEffort": "medium"
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:781e2f30192c5afd",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:781e2f30192c5afd"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:781e2f30192c5afd",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_1",
+              "input": [
+                {
+                  "type": "computer_call_output",
+                  "call_id": "c1",
+                  "output": {
+                    "type": "computer_screenshot",
+                    "image_url": "sha256:dee2cf44da855e33"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:781e2f30192c5afd",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_2",
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:cc849ab4724d0361"
+                    }
+                  ]
+                },
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:38248b2aba36718a"
+                    }
+                  ]
+                }
+              ],
+              "tool_choice": "none",
+              "max_output_tokens": 3072
+            }
+          }
+        ]
+      },
+      "small-mobile-skimmer": {
+        "modelSettings": {
+          "reasoningEffort": "medium"
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:24ebc8927585807f",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:24ebc8927585807f"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:24ebc8927585807f",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_1",
+              "input": [
+                {
+                  "type": "computer_call_output",
+                  "call_id": "c1",
+                  "output": {
+                    "type": "computer_screenshot",
+                    "image_url": "sha256:dee2cf44da855e33"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:24ebc8927585807f",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_2",
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:cc849ab4724d0361"
+                    }
+                  ]
+                },
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:38248b2aba36718a"
+                    }
+                  ]
+                }
+              ],
+              "tool_choice": "none",
+              "max_output_tokens": 3072
+            }
+          }
+        ]
+      },
+      "desktop-power": {
+        "modelSettings": {
+          "reasoningEffort": "medium"
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:d085b3c9cf468e4e",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:d085b3c9cf468e4e"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:d085b3c9cf468e4e",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_1",
+              "input": [
+                {
+                  "type": "computer_call_output",
+                  "call_id": "c1",
+                  "output": {
+                    "type": "computer_screenshot",
+                    "image_url": "sha256:dee2cf44da855e33"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:d085b3c9cf468e4e",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_2",
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:cc849ab4724d0361"
+                    }
+                  ]
+                },
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:38248b2aba36718a"
+                    }
+                  ]
+                }
+              ],
+              "tool_choice": "none",
+              "max_output_tokens": 3072
+            }
+          }
+        ]
+      },
+      "wide-researcher": {
+        "modelSettings": {
+          "reasoningEffort": "medium"
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:f5e67e40a665ba31",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:f5e67e40a665ba31"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:f5e67e40a665ba31",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_1",
+              "input": [
+                {
+                  "type": "computer_call_output",
+                  "call_id": "c1",
+                  "output": {
+                    "type": "computer_screenshot",
+                    "image_url": "sha256:dee2cf44da855e33"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "instructions": "sha256:f5e67e40a665ba31",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "previous_response_id": "resp_2",
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:cc849ab4724d0361"
+                    }
+                  ]
+                },
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:38248b2aba36718a"
+                    }
+                  ]
+                }
+              ],
+              "tool_choice": "none",
+              "max_output_tokens": 3072
+            }
+          }
+        ]
+      }
+    }
+  },
+  "later-tab-emulation": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "phone-newcomer": {
+        "maxOutputTokens": 8192
+      }
+    },
+    "sessions": {
+      "phone-newcomer": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:3f54b6d02a23457a",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:3f54b6d02a23457a"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "lobby-trivia-3player": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "host": {},
+      "player-2": {},
+      "player-3": {}
+    }
+  },
+  "participant-camera": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "lane-01": {
+        "maxOutputTokens": 8192
+      }
+    },
+    "sessions": {
+      "lane-01": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:436bf42a700f0a87",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:436bf42a700f0a87"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "persona-contrast-demo": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "impatient-expert": {
+        "maxOutputTokens": 8192
+      },
+      "patient-newcomer": {
+        "maxOutputTokens": 8192
+      }
+    },
+    "sessions": {
+      "impatient-expert": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:58f8387928ffff65",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:58f8387928ffff65"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "patient-newcomer": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:df36ceaa7c983c79",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:df36ceaa7c983c79"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "shared-world-concurrent-demo": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      },
+      {
+        "kind": "subject-env",
+        "names": [
+          "DATABASE_URL"
+        ]
+      }
+    ],
+    "participants": {
+      "persona-author": {},
+      "persona-reviewer": {},
+      "persona-skimmer": {}
+    }
+  },
+  "shared-world-concurrent-live": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "persona-planner": {},
+      "persona-coordinator": {},
+      "persona-mobile": {}
+    }
+  },
+  "signup-email-verify": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "newcomer": {
+        "maxOutputTokens": 8192
+      },
+      "power-user": {
+        "maxOutputTokens": 8192
+      }
+    },
+    "sessions": {
+      "newcomer": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:a762a8e1bde24479",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:a762a8e1bde24479"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "power-user": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:dac95bd3b03284a5",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:dac95bd3b03284a5"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "tui-self-study": {
+    "model": "gpt-6.1-sol",
+    "pricedModel": "gpt-6.1-sol",
+    "requirements": [
+      {
+        "kind": "key",
+        "name": "E2B_API_KEY"
+      },
+      {
+        "kind": "key",
+        "name": "OPENAI_API_KEY"
+      }
+    ],
+    "participants": {
+      "lane-01": {
+        "maxOutputTokens": 8192
+      }
+    },
+    "sessions": {
+      "lane-01": {
+        "modelSettings": {
+          "reasoningEffort": "medium",
+          "maxOutputTokens": 8192
+        },
+        "model": "gpt-6.1-sol",
+        "requests": [
+          {
+            "url": "https://api.openai.com/v1/responses",
+            "participantKey": true,
+            "body": {
+              "model": "gpt-6.1-sol",
+              "max_output_tokens": 1024,
+              "instructions": "sha256:b530af8c0eea99b5",
+              "tools": [
+                {
+                  "type": "computer"
+                },
+                {
+                  "type": "function",
+                  "name": "wait_minutes",
+                  "description": "Wait, then get a new screenshot. The reply says how long the wait lasted and why it ended.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "minutes": {
+                        "type": "number",
+                        "description": "How long you want to wait, in minutes."
+                      }
+                    },
+                    "required": [
+                      "minutes"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "strict": true
+                }
+              ],
+              "truncation": "auto",
+              "reasoning": {
+                "effort": "medium",
+                "summary": "auto"
+              },
+              "input": [
+                {
+                  "role": "user",
+                  "content": [
+                    {
+                      "type": "input_text",
+                      "text": "sha256:b530af8c0eea99b5"
+                    },
+                    {
+                      "type": "input_image",
+                      "image_url": "sha256:dee2cf44da855e33"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}
