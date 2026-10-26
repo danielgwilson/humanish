@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import type { CuaObservation } from "../../../src/actors/computer-use/loop.js";
+import { pngOfSize, sizeOf } from "../../helpers/zoom-frames.js";
 import {
   checkHostedCodexCompatibility,
   createLocalAgentProvider,
@@ -102,14 +103,19 @@ describe("the provider", () => {
         previousExecution: {
           actions: [
             { index: 0, status: "completed", result: { kind: "pointer", x: 7, y: 9 } },
-            { index: 1, status: "completed", result: { kind: "frame", screenshot: FRAME } },
+            {
+              index: 1,
+              status: "completed",
+              result: { kind: "frame", screenshot: pngOfSize(4, 2) },
+            },
           ],
         },
       },
       new AbortController().signal,
     );
     expect(prompt).toContain("(7, 9)");
-    expect(zoomOnDisk).toEqual(FRAME);
+    // The screenshot here is not a PNG, so the crop is enlarged to fit the default 1280x800.
+    expect(sizeOf(zoomOnDisk!)).toEqual([1280, 640]);
   });
 
   it("declares that it needs a frame, and refuses a turn without one", async () => {

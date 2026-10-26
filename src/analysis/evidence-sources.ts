@@ -23,10 +23,19 @@ const stamp = (value: unknown): string | null =>
   typeof value === "string" && Number.isFinite(Date.parse(value))
     ? new Date(value).toISOString()
     : null;
+// A pointer read's entry carries the position it returned, which its title does not.
 const itemText = (item: ActorTraceItem): string =>
   ["message", "reasoning"].includes(item.kind) && item.text !== undefined
     ? item.text
-    : [item.title, item.text].filter((entry) => entry !== undefined && entry !== "").join("\n");
+    : [
+        item.title,
+        item.text,
+        item.pointer === undefined
+          ? undefined
+          : `pointer at (${item.pointer.x}, ${item.pointer.y})`,
+      ]
+        .filter((entry) => entry !== undefined && entry !== "")
+        .join("\n");
 const itemsFor = (stream: RunStream): ActorTraceItem[] => stream.actor?.items ?? [];
 const isCaptureItem = (item: ActorTraceItem, captureVersion?: CaptureVersion): boolean =>
   item.kind === "screenshot" ||

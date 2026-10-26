@@ -420,6 +420,24 @@ describe("independent analysis admission and projection", () => {
       slot.remove();
     }
   });
+  it("shows a cited zoom by its own image and opens the replay at the screen it zoomed on", () => {
+    const changed = structuredClone(data),
+      stream = changed.streams[0]!;
+    const items = stream.actor!.items;
+    const at = items.findIndex((item) => item.kind === "screenshot");
+    items.splice(at + 1, 0, {
+      id: "zoomed",
+      kind: "ui_action",
+      lifecycle: "completed",
+      title: "zoom 98x22 at (817, 177)",
+      region: { x: 817, y: 177, width: 98, height: 22 },
+      screenshotRef: { path: "screenshots/zoom-001.webp", redaction: "none" },
+    });
+    const zoomed = resolveReportMoment(changed, stream.id, "zoomed")!;
+    expect(zoomed.frame).toMatchObject({ itemId: "zoomed", href: "../screenshots/zoom-001.webp" });
+    expect(zoomed.frameIndex).toBe(0);
+    expect(zoomed.eventId).toBe("zoomed");
+  });
   it("does not attach a future screenshot to earlier or nonvisual evidence", () => {
     const changed = structuredClone(data),
       stream = changed.streams[0]!;

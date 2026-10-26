@@ -936,6 +936,15 @@ button.arow:hover {
 .arow .atext {
   overflow-wrap: anywhere;
 }
+/* A zoom's image at the desktop's own pixels, under its row's title. */
+.arow .azoom {
+  display: block;
+  max-width: 100%;
+  max-height: var(--space-96);
+  margin-top: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-4);
+}
 .verbatim.dim {
   color: var(--muted);
 }

@@ -39,12 +39,17 @@ export function traceItems(stream: ClockStream): readonly ActorTraceItem[] {
 /**
  * Whether a trace item is a capture, a frame of the participant's replay: a screenshot, or a
  * scripted action that carries its own screenshot. A notice can cite an earlier screenshot for
- * context, and does not capture it again.
+ * context, and does not capture it again. A zoom's image shows only the region it looked at, so
+ * it is not a frame of the screen either.
  */
-export function isCapture<Item extends Pick<ActorTraceItem, "kind" | "screenshotRef">>(
+export function isCapture<Item extends Pick<ActorTraceItem, "kind" | "screenshotRef" | "region">>(
   item: Item,
 ): item is Item & { screenshotRef: NonNullable<ActorTraceItem["screenshotRef"]> } {
-  return (item.kind === "screenshot" || item.kind === "ui_action") && Boolean(item.screenshotRef);
+  return (
+    (item.kind === "screenshot" || item.kind === "ui_action") &&
+    Boolean(item.screenshotRef) &&
+    item.region === undefined
+  );
 }
 
 /**

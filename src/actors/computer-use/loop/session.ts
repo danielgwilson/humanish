@@ -115,6 +115,8 @@ export class LoopSession {
   /** What the loop was doing, for failure notices. */
   phase = "initializing computer-use loop";
   lastScreenshotRef: ScreenshotRef | undefined;
+  /** How many zoom frames the session has kept, which numbers the next one (frames.ts). */
+  zoomFrames = 0;
   lastResponseId: string | undefined;
   // Whether any observation carried appState. trace.ts states it in redaction.notes; the appState
   // itself is never persisted.

@@ -79,9 +79,9 @@ export function screenshotHref(screenshotPath: string): string | null {
 export function keyframeHref(stream: ObserverStream): string | null {
   const items = traceItems(stream);
   for (let i = items.length - 1; i >= 0; i -= 1) {
-    const ref = items[i]?.screenshotRef;
-    if (ref) {
-      const href = screenshotHref(ref.path);
+    const item = items[i];
+    if (item !== undefined && item.screenshotRef && item.region === undefined) {
+      const href = screenshotHref(item.screenshotRef.path);
       if (href !== null) return href;
     }
   }

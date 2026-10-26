@@ -109,7 +109,8 @@ the key as `apiKey` and reads no environment variable. It sends effort `medium` 
 output limit unless `reasoningEffort` and `maxOutputTokens` say otherwise, and records both on the
 trace. Screenshots go to the model at full size, so a desktop wider or taller than 2,000 px is
 refused before the first request. Every one of Claude's 17 computer actions runs: `zoom` gets a
-fresh capture of its region and `cursor_position` the pointer's coordinates, and `hold_key`
+fresh capture of its region, enlarged to fit the screenshot size as Claude's toolset documents,
+and `cursor_position` the pointer's coordinates, and `hold_key`
 holds keys for up to 30 seconds. Under a spend cap (`maxUsd` or a study budget), a
 request that stalls or fails without a reply is never sent again: its cost cannot be bounded, so
 the session stops with `stopCause: "usage_unreported"`.

@@ -9,6 +9,7 @@ import { z } from "zod";
 import { participantActionSchema } from "../../browser-control/protocol.js";
 import type { ParticipantDeclaredOutcome } from "../contract.js";
 import type { CuaAction, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
+import { screenSize, zoomView } from "../computer-use/zoom-view.js";
 
 /**
  * Read the agent's proposed actions with the participant action schema the Codex tool also uses
@@ -110,14 +111,15 @@ export function turnFromReply(reply: Record<string, unknown>): CuaTurn {
 
 /**
  * What the agent's last actions read, as sentences for its next message: a pointer position as
- * text, and a zoom frame as an image file `saveFrame` writes where the agent may Read it. Empty
- * when they read nothing.
+ * text, and a zoom frame, enlarged to fit the screenshot (zoom-view.ts), as an image file
+ * `saveFrame` writes where the agent may Read it. Empty when they read nothing.
  */
 export async function readResultsNote(
   request: CuaTurnRequest,
   saveFrame: (index: number, png: Buffer) => Promise<string>,
 ): Promise<string> {
   const lines: string[] = [];
+  const fit = screenSize(request.observation.screenshot);
   for (const { index, result } of request.previousExecution?.actions ?? []) {
     if (result?.kind === "pointer")
       lines.push(
@@ -125,7 +127,7 @@ export async function readResultsNote(
       );
     else if (result?.kind === "frame")
       lines.push(
-        `Action ${index + 1} (zoom): Read the image file ${await saveFrame(index, result.screenshot)}. It is the region you asked for, captured when the action ran.`,
+        `Action ${index + 1} (zoom): Read the image file ${await saveFrame(index, zoomView(result.screenshot, fit))}. It is the region you asked for, captured when the action ran and enlarged to fit the screen. Coordinates you send stay those of the full screenshot.`,
       );
   }
   return lines.join("\n");

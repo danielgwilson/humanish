@@ -142,6 +142,62 @@ describe("player model", () => {
     expect(model?.avgFrameMs).toBe(10_000);
   });
 
+  it("shows a zoom on its own row, not as a frame of the replay", () => {
+    const shot = (id: string, path: string) => ({
+      id,
+      kind: "screenshot",
+      lifecycle: "completed",
+      title: id,
+      screenshotRef: { path, redaction: "none" },
+    });
+    const stream = streamWith([
+      shot("turn-00", "shots/t0.png"),
+      {
+        id: "z1",
+        kind: "ui_action",
+        lifecycle: "completed",
+        title: "zoom 98x22 at (817, 177)",
+        region: { x: 817, y: 177, width: 98, height: 22 },
+        screenshotRef: { path: "shots/zoom-001.webp", redaction: "none" },
+      },
+      {
+        id: "p1",
+        kind: "ui_action",
+        lifecycle: "completed",
+        title: "read pointer",
+        pointer: { x: 4, y: 9 },
+      },
+      {
+        id: "a1",
+        kind: "ui_action",
+        lifecycle: "completed",
+        title: "click (5, 6)",
+        coord: { x: 5, y: 6 },
+      },
+      {
+        id: "z2",
+        kind: "ui_action",
+        lifecycle: "completed",
+        title: "zoom 10x10 at (0, 0)",
+        region: { x: 0, y: 0, width: 10, height: 10 },
+        screenshotRef: { path: "shots/zoom-002.webp", redaction: "none" },
+      },
+    ]);
+    const model = buildPlayerModel(stream);
+    expect(model?.frames.map((frame) => frame.href)).toEqual(["../shots/t0.png"]);
+    // The click after a zoom pins on the full screenshot it was aimed at.
+    expect(model?.rows.map((row) => [row.id, row.frameIndex, row.isFrame])).toEqual([
+      ["turn-00", 0, true],
+      ["z1", 0, false],
+      ["p1", 0, false],
+      ["a1", 0, false],
+      ["z2", 0, false],
+    ]);
+    expect(model?.rows[1]?.zoomHref).toBe("../shots/zoom-001.webp");
+    expect(model?.rows[2]?.text).toBe("(4, 9)");
+    expect(keyframeHref(stream)).toBe("../shots/t0.png");
+  });
+
   it("builds from the mid-run liveActor partial when no finished actor exists", () => {
     const stream = {
       liveActor: {

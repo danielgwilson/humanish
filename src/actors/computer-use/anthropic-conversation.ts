@@ -19,6 +19,7 @@ import {
   type ClosingRequest,
 } from "./closing-account.js";
 import type { CuaActionAcknowledgement, CuaTurn, CuaTurnRequest } from "./loop/types.js";
+import { screenSize, zoomView } from "./zoom-view.js";
 
 // The conversation the Anthropic computer-use provider has with the model. The Messages API keeps
 // no conversation, so every request carries all of it, and Claude Haiku 5.5 invalidates a
@@ -153,12 +154,13 @@ export class AnthropicConversation {
    * request asks for its account in the user message instead.
    */
   private newMessages(req: CuaTurnRequest, closing?: ClosingRequest): unknown[] {
-    const screen = screenImage(req.observation.screenshot);
+    const frame = req.observation.screenshot;
+    const screen = screenImage(frame);
     const calls = this.latest?.calls ?? [];
     const answered =
       calls.length === 0
         ? [{ type: "text", text: SCREEN_NOW }, screen]
-        : answers(calls, acknowledgements(req), screen);
+        : answers(calls, acknowledgements(req), screen, screenSize(frame));
     const hint = req.contextHint === undefined || req.contextHint === "" ? [] : [req.contextHint];
     if (closing !== undefined) {
       const ask = [...hint, replyFormText(closing)].map((text) => ({ type: "text", text }));
@@ -251,6 +253,7 @@ function answers(
   calls: readonly MemberCall[],
   acks: Acknowledgements,
   screen: Record<string, unknown>,
+  fit: { width: number; height: number } | undefined,
 ): unknown[] {
   let halted = false;
   let screenInLast = false;
@@ -263,7 +266,7 @@ function answers(
       const reason = call.rejected ?? NOT_COMPLETED[unfinishedStatus(unfinished)];
       return toolResult(call, reason, { isError: true });
     }
-    const read = readAnswer(call, done[0]);
+    const read = readAnswer(call, done[0], fit);
     if (read !== undefined) return read;
     const last = index === calls.length - 1;
     screenInLast = last;
@@ -281,11 +284,15 @@ function unfinishedStatus(
 
 /**
  * The result of a completed read: `cursor_position` as `X=…, Y=…` in screenshot pixels, `zoom`
- * as its image, or an error when the desktop returned nothing. Undefined for any other call.
+ * as its image enlarged to fit the screenshot size (`fit`) as the toolset documents, or an
+ * error when the desktop returned nothing. Undefined for any other call. The enlarged image goes
+ * through the same size check as a screenshot, so its larger visual-token count is checked before
+ * the request is sent.
  */
 function readAnswer(
   call: MemberCall,
   ack: CuaActionAcknowledgement | undefined,
+  fit: { width: number; height: number } | undefined,
 ): Record<string, unknown> | undefined {
   const result = ack?.result;
   if (call.name === "cursor_position") {
@@ -297,7 +304,7 @@ function readAnswer(
   if (result?.kind !== "frame")
     return toolResult(call, "The desktop returned no image for this zoom.", { isError: true });
   try {
-    return toolResult(call, OK, { screen: screenImage(result.screenshot) });
+    return toolResult(call, OK, { screen: screenImage(zoomView(result.screenshot, fit)) });
   } catch (error) {
     const reason = error instanceof Error ? error.message : "The zoomed image could not be sent.";
     return toolResult(call, reason, { isError: true });

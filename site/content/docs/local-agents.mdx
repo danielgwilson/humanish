@@ -129,10 +129,12 @@ leaves out held modifier keys on a pointer action, a field of the OpenAI compute
 E2B and Modal desktops and the local VM run every action through one translator.
 
 Two of the actions read the desktop. `read_pointer` returns where the pointer is, and `zoom`
-returns a region of a capture taken when it runs, at the screen's own pixels. Codex gets the
-position in that action's acknowledgment and the crop as an image in the tool result that carries
-the next screenshot. Claude Code gets the position as text in its next message, and the crop as
-an image file in its folder, which it opens with Read. A Claude Code proposal that does not match
+returns a region of a capture taken when it runs. The agent is shown that region enlarged to fit
+its screenshot, with the aspect ratio kept; the run keeps it at the screen's own pixels as
+`screenshots/zoom-NNN`. Codex gets the position in that action's acknowledgment and the enlarged
+crop as an image in the tool result that carries the next screenshot. Claude Code gets the
+position as text in its next message, and the enlarged crop as an image file in its folder, which
+it opens with Read. A Claude Code proposal that does not match
 its shape is refused before any input; the actions before it run, and the next message says which
 one was refused.
 

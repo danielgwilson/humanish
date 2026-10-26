@@ -255,6 +255,15 @@ function ActivityRow({
         {count > 1
           ? `${count} recorded waits · ${stamp}–${formatRunTime(rowElapsedMs(model, last))}`
           : `${row.title}${row.text ? `: ${row.text}` : ""}`}
+        {row.zoomHref !== undefined ? (
+          <img
+            className="azoom"
+            src={row.zoomHref}
+            alt="The region the participant zoomed in on"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : null}
       </span>
     </button>
   );

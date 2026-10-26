@@ -252,6 +252,19 @@ describe("a read's answer", () => {
     ]);
   });
 
+  it("enlarges the zoom image to fit the screenshot size, as the toolset documents", () => {
+    const strip = PNG.sync.write(new PNG({ width: 220, height: 20 }));
+    const { results } = readThenType(call("zoom", { region: [0, 0, 220, 20] }), {
+      index: 0,
+      status: "completed",
+      result: { kind: "frame", screenshot: strip },
+    });
+    const image = (results[0]!.content as Block[])[1] as { source: { data: string } };
+    const shown = PNG.sync.read(Buffer.from(image.source.data, "base64"));
+    // The request's screenshot is 1440x950: the strip fills its width, keeping the aspect ratio.
+    expect([shown.width, shown.height]).toEqual([1440, 131]);
+  });
+
   it("is an error that halts nothing when the desktop returned nothing", () => {
     const { results } = readThenType(call("cursor_position"), { index: 0, status: "completed" });
     expect(

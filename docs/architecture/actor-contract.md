@@ -184,6 +184,10 @@ export interface ActorTraceItem {
     area?: { x: number; y: number; width: number; height: number }; // pixels, coordinates only
   };
   namedMs?: number; // computer-use wait ui_action: the length the participant named, before any cap
+  // computer-use zoom ui_action: the region it looked at, in desktop pixels; its screenshotRef is
+  // the image of that region at the desktop's own pixels
+  region?: { x: number; y: number; width: number; height: number };
+  pointer?: { x: number; y: number }; // computer-use pointer read ui_action: the position it read
 }
 
 export interface ActorCapabilities {

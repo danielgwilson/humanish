@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CuaObservation } from "../../../src/actors/computer-use/loop.js";
+import { pngOfSize, sizeOf } from "../../helpers/zoom-frames.js";
 import {
   parseAgentJson,
   promptFor,
@@ -94,12 +95,12 @@ describe("the action vocabulary a local agent answers in", () => {
 
 describe("what the agent's last actions read", () => {
   it("states a pointer reading as text and saves a zoom frame for the agent to Read", async () => {
-    const zoomPng = Buffer.from("zoom-bytes");
+    const zoomPng = pngOfSize(8, 3);
     const saved: Array<{ index: number; png: Buffer }> = [];
     const note = await readResultsNote(
       {
         instructions: "i",
-        observation: observation(),
+        observation: { screenshot: pngOfSize(40, 30), stateSignature: "s1" },
         previousExecution: {
           actions: [
             { index: 0, status: "completed", result: { kind: "pointer", x: 412, y: 300 } },
@@ -113,7 +114,8 @@ describe("what the agent's last actions read", () => {
         return `/work/zoom-${index}.png`;
       },
     );
-    expect(saved).toEqual([{ index: 2, png: zoomPng }]);
+    // The crop is saved enlarged to fit the 40x30 screenshot: 8x3 at 5x.
+    expect(saved.map(({ index, png }) => [index, sizeOf(png)])).toEqual([[2, [40, 15]]]);
     expect(note).toContain("(412, 300)");
     expect(note).toContain("/work/zoom-2.png");
   });

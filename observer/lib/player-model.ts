@@ -28,6 +28,8 @@ export interface PlayerRow {
   isFrame: boolean;
   atMs?: number;
   coord?: { x: number; y: number };
+  /** On a zoom's row: the image of the region the participant looked at closely. */
+  zoomHref?: string;
 }
 
 export interface PlayerModel {
@@ -85,11 +87,20 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
     // Recorded structured coordinates are the source of truth; the title
     // re-parse stays as the fallback for bundles captured before they existed.
     const coord = item.coord ?? (item.kind === "ui_action" ? parseClickCoord(item.title) : null);
+    // A zoom's image and a pointer read's position are what the action read: shown on its row.
+    const zoomHref =
+      item.region !== undefined && item.screenshotRef !== undefined
+        ? screenshotHref(item.screenshotRef.path)
+        : null;
+    const text =
+      item.text ??
+      (item.pointer === undefined ? undefined : `(${item.pointer.x}, ${item.pointer.y})`);
     rows.push({
       id: item.id,
       kind: item.kind,
       title: item.title,
-      ...(item.text !== undefined ? { text: item.text } : {}),
+      ...(text !== undefined ? { text } : {}),
+      ...(zoomHref !== null ? { zoomHref } : {}),
       ...(item.status !== undefined ? { status: item.status } : {}),
       frameIndex: Math.max(0, frames.length - 1),
       isFrame: false,
