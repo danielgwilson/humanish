@@ -366,4 +366,24 @@ describe("the closing request", () => {
     expect(bodies[1]!.messages).toEqual(bodies[0]!.messages);
     expect(bodies[1]!.output_config).toMatchObject({ format: { type: "json_schema" } });
   });
+
+  // The Messages API answers a schema with an array maxItems with a 400 at
+  // output_config.format.schema, so the strict retry would never get a reply.
+  it.each(["impressions", "report"] as const)(
+    "sends the %s retry schema with no array item limit",
+    async (closing) => {
+      const c = conversation();
+      c.request(req()).accept(reply("end-turn"));
+      const bodies: Body[] = [];
+      const send = async (body: Record<string, unknown>) => {
+        bodies.push(body as Body);
+        return reply("closing-json");
+      };
+      await c.close(req(), closing, send);
+      await c.close(req(), closing, send);
+      const format = bodies[1]!.output_config.format as { schema: Record<string, unknown> };
+      expect(JSON.stringify(format.schema)).not.toContain("maxItems");
+      expect(format.schema).toMatchObject({ type: "object", additionalProperties: false });
+    },
+  );
 });

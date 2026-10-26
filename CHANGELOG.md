@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A Claude participant's second closing request, sent when its first closing report or impressions
+  reply was not the JSON asked for, now gets a reply. Its output-format schema no longer carries
+  the array item limits, which the Messages API refused with a 400 at
+  `output_config.format.schema`. The request text still states the limits, and the reply is still
+  checked against them. Before, every such retry failed and its first reply stood.
+
 ## 0.149.0: Participants can run on Claude Haiku 5.5 (2026-10-26)
 
 humanish 0.149.0 picks a computer-use participant's vendor from its model: with `actor.type:

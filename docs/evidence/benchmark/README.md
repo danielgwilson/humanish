@@ -321,6 +321,10 @@ false assurance, persona fidelity and cost per participant.
 [2026-10-25-participant-default.md](2026-10-25-participant-default.md) reruns `gpt-5.6-sol` and
 `gpt-6.1-sol` at medium effort, 30 runs each, on the localStorage builds (`--storage local`), and is
 the basis for the `gpt-6.1-sol` participant default.
+[2026-10-26-haiku-participants.md](2026-10-26-haiku-participants.md) compares `claude-haiku-5-5` at
+medium and high effort with `gpt-6.1-sol` at medium effort, 30 runs per arm on each of the
+in-memory and localStorage builds, with thinking tokens, the Claude-only actions, a mid-batch
+screenshot count and persona fidelity.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
