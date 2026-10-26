@@ -100,10 +100,15 @@ API surface.
    flow) will not be dispatched to a code-only actor that would fake success
    via the shell.
 
-6. **Computer-use is one route behind one adapter.** The shipped computer-use
-   actor is `openai-computer-use` (fronting the OpenAI Responses adapter); a
-   `StagehandCuaActor` fronting the other raw-pixel providers (Anthropic
-   computer-use, Gemini) is not-yet-shipped roadmap. Screenshots are the
+6. **Computer-use is one route behind one port.** The shipped computer-use
+   actor is `openai-computer-use`. Two API providers implement
+   `ComputerUseProvider`, each a wire, conversation and provider file triple in
+   `src/actors/computer-use/` with a row in the vendor registry
+   (`providers.ts`): the OpenAI Responses provider
+   (`createOpenAiResponsesProvider`, the actor's brain) and the Anthropic
+   Messages provider (`createAnthropicMessagesProvider`: Claude's
+   `computer_toolset_20260801` on `claude-haiku-5-5`, a library export that no
+   study reaches yet). A Gemini provider is roadmap. Screenshots are the
    largest new public-safety surface, and the original stance here
    (field-blurred plus OCR-scrubbed before any public artifact, fail-closed)
    enforced a default at capture-time; 0.6.0 recanted it. Current policy:
@@ -404,6 +409,11 @@ the impressions-only request, which reads the carried conversation: its newest
 exchanges whole and earlier turns as a text note. The
 [paired live receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/computer-use/structured-closing-report-2026-09-05.md)
 records both report recovery and control failures in the separate legacy parser.
+
+The Anthropic implementation answers the open member calls, then asks in text with the schema
+stated, with `tool_choice: none` and an output limit of 4096 tokens, or the declared
+`maxOutputTokens` when lower. Its retry sends the same messages with the schema as
+`output_config.format`.
 
 ## The state-driven executor seam
 

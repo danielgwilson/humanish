@@ -34,6 +34,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   modifiers (`Control_L`, `Shift_R` and the rest) and punctuation keysym names such as `minus`. The
   keypad's navigation names (`KP_Home`, `KP_Page_Down` and the rest) press the main keys. Before,
   each of these was rejected before dispatch.
+- `createAnthropicMessagesProvider` builds a computer-use participant on Claude through the
+  Anthropic Messages API and Claude's `computer_toolset_20260801`, on `claude-haiku-5-5` at effort
+  `medium` with a 16,000-token output limit by default. A library caller passes it to
+  `runComputerUseLoop`; studies do not reach it yet. Six of Claude's actions (`triple_click`,
+  mouse down and up, `hold_key`, `cursor_position`, `zoom`) have no desktop action yet, and a
+  desktop over 2,000 px a side is refused.
+- `claude-haiku-5-5` has a rate: $0.10 input, $0.01 cache read, $0.125 cache write and $0.50
+  output per 1M tokens, 5x each for a request over 100,000 prompt tokens.
+- A `ComputerUseTurn` can carry `notices`, which the trace records as warnings. A trace's
+  `conversation.requests[]` can carry `clearedInputTokens`, the input the provider's server-side
+  context editing cleared.
 
 ### Changed
 
@@ -41,6 +52,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   acted, with one acknowledgement per batch position. Before, only providers with
   `requestPolicy: "fail_closed"` received it. The OpenAI provider ignores it, so its requests are
   unchanged.
+- The default provider fetch passes response headers through, so a live OpenAI participant
+  waits for a 429 or 5xx reply's `Retry-After` hint, up to 60 s, before it retries.
 - E2B, Modal and local VM desktops translate computer-use actions through one shared X11
   translator (`src/substrates/x11/`). Each sends the same native commands as before. The exported
   `E2BDesktopSandbox` type no longer declares the SDK's mouse and keyboard methods (`leftClick`,

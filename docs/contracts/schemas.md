@@ -1226,6 +1226,10 @@ Core-owned fields:
   `explicit_context`, `carriedExchanges`, `carriedScreenshots` and
   `estimatedInputTokens`. The impressions-only request has `kind: impressions`;
   the optional `kind` field is absent on participant turns and in older bundles.
+  The Anthropic computer-use provider's requests are all `explicit_context` with
+  `explicitReason: stateless_api`; each entry carries `carriedExchanges`,
+  `carriedScreenshots` and, when the server's tool-result clearing removed input before the
+  model read it, `clearedInputTokens` as the reply reported it.
   Impressions carry the context the next turn would carry, with the same budget
   and summarization of older turns. The closing report and impressions requests
   send no `text.format`, so they can read the session from the prompt cache; the
