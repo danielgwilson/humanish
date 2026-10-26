@@ -8,31 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.150.0: Claude participants see every screenshot they take (2026-10-26)
 
-- A library `ComputerUseProvider` can set `batchScreenshots: "frame"` for a model that is shown
-  each screenshot it calls. The loop then sends a `screenshot` that comes before the last action
-  of its batch to the executor, which captures the whole screen there and resolves with
-  `{ kind: "frame", screenshot }`, and the loop passes that frame in the action's
-  acknowledgement. Without it, and for a batch's last screenshot, the loop sends no screenshot to
-  the executor: the observation after the batch is its screen.
+humanish 0.150.0 fixes two gaps in Claude participants. A `screenshot` Claude calls in the middle
+of a batch now returns the screen at that point, captured through the shared desktop translator on
+E2B, Modal and local VM desktops and kept in the run bundle as `screenshots/screenshot-NNN`.
+Before, 32 to 39% of Claude Haiku 5.5 turns took such a screenshot and got no image. A Claude
+participant's retried closing report now gets a reply; before, the Messages API refused every
+retry with a 400. Library providers opt into mid-batch frames with `batchScreenshots: "frame"`.
 
-### Fixed
-
-- A Claude participant's `screenshot` call in the middle of a batch, such as click, screenshot,
-  click, now gets the screen as it stood at that point. Before, it got a text reply saying the
-  screen would come after the batch, and the participant acted on a screen it had not seen. E2B,
-  Modal and local VM desktops capture the frame through the shared X11 translator. The run bundle
-  keeps each one as `screenshots/screenshot-NNN` on the screenshot's `ui_action` item, blurred,
-  converted, verified and exported like every other screenshot, and the Observer and analysis read
-  it as a full-screen capture. Each such frame is one more image in the participant's requests,
-  so a long Claude session reaches the 32 MB request limit after fewer turns. OpenAI and
-  local-agent participants are unchanged.
-- A Claude participant's second closing request, sent when its first closing report or impressions
-  reply was not the JSON asked for, now gets a reply. Its output-format schema no longer carries
-  the array item limits, which the Messages API refused with a 400 at
-  `output_config.format.schema`. The request text still states the limits, and the reply is still
-  checked against them. Before, every such retry failed and its first reply stood.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.150.0)
 
 ## 0.149.0: Participants can run on Claude Haiku 5.5 (2026-10-26)
 
