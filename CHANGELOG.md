@@ -8,37 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.151.0: Claude participants compact long sessions (2026-10-26)
 
-- A computer-use participant whose study names no mission now reads "You are trying a web app for
-  the first time ... Use it the way you actually would, until you have decided whether you would
-  keep using it, then stop." It used to read "You are testing a web application", and with that
-  mission 4 of 8 live reports described the data they entered as test or placeholder data; with
-  the new one, 1 of 8 did. A shared-world participant with no mission is now told it is one of many
-  people using a shared app. Other text a participant reads drops harness and tester words: the
-  per-participant focus line reads `Your focus:` (was `Lane focus:`), the inbox lines no longer say
-  "test identity" or "harness limitations", the dwell note says how long the participant stayed on
-  the page, and a Claude Code participant's notes begin `Note:`. The participant prompt digest
-  changes for every study. Evidence:
-  `docs/evidence/computer-use/persona-adherence-2026-10-26.md`.
+humanish 0.151.0 lets a Claude participant held to a scheduled end, such as an hour or a working
+day, keep going. Its sessions now compact on the server at 60,000 input tokens: the participant
+writes first-person notes and carries on from them. Before, a session stopped near the Messages
+API's 32 MB request limit. In a live 65-minute Claude Haiku 5.5 session, requests stayed under
+3.6 MB across 5 compactions. A Claude participant's default output limit rises from 16,000 to
+32,000 tokens to leave room for the notes. A participant whose study names no mission now reads
+that it is trying a web app for the first time, where it used to read that it was testing one,
+so the participant prompt digest changes for every study.
 
-### Fixed
-
-- A Claude participant held to a scheduled end, such as an hour or a working day, no longer stops
-  at the Messages API's 32 MB request limit. Once a request carries 60,000 input tokens, the
-  server compacts the session: the participant writes first-person notes on what it set out to do,
-  what it did and saw, and what it still means to do, and carries on from them. Later requests
-  start from those notes and no longer send the screenshots before them. The trace's conversation
-  record gives each request's size in `requestBytes`, marks the compacted request
-  `compacted: true` and counts the replies the notes replaced in `summarizedTurns`. The compaction
-  is billed as an inference of its own, with its own row in `tokenUsage.turns`, and the cost
-  estimate and spend cap include it. The notes count toward the request's output limit, so a
-  Claude participant's default `maxOutputTokens` rises from 16,000 to 32,000: on a 54,000-token
-  session the notes took 23,660 to 26,625 tokens. Notes that reach the limit stop short, so they
-  are left out with the reasoning built on them, and the next request compacts again; a closing
-  request does not compact. The server's tool-result clearing is no longer sent: it cleared one
-  screenshot per request and left the billed input nearly unchanged. A session whose screenshots
-  pass 30 MB before the server compacts still stops before the limit, naming the size.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.151.0)
 
 ## 0.150.0: Claude participants see every screenshot they take (2026-10-26)
 
