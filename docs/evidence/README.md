@@ -14,6 +14,8 @@ where a later record differs, the later one holds.
 
 ## Computer use, participants and analysis
 
+- 2026-10-26: [The Claude participant against Anthropic's computer-use guidance](computer-use/anthropic-computer-use-guidance-2026-10-26.md)
+- 2026-10-26: [Persona adherence: harness text and a non-technical persona on four participant routes](computer-use/persona-adherence-2026-10-26.md)
 - 2026-10-01: [Codex CLI 0.159.3 qualification](computer-use/codex-cli-0.159.3-qualification-2026-10-01.md)
 - 2026-10-01: [Codex CLI 0.160.0 qualification](computer-use/codex-cli-0.160.0-qualification-2026-10-01.md)
 - 2026-09-30: [Codex CLI 0.157.1 requalification](computer-use/codex-cli-0.157.1-requalification-2026-09-30.md)
