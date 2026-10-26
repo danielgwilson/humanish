@@ -93,6 +93,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 - Analysis instructions say a zoom capture is the participant's closer look at a region and not a
   full screen. The added paragraph raises each analysis request's input by about 145 tokens.
 
+### Fixed
+
+- An OpenAI participant whose reply could not be written to `HUMANISH_CUA_WIRE_CAPTURE_DIR` keeps
+  that reply's usage, for participant turns and closing requests. The trace records a "wire capture
+  not written" warning. Before, the write error was raised as a provider failure and the billed
+  reply's usage went unrecorded.
+
 ## 0.148.0: Participants run gpt-6.1-sol (2026-10-26)
 
 humanish 0.148.0 runs a computer-use participant on `gpt-6.1-sol` at medium effort when its study

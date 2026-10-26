@@ -113,11 +113,6 @@ function errorDetail(bodyText: string): string {
   return `${named}${path === undefined ? "" : ` at ${path}`}`;
 }
 
-const CAPTURE_NOT_WRITTEN = {
-  title: "wire capture not written",
-  text: "The reply could not be written to HUMANISH_CUA_WIRE_CAPTURE_DIR; its usage is kept. Check that the capture directory is writable.",
-};
-
 const isRetryable = (status: number): boolean =>
   status === 408 || status === 409 || status === 429 || status >= 500;
 
@@ -250,7 +245,7 @@ export function createAnthropicMessagesProvider(
       interaction: true,
       spend,
     });
-    return captured(request.accept(reply), reply);
+    return transport.capture.record(request.accept(reply), forCapture(reply));
   };
 
   // A closing request is posted once, with no retries; the loop decides on a second one.
@@ -264,17 +259,7 @@ export function createAnthropicMessagesProvider(
       reply = await postMessages(transport, body, signal, { retries: 0, interaction: false });
       return reply;
     });
-    return captured(turn, reply);
-  };
-
-  // Written after the turn is built, so a capture that cannot be written loses no usage.
-  const captured = async (turn: CuaTurn, reply: unknown): Promise<CuaTurn> => {
-    try {
-      await transport.capture.record(forCapture(reply));
-      return turn;
-    } catch {
-      return { ...turn, notices: [...(turn.notices ?? []), CAPTURE_NOT_WRITTEN] };
-    }
+    return transport.capture.record(turn, forCapture(reply));
   };
 
   return {

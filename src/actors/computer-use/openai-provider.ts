@@ -306,13 +306,7 @@ async function postResponse(
       }
       throw new Error("OpenAI Responses network error");
     }
-    if (res.ok) {
-      const parsed = res.reply;
-      // Capture after ok and before parse-to-CuaTurn: responses only, never the
-      // request (screenshots/instructions) and never a non-ok body (input echo).
-      await transport.capture.record(parsed);
-      return parsed;
-    }
+    if (res.ok) return res.reply;
     lastStatus = res.status;
     if (res.status === 404) {
       // A store-less organization answers a reference to an item it never kept with 404.
@@ -448,17 +442,26 @@ export function createOpenAiResponsesProvider(
   ): Promise<CuaTurn> => {
     await capture.prepareNext();
     const request = conversation.request(req);
-    return request.accept(await postTurn(request, signal, spend));
+    const reply = await postTurn(request, signal, spend);
+    // Responses only, never the request (screenshots, instructions) or a non-ok body (input echo).
+    return capture.record(request.accept(reply), reply);
   };
 
   // Each closing request is posted once: no HTTP or policy-latch retries. A reply with no valid
   // account keeps its usage and gives no report: refusals, incomplete output, malformed JSON and
   // invalid shapes are never promoted into a structured finding.
-  const requestClosing = (
+  const requestClosing = async (
     req: CuaTurnRequest,
     signal: AbortSignal,
     closing: ClosingRequest,
-  ): Promise<CuaTurn> => conversation.close(req, closing, (body) => post(body, signal, 0, false));
+  ): Promise<CuaTurn> => {
+    let reply: unknown;
+    const turn = await conversation.close(req, closing, async (body) => {
+      reply = await post(body, signal, 0, false);
+      return reply;
+    });
+    return capture.record(turn, reply);
+  };
 
   return {
     id: "openai-responses-cu",

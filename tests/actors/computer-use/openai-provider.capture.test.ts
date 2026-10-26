@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
 import {
   access,
+  chmod,
   mkdir,
   mkdtemp,
   readFile,
@@ -250,9 +252,8 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
       env: { [WIRE_CAPTURE_ENV]: alias },
     });
 
-    await expect(provider.nextTurn(request(), neverAbort)).rejects.toThrow(
-      /changed physical destination/i,
-    );
+    const turn = await provider.nextTurn(request(), neverAbort);
+    expect(turn.notices?.map((notice) => notice.title)).toEqual(["wire capture not written"]);
     expect(await readFile(path.join(second, "sentinel.txt"), "utf8")).toBe("unchanged\n");
     await expect(access(path.join(second, "wire-001.json"))).rejects.toThrow();
   });
@@ -275,6 +276,67 @@ describe("wire capture (opt-in, response-side, redacted)", () => {
     expect(everything).not.toContain("data:image/png");
     expect(everything).not.toContain(SCREENSHOT.toString("base64"));
     expect(everything).not.toContain(INSTRUCTIONS);
+  });
+});
+
+const closingFixture = (name: string): unknown =>
+  JSON.parse(
+    readFileSync(
+      new URL(`../../fixtures/openai-closing-report/${name}.json`, import.meta.url),
+      "utf8",
+    ),
+  );
+
+describe("a reply whose capture cannot be written", () => {
+  let captureDir: string;
+
+  beforeEach(async () => {
+    captureDir = await mkdtemp(path.join(tmpdir(), "humanish-wire-capture-"));
+  });
+
+  afterEach(async () => {
+    await chmod(captureDir, 0o700);
+    await rm(captureDir, { recursive: true, force: true });
+  });
+
+  // The directory turns read-only after the provider prepared the capture file.
+  const readOnlyOnCall = (callNumber: number, replies: unknown[]): FetchLike => {
+    let calls = 0;
+    return async () => {
+      calls += 1;
+      if (calls === callNumber) await chmod(captureDir, 0o500);
+      const body = replies[calls - 1];
+      return { ok: true, status: 200, text: async () => "", json: async () => body };
+    };
+  };
+
+  it("keeps a participant turn's usage and says the capture was not written", async () => {
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "test-key",
+      fetchFn: readOnlyOnCall(1, [RESPONSE_ONE]),
+      env: { [WIRE_CAPTURE_ENV]: captureDir },
+    });
+    const turn = await provider.nextTurn(request(), neverAbort);
+    expect(turn.usage).toEqual({ input: 10, output: 4 });
+    expect(turn.actions).toEqual([{ kind: "click", x: 11, y: 22, button: "left" }]);
+    expect(turn.notices?.map((notice) => notice.title)).toEqual(["wire capture not written"]);
+  });
+
+  it("keeps a closing request's usage and report and says the capture was not written", async () => {
+    const provider = createOpenAiResponsesProvider({
+      apiKey: "test-key",
+      fetchFn: readOnlyOnCall(2, [
+        closingFixture("pending-computer-call"),
+        closingFixture("typed-closing-report-impressions"),
+      ]),
+      env: { [WIRE_CAPTURE_ENV]: captureDir },
+    });
+    await provider.nextTurn(request(), neverAbort);
+    const turn = await provider.debrief!(request(), neverAbort);
+    expect(turn.usage?.input).toBe(13_543);
+    expect(turn.closingReport).toBeDefined();
+    expect(turn.notices?.map((notice) => notice.title)).toEqual(["wire capture not written"]);
+    expect(await readdir(captureDir)).toEqual(["wire-001.json"]);
   });
 });
 
