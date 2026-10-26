@@ -1,0 +1,250 @@
+import type { ActorConversation } from "../contract.js";
+import {
+  HALT_TEXT,
+  message,
+  parseMessage,
+  pointerAfter,
+  requestBody,
+  screenImage,
+  toolResult,
+  type MemberCall,
+  type MessagesSettings,
+  type ParsedMessage,
+  type Point,
+} from "./anthropic-wire.js";
+import {
+  closingAccount,
+  closingSchema,
+  replyFormText,
+  type ClosingRequest,
+} from "./closing-account.js";
+import type { CuaActionAcknowledgement, CuaTurn, CuaTurnRequest } from "./loop/types.js";
+
+// The conversation the Anthropic computer-use provider has with the model. The Messages API keeps
+// no conversation, so every request carries all of it, and Claude Haiku 5.5 invalidates a
+// thinking block when anything sent before it changes. The history is therefore append-only:
+// the system prompt is the study instructions, fixed by the first request; the toolset is one
+// constant; each reply is appended verbatim; and every later request adds only new messages.
+// Old screenshots leave what the model reads through the server's tool-result clearing
+// (anthropic-wire.ts), never through an edit here.
+
+/** One request of the conversation, built once, so a retry sends the same body. */
+export interface ConversationRequest {
+  readonly body: Record<string, unknown>;
+  /** Move the conversation on to the request's reply and return the reply's turn. */
+  accept(reply: unknown): CuaTurn;
+}
+
+/** The text before a screenshot sent outside a tool_result, so the model reads it as the screen. */
+const SCREEN_NOW = "This is the screen now.";
+
+/** How a member call that ran answers when its result carries no screenshot. */
+const OK = "OK";
+
+/** A screenshot call before the end of its batch: the screen comes once, after the batch. */
+const SCREEN_AT_END = "The screen after this turn's last action is in its last result.";
+
+export class AnthropicConversation {
+  /** Every message sent and received so far, in order. Only ever appended to. */
+  private readonly history: unknown[] = [];
+  private instructions: string | undefined;
+  /** The latest accepted reply: the next request answers each of its member calls. */
+  private latest: ParsedMessage | undefined;
+  /** The pointer's position after the last action the desktop acknowledged completing. */
+  private pointer: Point | undefined;
+  /** The messages of a closing request whose reply was not the stated JSON, for its retry. */
+  private openClosing: readonly unknown[] | undefined;
+  /** Accepted replies so far, each carried in every later request. */
+  private replies = 0;
+  private readonly requests: ActorConversation["requests"] = [];
+
+  constructor(private readonly settings: MessagesSettings) {}
+
+  /** The next participant turn's request, carrying `req`'s screen and acknowledgements. */
+  request(req: CuaTurnRequest): ConversationRequest {
+    const sent = this.newMessages(req);
+    const pointer = this.pointerAfterBatch(req);
+    return {
+      body: requestBody(this.settings, this.fixInstructions(req.instructions), [
+        ...this.history,
+        ...sent,
+      ]),
+      accept: (reply) => {
+        const parsed = parseMessage(reply, pointer);
+        this.recordRequest(sent, parsed);
+        // A reply that ended without a decision (output limit, refusal, an unexpected stop) is
+        // set aside, so asking again sends this same request.
+        if (parsed.turn.interruption === undefined) this.moveOn(sent, parsed, pointer);
+        return parsed.turn;
+      },
+    };
+  }
+
+  /**
+   * The read-only closing request carrying `req`'s screen, sent once with `send`. It answers the
+   * latest reply's calls, then asks for the closing account with its JSON Schema stated in text,
+   * since an output format would miss the cached prefix. A completed reply that is not JSON the
+   * schema accepts comes back marked closingRetry and leaves the conversation where it was; the
+   * next closing request sends the same messages with the schema set as the output format.
+   */
+  async close(
+    req: CuaTurnRequest,
+    closing: ClosingRequest,
+    send: (body: Record<string, unknown>) => Promise<unknown>,
+  ): Promise<CuaTurn> {
+    const strict = this.openClosing !== undefined;
+    const sent = this.openClosing ?? this.newMessages(req, closing);
+    this.openClosing = undefined;
+    const pointer = this.pointerAfterBatch(req);
+    const reply = await send(
+      requestBody(
+        this.settings,
+        this.fixInstructions(req.instructions),
+        [...this.history, ...sent],
+        strict ? { schema: closingSchema(closing) } : {},
+      ),
+    );
+    const parsed = parseMessage(reply, pointer);
+    if (closing === "impressions") this.recordRequest(sent, parsed, "impressions");
+    const completed = parsed.stopReason === "end_turn";
+    const account = completed ? closingAccount(parsed.turn.message, closing, strict) : undefined;
+    if (completed && account === undefined && !strict) {
+      this.openClosing = sent;
+      return { ...parsed.turn, closingRetry: true };
+    }
+    this.moveOn(sent, parsed, pointer);
+    return { ...parsed.turn, ...account };
+  }
+
+  /** The trace's account of how the conversation was carried (ActorConversation). */
+  record(): ActorConversation {
+    return {
+      mode: "explicit_context",
+      explicitReason: "stateless_api",
+      summarizedTurns: 0,
+      requests: this.requests.map((request) => ({ ...request })),
+    };
+  }
+
+  /** The study instructions, which the first request fixes as the system prompt. */
+  private fixInstructions(instructions: string): string {
+    this.instructions ??= instructions;
+    if (instructions !== this.instructions) {
+      throw new Error(
+        "The Anthropic provider sends one system prompt per session; a later request carried different instructions.",
+      );
+    }
+    return instructions;
+  }
+
+  /**
+   * The messages a request adds: the user message that answers the latest reply's calls with the
+   * screen (or the screen alone), then the turn's harness guidance as a system message. A closing
+   * request asks for its account in the user message instead.
+   */
+  private newMessages(req: CuaTurnRequest, closing?: ClosingRequest): unknown[] {
+    const screen = screenImage(req.observation.screenshot);
+    const calls = this.latest?.calls ?? [];
+    const answered =
+      calls.length === 0
+        ? [{ type: "text", text: SCREEN_NOW }, screen]
+        : answers(calls, acknowledgements(req), screen);
+    const hint = req.contextHint === undefined || req.contextHint === "" ? [] : [req.contextHint];
+    if (closing !== undefined) {
+      const ask = [...hint, replyFormText(closing)].map((text) => ({ type: "text", text }));
+      return [message("user", [...answered, ...ask])];
+    }
+    return [message("user", answered), ...hint.map((text) => message("system", text))];
+  }
+
+  /**
+   * Where the pointer is once the latest batch ran: moved by each action the desktop acknowledged
+   * completing, unknown after one that failed or whose outcome is uncertain, and unchanged by one
+   * that was never sent.
+   */
+  private pointerAfterBatch(req: CuaTurnRequest): Point | undefined {
+    const actions = this.latest?.turn.actions ?? [];
+    if (actions.length === 0) return this.pointer;
+    const statuses = acknowledgements(req);
+    let pointer = this.pointer;
+    for (const [index, action] of actions.entries()) {
+      const status = statuses.get(index) ?? "not_dispatched";
+      if (status === "not_dispatched") continue;
+      pointer = status === "completed" ? (pointerAfter(action) ?? pointer) : undefined;
+    }
+    return pointer;
+  }
+
+  private moveOn(sent: readonly unknown[], parsed: ParsedMessage, pointer: Point | undefined) {
+    this.history.push(...sent, message("assistant", parsed.content));
+    this.latest = parsed;
+    this.pointer = pointer;
+    this.replies += 1;
+  }
+
+  private recordRequest(sent: readonly unknown[], parsed: ParsedMessage, kind?: "impressions") {
+    this.requests.push({
+      mode: "explicit_context",
+      ...(kind === undefined ? {} : { kind }),
+      carriedExchanges: this.replies,
+      carriedScreenshots: countImages([...this.history, ...sent]),
+      ...(parsed.clearedInputTokens === undefined
+        ? {}
+        : { clearedInputTokens: parsed.clearedInputTokens }),
+    });
+  }
+}
+
+type Statuses = ReadonlyMap<number, CuaActionAcknowledgement["status"]>;
+
+function acknowledgements(req: CuaTurnRequest): Statuses {
+  return new Map((req.previousExecution?.actions ?? []).map((ack) => [ack.index, ack.status]));
+}
+
+/** What a call that did not complete tells the model, by its first unfinished action's status. */
+const NOT_COMPLETED: Readonly<
+  Record<Exclude<CuaActionAcknowledgement["status"], "completed">, string>
+> = {
+  skipped: "The desktop command failed.",
+  outcome_uncertain: "The desktop did not confirm this action; check the screen.",
+  not_dispatched: "Not executed: this action was not sent to the desktop.",
+};
+
+/**
+ * One tool_result per call, in order. A call answers OK when every action it ran completed. The
+ * first call that did not answers why, and every later one the halt text, as the toolset
+ * documents for a batch that stops at its first failure. The screen after the batch goes into the
+ * last result when that one completed; an error result may carry text only, so otherwise the
+ * screen follows the results on its own.
+ */
+function answers(
+  calls: readonly MemberCall[],
+  statuses: Statuses,
+  screen: Record<string, unknown>,
+): unknown[] {
+  let halted = false;
+  const results = calls.map((call, index) => {
+    if (halted) return toolResult(call, HALT_TEXT, { isError: true });
+    const unfinished = call.positions
+      .map((position) => statuses.get(position) ?? "not_dispatched")
+      .find((status) => status !== "completed");
+    if (call.rejected === undefined && unfinished === undefined) {
+      return index === calls.length - 1
+        ? toolResult(call, OK, { screen })
+        : toolResult(call, call.name === "screenshot" ? SCREEN_AT_END : OK);
+    }
+    halted = true;
+    return toolResult(call, call.rejected ?? NOT_COMPLETED[unfinished ?? "not_dispatched"], {
+      isError: true,
+    });
+  });
+  return halted ? [...results, { type: "text", text: SCREEN_NOW }, screen] : results;
+}
+
+function countImages(value: unknown): number {
+  if (Array.isArray(value)) return value.reduce<number>((n, entry) => n + countImages(entry), 0);
+  if (typeof value !== "object" || value === null) return 0;
+  const record = value as Record<string, unknown>;
+  if (record.type === "image") return 1;
+  return countImages(record.content);
+}
