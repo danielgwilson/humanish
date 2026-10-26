@@ -123,7 +123,8 @@ action as an invalid request.
 
 The wire also carries `triple_click`, `mouse_down`, `mouse_up` (a button, and an optional point),
 `hold_keys` (a chord and `ms`), `read_pointer` and `zoom` (a `region`). The Codex participant's
-tool schema does not offer them. The wire checks their shape only; the guest's X11 translator
+tool schema offers them, and so does the reply shape a Claude Code participant reads; both come
+from `participantActionSchema`. The wire checks their shape only; the guest's X11 translator
 refuses a hold over 30 seconds, one coordinate without the other, and a zoom region that is not
 whole pixels inside the frame, as a rejected action, as the hosted desktops do. A successful
 `EXECUTE` reply to a read carries `result`: `{ kind: "pointer", x, y }` in whole pixels, or

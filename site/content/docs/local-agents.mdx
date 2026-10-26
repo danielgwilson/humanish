@@ -118,6 +118,24 @@ environment humanish runs with, which can include provider keys. Both CLIs are
 host processes. Desktop inputs execute in the selected sandbox, and each CLI can
 reach whatever its restrictions leave open on your machine.
 
+## What the participant can do on the desktop
+
+Both agents propose from the same desktop actions: click, double and triple click, move, scroll,
+drag, mouse down and mouse up, type, keypress, hold keys, wait, screenshot, read pointer and zoom.
+They come from one schema, `participantActionSchema` in
+[the browser-control protocol](repo:src/browser-control/protocol.ts). Codex receives it as its
+`humanish_ui` tool schema, and Claude Code as the reply shape in its first message. The schema
+leaves out held modifier keys on a pointer action, a field of the OpenAI computer tool. Hosted
+E2B and Modal desktops and the local VM run every action through one translator.
+
+Two of the actions read the desktop. `read_pointer` returns where the pointer is, and `zoom`
+returns a region of a capture taken when it runs, at the screen's own pixels. Codex gets the
+position in that action's acknowledgment and the crop as an image in the tool result that carries
+the next screenshot. Claude Code gets the position as text in its next message, and the crop as
+an image file in its folder, which it opens with Read. A Claude Code proposal that does not match
+its shape is refused before any input; the actions before it run, and the next message says which
+one was refused.
+
 ## Usage and limitations
 
 - **It is not free.** Subscription usage consumes your own plan. Runs driven this

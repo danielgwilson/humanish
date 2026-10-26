@@ -50,9 +50,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A `ComputerUseTurn` can carry `notices`, which the trace records as warnings. A trace's
   `conversation.requests[]` can carry `clearedInputTokens`, the input the provider's server-side
   context editing cleared.
+- `actor.type: local-agent` participants can propose every desktop action, including the six
+  above. Codex's `humanish_ui` tool schema and Claude Code's reply shape both come from one
+  schema. A `read_pointer` position comes back as text: in Codex's acknowledgment, and in Claude
+  Code's next message. A `zoom` crop comes back as an image: in Codex's tool result as
+  `zoomImages`, and to Claude Code as an image file in its folder, which it opens with Read.
 
 ### Changed
 
+- A Claude Code participant's reply uses the same action fields as Codex's tool: a scroll gives
+  `dx` and `dy`, and a field may be omitted or null when unused. A proposal that does not match
+  its action's fields is refused before any input, with the reason in the participant's next
+  message, and the actions before it run. Before, it was dropped without a word.
 - Every `ComputerUseProvider` now receives `previousExecution` on each request after a turn that
   acted, with one acknowledgement per batch position. Before, only providers with
   `requestPolicy: "fail_closed"` received it. The OpenAI provider ignores it, so its requests are

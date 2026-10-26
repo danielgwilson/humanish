@@ -96,39 +96,65 @@ const waitAction = z.strictObject({
 const participantWaitAction = z.strictObject({ kind: z.literal("wait"), ms: waitMs.optional() });
 const screenshotAction = z.strictObject({ kind: z.literal("screenshot") });
 const speakAction = z.strictObject({ kind: z.literal("speak"), text: speechText });
-const tripleClickAction = z.strictObject({ kind: z.literal("triple_click"), ...point });
+// The descriptions reach the participant: Codex reads them in its tool schema and Claude Code in
+// the reply shape its prompt states.
+const tripleClickAction = z
+  .strictObject({ kind: z.literal("triple_click"), ...point })
+  .describe("Three left clicks at one point, as a person selects a line or a paragraph.");
 // A press or release at the pointer, or at a point. The translator refuses one coordinate alone.
 const mouseButton = {
   button: z.enum(["left", "right", "middle"]).optional(),
   x: coordinate.optional(),
   y: coordinate.optional(),
 };
-const mouseDownAction = z.strictObject({ kind: z.literal("mouse_down"), ...mouseButton });
-const mouseUpAction = z.strictObject({ kind: z.literal("mouse_up"), ...mouseButton });
+const mouseDownAction = z
+  .strictObject({ kind: z.literal("mouse_down"), ...mouseButton })
+  .describe(
+    "Press one button (left by default) and keep it down, where the pointer is or at x, y; give both coordinates or neither. It stays down until a mouse_up.",
+  );
+const mouseUpAction = z
+  .strictObject({ kind: z.literal("mouse_up"), ...mouseButton })
+  .describe(
+    "Release one button (left by default), where the pointer is or at x, y; give both coordinates or neither.",
+  );
 // The translator refuses a hold longer than one request carries and a region that is not whole
 // pixels inside the frame, so every desktop refuses them the same way, as a rejected action.
-const holdKeysAction = z.strictObject({
-  kind: z.literal("hold_keys"),
-  keys: chord,
-  ms: coordinate,
-});
-const readPointerAction = z.strictObject({ kind: z.literal("read_pointer") });
-const zoomAction = z.strictObject({
-  kind: z.literal("zoom"),
-  region: z.strictObject({ ...point, width: coordinate, height: coordinate }),
-});
+const holdKeysAction = z
+  .strictObject({ kind: z.literal("hold_keys"), keys: chord, ms: coordinate })
+  .describe(
+    `Hold one key or a chord, named as for keypress, down for ms milliseconds (at most ${BROWSER_CONTROL_LIMITS.waitMs}), then release it.`,
+  );
+const readPointerAction = z
+  .strictObject({ kind: z.literal("read_pointer") })
+  .describe("Read where the pointer is. humanish answers with its position in screen pixels.");
+const zoomAction = z
+  .strictObject({
+    kind: z.literal("zoom"),
+    region: z.strictObject({ ...point, width: coordinate, height: coordinate }),
+  })
+  .describe(
+    "Look closer at a region of the screen, in whole pixels inside it. humanish answers with an image of that region, captured when the action runs, at the screen's own pixels.",
+  );
+// The actions a local-agent participant (Codex's humanish_ui tool, Claude Code's JSON reply) may
+// propose: every desktop action except held keys on pointer actions, which mirror the OpenAI
+// computer tool's `keys` field.
 const participantActionSchemas = [
   clickAction,
   doubleClickAction,
+  tripleClickAction,
   moveAction,
   scrollAction,
+  dragAction,
+  mouseDownAction,
+  mouseUpAction,
   typeAction,
   keypressAction,
-  dragAction,
+  holdKeysAction,
   participantWaitAction,
   screenshotAction,
+  readPointerAction,
+  zoomAction,
 ] as const;
-// The Codex participant's tool schema: no held keys, so its tool surface stays as published.
 export const participantActionSchema = z
   .discriminatedUnion("kind", participantActionSchemas)
   .transform(toCuaAction);

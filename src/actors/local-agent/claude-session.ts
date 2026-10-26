@@ -28,13 +28,8 @@ import readline from "node:readline";
 import type { ActorCapabilities } from "../contract.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
 import { ComputerUseProviderError } from "../computer-use/provider-error.js";
-import {
-  declaredOutcomeOf,
-  parseAgentJson,
-  promptFor,
-  toCuaActions,
-  LOCAL_AGENT_CAPABILITIES,
-} from "./cli.js";
+import { parseAgentJson, promptFor, readResultsNote, turnFromReply } from "./agent-reply.js";
+import { LOCAL_AGENT_CAPABILITIES } from "./cli.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
 import {
   ClaudeParticipantError,
@@ -360,7 +355,8 @@ export async function startClaudeSession(
   }
 
   let turnIndex = 0;
-  let previousShot: string | undefined;
+  // The frames the last turn handed over: its screenshot and any zoom crops.
+  let previousFiles: string[] = [];
   // Whether a turn already failed with the stream's refusal, so close does not report it twice.
   let refusalReported = false;
   // A turn that delivered no result of its own spent tokens that no delivered turn reports. Its
@@ -385,6 +381,16 @@ export async function startClaudeSession(
       turnIndex += 1;
       const shot = path.join(work, `screen-${String(turnIndex).padStart(3, "0")}.png`);
       await writeFile(shot, frame);
+      const files = [shot];
+      const results = await readResultsNote(request, async (index, png) => {
+        const file = path.join(
+          work,
+          `zoom-${String(turnIndex).padStart(3, "0")}-${String(index + 1)}.png`,
+        );
+        await writeFile(file, png);
+        files.push(file);
+        return file;
+      });
       const hint =
         request.contextHint === undefined
           ? ""
@@ -394,8 +400,9 @@ export async function startClaudeSession(
       // prose-check: model prompt (the participant model reads this, not a person)
       const text =
         turnIndex === 1
-          ? promptFor(request, shot)
+          ? promptFor(request, shot, results)
           : `Read the image file ${shot}. That is the CURRENT SCREEN, after your last actions took effect. ` +
+            (results === "" ? "" : `${results}\n`) +
             "Same participant, same task: decide what to do next. " +
             "Reply with ONLY a JSON object of the same shape as before." +
             hint;
@@ -419,9 +426,9 @@ export async function startClaudeSession(
         }
         throw error;
       }
-      // The frame it already looked at is not needed on disk; the conversation remembers it.
-      if (previousShot !== undefined) await unlink(previousShot).catch(() => undefined);
-      previousShot = shot;
+      // The frames it already looked at are not needed on disk; the conversation remembers them.
+      await Promise.all(previousFiles.map((file) => unlink(file).catch(() => undefined)));
+      previousFiles = files;
       return turnFromResult(result);
     },
   };
@@ -457,9 +464,6 @@ export function turnFromResult(result: JsonObject): CuaTurn {
   } catch {
     throw new Error(`Claude Code returned no structured turn output (${text.slice(0, 160)})`);
   }
-  const actions = toCuaActions(Array.isArray(parsed.actions) ? (parsed.actions as never[]) : []);
-  const done = parsed.done === true || (actions.length === 0 && typeof parsed.message === "string");
-  const outcome = declaredOutcomeOf(parsed.outcome);
   const usage = result.usage as JsonObject | undefined;
   const count = (key: string): number | undefined =>
     typeof usage?.[key] === "number" ? (usage[key] as number) : undefined;
@@ -475,16 +479,7 @@ export function turnFromResult(result: JsonObject): CuaTurn {
       ? undefined
       : uncachedInput + (cachedInput ?? 0) + (cacheWriteInput ?? 0);
   return {
-    actions,
-    pendingSafetyChecks: [],
-    done,
-    ...(outcome === undefined ? {} : { outcome }),
-    ...(typeof parsed.reasoning === "string" && parsed.reasoning.length > 0
-      ? { reasoning: parsed.reasoning }
-      : {}),
-    ...(typeof parsed.message === "string" && parsed.message.length > 0
-      ? { message: parsed.message }
-      : {}),
+    ...turnFromReply(parsed),
     // Claude Code reports its token counts per turn. They are recorded as counts; the
     // run's cost line stays "not priced", because a subscription is not a rate card.
     ...(input === undefined && output === undefined

@@ -1,6 +1,7 @@
 // The local-agent participant's shared pieces: which signed-in coding agents this machine has
-// (Codex, Claude Code), the doctor line and hosted-Codex version check built on that, the action
-// mapping and JSON reading the two Claude Code paths share, and the one-shot Claude Code provider.
+// (Codex, Claude Code), the doctor line and hosted-Codex version check built on that, and the
+// one-shot Claude Code provider. The turn prompt and reply reading both Claude Code paths share
+// are in agent-reply.ts.
 //
 // A developer trying humanish often already has a coding agent signed in (Codex on a ChatGPT plan,
 // Claude Code on a Max plan), so `actor.type: local-agent` lets that agent decide the next
@@ -29,8 +30,9 @@ import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import type { ActorCapabilities, ParticipantDeclaredOutcome } from "../contract.js";
-import type { CuaAction, CuaProvider, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
+import type { ActorCapabilities } from "../contract.js";
+import type { CuaProvider, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
+import { parseAgentJson, promptFor, readResultsNote, turnFromReply } from "./agent-reply.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
 import { admitsCodexCliVersion, parseCodexCliVersion } from "../codex/codex-admission.js";
 import { restrictedCodexNpmTarget } from "../codex/restricted-executable.js";
@@ -65,95 +67,6 @@ const LOCAL_AGENTS: readonly LocalAgentDescriptor[] = [
     credentialPath: ".claude/.credentials.json",
   },
 ];
-
-interface RawAction {
-  kind?: string;
-  x?: number | null;
-  y?: number | null;
-  text?: string | null;
-  keys?: string[] | null;
-  ms?: number | null;
-}
-
-/**
- * Map the agent's answer onto the harness action vocabulary. Anything unrecognized is dropped
- * rather than guessed at: a coordinate we invented would be recorded as the participant's choice.
- */
-export function toCuaActions(raw: readonly RawAction[]): CuaAction[] {
-  const actions: CuaAction[] = [];
-  for (const item of raw) {
-    const x = typeof item.x === "number" ? Math.round(item.x) : undefined;
-    const y = typeof item.y === "number" ? Math.round(item.y) : undefined;
-    switch (item.kind) {
-      case "click":
-        if (x !== undefined && y !== undefined) actions.push({ kind: "click", x, y });
-        break;
-      case "double_click":
-        if (x !== undefined && y !== undefined) actions.push({ kind: "double_click", x, y });
-        break;
-      case "type":
-        if (typeof item.text === "string" && item.text.length > 0)
-          actions.push({ kind: "type", text: item.text });
-        break;
-      case "keypress":
-        if (Array.isArray(item.keys) && item.keys.length > 0)
-          actions.push({ kind: "keypress", keys: [...item.keys] });
-        break;
-      case "scroll":
-        if (x !== undefined && y !== undefined) {
-          actions.push({
-            kind: "scroll",
-            x,
-            y,
-            dx: 0,
-            dy: typeof item.ms === "number" ? item.ms : 300,
-          });
-        }
-        break;
-      case "wait":
-        actions.push({ kind: "wait", ...(typeof item.ms === "number" ? { ms: item.ms } : {}) });
-        break;
-      default:
-        break; // "done" carries no action; unknown kinds are dropped on purpose
-    }
-  }
-  return actions;
-}
-
-/** The declared outcome, only if it is one of the three words; anything else is absence. */
-export function declaredOutcomeOf(value: unknown): ParticipantDeclaredOutcome | undefined {
-  return value === "reached" || value === "not_reached" || value === "blocked" ? value : undefined;
-}
-
-/**
- * Pull the JSON object out of whatever the CLI printed: clean JSON, a Claude Code envelope, or an
- * answer wrapped in a ```json fence. A response with no object at all is a turn error, never an
- * empty turn: an empty turn would read to the loop as "the participant chose to do nothing".
- */
-export function parseAgentJson(text: string): Record<string, unknown> {
-  // Order matters, and a test caught it: Claude Code's envelope is valid JSON whose `result`
-  // string contains a ```json fence. Stripping fences first reached inside that string and
-  // mangled the envelope. So: parse what we were given, and only go fence-hunting if it is not
-  // already JSON.
-  const attempts = [text.trim()];
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/.exec(text);
-  if (fenced?.[1] !== undefined) attempts.push(fenced[1].trim());
-  const bare = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
-  if (text.indexOf("{") >= 0 && bare.length > 1) attempts.push(bare);
-
-  for (const attempt of attempts) {
-    if (attempt.length === 0) continue;
-    try {
-      const parsed: unknown = JSON.parse(attempt);
-      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-        return parsed as Record<string, unknown>;
-      }
-    } catch {
-      // try the next shape
-    }
-  }
-  throw new Error("the local agent did not return a JSON object");
-}
 
 export interface SpawnResult {
   code: number | null;
@@ -247,35 +160,6 @@ export const LOCAL_AGENT_CAPABILITIES: ActorCapabilities = {
   license: "open",
 };
 
-/** The turn prompt for Claude Code: the instructions, the screenshot to read, and the reply shape. */
-export function promptFor(request: CuaTurnRequest, screenshotPath: string): string {
-  const hint =
-    request.contextHint === undefined ? "" : `\n\nNote from the harness: ${request.contextHint}`;
-  // Claude Code has no --output-schema, so the reply shape is stated in the prompt.
-  const shape =
-    '{"reasoning":string,"done":boolean,"message":string|null,"outcome":"reached"|"not_reached"|"blocked"|null,' +
-    '"actions":[{"kind":"click|double_click|type|keypress|scroll|wait|done",' +
-    '"x":int|null,"y":int|null,"text":string|null,"keys":[string]|null,"ms":int|null}]}';
-  // prose-check: model prompt (the participant model reads this, not a person)
-  return [
-    request.instructions,
-    "",
-    `Read the image file ${screenshotPath}. That image is the CURRENT SCREEN. You are the participant: decide what to do next, ` +
-      "as this person would. Coordinates are pixels from the top-left of the screenshot.",
-    "Return between one and three actions. Set done=true ONLY when the task is finished or you are " +
-      "giving up, and put your closing words in message. When done=true, set outcome: reached if " +
-      "the task is finished, blocked if something in the app stopped you, not_reached if you are " +
-      "stopping for another reason. Otherwise outcome is null.",
-    "A turn whose actions are only waits and that asks for some wait time asks to wait its waits' " +
-      "ms together; an ask shorter than a wait whose ms is null counts as one, and named ms count " +
-      "up to the study's longest wait. The note from the harness says how long you waited and why " +
-      "it ended. A wait among other actions lasts its ms, and the note says when the study's limit " +
-      "for one wait shortened it.",
-    `Reply with ONLY a JSON object of this shape: ${shape}`,
-    hint,
-  ].join("\n");
-}
-
 /**
  * A CuaProvider that spawns a signed-in Claude Code (`claude -p`) once per turn, with no memory of
  * the last turn. The run's default is one session (claude-session.ts); this path is reached only
@@ -311,7 +195,12 @@ export function createLocalAgentProvider(options: LocalAgentProviderOptions): Cu
       try {
         const screenshotPath = path.join(work, "screen.png");
         await writeFile(screenshotPath, frame);
-        const prompt = promptFor(request, screenshotPath);
+        const results = await readResultsNote(request, async (index, png) => {
+          const file = path.join(work, `zoom-${index + 1}.png`);
+          await writeFile(file, png);
+          return file;
+        });
+        const prompt = promptFor(request, screenshotPath, results);
         const folders = [work, await realpath(work).catch(() => work)];
         const watch = new ClaudeStreamGuard(folders);
 
@@ -339,27 +228,9 @@ export function createLocalAgentProvider(options: LocalAgentProviderOptions): Cu
         }
         const payload = typeof final.result === "string" ? final.result : "";
 
-        const turn = parseAgentJson(payload);
-        const actions = toCuaActions(
-          Array.isArray(turn.actions) ? (turn.actions as RawAction[]) : [],
-        );
-        const done =
-          turn.done === true || (actions.length === 0 && typeof turn.message === "string");
-        const outcome = declaredOutcomeOf(turn.outcome);
-        return {
-          actions,
-          pendingSafetyChecks: [],
-          done,
-          ...(outcome === undefined ? {} : { outcome }),
-          ...(typeof turn.reasoning === "string" && turn.reasoning.length > 0
-            ? { reasoning: turn.reasoning }
-            : {}),
-          ...(typeof turn.message === "string" && turn.message.length > 0
-            ? { message: turn.message }
-            : {}),
-          // No `usage`: a subscription CLI does not report tokens we can price, and inventing a
-          // number here is what would make the run's cost line a lie.
-        };
+        // No `usage`: a subscription CLI does not report tokens we can price, and inventing a
+        // number here is what would make the run's cost line a lie.
+        return turnFromReply(parseAgentJson(payload));
       } finally {
         await rm(work, { recursive: true, force: true }).catch(() => undefined);
       }

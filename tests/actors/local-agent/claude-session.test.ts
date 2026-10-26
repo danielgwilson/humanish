@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
@@ -249,5 +249,70 @@ describe("the participant's declared outcome", () => {
       }),
     });
     expect(midRun.outcome).toBeUndefined();
+  });
+});
+
+describe("what a Claude Code session is told its last actions read", () => {
+  it("hands back a pointer reading as text and a zoom frame as a file in the session folder", async () => {
+    const zoomPng = Buffer.from("zoom-crop");
+    const seen: Array<{ text: string; zoom?: Buffer }> = [];
+    const replies = [
+      {
+        done: false,
+        actions: [
+          { kind: "read_pointer" },
+          { kind: "zoom", region: { x: 0, y: 0, width: 9, height: 9 } },
+        ],
+      },
+      { done: false, actions: [{ kind: "wait", ms: 100 }] },
+      { done: true, message: "done", actions: [] },
+    ];
+    const transport: ClaudeStreamTransport = {
+      turn: async (message) => {
+        const text = textOf(message);
+        const file = /Read the image file (\S+zoom-\S+\.png)/.exec(text)?.[1];
+        seen.push({ text, ...(file === undefined ? {} : { zoom: readFileSync(file) }) });
+        return {
+          type: "result",
+          subtype: "success",
+          result: JSON.stringify(replies[seen.length - 1]),
+        };
+      },
+      close: () => undefined,
+    };
+    const session = await startClaudeSession({ transport });
+    const first = await session.provider.nextTurn(
+      { instructions: "i", observation: observation() },
+      new AbortController().signal,
+    );
+    expect(first.actions.map((action) => action.kind)).toEqual(["read_pointer", "zoom"]);
+    await session.provider.nextTurn(
+      {
+        instructions: "i",
+        observation: observation(),
+        previousExecution: {
+          actions: [
+            { index: 0, status: "completed", result: { kind: "pointer", x: 31, y: 47 } },
+            { index: 1, status: "completed", result: { kind: "frame", screenshot: zoomPng } },
+          ],
+        },
+      },
+      new AbortController().signal,
+    );
+    const zoomFile = /Read the image file (\S+zoom-\S+\.png)/.exec(seen[1]!.text)![1]!;
+    await session.provider.nextTurn(
+      {
+        instructions: "i",
+        observation: observation(),
+        previousExecution: { actions: [{ index: 0, status: "completed" }] },
+      },
+      new AbortController().signal,
+    );
+    expect(seen[1]!.text).toContain("(31, 47)");
+    expect(seen[1]!.zoom).toEqual(zoomPng);
+    // Once the agent has looked, the crop leaves the disk with the screenshot it came with.
+    expect(existsSync(zoomFile)).toBe(false);
+    expect(seen[2]!.text).not.toContain("zoom");
+    await session.close();
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -9,9 +9,6 @@ import {
   createLocalAgentProvider,
   detectLocalAgents,
   localAgentDoctorMessage,
-  parseAgentJson,
-  promptFor,
-  toCuaActions,
   type SpawnLike,
 } from "../../../src/actors/local-agent/cli.js";
 
@@ -45,65 +42,6 @@ function claudeStream(resultText: string, extra: object[] = []): string {
     .map((message) => JSON.stringify(message))
     .join("\n");
 }
-
-describe("the action vocabulary a local agent answers in", () => {
-  it("maps the kinds it is allowed to use", () => {
-    expect(toCuaActions([{ kind: "click", x: 10.4, y: 20.6 }])).toEqual([
-      { kind: "click", x: 10, y: 21 },
-    ]);
-    expect(toCuaActions([{ kind: "type", text: "hello" }])).toEqual([
-      { kind: "type", text: "hello" },
-    ]);
-    expect(toCuaActions([{ kind: "keypress", keys: ["Control", "a"] }])).toEqual([
-      { kind: "keypress", keys: ["Control", "a"] },
-    ]);
-  });
-
-  it("drops an action it cannot honour rather than inventing the missing half", () => {
-    // A click with no coordinates is not a click at (0,0). Filling that in would record a
-    // coordinate the participant never chose, in evidence someone is meant to trust.
-    expect(toCuaActions([{ kind: "click" }])).toEqual([]);
-    expect(toCuaActions([{ kind: "type", text: "" }])).toEqual([]);
-    expect(toCuaActions([{ kind: "keypress", keys: [] }])).toEqual([]);
-    expect(toCuaActions([{ kind: "teleport", x: 1, y: 2 }])).toEqual([]);
-  });
-});
-
-describe("the turn prompt", () => {
-  it("tells Claude Code how long a turn of only waits can last and says nothing about the screen", () => {
-    const prompt = promptFor(
-      { instructions: "Wait for the reply.", observation: observation() },
-      "/tmp/turn.png",
-    );
-    expect(prompt).toContain(
-      "A turn whose actions are only waits and that asks for some wait time asks to wait its waits' ms together; an ask shorter than a wait whose ms is null counts as one, and named ms count up to the study's longest wait",
-    );
-    expect(prompt).toContain(
-      "The note from the harness says how long you waited and why it ended.",
-    );
-    expect(prompt).toContain(
-      "A wait among other actions lasts its ms, and the note says when the study's limit for one wait shortened it.",
-    );
-    expect(prompt).not.toMatch(/screen changes|reload|longer than/);
-  });
-});
-
-describe("reading the agent's answer", () => {
-  it("accepts clean JSON and JSON wrapped in a fence", () => {
-    // Codex returns the first; Claude Code returns the second. One parser, because a surface where
-    // one adapter works and the other silently does not is worse than either.
-    expect(parseAgentJson('{"done":true}')).toEqual({ done: true });
-    expect(parseAgentJson('here you go\n```json\n{"done":false}\n```\n')).toEqual({ done: false });
-  });
-
-  it("treats an answer with no JSON as a turn error, never as an empty turn", () => {
-    // An empty turn reads to the loop as "the participant chose to do nothing", which is a
-    // finding. A CLI that returned prose is a broken turn, which is not.
-    expect(() => parseAgentJson("I could not see the screenshot.")).toThrow(
-      /did not return a JSON object/,
-    );
-  });
-});
 
 describe("the provider", () => {
   it("turns a Claude Code answer into a CuaTurn", async () => {
@@ -143,6 +81,35 @@ describe("the provider", () => {
     expect(turn.done).toBe(true);
     expect(turn.message).toBe("I finished");
     expect(turn.actions).toEqual([]);
+  });
+
+  it("hands the agent a zoom frame it can Read and the pointer it read", async () => {
+    let prompt = "";
+    let zoomOnDisk: Buffer | undefined;
+    const provider = createLocalAgentProvider({
+      agent: "claude",
+      spawnFn: async (_bin, args) => {
+        prompt = args[args.length - 1]!;
+        const file = /Read the image file (\S+zoom-\d+\.png)/.exec(prompt)?.[1];
+        if (file !== undefined) zoomOnDisk = await readFile(file);
+        return { code: 0, stdout: claudeStream('{"done":false,"actions":[]}'), stderr: "" };
+      },
+    });
+    await provider.nextTurn(
+      {
+        instructions: "i",
+        observation: observation(),
+        previousExecution: {
+          actions: [
+            { index: 0, status: "completed", result: { kind: "pointer", x: 7, y: 9 } },
+            { index: 1, status: "completed", result: { kind: "frame", screenshot: FRAME } },
+          ],
+        },
+      },
+      new AbortController().signal,
+    );
+    expect(prompt).toContain("(7, 9)");
+    expect(zoomOnDisk).toEqual(FRAME);
   });
 
   it("declares that it needs a frame, and refuses a turn without one", async () => {
