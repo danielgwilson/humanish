@@ -77,6 +77,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   `moveMouse`, `scroll`, `write`, `press`, `drag` and the other clicks), since humanish sends input
   as xdotool commands; code that called them through this type should call the `@e2b/desktop`
   Sandbox directly.
+- The Anthropic provider gives Claude a zoom's image enlarged to fit the screenshot size, with its
+  aspect ratio kept, as Claude's computer-use toolset documents for `zoom`. Before, it sent the
+  crop at the desktop's own pixels, which Claude Haiku 5.5 found too small to read. The run bundle
+  keeps the crop at desktop pixels.
 
 ## 0.148.0: Participants run gpt-6.1-sol (2026-10-26)
 
