@@ -19,7 +19,11 @@ import { runStudyWith } from "../../../src/run-study.js";
 import { parseStudy } from "../../../src/study/config.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 import { lab } from "../../admission/fixtures.js";
-import { makeFanoutModule, scriptedFetch, TWO_TURN_SESSION } from "../../helpers/fanout-desktop.js";
+import {
+  makeFanoutModule,
+  scriptedParticipant,
+  TWO_TURN_SESSION,
+} from "../../helpers/fanout-desktop.js";
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 const MIN = 60_000;
@@ -91,7 +95,7 @@ describe("a support agent with a scheduled end", () => {
           options.clock?.end === undefined
             ? runCuaActorSession({
                 ...options,
-                openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+                participant: scriptedParticipant(TWO_TURN_SESSION),
               })
             : runCuaActorSession({ ...options, provider: agentProvider(seen) }),
         analysis: { run: vi.fn() },
@@ -174,7 +178,7 @@ describe("a support agent with a scheduled end", () => {
         runSession: async (options: CuaActorSessionOptions) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
         analysis: { run: vi.fn() },
       },

@@ -504,7 +504,8 @@ export interface ParticipantModelDeps {
   /** The plan's brain: the model and, for a local agent, which signed-in CLI drives the participant. */
   brain: Brain;
   env: Record<string, string | undefined>;
-  openaiApiKey: string;
+  /** The key of a provider-key brain's vendor, read from the run's env; empty for other brains. */
+  participantApiKey: string;
   timeoutMs: number;
   /**
    * How the participant's session ends, when it declares participants[].endAfterMs or maxSessionMs

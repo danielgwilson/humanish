@@ -28,7 +28,7 @@ declare const liveTerminal: Extract<TerminalPlan, { dryRun: false }>;
 
 // Never called: the declared values above exist only for the type checker.
 export function refusedShapes(): unknown[] {
-  const openai = { kind: "openai", model: "m" } as const;
+  const openai = { kind: "provider-key", vendor: "openai", model: "m" } as const;
   const caller = { kind: "caller" } as const;
   const localApp = { kind: "local-app", appUrl: "http://127.0.0.1:3000/" } as const;
   const clone = { kind: "clone", repo: "a/b", serve, env: [] } as const;

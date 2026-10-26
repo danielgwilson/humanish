@@ -66,7 +66,7 @@ describe("shared world with a local-agent brain", () => {
       agent: "codex",
       declaredModel: "gpt-6-astra",
     } as const;
-    const openai = { kind: "openai", model: "gpt-6-astra" } as const;
+    const openai = { kind: "provider-key", vendor: "openai", model: "gpt-6-astra" } as const;
     expect(participantRunDeps(planeContext(localAgent), live, scrub).brain).toBe(localAgent);
     expect(participantRunDeps(planeContext(openai), live, scrub).brain).toBe(openai);
   });

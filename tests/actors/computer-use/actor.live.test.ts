@@ -46,7 +46,10 @@ describe.skipIf(!LIVE)("openai-computer-use actor (live, spend-gated)", () => {
           timeoutMs: 120_000,
           idleSteps: 4,
           noProgressSteps: 5,
-          openai: { apiKey: process.env.OPENAI_API_KEY as string, reasoningEffort: "low" },
+          participant: {
+            vendor: "openai",
+            options: { apiKey: process.env.OPENAI_API_KEY as string, reasoningEffort: "low" },
+          },
           desktop: desktop as unknown as E2BDesktopLike,
           redactScreenshots: true,
           now: () => Date.now(),

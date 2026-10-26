@@ -191,7 +191,10 @@ export interface PlaneContext {
   env: Record<string, string | undefined>;
   concurrency: number;
   runSession: CuaParticipantDeps["runSession"];
+  /** The lobby-code reader's OpenAI key. */
   openaiApiKey: string;
+  /** The key of a provider-key brain's vendor; empty for a local-agent brain. */
+  participantApiKey: string;
   e2bApiKey: string;
   /** `run.secrets.scrub`, which every plane step that writes text reads. */
   scrubKnownValues: (text: string) => string;

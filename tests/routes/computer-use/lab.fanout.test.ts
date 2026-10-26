@@ -58,6 +58,7 @@ import { participantRun, participantPlanOf } from "../../helpers/participant-run
 import {
   makeFanoutModule,
   scriptedFetch,
+  scriptedParticipant,
   TWO_TURN_SESSION,
   type FanoutModuleHandle,
 } from "../../helpers/fanout-desktop.js";
@@ -560,7 +561,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
           // Fresh fetch per participant (each participant its own session transport).
           return await runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           });
         } finally {
           active.count -= 1;
@@ -716,7 +717,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     const seams = passingSeams(handle);
     const inner = seams.runSession!;
     seams.runSession = async (options: CuaActorSessionOptions) => {
-      seen.push(options.openai?.reasoningEffort);
+      seen.push(options.participant?.options.reasoningEffort);
       return inner(options);
     };
 
@@ -766,7 +767,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       await actorsReleased;
       return runCuaActorSession({
         ...options,
-        openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+        participant: scriptedParticipant(TWO_TURN_SESSION),
       });
     };
 
@@ -1103,7 +1104,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
               }
               return runCuaActorSession({
                 ...options,
-                openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+                participant: scriptedParticipant(TWO_TURN_SESSION),
               });
             },
           },
@@ -2009,7 +2010,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
           await delay(25);
           return runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           });
         },
       },
@@ -2052,7 +2053,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
           const responses = options.persona.id === "power-user" ? HOLLOW_SESSION : TWO_TURN_SESSION;
           return runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(responses) },
+            participant: scriptedParticipant(responses),
           });
         },
       },
@@ -2117,7 +2118,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
           await delay(10);
           return runCuaActorSession({
             ...options,
-            openai: { apiKey: secret, fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, secret),
           });
         },
       },
@@ -2241,10 +2242,13 @@ describe("cua fan-out: cost estimate (sum participant token lines + one aggregat
         runSession: async (options: CuaActorSessionOptions) =>
           runCuaActorSession({
             ...options,
-            openai: {
-              ...options.openai,
-              apiKey: "test-openai-key",
-              fetchFn: scriptedFetch(usageSession(1000, 200)),
+            participant: {
+              vendor: "openai",
+              options: {
+                ...options.participant?.options,
+                apiKey: "test-openai-key",
+                fetchFn: scriptedFetch(usageSession(1000, 200)),
+              },
             },
           }),
       },

@@ -141,13 +141,16 @@ describe("declared per-response output limit", () => {
           actions += 1;
         },
       },
-      openai: {
-        apiKey: "synthetic",
-        maxOutputTokens: 16,
-        fetchFn: async (_url, init) => {
-          expect(JSON.parse(init.body).max_output_tokens).toBe(16);
-          calls += 1;
-          return ok(incomplete);
+      participant: {
+        vendor: "openai",
+        options: {
+          apiKey: "synthetic",
+          maxOutputTokens: 16,
+          fetchFn: async (_url, init) => {
+            expect(JSON.parse(init.body).max_output_tokens).toBe(16);
+            calls += 1;
+            return ok(incomplete);
+          },
         },
       },
     });

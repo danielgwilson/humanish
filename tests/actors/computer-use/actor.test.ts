@@ -111,7 +111,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     // Resolve through the registry so this pins the descriptor's runSession, not just the module fn.
     const result = await getActor("openai-computer-use").runSession({
       ...baseOpts,
-      openai: { apiKey: "test-key", fetchFn },
+      participant: { vendor: "openai", options: { apiKey: "test-key", fetchFn } },
       desktop,
     });
 
@@ -130,7 +130,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     ]);
     const result = await runCuaActorSession({
       ...baseOpts,
-      openai: { apiKey: "test-key", fetchFn },
+      participant: { vendor: "openai", options: { apiKey: "test-key", fetchFn } },
       desktop: makeFakeDesktop(),
     });
     const trace = result.trace;
@@ -151,7 +151,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     ]);
     const result = await runCuaActorSession({
       ...baseOpts,
-      openai: { apiKey: "test-key", fetchFn },
+      participant: { vendor: "openai", options: { apiKey: "test-key", fetchFn } },
       desktop: makeFakeDesktop(),
       executorOptions: {
         observeBrowserState: async () => ({
@@ -177,14 +177,17 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     const run = (recordPages?: boolean) =>
       runCuaActorSession({
         ...baseOpts,
-        openai: {
-          apiKey: "test-key",
-          fetchFn: scriptedFetch([
-            {
-              id: "r1",
-              output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }],
-            },
-          ]),
+        participant: {
+          vendor: "openai",
+          options: {
+            apiKey: "test-key",
+            fetchFn: scriptedFetch([
+              {
+                id: "r1",
+                output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }],
+              },
+            ]),
+          },
         },
         desktop: makeFakeDesktop(),
         executorOptions: {
@@ -217,7 +220,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     ]);
     const result = await runCuaActorSession({
       ...baseOpts,
-      openai: { apiKey: "test-key", fetchFn },
+      participant: { vendor: "openai", options: { apiKey: "test-key", fetchFn } },
       desktop: makeFakeDesktop(),
     });
 
@@ -242,7 +245,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     ]);
     const result = await runCuaActorSession({
       ...baseOpts,
-      openai: { apiKey: "test-key", fetchFn },
+      participant: { vendor: "openai", options: { apiKey: "test-key", fetchFn } },
       desktop: makeFakeDesktop(),
       redactScreenshots: true,
     });
@@ -271,7 +274,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     const desktop = makeFakeDesktop();
     const result = await runCuaActorSession({
       ...baseOpts,
-      openai: { apiKey: "test-key", fetchFn },
+      participant: { vendor: "openai", options: { apiKey: "test-key", fetchFn } },
       desktop,
     });
 
@@ -309,7 +312,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
 
     const result = await runCuaActorSession({
       ...baseOpts,
-      openai: { apiKey: "test-key", fetchFn },
+      participant: { vendor: "openai", options: { apiKey: "test-key", fetchFn } },
       desktop,
       acknowledgeSafetyChecks: (checks) => checks,
     });
@@ -334,7 +337,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     ]);
     const result = await runCuaActorSession({
       ...baseOpts,
-      openai: { apiKey, fetchFn },
+      participant: { vendor: "openai", options: { apiKey, fetchFn } },
       desktop: makeFakeDesktop(),
     });
     expect(JSON.stringify(result.trace)).not.toContain(apiKey);

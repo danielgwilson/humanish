@@ -2,6 +2,7 @@
 // and the requirement and subject helpers.
 
 import { DEFAULT_OPENAI_CU_MODEL } from "../actors/computer-use/openai-provider.js";
+import { PARTICIPANT_VENDORS } from "../actors/computer-use/providers.js";
 import { redactEncodedText } from "../evidence/encoded-text.js";
 import type {
   Brain,
@@ -110,7 +111,8 @@ export function desktopRequirements(
       { kind: "key", name: "MODAL_TOKEN_SECRET" },
     );
   if (args.localVm) requirements.push({ kind: "local-vm" });
-  if (args.brain.kind === "openai") requirements.push({ kind: "key", name: "OPENAI_API_KEY" });
+  if (args.brain.kind === "provider-key")
+    requirements.push({ kind: "key", name: PARTICIPANT_VENDORS[args.brain.vendor].keyName });
   if (args.brain.kind === "local-agent")
     requirements.push({ kind: "local-agent", agent: args.brain.agent });
   const env = config.subject.source === "clone" || config.subject.source === "local-tree";
@@ -130,7 +132,10 @@ export function brainOf(config: StudyConfig, callerProvider: boolean): Brain {
   const declared = declaredModelOf(config);
   if (actor?.type === "local-agent")
     return { kind: "local-agent", agent: actor.localAgent ?? "codex", ...declared };
-  return { kind: "openai", model: actor?.model ?? DEFAULT_OPENAI_CU_MODEL, ...declared };
+  // An openai-computer-use actor runs every model id on OpenAI, including one humanish has no rate
+  // for: an id OpenAI does not serve fails on the first turn with OpenAI's own error.
+  const model = actor?.model ?? DEFAULT_OPENAI_CU_MODEL;
+  return { kind: "provider-key", vendor: "openai", model, ...declared };
 }
 
 /** The brain of a run whose provider the library caller supplies. */
@@ -150,7 +155,7 @@ function declaredModelOf(config: StudyConfig): { declaredModel?: string } {
  */
 export function pricedModel(brain: Brain): string {
   if (brain.declaredModel !== undefined) return brain.declaredModel;
-  return brain.kind === "openai" ? brain.model : UNREPORTED_MODEL_RATE;
+  return brain.kind === "provider-key" ? brain.model : UNREPORTED_MODEL_RATE;
 }
 
 const UNREPORTED_MODEL_RATE = "gpt-5.6-sol";

@@ -235,9 +235,10 @@ describe("computer-use participant model, openai brain", () => {
       );
       expect(result.ok).toBe(true);
       expect(sessions).toHaveLength(1);
-      const openai = sessions[0]!.openai!;
-      if (model) expect(openai.model).toBe(model);
-      else expect("model" in openai).toBe(false);
+      const participant = sessions[0]!.participant!;
+      expect(participant.vendor).toBe("openai");
+      if (model) expect(participant.options.model).toBe(model);
+      else expect("model" in participant.options).toBe(false);
       expect(flushModels).toEqual([model ?? DEFAULT_OPENAI_CU_MODEL]);
     },
   );
@@ -276,8 +277,7 @@ describe("computer-use participant model, caller brain", () => {
       );
       expect(result.ok).toBe(true);
       expect(sessions[0]!.provider).toBe(provider);
-      if (model) expect(sessions[0]!.openai!.model).toBe(model);
-      else expect("model" in sessions[0]!.openai!).toBe(false);
+      expect(sessions[0]!.participant).toBeUndefined();
       expectPricedAt(sessions[0]!, model ?? UNREPORTED_MODEL_RATE);
       expect(flushModels).toEqual([model ?? UNREPORTED_MODEL_RATE]);
     },
@@ -298,8 +298,7 @@ describe("computer-use participant model, caller brain", () => {
       );
       expect(result.ok).toBe(true);
       expect(sessions[0]!.provider).toBe(provider);
-      if (model) expect(sessions[0]!.openai!.model).toBe(model);
-      else expect("model" in sessions[0]!.openai!).toBe(false);
+      expect(sessions[0]!.participant).toBeUndefined();
       expectPricedAt(sessions[0]!, model ?? UNREPORTED_MODEL_RATE);
     },
   );
@@ -385,7 +384,12 @@ describe("computer-use participant model, the plan's brain, over the config", ()
     const sessions: CuaActorSessionOptions[] = [];
     const result = await runWithBrain(
       labConfig({ actor: OPENAI_ACTOR, model: undefined, maxUsd: 5 }),
-      { kind: "openai", model: NON_DEFAULT_MODEL, declaredModel: NON_DEFAULT_MODEL },
+      {
+        kind: "provider-key",
+        vendor: "openai",
+        model: NON_DEFAULT_MODEL,
+        declaredModel: NON_DEFAULT_MODEL,
+      },
       {
         env: { OPENAI_API_KEY: "synthetic-openai-key" },
         runSession: async (options) => {
@@ -395,7 +399,7 @@ describe("computer-use participant model, the plan's brain, over the config", ()
       },
     );
     expect(result.ok).toBe(true);
-    expect(sessions[0]!.openai!.model).toBe(NON_DEFAULT_MODEL);
+    expect(sessions[0]!.participant!.options.model).toBe(NON_DEFAULT_MODEL);
     expectPricedAt(sessions[0]!, NON_DEFAULT_MODEL);
     expect(vi.mocked(startLiveTraceFlush).mock.calls.map(([args]) => args.model)).toEqual([
       NON_DEFAULT_MODEL,

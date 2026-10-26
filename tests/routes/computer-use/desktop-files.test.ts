@@ -16,7 +16,7 @@ import { lab } from "../../admission/fixtures.js";
 import { libraryConfig } from "../../helpers/library-config.js";
 import {
   makeFanoutModule,
-  scriptedFetch,
+  scriptedParticipant,
   TWO_TURN_SESSION,
   type FanoutModuleHandle,
   type FanoutModuleOptions,
@@ -69,7 +69,7 @@ async function run(
       order.push("session");
       return runCuaActorSession({
         ...session,
-        openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+        participant: scriptedParticipant(TWO_TURN_SESSION),
       });
     },
   };

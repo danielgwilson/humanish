@@ -42,6 +42,7 @@ import {
 } from "../../study/requirements.js";
 import { type RunScope } from "../../run/run.js";
 import { RunSecrets } from "../../run/secrets.js";
+import { participantKeys } from "../../actors/computer-use/providers.js";
 import {
   admitRoute,
   completeRefusalAnalysis,
@@ -144,9 +145,9 @@ async function admitSharedWorldRun(
   const { requirements } = plan;
   // The plan prices a cap before these, and its refusal wins over theirs.
   const refusal = await firstLiveRefusal<ConcurrentSharedWorldStudyErrorCode>([
-    // The plan lists OPENAI_API_KEY for an openai brain's participants and the external-public
-    // plane's lobby-code reader; a local-agent brain's participants run on the operator's
-    // signed-in agent instead. Only on the provisioned plane does a local agent remove the key,
+    // The plan lists the vendor key of a provider-key brain's participants and OPENAI_API_KEY for
+    // the external-public plane's lobby-code reader; a local-agent brain's participants run on the
+    // operator's signed-in agent instead. Only on the provisioned plane does a local agent remove the key,
     // so only there does the refusal suggest one.
     () =>
       keysCheck({
@@ -212,10 +213,15 @@ async function runPlanInScope(
   const checkpoints = [...(subject?.state.checkpoint ?? [])];
   const runSession = deps.runSession ?? descriptor.runSession;
 
+  // The external-public plane reads the lobby code with OpenAI whatever vendor the participants
+  // use, so the reader's key and the participants' key are read apart.
   const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
+  const keys = participantKeys(env);
+  const participantApiKey = plan.brain.kind === "provider-key" ? keys[plan.brain.vendor] : "";
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
   const secrets = new RunSecrets([
     openaiApiKey,
+    ...Object.values(keys),
     e2bApiKey,
     ...subjectEnvNames.map((name) => env[name] ?? ""),
     ...checkpoints.flatMap((probe) => probe.redact ?? []),
@@ -243,6 +249,7 @@ async function runPlanInScope(
       subjectEnvNames,
       checkpoints,
       openaiApiKey,
+      participantApiKey,
       e2bApiKey,
       secrets,
       publicRepo,

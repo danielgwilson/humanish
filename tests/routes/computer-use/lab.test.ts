@@ -1,4 +1,5 @@
 import { REDACTED_SANDBOX_ID, sandboxIdDigest } from "../../../src/evidence/redaction.js";
+import { scriptedParticipant } from "../../helpers/fanout-desktop.js";
 import { DEVICE_PRESETS } from "../../../src/study/device-presets.js";
 import {
   phaseEvent,
@@ -595,7 +596,7 @@ describe("desktop-cli runtime prerequisites", () => {
             sessionCallIndex = sandbox.calls.length;
             return runCuaActorSession({
               ...options,
-              openai: { apiKey: "synthetic", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              participant: scriptedParticipant(TWO_TURN_SESSION, "synthetic"),
             });
           },
         },
@@ -649,7 +650,7 @@ describe("desktop-cli runtime prerequisites", () => {
           sessions += 1;
           return runCuaActorSession({
             ...options,
-            openai: { apiKey: "synthetic", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "synthetic"),
           });
         },
       },
@@ -714,7 +715,7 @@ describe("runCuaActorLab", () => {
           runSession: async (options) =>
             runCuaActorSession({
               ...options,
-              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              participant: scriptedParticipant(TWO_TURN_SESSION),
             }),
         },
       });
@@ -781,7 +782,7 @@ describe("runCuaActorLab", () => {
           runSession: async (sessionOptions) =>
             runCuaActorSession({
               ...sessionOptions,
-              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              participant: scriptedParticipant(TWO_TURN_SESSION),
             }),
         },
       });
@@ -925,7 +926,7 @@ describe("runCuaActorLab", () => {
           runSession: async (options) =>
             runCuaActorSession({
               ...options,
-              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              participant: scriptedParticipant(TWO_TURN_SESSION),
             }),
         },
       });
@@ -1257,7 +1258,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -1286,7 +1287,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -1317,7 +1318,7 @@ describe("runCuaActorLab", () => {
         sessionOptionsSeen.push(options);
         return runCuaActorSession({
           ...options,
-          openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          participant: scriptedParticipant(TWO_TURN_SESSION),
         });
       },
     };
@@ -1458,7 +1459,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -1587,7 +1588,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -1765,7 +1766,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -1846,7 +1847,7 @@ describe("runCuaActorLab", () => {
           seen.push(options.dwell);
           return runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           });
         },
       },
@@ -1930,7 +1931,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -2074,7 +2075,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
         subjectPhaseSink: (event) => phases.push(event.type),
       },
@@ -2128,7 +2129,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -2183,7 +2184,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -2350,7 +2351,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -2416,10 +2417,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: {
-              apiKey: "test-openai-key",
-              fetchFn: scriptedFetch(SUCCESS_WITH_NEGATED_BLOCKER_SESSION),
-            },
+            participant: scriptedParticipant(SUCCESS_WITH_NEGATED_BLOCKER_SESSION),
           }),
       },
     );
@@ -2734,7 +2732,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -2833,7 +2831,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -2875,7 +2873,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -2934,7 +2932,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -2979,7 +2977,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -3059,7 +3057,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
         detachedTimers: {
           now: () => t,
@@ -3146,7 +3144,7 @@ describe("runCuaActorLab", () => {
           seenInstructions.push(options.instructions);
           return runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           });
         },
         detachedTimers: {
@@ -3216,7 +3214,7 @@ describe("runCuaActorLab", () => {
           seenInstructions.push(options.instructions);
           return runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           });
         },
         detachedTimers: {
@@ -3271,7 +3269,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
         detachedTimers: {
           now: () => t,
@@ -3355,7 +3353,7 @@ describe("runCuaActorLab", () => {
           seenInstructions = options.instructions;
           return runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           });
         },
         detachedTimers: {
@@ -3423,7 +3421,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
         detachedTimers: {
           now: () => t,
@@ -3492,7 +3490,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(noEngagementSession) },
+            participant: scriptedParticipant(noEngagementSession, "k1"),
           }),
       },
     );
@@ -3528,7 +3526,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(BLOCKED_AFTER_PARTIAL_SESSION) },
+            participant: scriptedParticipant(BLOCKED_AFTER_PARTIAL_SESSION, "k1"),
           }),
       },
     );
@@ -3593,7 +3591,7 @@ describe("runCuaActorLab", () => {
           sessionOptionsSeen.push(options);
           return runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           });
         },
       },
@@ -3631,7 +3629,7 @@ describe("runCuaActorLab", () => {
         runSession: async (o) =>
           runCuaActorSession({
             ...o,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -3657,7 +3655,7 @@ describe("runCuaActorLab", () => {
           ovSeen.push(o);
           return runCuaActorSession({
             ...o,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           });
         },
       },
@@ -3693,7 +3691,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -3741,7 +3739,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -3815,7 +3813,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -4066,7 +4064,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k"),
           }),
       },
     );
@@ -4164,7 +4162,7 @@ describe("runCuaActorLab", () => {
           expect(options.desktop).toBeUndefined();
           return runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           });
         },
       },
@@ -4219,7 +4217,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     ).finally(stderr.stop);
@@ -4290,7 +4288,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -4329,7 +4327,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );
@@ -4431,7 +4429,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
 
         subjectPhaseSink: (event, ctx) => {
@@ -4511,7 +4509,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -4559,7 +4557,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -4637,7 +4635,7 @@ describe("runCuaActorLab", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
 
         subjectPhaseSink: (event) => {
@@ -4901,7 +4899,7 @@ describe("runCuaActorLab", () => {
       runSession: async (options) =>
         runCuaActorSession({
           ...options,
-          openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
         }),
     };
     const redacted = await runStudyWith(
@@ -5022,7 +5020,7 @@ describe("execution.desktop.template (custom E2B desktop image, single-participa
       runSession: async (options) =>
         runCuaActorSession({
           ...options,
-          openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          participant: scriptedParticipant(TWO_TURN_SESSION),
         }),
     };
     const outcome = await runStudyWith(
@@ -5120,7 +5118,7 @@ describe("Chrome DevTools readiness after launch", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
         subjectPhaseSink: () => undefined,
       },
@@ -5242,7 +5240,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -5561,7 +5559,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
           }),
       },
     );
@@ -5756,7 +5754,7 @@ describe("buildSingleParticipantBundle", () => {
           runSession: async (options) =>
             runCuaActorSession({
               ...options,
-              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
             }),
 
           subjectPhaseSink: (event) => {
@@ -5809,7 +5807,7 @@ describe("buildSingleParticipantBundle", () => {
           runSession: async (options) =>
             runCuaActorSession({
               ...options,
-              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
             }),
         },
       );
@@ -5888,7 +5886,7 @@ describe("buildSingleParticipantBundle", () => {
           runSession: async (options) =>
             runCuaActorSession({
               ...options,
-              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
             }),
         },
       );
@@ -5925,7 +5923,7 @@ describe("buildSingleParticipantBundle", () => {
           runSession: async (options) =>
             runCuaActorSession({
               ...options,
-              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
             }),
 
           subjectPhaseSink: (event, ctx) => {
@@ -7284,10 +7282,13 @@ describe("runCuaActorLab cost estimates", () => {
         runSession: async (o) =>
           runCuaActorSession({
             ...o,
-            openai: {
-              ...o.openai,
-              apiKey: "k",
-              fetchFn: scriptedFetch(usageSession(2_000_000, 4_000)),
+            participant: {
+              vendor: "openai",
+              options: {
+                ...o.participant?.options,
+                apiKey: "k",
+                fetchFn: scriptedFetch(usageSession(2_000_000, 4_000)),
+              },
             },
           }),
       },
@@ -7363,7 +7364,14 @@ describe("runCuaActorLab cost estimates", () => {
           runSession: async (o) =>
             runCuaActorSession({
               ...o,
-              openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) },
+              participant: {
+                vendor: "openai",
+                options: {
+                  ...o.participant?.options,
+                  apiKey: "k",
+                  fetchFn: scriptedFetch(usageSession(1000, 200)),
+                },
+              },
             }),
         },
       });
@@ -7444,7 +7452,14 @@ describe("runCuaActorLab cost estimates", () => {
         runSession: async (o) =>
           runCuaActorSession({
             ...o,
-            openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) },
+            participant: {
+              vendor: "openai",
+              options: {
+                ...o.participant?.options,
+                apiKey: "k",
+                fetchFn: scriptedFetch(usageSession(1000, 200)),
+              },
+            },
           }),
       },
     });
@@ -7514,7 +7529,14 @@ describe("runCuaActorLab cost estimates", () => {
         runSession: async (o) =>
           runCuaActorSession({
             ...o,
-            openai: { ...o.openai, apiKey: "k", fetchFn: scriptedFetch(usageSession(1000, 200)) },
+            participant: {
+              vendor: "openai",
+              options: {
+                ...o.participant?.options,
+                apiKey: "k",
+                fetchFn: scriptedFetch(usageSession(1000, 200)),
+              },
+            },
           }),
       },
     });
@@ -7660,7 +7682,7 @@ describe("adopter-hosted comms on the app-url route", () => {
             seenInstructions.push(options.instructions);
             return runCuaActorSession({
               ...options,
-              openai: { apiKey: "k1", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
             });
           },
         },
@@ -7781,7 +7803,7 @@ describe("computer-use run directory goldens", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     ).finally(stderr.stop);
@@ -7821,7 +7843,7 @@ describe("computer-use run directory goldens", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     ).finally(stderr.stop);
@@ -7919,7 +7941,7 @@ describe("computer-use captions and summaries", () => {
           runSession: async (options) =>
             runCuaActorSession({
               ...options,
-              openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+              participant: scriptedParticipant(TWO_TURN_SESSION),
             }),
         },
       );
@@ -7955,7 +7977,7 @@ describe("computer-use captions and summaries", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );

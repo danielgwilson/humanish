@@ -137,7 +137,10 @@ async function wrapperSession(fetchFn: FetchLike, options: SessionOptions = {}) 
     requireReportedUsageForSpendCap: true,
     ...(options.capped === false ? {} : { maxUsd: 1, estimateTurnCostUsd: () => 0 }),
     ...(options.signal === undefined ? {} : { signal: options.signal }),
-    openai: { apiKey: "synthetic-key", model: "gpt-5.6-sol", fetchFn, delayFn: async () => {} },
+    participant: {
+      vendor: "openai",
+      options: { apiKey: "synthetic-key", model: "gpt-5.6-sol", fetchFn, delayFn: async () => {} },
+    },
     executor: {
       observe: async () => ({ screenshot: frame, stateSignature: "synthetic" }),
       execute: async () => {

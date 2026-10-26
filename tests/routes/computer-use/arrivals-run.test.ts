@@ -21,7 +21,11 @@ import { parseStudy } from "../../../src/study/config.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { lab, type Patch } from "../../admission/fixtures.js";
-import { makeFanoutModule, scriptedFetch, TWO_TURN_SESSION } from "../../helpers/fanout-desktop.js";
+import {
+  makeFanoutModule,
+  scriptedParticipant,
+  TWO_TURN_SESSION,
+} from "../../helpers/fanout-desktop.js";
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
@@ -58,7 +62,7 @@ function seams(module: E2BDesktopModule, sessionMs = 50, responses: unknown[] = 
       await new Promise((resolve) => setTimeout(resolve, sessionMs));
       return runCuaActorSession({
         ...options,
-        openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(responses) },
+        participant: scriptedParticipant(responses),
       });
     },
     analysis: { run: vi.fn() },
@@ -298,7 +302,7 @@ describe("a computer-use study whose participant fails partway through the sched
                 throw new ComputerUseExecutorError("deadline_exceeded", "outcome_uncertain");
               },
             },
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           });
         },
       },

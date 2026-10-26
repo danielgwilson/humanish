@@ -14,7 +14,11 @@ import { parseStudy } from "../../../src/study/config.js";
 import { planStudy } from "../../../src/study/plan.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 import { lab } from "../../admission/fixtures.js";
-import { makeFanoutModule, scriptedFetch, TWO_TURN_SESSION } from "../../helpers/fanout-desktop.js";
+import {
+  makeFanoutModule,
+  scriptedParticipant,
+  TWO_TURN_SESSION,
+} from "../../helpers/fanout-desktop.js";
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
 
 const ENV = {
@@ -90,7 +94,7 @@ describe("a computer-use run on a Modal desktop", () => {
         runSession: async (session) =>
           runCuaActorSession({
             ...session,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     );

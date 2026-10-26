@@ -1,11 +1,11 @@
 import { mkdtemp, rm } from "node:fs/promises";
+import { scriptedParticipant } from "../../helpers/fanout-desktop.js";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { CuaAction, CuaExecutor } from "../../../src/actors/computer-use/loop.js";
-import type { FetchLike } from "../../../src/actors/computer-use/openai-provider.js";
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
@@ -76,20 +76,6 @@ function fakeVmExecutor(): CuaExecutor {
   };
 }
 
-function scriptedFetch(responses: unknown[]): FetchLike {
-  let i = 0;
-  return async () => {
-    const value = responses[Math.min(i, responses.length - 1)];
-    i += 1;
-    return {
-      ok: true,
-      status: 200,
-      text: async () => JSON.stringify(value),
-      json: async () => value,
-    };
-  };
-}
-
 const TWO_TURN_SESSION = [
   {
     id: "resp_1",
@@ -143,7 +129,7 @@ describe("local VM run directory golden", () => {
         runSession: async (options) =>
           runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           }),
       },
     ).finally(stderr.stop);

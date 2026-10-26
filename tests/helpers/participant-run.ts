@@ -110,7 +110,7 @@ export async function participantRunDeps(
     appUrl: APP_URL,
     subject: { kind: "app-url", appUrl: APP_URL, publicTargets: false },
     env: {},
-    openaiApiKey: "",
+    participantApiKey: "",
     e2bApiKey: "",
     requestTimeoutMs: 60_000,
     sandboxMs: 60_000,
