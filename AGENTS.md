@@ -114,7 +114,7 @@ anyone.
 - Credential placement depends on the route. The computer-use model key stays on the host for a
   local run. A remote run, the default for a hosted computer-use study with a public app URL,
   runs in a runner sandbox in the operator's own E2B or Modal account and names its keys first.
-  On E2B, the OpenAI, Gemini and E2B keys stay in E2B's egress proxy and the runner holds
+  On E2B, the OpenAI, Anthropic, Gemini and E2B keys stay in E2B's egress proxy and the runner holds
   placeholders. A process in the runner can still read them back through the E2B API. A Modal
   runner receives its keys as environment variables. `--local` or `execution.remote: false` keeps
   them here. The default terminal runtime keeps its key in E2B's egress proxy, and `openai-env`

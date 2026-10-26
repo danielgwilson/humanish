@@ -384,6 +384,11 @@ describe("humanish tui: the one command that refuses instead of degrading", () =
           set: false,
           line: "GEMINI_API_KEY (analysis on Gemini): missing; run `humanish keys set gemini`",
         },
+        {
+          name: "ANTHROPIC_API_KEY",
+          set: false,
+          line: "ANTHROPIC_API_KEY (participant model on Anthropic): missing; run `humanish keys set anthropic`",
+        },
       ]);
       // The prompt `humanish keys set openai` shows.
       expect(labels).toEqual(["Value for OPENAI_API_KEY"]);

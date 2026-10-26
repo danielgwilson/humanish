@@ -50,6 +50,7 @@ describe("humanish keys status", () => {
       ["GH_TOKEN", null],
       ["AGENTMAIL_API_KEY", null],
       ["GEMINI_API_KEY", null],
+      ["ANTHROPIC_API_KEY", null],
     ]);
     expect(text).toContain("~/.e2b/config.json (e2b auth login)");
     expect(text).toContain("~/.config/humanish/keys.env");
@@ -67,6 +68,7 @@ describe("humanish keys status", () => {
         "GH_TOKEN (private repository subjects): missing; run `gh auth login`, or `humanish keys set github`",
         "AGENTMAIL_API_KEY (email in studies): missing; run `humanish keys set agentmail`",
         "GEMINI_API_KEY (analysis on Gemini): missing; run `humanish keys set gemini`",
+        "ANTHROPIC_API_KEY (participant model on Anthropic): missing; run `humanish keys set anthropic`",
         "",
         "Values are never printed. `humanish keys set` asks for each missing key in turn.",
         "",
@@ -78,13 +80,13 @@ describe("humanish keys status", () => {
     await mkdir(path.join(home, ".config", "humanish"), { recursive: true });
     await writeFile(
       path.join(home, ".config", "humanish", "keys.env"),
-      "OPENAI_API_KEY=synthetic-openai-value\nANTHROPIC_API_KEY=synthetic-anthropic-value\n",
+      "OPENAI_API_KEY=synthetic-openai-value\nCODEX_API_KEY=synthetic-codex-value\n",
     );
     const others = otherStoredKeys({}, deps());
-    expect(others).toEqual(["ANTHROPIC_API_KEY"]);
+    expect(others).toEqual(["CODEX_API_KEY"]);
     const text = formatKeyStatus(await keyStatus({ cwd, env: {}, deps: deps() }), others);
     expect(text).toContain(
-      "Also in the user store: ANTHROPIC_API_KEY. humanish does not use it today.",
+      "Also in the user store: CODEX_API_KEY. humanish does not use it today.",
     );
     expect(text).not.toContain("synthetic-");
   });
@@ -108,6 +110,7 @@ describe("humanish keys status", () => {
       ["GH_TOKEN", "gh auth token"],
       ["AGENTMAIL_API_KEY", ".humanish/local/provider.env"],
       ["GEMINI_API_KEY", null],
+      ["ANTHROPIC_API_KEY", null],
     ]);
     expect(formatKeyStatus(rows)).not.toContain("synthetic-");
   });
@@ -119,6 +122,7 @@ describe("humanish keys status", () => {
       GH_TOKEN: "",
       AGENTMAIL_API_KEY: "synthetic-agentmail-entered",
       GEMINI_API_KEY: "",
+      ANTHROPIC_API_KEY: "",
     };
     const asked: string[] = [];
 
@@ -133,10 +137,16 @@ describe("humanish keys status", () => {
       },
     });
 
-    expect(asked).toEqual(["E2B_API_KEY", "GH_TOKEN", "AGENTMAIL_API_KEY", "GEMINI_API_KEY"]);
+    expect(asked).toEqual([
+      "E2B_API_KEY",
+      "GH_TOKEN",
+      "AGENTMAIL_API_KEY",
+      "GEMINI_API_KEY",
+      "ANTHROPIC_API_KEY",
+    ]);
     expect(outcome).toEqual({
       stored: ["E2B_API_KEY", "AGENTMAIL_API_KEY"],
-      skipped: ["GH_TOKEN", "GEMINI_API_KEY"],
+      skipped: ["GH_TOKEN", "GEMINI_API_KEY", "ANTHROPIC_API_KEY"],
     });
     const after = await keyStatus({ cwd, env, deps: deps() });
     expect(after.map((row) => [row.name, row.source])).toEqual([
@@ -145,6 +155,7 @@ describe("humanish keys status", () => {
       ["GH_TOKEN", null],
       ["AGENTMAIL_API_KEY", "~/.config/humanish/keys.env"],
       ["GEMINI_API_KEY", null],
+      ["ANTHROPIC_API_KEY", null],
     ]);
   });
 

@@ -424,8 +424,8 @@ function versionCheck(env: NodeJS.ProcessEnv): DoctorCheck[] {
   ];
 }
 
-/** Probes the live-run keys, plus the receiving-email key a real-comms study names and the Gemini
- * key a study analyzed on Gemini reads. */
+/** Probes the live-run keys, plus the participant vendor's key, the receiving-email key a
+ * real-comms study names and the Gemini key a study analyzed on Gemini reads. */
 async function probeDoctorKeys(
   cwd: string,
   env: NodeJS.ProcessEnv,
@@ -441,6 +441,11 @@ async function probeDoctorKeys(
     // A study on Modal reads the Modal token pair, which no other study needs.
     if (resolved.ok && resolved.config.execution?.target === "modal-terminal")
       for (const name of ["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"]) keyNames.add(name);
+    // A study whose participants run on another vendor than OpenAI reads that vendor's key.
+    const { actorParticipantModel } = await import("../actors/computer-use/models.js");
+    const { PARTICIPANT_VENDORS } = await import("../actors/computer-use/providers.js");
+    const participant = resolved.ok ? actorParticipantModel(resolved.config.actor) : undefined;
+    if (participant?.ok === true) keyNames.add(PARTICIPANT_VENDORS[participant.vendor].keyName);
     // A study analyzed on Gemini reads the Gemini key, which no other study needs.
     const analysis = resolved.ok ? resolved.config.review?.analysis : undefined;
     if (typeof analysis === "object" && analysis !== null && analysis.provider === "gemini")

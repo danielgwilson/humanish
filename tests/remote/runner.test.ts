@@ -406,6 +406,18 @@ describe("the keys a runner receives", () => {
     expect(keys.sent).toEqual(["HUMANISH_E2B_MAX_SANDBOX_MINUTES"]);
   });
 
+  it("holds a Claude participant's key in E2B's proxy and sends it to a Modal runner", () => {
+    const claude = { envNames: ["ANTHROPIC_API_KEY"], alternatives: [] };
+    const set = { ANTHROPIC_API_KEY: "synthetic-anthropic" };
+    const e2b = runnerKeys({ ...claude, provider: "e2b" }, set);
+    expect(e2b.held).toEqual(["ANTHROPIC_API_KEY"]);
+    expect(e2b.env.ANTHROPIC_API_KEY).toBe(EGRESS_PLACEHOLDER);
+    expect(Object.keys(e2b.network.rules ?? {})).toEqual(["api.anthropic.com"]);
+    const modal = runnerKeys({ ...claude, provider: "modal" }, set);
+    expect(modal.env).toEqual(set);
+    expect(modal.sent).toEqual(["ANTHROPIC_API_KEY"]);
+  });
+
   it("on E2B, holds the E2B key for the API host of the forwarded E2B_DOMAIN", () => {
     const keys = runnerKeys(
       { provider: "e2b", envNames: ["E2B_API_KEY", "E2B_DOMAIN"], alternatives: [] },

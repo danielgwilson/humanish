@@ -61,7 +61,8 @@ interface ProviderKey {
  * only these names and the user store holds only these. Everything else in an overlay or store file
  * is ignored and named: a repo-planted NODE_OPTIONS/LD_PRELOAD must never enter process env off a
  * file the operator did not explicitly pass (an explicit --dotenv remains the operator's own
- * full-file load). ANTHROPIC_API_KEY is not listed, and doctor does not report it: a Claude Code
+ * full-file load). ANTHROPIC_API_KEY is listed for API participants on Anthropic; doctor reports it
+ * only under `--study`, for a study whose participants run on Anthropic, since a Claude Code
  * participant runs on its own login and never receives it. CODEX_API_KEY is an alternative spelling
  * of the OpenAI key for terminal studies. Doctor reports AGENTMAIL_API_KEY only under `--study`, for
  * a study whose email connection names it, since a connection may name another variable, and
@@ -89,7 +90,11 @@ const PROVIDER_KEYS: readonly ProviderKey[] = [
   { name: "MODAL_TOKEN_SECRET", login: "modal token new" },
   // Which Modal environment sandboxes are created in; not a secret, but it names the account.
   { name: "MODAL_ENVIRONMENT" },
-  { name: "ANTHROPIC_API_KEY", vendor: "anthropic" },
+  {
+    name: "ANTHROPIC_API_KEY",
+    vendor: "anthropic",
+    listed: { order: 6, use: "participant model on Anthropic" },
+  },
   {
     name: "GH_TOKEN",
     vendor: "github",
