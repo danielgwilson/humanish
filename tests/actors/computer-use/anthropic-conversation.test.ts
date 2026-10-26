@@ -240,6 +240,19 @@ describe("a server-side compaction", () => {
     expect(last.messages.slice(0, after.messages.length)).toEqual(after.messages);
   });
 
+  it("is not recorded when its reply is set aside and asked again", () => {
+    const c = conversation();
+    c.request(req()).accept(reply("batch"));
+    const compacting = c.request(req({ previousExecution: acks("completed", "completed") }));
+    compacting.accept({ ...reply("compaction"), stop_reason: "max_tokens" });
+    expect(c.request(req({ previousExecution: acks("completed", "completed") })).body).toEqual(
+      compacting.body,
+    );
+    const record = c.record();
+    expect(record.requests.at(-1)!.compacted).toBeUndefined();
+    expect(record.summarizedTurns).toBe(0);
+  });
+
   it("after cut-off notes, carries the whole conversation again and only appends to it", () => {
     const c = conversation();
     c.request(req()).accept(reply("batch"));

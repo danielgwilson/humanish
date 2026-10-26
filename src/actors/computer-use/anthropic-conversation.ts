@@ -247,7 +247,10 @@ export class AnthropicConversation {
       carriedExchanges: this.replies,
       carriedScreenshots: countImages([...this.history, ...sent]),
       requestBytes: Buffer.byteLength(payload),
-      ...(parsed.compacted ? { compacted: true as const } : {}),
+      // A reply set aside is asked again uncompacted, so its summary replaced nothing.
+      ...(parsed.compacted && parsed.turn.interruption === undefined
+        ? { compacted: true as const }
+        : {}),
     });
   }
 }
