@@ -142,9 +142,8 @@ describe("the turn prompt", () => {
     expect(prompt).toContain(
       "A turn whose actions are only waits and that asks for some wait time asks to wait its waits' ms together; an ask shorter than a wait whose ms is null counts as one, and named ms count up to the study's longest wait",
     );
-    expect(prompt).toContain(
-      "The note from the harness says how long you waited and why it ended.",
-    );
+    expect(prompt).toContain("The note at the end says how long you waited and why it ended.");
+    expect(prompt).not.toMatch(/harness/i);
     expect(prompt).toContain(
       "A wait among other actions lasts its ms, and the note says when the study's limit for one wait shortened it.",
     );

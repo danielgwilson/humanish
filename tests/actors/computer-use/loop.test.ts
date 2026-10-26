@@ -2200,10 +2200,10 @@ describe("dwell window: the harness holds, looks, and requests no model turn", (
     expect(
       rec.written.map((entry) => entry.name).filter((name) => name.startsWith("dwell-")),
     ).toEqual(["dwell-01.png", "dwell-02.png", "dwell-03.png"]);
-    // The turn after the window carries the hint that time passed deliberately.
-    expect(provider.seen[1]?.contextHint).toContain(
-      "held this page under observation for 3 seconds",
-    );
+    // The turn after the window says how long the participant stayed on the page, without
+    // telling it the study was watching.
+    expect(provider.seen[1]?.contextHint).toContain("on this page for 3 seconds");
+    expect(provider.seen[1]?.contextHint).not.toMatch(/\b(study|observation|dwell)\b/i);
     // Nothing the page said leaks through the window's notices.
     expect(
       JSON.stringify(result.trace.items.filter((entry) => entry.kind === "notice")),
@@ -2277,7 +2277,7 @@ describe("dwell window: the harness holds, looks, and requests no model turn", (
       "at the start at turn 0",
     );
     expect(provider.seen).toHaveLength(1);
-    expect(provider.seen[0]?.contextHint).toContain("held this page under observation");
+    expect(provider.seen[0]?.contextHint).toContain("on this page for 2 seconds");
   });
 
   it("a window the session budget cannot hold is skipped and says so", async () => {

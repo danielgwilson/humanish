@@ -28,7 +28,13 @@ import readline from "node:readline";
 import type { ActorCapabilities } from "../contract.js";
 import type { CuaProvider, CuaTurn, CuaTurnRequest } from "../computer-use/loop.js";
 import { ComputerUseProviderError } from "../computer-use/provider-error.js";
-import { parseAgentJson, promptFor, readResultsNote, turnFromReply } from "./agent-reply.js";
+import {
+  parseAgentJson,
+  promptFor,
+  readResultsNote,
+  turnFromReply,
+  turnNote,
+} from "./agent-reply.js";
 import { LOCAL_AGENT_CAPABILITIES } from "./cli.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
 import {
@@ -391,10 +397,7 @@ export async function startClaudeSession(
         files.push(file);
         return file;
       });
-      const hint =
-        request.contextHint === undefined
-          ? ""
-          : `\n\nNote from the harness: ${request.contextHint}`;
+      const hint = turnNote(request);
       // The persona and the reply shape are in the conversation after turn one; re-sending them
       // every turn is what the one-shot version had to do, and it is most of what it cost.
       // prose-check: model prompt (the participant model reads this, not a person)

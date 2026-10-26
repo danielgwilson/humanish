@@ -9,6 +9,7 @@ import { participantAssignment } from "../../src/study/participant-assignment.js
 import { verifyRun } from "../../src/verify/verify.js";
 import { type RunBundle } from "../../src/run/bundle.js";
 import { runComputerUse } from "../helpers/route-run.js";
+import { DEFAULT_MISSION } from "../../src/routes/computer-use/participant-prompt.js";
 
 describe("participant assignment evidence", () => {
   let cwd: string;
@@ -146,8 +147,7 @@ describe("participant assignment evidence", () => {
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     ) as RunBundle;
     expect(bundle.streams[1]?.assignment).toEqual({
-      mission:
-        "You are testing a web application. The browser is already open at the subject URL. Explore it, accomplish what the scenario asks, and stop when done.",
+      mission: DEFAULT_MISSION,
       focus: "Use [REDACTED_SECRET] from [REDACTED_LOCAL_PATH]",
     });
     expect(JSON.stringify(bundle)).not.toContain(secret);

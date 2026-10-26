@@ -96,7 +96,8 @@ describe("one Claude Code session as the computer-use brain", () => {
     );
     await session.close();
     expect(textOf(sent[0]!)).toMatch(/Read the image file .*screen-001\.png/);
-    expect(textOf(sent[1]!)).toContain("Note from the harness: the page did not change");
+    expect(textOf(sent[1]!)).toContain("Note: the page did not change");
+    expect(textOf(sent[1]!)).not.toMatch(/harness/i);
   });
 
   it("reads actions, done and message off the result", () => {

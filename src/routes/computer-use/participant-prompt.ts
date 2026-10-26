@@ -15,8 +15,17 @@ import {
 import { renderTaskPrompt, type StudyTask } from "../../study/tasks.js";
 import type { DesktopParticipantRun } from "./types.js";
 
+// The missions a participant reads when its study names none. Each frames the participant as a
+// person using the app: told it is testing or being watched, a participant acts as a tester
+// whatever its persona says (docs/principles/actor-fidelity.md). The default follows the Taskly
+// benchmark's neutral mission: a mission that only says to do what one came to do ends after a
+// first action, and one that asks for a decision about the app keeps the participant using it.
 export const DEFAULT_MISSION =
-  "You are testing a web application. The browser is already open at the subject URL. Explore it, accomplish what the scenario asks, and stop when done.";
+  "You are trying a web app for the first time. The browser is already open at it. Use it the way you actually would, until you have decided whether you would keep using it, then stop. Stop sooner if you would give up.";
+
+/** The mission of a shared-world participant whose study names none. */
+export const SHARED_WORLD_MISSION =
+  "You are one of many people using a shared web app at the same time. The browser is already open at it. Do your part, then stop.";
 
 /**
  * The participant's outcome as one fixed first line of its last message. The
@@ -88,7 +97,7 @@ export function composeParticipantInstructions(args: {
     surfaceLine,
     args.mission,
     taskLines,
-    args.instruction ? `Lane focus: ${args.instruction}` : undefined,
+    args.instruction ? `Your focus: ${args.instruction}` : undefined,
     CLOSING_LINE_DIRECTIVE,
   ].filter((part): part is string => Boolean(part));
   const instructions = parts.join("\n\n");
@@ -117,14 +126,16 @@ export function withInboxMission(
   if (!address?.trim()) return spec;
   // Captured mail is routed to the assigned identity. Supply that identity and inbox
   // access without requiring the participant to wait or complete the email flow.
-  const identity = ` Your email address is ${address} — when the app asks for an email address, enter exactly that.`;
+  const identity = ` Your email address is ${address}. When the app asks for an email address, enter exactly that.`;
+  // The inbox's own limits are named as the inbox's, so a participant does not report them as
+  // the app's, without telling the participant it is inside a study harness.
   if (receiving)
     return {
       ...spec,
-      instructions: `${spec.instructions}\n\nEmail inbox:${identity} This is a fresh test identity; it does not replace an existing account's email address. When the app says it sent email, open ${inboxUrl} to check your inbox. Delivery may take a little time. Decide whether to wait or continue based on your situation. Report what you observe if mail is missing or unavailable. The inbox may block remote images or undeclared destinations; those are harness limitations.`,
+      instructions: `${spec.instructions}\n\nEmail inbox:${identity} This address is new; it does not replace an existing account's email address. When the app says it sent email, open ${inboxUrl} to check your inbox. Delivery may take a little time. Decide whether to wait or continue based on your situation. Report what you observe if mail is missing or unavailable. The inbox may not show remote images or open some links; that comes from the inbox, not from the app.`,
     };
   return {
     ...spec,
-    instructions: `${spec.instructions}\n\nEmail inbox:${identity} Your inbox is available at ${recipientInboxUrl(inboxUrl, address)} in the browser. It contains captured email addressed to your test identity. Delivery may take a little time. Decide whether to check it, wait or stop based on your situation and what you observe.`,
+    instructions: `${spec.instructions}\n\nEmail inbox:${identity} Your inbox is available at ${recipientInboxUrl(inboxUrl, address)} in the browser. It holds the email sent to that address. Delivery may take a little time. Decide whether to check it, wait or stop based on your situation and what you observe.`,
   };
 }

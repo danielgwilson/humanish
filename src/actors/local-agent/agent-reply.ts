@@ -169,12 +169,20 @@ export function parseAgentJson(text: string): Record<string, unknown> {
 }
 
 /**
+ * The turn's context hint (how a wait went, a rejected action, the time left) as the last
+ * paragraph of a turn prompt, or nothing. It is labeled a note, not a message from the harness:
+ * a participant reminded that it runs inside a harness acts less like the person it plays.
+ */
+export function turnNote(request: Pick<CuaTurnRequest, "contextHint">): string {
+  return request.contextHint === undefined ? "" : `\n\nNote: ${request.contextHint}`;
+}
+
+/**
  * The turn prompt for Claude Code: the instructions, the screenshot to read, what the last actions
  * read, and the reply shape.
  */
 export function promptFor(request: CuaTurnRequest, screenshotPath: string, results = ""): string {
-  const hint =
-    request.contextHint === undefined ? "" : `\n\nNote from the harness: ${request.contextHint}`;
+  const hint = turnNote(request);
   // Claude Code has no --output-schema, so the reply shape is stated in the prompt.
   const shape =
     '{"reasoning":string,"done":boolean,"message":string|null,"outcome":"reached"|"not_reached"|"blocked"|null,"actions":[action]}';
@@ -191,7 +199,7 @@ export function promptFor(request: CuaTurnRequest, screenshotPath: string, resul
       "stopping for another reason. Otherwise outcome is null.",
     "A turn whose actions are only waits and that asks for some wait time asks to wait its waits' " +
       "ms together; an ask shorter than a wait whose ms is null counts as one, and named ms count " +
-      "up to the study's longest wait. The note from the harness says how long you waited and why " +
+      "up to the study's longest wait. The note at the end says how long you waited and why " +
       "it ended. A wait among other actions lasts its ms, and the note says when the study's limit " +
       "for one wait shortened it.",
     `Reply with ONLY a JSON object of this shape: ${shape}`,

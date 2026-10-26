@@ -167,7 +167,7 @@ describe("a watch and what the participant hears and the study watches for", () 
     expect(run.result.trace.items.map((item) => item.title)).toContain("dwell window complete");
     expect(run.requests).toHaveLength(2);
     expect(run.requests[1]?.hint).toMatch(
-      /^Your wait lasted 10 seconds and ended when the page changed\. The study held this page under observation for 20 seconds/,
+      /^Your wait lasted 10 seconds and ended when the page changed\. You stayed on this page for 20 seconds/,
     );
   });
 

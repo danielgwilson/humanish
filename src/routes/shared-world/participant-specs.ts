@@ -8,7 +8,10 @@ import type { SharedWorldParticipant } from "../../study/plan-participants.js";
 import { resolveParticipant } from "../../run/participant.js";
 import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
-import { composeParticipantInstructions } from "../computer-use/participant-prompt.js";
+import {
+  composeParticipantInstructions,
+  SHARED_WORLD_MISSION,
+} from "../computer-use/participant-prompt.js";
 import { startLiveTraceFlush } from "../computer-use/live-flush.js";
 import type { DesktopParticipantRun, ParticipantRunOutcome } from "../computer-use/types.js";
 import {
@@ -20,10 +23,6 @@ import { resolveCommittedPersonasForCwd } from "../../study/persona-resolve.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
 import { redactEncodedText } from "../../evidence/encoded-text.js";
 import { sandboxHeadroomMs } from "../../substrates/e2b/lifetime.js";
-
-// prose-check: model prompt (the participant model reads this, not a person)
-const DEFAULT_MISSION =
-  "You are one of MANY users hitting a shared web application at the same time. The browser is already open at the app. Accomplish your role's task, then stop.";
 
 /** Resolve an actor's participant URL against the harness-minted getHost base (entry is a
  *  same-origin relative path, validated at parse against serve.url). */
@@ -42,7 +41,7 @@ function buildActorSpec(
   participant: SharedWorldParticipant,
   personas: Map<string, ResolvedPersona>,
 ): DesktopParticipantRun {
-  const mission = participant.assignment.mission ?? DEFAULT_MISSION;
+  const mission = participant.assignment.mission ?? SHARED_WORLD_MISSION;
   const focus = participant.assignment.focus;
   const { device, personaId } = participant;
   const resolvedPersona = personaId === undefined ? undefined : personas.get(personaId);

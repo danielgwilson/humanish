@@ -45,7 +45,7 @@
             500,
             896
           ],
-          "instructionDigest": "9a12d26ecfc42242"
+          "instructionDigest": "1af160c5be5de8b1"
         },
         {
           "id": "small-skimmer",
@@ -56,7 +56,7 @@
             500,
             740
           ],
-          "instructionDigest": "79b0300d675f36b8"
+          "instructionDigest": "ac7fff7ac4a73f52"
         },
         {
           "id": "desktop-power",
@@ -67,7 +67,7 @@
             1440,
             950
           ],
-          "instructionDigest": "506fda1f5dc6abc7"
+          "instructionDigest": "386aa1c147bd4395"
         },
         {
           "id": "wide-researcher",
@@ -78,7 +78,7 @@
             1920,
             1080
           ],
-          "instructionDigest": "069b32833fd4b701"
+          "instructionDigest": "bbaa11faf3a09a39"
         }
       ]
     },
@@ -270,10 +270,10 @@
     "humanish: Persona comparison-shopper has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
     "humanish computer-use fan-out plan (fanout-proof): 4 participants, strategy per-lane-worlds, concurrency 1, 4 waves.",
     "  session budget 60s per participant; worst-case ~44 sandbox-minutes total.",
-    "  - mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242",
-    "  - small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8",
-    "  - desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7",
-    "  - wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701",
+    "  - mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#1af160c5be5de8b1",
+    "  - small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#ac7fff7ac4a73f52",
+    "  - desktop-power: persona=power-user device=desktop 1440x950 prompt#386aa1c147bd4395",
+    "  - wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#bbaa11faf3a09a39",
     "humanish computer-use [mobile-newcomer]: Chrome DevTools answered on 127.0.0.1:9222 ([ms])",
     "humanish computer-use [small-skimmer]: Chrome DevTools answered on 127.0.0.1:9222 ([ms])",
     "humanish computer-use [desktop-power]: Chrome DevTools answered on 127.0.0.1:9222 ([ms])",
@@ -310,7 +310,7 @@
     "persona": {
       "id": "first-time-visitor",
       "traitsApplied": [],
-      "promptDigest": "9a12d26ecfc42242"
+      "promptDigest": "1af160c5be5de8b1"
     },
     "redaction": {
       "status": "passed",
@@ -484,7 +484,7 @@
     "persona": {
       "id": "impatient-skimmer",
       "traitsApplied": [],
-      "promptDigest": "79b0300d675f36b8"
+      "promptDigest": "ac7fff7ac4a73f52"
     },
     "redaction": {
       "status": "passed",
@@ -658,7 +658,7 @@
     "persona": {
       "id": "power-user",
       "traitsApplied": [],
-      "promptDigest": "506fda1f5dc6abc7"
+      "promptDigest": "386aa1c147bd4395"
     },
     "redaction": {
       "status": "passed",
@@ -832,7 +832,7 @@
     "persona": {
       "id": "comparison-shopper",
       "traitsApplied": [],
-      "promptDigest": "069b32833fd4b701"
+      "promptDigest": "bbaa11faf3a09a39"
     },
     "redaction": {
       "status": "passed",
@@ -1003,14 +1003,14 @@
         "id": "first-time-visitor",
         "name": "Computer-use fan-out (4 participants)",
         "source": "study:fanout-proof",
-        "sourceDigest": "9a12d26ecfc42242"
+        "sourceDigest": "1af160c5be5de8b1"
       },
       "scenario": {
         "id": "cua-fanout-proof",
         "title": "Fan-out proof",
-        "goal": "Persona: first-time-visitor.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nLane focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "goal": "Persona: first-time-visitor.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nYour focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
         "source": "study:fanout-proof",
-        "sourceDigest": "9a12d26ecfc42242"
+        "sourceDigest": "1af160c5be5de8b1"
       },
       "packageName": "humanish",
       "redaction": {
@@ -1197,14 +1197,14 @@
       "id": "first-time-visitor",
       "name": "Computer-use fan-out (4 participants)",
       "source": "study:fanout-proof",
-      "sourceDigest": "9a12d26ecfc42242"
+      "sourceDigest": "1af160c5be5de8b1"
     },
     "scenario": {
       "id": "cua-fanout-proof",
       "title": "Fan-out proof",
-      "goal": "Persona: first-time-visitor.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nLane focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "goal": "Persona: first-time-visitor.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nYour focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
       "source": "study:fanout-proof",
-      "sourceDigest": "9a12d26ecfc42242"
+      "sourceDigest": "1af160c5be5de8b1"
     },
     "lifecycle": [
       {
@@ -1360,7 +1360,7 @@
           "persona": {
             "id": "first-time-visitor",
             "traitsApplied": [],
-            "promptDigest": "9a12d26ecfc42242"
+            "promptDigest": "1af160c5be5de8b1"
           },
           "redaction": {
             "status": "passed",
@@ -1543,7 +1543,7 @@
           "persona": {
             "id": "impatient-skimmer",
             "traitsApplied": [],
-            "promptDigest": "79b0300d675f36b8"
+            "promptDigest": "ac7fff7ac4a73f52"
           },
           "redaction": {
             "status": "passed",
@@ -1721,7 +1721,7 @@
           "persona": {
             "id": "power-user",
             "traitsApplied": [],
-            "promptDigest": "506fda1f5dc6abc7"
+            "promptDigest": "386aa1c147bd4395"
           },
           "redaction": {
             "status": "passed",
@@ -1899,7 +1899,7 @@
           "persona": {
             "id": "comparison-shopper",
             "traitsApplied": [],
-            "promptDigest": "069b32833fd4b701"
+            "promptDigest": "bbaa11faf3a09a39"
           },
           "redaction": {
             "status": "passed",
@@ -2020,7 +2020,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.fanout.plan",
-        "message": "Fan-out plan: 4 participants (per-lane-worlds), concurrency 1, 4 waves; session budget 60s per participant; worst-case ~44 sandbox-minutes. Participants: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#9a12d26ecfc42242, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#79b0300d675f36b8, desktop-power: persona=power-user device=desktop 1440x950 prompt#506fda1f5dc6abc7, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#069b32833fd4b701."
+        "message": "Fan-out plan: 4 participants (per-lane-worlds), concurrency 1, 4 waves; session budget 60s per participant; worst-case ~44 sandbox-minutes. Participants: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#1af160c5be5de8b1, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#ac7fff7ac4a73f52, desktop-power: persona=power-user device=desktop 1440x950 prompt#386aa1c147bd4395, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#bbaa11faf3a09a39."
       },
       {
         "id": "event-002-subject-mobile-newcomer",
