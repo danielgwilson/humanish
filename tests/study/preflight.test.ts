@@ -7,7 +7,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { runStudyPreflight, type StudyPreflightResult } from "../../src/study/preflight.js";
 import { createProgram } from "../../src/cli/program.js";
-import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 import { lab, SCENARIO_YAML } from "../admission/fixtures.js";
 
 interface CliResult {
@@ -382,7 +381,6 @@ function fakeDesktopModule(args: {
 }): E2BDesktopModule {
   const sandbox: E2BDesktopSandbox = {
     sandboxId: "fake-sandbox_preflight_fixture",
-    ...inertDesktopInput(),
     commands: {
       run: async (command: string) => {
         if (command.includes("curl")) {

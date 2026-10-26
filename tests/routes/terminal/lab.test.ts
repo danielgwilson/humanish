@@ -28,7 +28,6 @@ import { reclaimRunSandboxes } from "../../../src/run/reclaim.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { readAutomaticAnalysis, runAutomaticAnalysis } from "../../../src/analysis/automatic.js";
 import { resolveAutomaticAnalysis } from "../../../src/analysis/automatic-config.js";
-import { inertDesktopInput } from "../../helpers/inert-desktop-input.js";
 import { runTerminal } from "../../helpers/route-run.js";
 
 // Slice 2 deterministic safety net: drive the real live orchestration (dryRun:false) against a
@@ -126,7 +125,6 @@ function makeFakeModule(opts: {
         const sandboxId = `fake-sandbox-${counter}`;
         return {
           sandboxId,
-          ...inertDesktopInput(),
           commands: {
             async run(
               command: string,

@@ -2,7 +2,7 @@
 // real @e2b/desktop Sandbox. Every desktop route launches through this one seam; the peer dep is
 // optional and lazily loaded, so it stays out of the published tarball and CI.
 //
-// E2BDesktopSandbox is the command, file, stream, launch and input subset the participants use; `open` is
+// E2BDesktopSandbox is the command, file, stream, launch and screenshot subset the participants use; `open` is
 // optional because older SDKs lack it (the computer-use route then falls back to launch). It
 // satisfies the executor's E2BDesktopLike port (src/substrates/e2b/desktop-executor.ts) as is.
 
@@ -209,18 +209,6 @@ export interface E2BDesktopSandbox {
   portAccess?(port: number): Promise<SandboxPortAccess>;
   screenshot(format?: "bytes"): Promise<Uint8Array>;
   wait(ms: number): Promise<void>;
-  // Mouse and keyboard input, as @e2b/desktop's Sandbox declares them. They make the sandbox an
-  // E2BDesktopLike, the executor's port, without a cast.
-  leftClick(x?: number, y?: number): Promise<void>;
-  rightClick(x?: number, y?: number): Promise<void>;
-  middleClick(x?: number, y?: number): Promise<void>;
-  doubleClick(x?: number, y?: number): Promise<void>;
-  moveMouse(x: number, y: number): Promise<void>;
-  getCursorPosition?(): Promise<{ x: number; y: number }>;
-  scroll(direction?: "up" | "down", amount?: number): Promise<void>;
-  write(text: string): Promise<void>;
-  press(key: string | string[]): Promise<void>;
-  drag(from: [number, number], to: [number, number]): Promise<void>;
   stream: {
     getAuthKey(): string;
     getUrl(options?: {

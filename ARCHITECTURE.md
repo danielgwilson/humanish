@@ -47,7 +47,11 @@ the analysis of the run:
    from `createLocalParticipantDesktop` (`src/routes/computer-use/local-vm.ts`), or
    `createInProcessDesktop` (`src/routes/computer-use/in-process-desktop.ts`).
    `acquireE2BDesktopSandbox` (`src/substrates/e2b/sandbox.ts`) records the sandbox id before it
-   returns. `src/subject/`
+   returns. Every desktop turns an action into xdotool commands with `planX11Action`
+   (`src/substrates/x11/translator.ts`) and runs them with `executeX11Action`
+   (`src/substrates/x11/desktop.ts`) over its own `X11Transport`: the sandbox command channel in
+   `src/substrates/e2b/desktop-executor.ts` for E2B and Modal, the guest's tools in
+   `src/guest/desktop-executor.ts` for the local VM. `src/subject/`
    provisions a `clone` or `local-tree` subject over a `Shell` (`src/substrates/shell.ts`).
 5. **Participants.** `runStudyParticipants` (`src/routes/computer-use/live-phase.ts`) publishes an
    in-progress bundle, then calls `runAllCuaParticipants`
@@ -85,7 +89,7 @@ the analysis of the run:
 | `src/routes/terminal/`     | A Codex agent in an E2B shell against a terminal product, with its ledgers                                                      | `src/routes/terminal/route.ts`      |
 | `src/actors/`              | The actor contract, the registry and each actor's session code                                                                  | `src/actors/registry.ts`            |
 | `src/subject/`             | Subject provisioning over a `Shell`: clone, local tree, desktop CLI, serve                                                      | `src/subject/serve.ts`              |
-| `src/substrates/`          | Provider primitives: E2B in `e2b/`, Firecracker and Lima VMs in `local/`, the `Shell`                                           | `src/substrates/desktop-session.ts` |
+| `src/substrates/`          | Provider primitives: E2B in `e2b/`, Modal in `modal/`, Firecracker and Lima VMs in `local/`, X11 input in `x11/`, the `Shell`   | `src/substrates/desktop-session.ts` |
 | `src/remote/`              | `--remote`: plan a run for a runner sandbox, launch and follow it there, copy it back                                           | `src/remote/launch.ts`              |
 | `src/run/`                 | Run lifecycle, bundle types, bundle guards, paths, status, receipts, reclaim                                                    | `src/run/run.ts`                    |
 | `src/verify/`              | `humanish verify`: evidence checks, share-safety grades, cost and rerun checks                                                  | `src/verify/verify.ts`              |

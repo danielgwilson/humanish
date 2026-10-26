@@ -18,11 +18,13 @@ Progress detection uses the same coarse frame signature as the hosted desktop.
 The actor receives the existing finite action union. Native tool paths, display,
 Xauthority and guest temporary directory come from the owner. Key names map to a
 closed list before reaching xdotool, whose own command syntax must never receive
-arbitrary participant strings. The list is `src/guest/desktop-keys.ts`, and the hosted
-E2B desktop translates through it too, so a key name works on both desktops or is
-refused on both. It holds OpenAI's computer-use key names, the names `@e2b/desktop`'s
-`press()` mapped, and every printable ASCII punctuation character as its keysym
-(`?` is `question`). A refused name reaches the participant as a rejected action.
+arbitrary participant strings. The list is `src/substrates/x11/keys.ts`. It holds OpenAI's
+computer-use key names, the names `@e2b/desktop`'s `press()` mapped, and every printable ASCII
+punctuation character as its keysym (`?` is `question`). A refused name reaches the participant
+as a rejected action. The guest and the hosted E2B and Modal desktops translate every action
+through one module, `src/substrates/x11/translator.ts`, so a key name works on every desktop or
+is refused on all of them. The guest's own choices there (frame checks, wheel steps, the drag
+path, exact text) are the fields of its `X11Dialect`.
 A native wheel step is not an exact pixel-scroll promise; one action permits at most
 100 wheel steps. The entire drag is checked
 before its first input. A pointer action's held keys must be modifiers (Shift,

@@ -11,6 +11,7 @@ on:
       - runtime/local-firecracker/tests/**
       - src/guest-*.ts
       - src/guest/**
+      - src/substrates/x11/**
       - src/browser-control/**
       - src/evidence/frame-signature.ts
       - src/actors/computer-use/executor-error.ts
@@ -22,6 +23,7 @@ on:
       - scripts/guest-desktop-*.mjs
       - tests/guest-*.test.ts
       - tests/guest/**
+      - tests/substrates/x11/**
       - package.json
       - pnpm-lock.yaml
       - tsconfig.json
@@ -38,6 +40,7 @@ on:
       - runtime/local-firecracker/tests/**
       - src/guest-*.ts
       - src/guest/**
+      - src/substrates/x11/**
       - src/browser-control/**
       - src/evidence/frame-signature.ts
       - src/actors/computer-use/executor-error.ts
@@ -49,6 +52,7 @@ on:
       - scripts/guest-desktop-*.mjs
       - tests/guest-*.test.ts
       - tests/guest/**
+      - tests/substrates/x11/**
       - package.json
       - pnpm-lock.yaml
       - tsconfig.json

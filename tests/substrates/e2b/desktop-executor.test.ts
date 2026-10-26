@@ -4,60 +4,47 @@ import { PNG } from "pngjs";
 import type { CuaAction } from "../../../src/actors/computer-use/loop.js";
 import type { E2BDesktopLike } from "../../../src/substrates/e2b/desktop-executor.js";
 import { perceptualSignature } from "../../../src/evidence/frame-signature.js";
-import {
-  createE2BDesktopExecutor,
-  ComputerUseTypeError,
-} from "../../../src/substrates/e2b/desktop-executor.js";
+import { createE2BDesktopExecutor } from "../../../src/substrates/e2b/desktop-executor.js";
 
-// A recorded desktop call: the method name and the arguments it received.
-interface Call {
-  method: string;
-  args: unknown[];
-}
+// The hosted transport's own behavior: observation, waits, the scroll option, held keys around a
+// cancelled action and the shell guard. What each action sends is in
+// tests/substrates/x11/desktop-contract.test.ts.
 
-// A FakeDesktop that records every call. By default its methods are async
-// (return a resolved Promise); pass { sync: true } to make them synchronous (void
-// return) to prove the executor awaits correctly in both modes. screenshot
-// returns a caller-provided PNG buffer.
+/**
+ * A fake hosted desktop that records each call as one line. Commands answer exit 0; `failOn`
+ * makes the named command throw. `sync` makes screenshot and wait return synchronously.
+ */
 function makeFakeDesktop(
   screenshotBytes: Uint8Array | Buffer,
-  opts: { sync?: boolean; writeError?: Error; withCommandSurface?: boolean } = {},
-): { desktop: E2BDesktopLike; calls: Call[] } {
-  const calls: Call[] = [];
-  const record = (method: string, ...args: unknown[]): Promise<void> | void => {
-    calls.push({ method, args });
-    if (method === "write" && opts.writeError) throw opts.writeError;
-    return opts.sync ? undefined : Promise.resolve();
-  };
-  const screenshotResult = (): Promise<Uint8Array | Buffer> | Uint8Array | Buffer => {
-    calls.push({ method: "screenshot", args: [] });
-    return opts.sync ? screenshotBytes : Promise.resolve(screenshotBytes);
-  };
+  opts: { sync?: boolean; failOn?: string; pointer?: () => void } = {},
+): { desktop: E2BDesktopLike; calls: string[] } {
+  const calls: string[] = [];
   const desktop: E2BDesktopLike = {
-    screenshot: screenshotResult,
-    leftClick: (x, y) => record("leftClick", x, y),
-    rightClick: (x, y) => record("rightClick", x, y),
-    middleClick: (x, y) => record("middleClick", x, y),
-    doubleClick: (x, y) => record("doubleClick", x, y),
-    moveMouse: (x, y) => record("moveMouse", x, y),
-    scroll: (direction, amount) => record("scroll", direction, amount),
-    write: (text) => record("write", text),
-    drag: (from, to) => record("drag", from, to),
-    wait: (ms) => record("wait", ms),
-  };
-  if (opts.withCommandSurface) {
-    desktop.files = {
-      write: async (remotePath, data, options) => {
-        calls.push({ method: "files.write", args: [remotePath, data, options] });
-      },
-    };
-    desktop.commands = {
-      run: async (command, options) => {
-        calls.push({ method: "commands.run", args: [command, options] });
+    commands: {
+      run: async (command) => {
+        calls.push(command);
+        if (command === opts.failOn) throw new Error(`synthetic ${command} failure`);
+        if (command === "xdotool getmouselocation") {
+          opts.pointer?.();
+          return { exitCode: 0, stdout: "x:0 y:0 screen:0 window:1\n" };
+        }
         return { exitCode: 0, stdout: command.includes("mktemp") ? "/tmp/humanish-type-T1" : "" };
       },
-    };
-  }
+    },
+    files: {
+      write: async (path) => {
+        calls.push(`files.write ${path}`);
+      },
+    },
+    screenshot: () => {
+      calls.push("screenshot");
+      return opts.sync ? screenshotBytes : Promise.resolve(screenshotBytes);
+    },
+    wait: (ms) => {
+      calls.push(`wait ${ms}`);
+      return opts.sync ? undefined : Promise.resolve();
+    },
+  };
   return { desktop, calls };
 }
 
@@ -109,181 +96,51 @@ function gradientPng(width: number, height: number): Buffer {
 
 const SHOT = solidPng(4, 4, 10, 20, 30);
 
-async function run(action: CuaAction, opts?: { sync?: boolean }): Promise<Call[]> {
-  const { desktop, calls } = makeFakeDesktop(SHOT, opts);
-  const executor = createE2BDesktopExecutor(desktop);
+async function run(action: CuaAction, scrollAmountPerTick?: number): Promise<string[]> {
+  const { desktop, calls } = makeFakeDesktop(SHOT);
+  const executor = createE2BDesktopExecutor(
+    desktop,
+    scrollAmountPerTick === undefined ? {} : { scrollAmountPerTick },
+  );
   await executor.execute(action);
   return calls;
 }
 
-describe("createE2BDesktopExecutor.execute action mapping", () => {
-  it("maps a left click (default button) to leftClick(x, y)", async () => {
-    const calls = await run({ kind: "click", x: 11, y: 22 });
-    expect(calls).toEqual([{ method: "leftClick", args: [11, 22] }]);
-  });
-
-  it("maps an explicit left click to leftClick(x, y)", async () => {
-    const calls = await run({ kind: "click", x: 1, y: 2, button: "left" });
-    expect(calls).toEqual([{ method: "leftClick", args: [1, 2] }]);
-  });
-
-  it("maps a right click to rightClick(x, y)", async () => {
-    const calls = await run({ kind: "click", x: 3, y: 4, button: "right" });
-    expect(calls).toEqual([{ method: "rightClick", args: [3, 4] }]);
-  });
-
-  it("maps a middle click to middleClick(x, y)", async () => {
-    const calls = await run({ kind: "click", x: 5, y: 6, button: "middle" });
-    expect(calls).toEqual([{ method: "middleClick", args: [5, 6] }]);
-  });
-
-  it("maps double_click to doubleClick(x, y)", async () => {
-    const calls = await run({ kind: "double_click", x: 7, y: 8 });
-    expect(calls).toEqual([{ method: "doubleClick", args: [7, 8] }]);
-  });
-
-  it("maps move to moveMouse(x, y)", async () => {
-    const calls = await run({ kind: "move", x: 9, y: 10 });
-    expect(calls).toEqual([{ method: "moveMouse", args: [9, 10] }]);
-  });
-
-  it("maps type to write(text)", async () => {
-    const calls = await run({ kind: "type", text: "hello@example.test" });
-    expect(calls).toEqual([{ method: "write", args: ["hello@example.test"] }]);
-  });
-
-  it("types through xdotool from a private temp file when the desktop has command and file surfaces", async () => {
-    const { desktop, calls } = makeFakeDesktop(SHOT, { withCommandSurface: true });
-    const executor = createE2BDesktopExecutor(desktop);
-
-    await executor.execute({ kind: "type", text: "hello — with punctuation" });
-
-    expect(calls.map((call) => call.method)).toEqual([
-      "commands.run",
-      "files.write",
-      "commands.run",
-      "commands.run",
-    ]);
-    expect(calls[1]?.args.slice(0, 2)).toEqual([
-      "/tmp/humanish-type-T1/text",
-      "hello — with punctuation",
-    ]);
-    expect(String(calls[2]?.args[0])).toContain("LC_ALL=C.UTF-8 xdotool type");
-    expect(calls.map((call) => String(call.args[0])).join("\n")).not.toContain("hello");
-  });
-
-  it("throws a phase-only type error when the SDK write fails on a desktop without surfaces", async () => {
-    const { desktop } = makeFakeDesktop(SHOT, {
-      writeError: new Error("exit status 1"),
-    });
-    const executor = createE2BDesktopExecutor(desktop);
-
-    const error = await executor.execute({ kind: "type", text: "hello" }).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(ComputerUseTypeError);
-    expect((error as ComputerUseTypeError).message).toBe("type failed at desktop-write");
-  });
-
-  it("maps wait with ms to wait(ms)", async () => {
-    const calls = await run({ kind: "wait", ms: 1234 });
-    expect(calls).toEqual([{ method: "wait", args: [1234] }]);
+describe("createE2BDesktopExecutor.execute", () => {
+  it("waits on the sandbox for the action's length", async () => {
+    expect(await run({ kind: "wait", ms: 1234 })).toEqual(["wait 1234"]);
   });
 
   it("waits half a second for a wait that names no duration", async () => {
-    const calls = await run({ kind: "wait" });
-    expect(calls).toEqual([{ method: "wait", args: [500] }]);
+    expect(await run({ kind: "wait" })).toEqual(["wait 500"]);
   });
 
-  it("treats screenshot as a no-op (the loop captures frames via observe)", async () => {
-    const calls = await run({ kind: "screenshot" });
-    expect(calls).toEqual([]);
+  it("works with a synchronous wait", async () => {
+    const { desktop, calls } = makeFakeDesktop(SHOT, { sync: true });
+    await createE2BDesktopExecutor(desktop).execute({ kind: "wait", ms: 5 });
+    expect(calls).toEqual(["wait 5"]);
   });
-});
 
-describe("createE2BDesktopExecutor scroll mapping", () => {
-  it("moves to the scroll point then scrolls down for dy > 0", async () => {
+  it.each([
+    [undefined, "2"],
+    [50, "4"],
+  ])("scrolls %j pixels per wheel step", async (perTick, steps) => {
+    const calls = await run({ kind: "scroll", x: 5, y: 6, dx: 0, dy: 200 }, perTick);
+    expect(calls).toEqual(["xdotool mousemove --sync 5 6", `xdotool click --repeat ${steps} 5`]);
+  });
+
+  it("never puts typed text into a command", async () => {
+    const calls = await run({ kind: "type", text: "hello with punctuation" });
+    expect(calls).toContain("files.write /tmp/humanish-type-T1/text");
+    expect(calls.join("\n")).not.toContain("hello");
+  });
+
+  it("refuses a coordinate that is not a shell-safe number before running anything", async () => {
+    const x = "1; reboot" as unknown as number;
     const { desktop, calls } = makeFakeDesktop(SHOT);
-    const executor = createE2BDesktopExecutor(desktop, { scrollAmountPerTick: 100 });
-    await executor.execute({ kind: "scroll", x: 0, y: 0, dx: 0, dy: 250 });
-    // round(250 / 100) === 3 (round half up: 2.5 -> 3)
-    expect(calls).toEqual([
-      { method: "moveMouse", args: [0, 0] },
-      { method: "scroll", args: ["down", 3] },
-    ]);
-  });
-
-  it("scrolls up for dy < 0", async () => {
-    const { desktop, calls } = makeFakeDesktop(SHOT);
-    const executor = createE2BDesktopExecutor(desktop, { scrollAmountPerTick: 100 });
-    await executor.execute({ kind: "scroll", x: 0, y: 0, dx: 0, dy: -120 });
-    // round(120 / 100) === 1
-    expect(calls).toEqual([
-      { method: "moveMouse", args: [0, 0] },
-      { method: "scroll", args: ["up", 1] },
-    ]);
-  });
-
-  it("floors a small nonzero scroll amount at 1 tick", async () => {
-    const { desktop, calls } = makeFakeDesktop(SHOT);
-    const executor = createE2BDesktopExecutor(desktop, { scrollAmountPerTick: 100 });
-    await executor.execute({ kind: "scroll", x: 0, y: 0, dx: 0, dy: 5 });
-    expect(calls).toEqual([
-      { method: "moveMouse", args: [0, 0] },
-      { method: "scroll", args: ["down", 1] },
-    ]);
-  });
-
-  it("scrolls at the action's point and ignores dx (vertical-only SDK)", async () => {
-    const { desktop, calls } = makeFakeDesktop(SHOT);
-    const executor = createE2BDesktopExecutor(desktop, { scrollAmountPerTick: 50 });
-    await executor.execute({ kind: "scroll", x: 40, y: 60, dx: 999, dy: 100 });
-    expect(calls).toEqual([
-      { method: "moveMouse", args: [40, 60] },
-      { method: "scroll", args: ["down", 2] },
-    ]);
-  });
-
-  it("is a no-op when dy is 0 (does not even move the cursor)", async () => {
-    const calls = await run({ kind: "scroll", x: 5, y: 5, dx: 0, dy: 0 });
-    expect(calls).toEqual([]);
-  });
-
-  it("uses a default 100px-per-tick when no option is given", async () => {
-    const calls = await run({ kind: "scroll", x: 0, y: 0, dx: 0, dy: 300 });
-    expect(calls).toEqual([
-      { method: "moveMouse", args: [0, 0] },
-      { method: "scroll", args: ["down", 3] },
-    ]);
-  });
-});
-
-describe("createE2BDesktopExecutor drag mapping", () => {
-  it("drags from the first to the last point of the path", async () => {
-    const calls = await run({
-      kind: "drag",
-      path: [
-        { x: 1, y: 2 },
-        { x: 5, y: 6 },
-        { x: 9, y: 10 },
-      ],
-    });
-    expect(calls).toEqual([
-      {
-        method: "drag",
-        args: [
-          [1, 2],
-          [9, 10],
-        ],
-      },
-    ]);
-  });
-
-  it("is a safe no-op for an empty path (does not throw)", async () => {
-    const calls = await run({ kind: "drag", path: [] });
-    expect(calls).toEqual([]);
-  });
-
-  it("is a safe no-op for a single-point path", async () => {
-    const calls = await run({ kind: "drag", path: [{ x: 3, y: 4 }] });
+    await expect(
+      createE2BDesktopExecutor(desktop).execute({ kind: "move", x, y: 2 }),
+    ).rejects.toMatchObject({ code: "action_rejected", disposition: "not_dispatched" });
     expect(calls).toEqual([]);
   });
 });
@@ -291,16 +148,10 @@ describe("createE2BDesktopExecutor drag mapping", () => {
 describe("createE2BDesktopExecutor.observe", () => {
   it("returns the screenshot bytes as a Buffer and a stateSignature string", async () => {
     const { desktop, calls } = makeFakeDesktop(SHOT);
-    const executor = createE2BDesktopExecutor(desktop);
-    const obs = await executor.observe();
-    expect(calls).toEqual([{ method: "screenshot", args: [] }]);
-    // The E2B (vision) executor always produces a frame, even though CuaObservation.screenshot
-    // is now optional for non-vision executors.
-    expect(obs.screenshot).toBeDefined();
+    const obs = await createE2BDesktopExecutor(desktop).observe();
+    expect(calls).toEqual(["screenshot"]);
     expect(Buffer.isBuffer(obs.screenshot)).toBe(true);
     expect(Buffer.compare(obs.screenshot ?? Buffer.alloc(0), SHOT)).toBe(0);
-    expect(typeof obs.stateSignature).toBe("string");
-    expect(obs.stateSignature.length).toBeGreaterThan(0);
     expect(obs.stateSignature).toBe(perceptualSignature(SHOT));
   });
 
@@ -308,7 +159,7 @@ describe("createE2BDesktopExecutor.observe", () => {
     const { desktop, calls } = makeFakeDesktop(SHOT);
     const executor = createE2BDesktopExecutor(desktop, {
       observeBrowserState: async () => {
-        calls.push({ method: "observeBrowserState", args: [] });
+        calls.push("observeBrowserState");
         return {
           text: "Dashboard ready",
           title: "Dashboard",
@@ -317,10 +168,7 @@ describe("createE2BDesktopExecutor.observe", () => {
       },
     });
     const obs = await executor.observe();
-    expect(calls).toEqual([
-      { method: "observeBrowserState", args: [] },
-      { method: "screenshot", args: [] },
-    ]);
+    expect(calls).toEqual(["observeBrowserState", "screenshot"]);
     expect(obs.text).toBe("Dashboard ready");
     expect(obs.title).toBe("Dashboard");
     expect(obs.url).toBe("https://example.test/dashboard");
@@ -347,60 +195,14 @@ describe("createE2BDesktopExecutor.observe", () => {
     expect(afterFailure.screenshot).toBeDefined();
   });
 
-  it("coerces a Uint8Array screenshot result to a Buffer", async () => {
-    const u8 = new Uint8Array(SHOT);
-    const { desktop } = makeFakeDesktop(u8);
-    const executor = createE2BDesktopExecutor(desktop);
-    const obs = await executor.observe();
-    expect(obs.screenshot).toBeDefined();
+  it.each([
+    ["an async Uint8Array", false],
+    ["a synchronous Uint8Array", true],
+  ])("coerces %s screenshot result to a Buffer", async (_label, sync) => {
+    const { desktop } = makeFakeDesktop(new Uint8Array(SHOT), { sync });
+    const obs = await createE2BDesktopExecutor(desktop).observe();
     expect(Buffer.isBuffer(obs.screenshot)).toBe(true);
     expect(Buffer.compare(obs.screenshot ?? Buffer.alloc(0), SHOT)).toBe(0);
-  });
-});
-
-describe("await-correctness across sync and async desktops", () => {
-  it("awaits an async desktop method before resolving execute", async () => {
-    const calls = await run({ kind: "click", x: 1, y: 1 }, { sync: false });
-    expect(calls).toEqual([{ method: "leftClick", args: [1, 1] }]);
-  });
-
-  it("works with a synchronous desktop (void returns)", async () => {
-    const calls = await run({ kind: "click", x: 2, y: 2 }, { sync: true });
-    expect(calls).toEqual([{ method: "leftClick", args: [2, 2] }]);
-  });
-
-  it("observe works with a synchronous screenshot return", async () => {
-    const { desktop } = makeFakeDesktop(SHOT, { sync: true });
-    const executor = createE2BDesktopExecutor(desktop);
-    const obs = await executor.observe();
-    expect(obs.screenshot).toBeDefined();
-    expect(Buffer.isBuffer(obs.screenshot)).toBe(true);
-    expect(Buffer.compare(obs.screenshot ?? Buffer.alloc(0), SHOT)).toBe(0);
-  });
-
-  it("awaits an async write (typed text completes before execute resolves)", async () => {
-    let completed = false;
-    const calls: Call[] = [];
-    const desktop: E2BDesktopLike = {
-      screenshot: () => Promise.resolve(SHOT),
-      leftClick: () => Promise.resolve(),
-      rightClick: () => Promise.resolve(),
-      middleClick: () => Promise.resolve(),
-      doubleClick: () => Promise.resolve(),
-      moveMouse: () => Promise.resolve(),
-      scroll: () => Promise.resolve(),
-      write: async (text) => {
-        await Promise.resolve();
-        completed = true;
-        calls.push({ method: "write", args: [text] });
-      },
-      drag: () => Promise.resolve(),
-      wait: () => Promise.resolve(),
-    };
-    const executor = createE2BDesktopExecutor(desktop);
-    await executor.execute({ kind: "type", text: "abc" });
-    expect(completed).toBe(true);
-    expect(calls).toEqual([{ method: "write", args: ["abc"] }]);
   });
 });
 
@@ -462,102 +264,20 @@ describe("perceptualSignature", () => {
 });
 
 describe("createE2BDesktopExecutor held modifiers", () => {
-  // Every desktop call and command in order; `failOn` makes the named step fail.
-  function heldFixture(failOn?: string) {
-    const steps: string[] = [];
-    const step = async (name: string): Promise<void> => {
-      steps.push(name);
-      if (name === failOn) throw new Error(`synthetic ${name} failure`);
-    };
-    const desktop: E2BDesktopLike = {
-      screenshot: () => Buffer.alloc(0),
-      leftClick: (x, y) => step(x === undefined ? "leftClick" : `leftClick ${x} ${y}`),
-      rightClick: (x, y) => step(`rightClick ${x} ${y}`),
-      middleClick: (x, y) => step(`middleClick ${x} ${y}`),
-      doubleClick: (x, y) => step(`doubleClick ${x} ${y}`),
-      moveMouse: (x, y) => step(`moveMouse ${x} ${y}`),
-      scroll: (direction, amount) => step(`scroll ${direction} ${amount}`),
-      write: (text) => step(`write ${text}`),
-      drag: (from, to) => step(`drag ${from.join(",")} ${to.join(",")}`),
-      wait: (ms) => step(`wait ${ms}`),
-      commands: {
-        run: async (command) => {
-          await step(command);
-          return { exitCode: 0, stdout: "", stderr: "" };
-        },
-      },
-    };
-    return { desktop, steps, executor: createE2BDesktopExecutor(desktop) };
-  }
-
-  it.each<[CuaAction, string[]]>([
-    [
-      { kind: "click", x: 5, y: 6, button: "right", heldKeys: ["SHIFT"] },
-      ["xdotool keydown shift", "rightClick 5 6", "xdotool keyup shift"],
-    ],
-    [
-      { kind: "double_click", x: 5, y: 6, heldKeys: ["CTRL", "ALT"] },
-      ["xdotool keydown ctrl+alt", "doubleClick 5 6", "xdotool keyup ctrl+alt"],
-    ],
-    [
-      { kind: "move", x: 5, y: 6, heldKeys: ["meta"] },
-      ["xdotool keydown super", "moveMouse 5 6", "xdotool keyup super"],
-    ],
-    [
-      { kind: "scroll", x: 5, y: 6, dx: 0, dy: 200, heldKeys: ["CONTROL"] },
-      ["xdotool keydown ctrl", "moveMouse 5 6", "scroll down 2", "xdotool keyup ctrl"],
-    ],
-    [
-      {
-        kind: "drag",
-        path: [
-          { x: 1, y: 2 },
-          { x: 3, y: 4 },
-        ],
-        heldKeys: ["SHIFT"],
-      },
-      ["xdotool keydown shift", "drag 1,2 3,4", "xdotool keyup shift"],
-    ],
-  ])("holds the modifiers around $kind", async (action, expected) => {
-    const f = heldFixture();
-    await f.executor.execute(action);
-    expect(f.steps).toEqual(expected);
-  });
-
-  it("releases the modifiers when the pointer action fails and reports that failure", async () => {
-    const f = heldFixture("rightClick 5 6");
-    await expect(
-      f.executor.execute({ kind: "click", x: 5, y: 6, button: "right", heldKeys: ["SHIFT"] }),
-    ).rejects.toThrow("synthetic rightClick 5 6 failure");
-    expect(f.steps).toEqual(["xdotool keydown shift", "rightClick 5 6", "xdotool keyup shift"]);
-  });
-
-  it("releases the modifiers when the keydown itself fails", async () => {
-    const f = heldFixture("xdotool keydown shift");
-    await expect(
-      f.executor.execute({ kind: "move", x: 5, y: 6, heldKeys: ["SHIFT"] }),
-    ).rejects.toThrow("synthetic xdotool keydown shift failure");
-    expect(f.steps).toEqual(["xdotool keydown shift", "xdotool keyup shift"]);
-  });
-
-  it("ends the session when the release fails, since the keys may still be down", async () => {
-    const f = heldFixture("xdotool keyup shift");
-    await expect(
-      f.executor.execute({ kind: "move", x: 5, y: 6, heldKeys: ["SHIFT"] }),
-    ).rejects.toMatchObject({ code: "execution_failed", disposition: "outcome_uncertain" });
-  });
-
   it("releases the modifiers when the action is cancelled mid-way", async () => {
-    const f = heldFixture();
     const controller = new AbortController();
-    f.desktop.getCursorPosition = () => {
-      controller.abort();
-      return { x: 0, y: 0 };
-    };
+    const { desktop, calls } = makeFakeDesktop(SHOT, { pointer: () => controller.abort() });
     await expect(
-      f.executor.execute({ kind: "click", x: 5, y: 6, heldKeys: ["SHIFT"] }, controller.signal),
+      createE2BDesktopExecutor(desktop).execute(
+        { kind: "click", x: 5, y: 6, heldKeys: ["SHIFT"] },
+        controller.signal,
+      ),
     ).rejects.toMatchObject({ name: "AbortError" });
-    expect(f.steps).toEqual(["xdotool keydown shift", "xdotool keyup shift"]);
+    expect(calls).toEqual([
+      "xdotool keydown shift",
+      "xdotool getmouselocation",
+      "xdotool keyup shift",
+    ]);
   });
 
   it.each<[string, string[]]>([
@@ -566,26 +286,18 @@ describe("createE2BDesktopExecutor held modifiers", () => {
     ["command syntax", ["shift; reboot"]],
     ["a repeated modifier", ["CTRL", "CONTROL"]],
   ])("refuses %s before dispatch", async (_label, heldKeys) => {
-    const f = heldFixture();
-    await expect(f.executor.execute({ kind: "click", x: 5, y: 6, heldKeys })).rejects.toMatchObject(
-      { code: "action_rejected", disposition: "not_dispatched" },
-    );
-    expect(f.steps).toEqual([]);
-  });
-
-  it("refuses held keys on a desktop with no command channel", async () => {
-    const f = heldFixture();
-    delete f.desktop.commands;
+    const { desktop, calls } = makeFakeDesktop(SHOT);
     await expect(
-      f.executor.execute({ kind: "click", x: 5, y: 6, heldKeys: ["SHIFT"] }),
+      createE2BDesktopExecutor(desktop).execute({ kind: "click", x: 5, y: 6, heldKeys }),
     ).rejects.toMatchObject({ code: "action_rejected", disposition: "not_dispatched" });
-    expect(f.steps).toEqual([]);
+    expect(calls).toEqual([]);
   });
 
   it("presses nothing for a pointer action that sends no input", async () => {
-    const f = heldFixture();
-    await f.executor.execute({ kind: "scroll", x: 5, y: 6, dx: 0, dy: 0, heldKeys: ["SHIFT"] });
-    await f.executor.execute({ kind: "drag", path: [{ x: 1, y: 1 }], heldKeys: ["SHIFT"] });
-    expect(f.steps).toEqual([]);
+    const { desktop, calls } = makeFakeDesktop(SHOT);
+    const executor = createE2BDesktopExecutor(desktop);
+    await executor.execute({ kind: "scroll", x: 5, y: 6, dx: 0, dy: 0, heldKeys: ["SHIFT"] });
+    await executor.execute({ kind: "drag", path: [{ x: 1, y: 1 }], heldKeys: ["SHIFT"] });
+    expect(calls).toEqual([]);
   });
 });

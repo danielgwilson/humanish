@@ -1,10 +1,10 @@
-// The key table both xdotool desktops (the local guest and the hosted E2B desktop) translate
-// through. Expected names are X11 keysym names; `question` and `shift+slash` are the forms an E2B
+// The key table every X11 desktop (the local guest and the hosted E2B and Modal desktops)
+// translates through. Expected names are X11 keysym names; `question` and `shift+slash` are the forms an E2B
 // desktop was seen to deliver as `?` on 2026-10-08.
 
 import { describe, expect, it } from "vitest";
-import { ComputerUseExecutorError } from "../../src/actors/computer-use/executor-error.js";
-import { xdotoolChord } from "../../src/guest/desktop-keys.js";
+import { ComputerUseExecutorError } from "../../../src/actors/computer-use/executor-error.js";
+import { xdotoolChord } from "../../../src/substrates/x11/keys.js";
 
 function refusal(keys: readonly string[]): unknown {
   try {

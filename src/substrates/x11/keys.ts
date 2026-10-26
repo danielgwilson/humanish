@@ -1,9 +1,9 @@
-import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
+import { ComputerUseExecutorError } from "../../actors/computer-use/executor-error.js";
 
-// Key names for the xdotool-driven desktops: the guest's headed display and the E2B sandbox. Both
-// hand these strings to xdotool, which has a command language, so only names from these tables
-// ever reach it. The guest runtime ships this module, so it lives in src/guest/, which CI's
-// guest-desktop job and scripts/guest-desktop-proof.mjs key on.
+// Key names for every X11 desktop: the hosted E2B and Modal desktops and the local guest. The
+// translator (translator.ts) hands these strings to xdotool, which has a command language, so only
+// names from these tables ever reach it. The guest runtime ships this module, so CI's
+// guest-desktop job and scripts/guest-desktop-proof.mjs key on src/substrates/x11/ too.
 //
 // The tables take the names in OpenAI's computer-use key map, the names @e2b/desktop's press()
 // mapped (the hosted desktop sent keys through it before), and every printable ASCII

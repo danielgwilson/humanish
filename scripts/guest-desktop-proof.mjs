@@ -31,7 +31,9 @@ await cp(join(root, "scripts/guest-desktop-proof-child.mjs"), join(payload, "pro
 await writeFile(join(payload, "package.json"), '{"type":"module"}');
 const driverModules = [
   "guest/desktop-executor",
-  "guest/desktop-keys",
+  "substrates/x11/keys",
+  "substrates/x11/translator",
+  "substrates/x11/desktop",
   "guest/desktop-native",
   "guest/browser-tools",
   "guest/chromium-text",

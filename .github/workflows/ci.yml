@@ -210,7 +210,7 @@ jobs:
           base="${PR_BASE:-HEAD^}"
           # A release changes package.json's version alone; that builds no different guest image.
           other_package_lines="$(git diff -U0 "$base" HEAD -- package.json | grep -E '^[+-][^+-]' | grep -vE '^[+-][[:space:]]*"version":' || true)"
-          if [ -z "$other_package_lines" ] && git diff --quiet "$base" HEAD -- runtime/browser-guest 'src/guest-*.ts' src/guest/ src/evidence/frame-signature.ts src/browser-control/protocol.ts src/actors/computer-use/executor-error.ts src/actors/computer-use/executor-diagnostic.ts src/actors/computer-use/speech.ts 'scripts/guest-desktop-*.mjs' 'tests/guest-*.test.ts' tests/guest/ tsconfig.build.json pnpm-lock.yaml .github/workflows/ci.yml; then
+          if [ -z "$other_package_lines" ] && git diff --quiet "$base" HEAD -- runtime/browser-guest 'src/guest-*.ts' src/guest/ src/substrates/x11/ src/evidence/frame-signature.ts src/browser-control/protocol.ts src/actors/computer-use/executor-error.ts src/actors/computer-use/executor-diagnostic.ts src/actors/computer-use/speech.ts 'scripts/guest-desktop-*.mjs' 'tests/guest-*.test.ts' tests/guest/ tests/substrates/x11/ tsconfig.build.json pnpm-lock.yaml .github/workflows/ci.yml; then
             echo "needed=false" >> "$GITHUB_OUTPUT"
           else
             echo "needed=true" >> "$GITHUB_OUTPUT"

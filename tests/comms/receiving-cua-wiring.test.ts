@@ -15,7 +15,6 @@ import type { CommsReceivingRun } from "../../src/comms/receiving.js";
 import type { ReceivingSurface } from "../../src/comms/receiving-types.js";
 import { DEFAULT_OPENAI_CU_MODEL } from "../../src/actors/computer-use/openai-provider.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
-import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 import { participantRun } from "../helpers/participant-run.js";
 
 describe("real inbox wiring through the actual computer-use route", () => {
@@ -43,7 +42,6 @@ describe("real inbox wiring through the actual computer-use route", () => {
         const write = vi.fn(async () => undefined);
         const desktop = {
           sandboxId: "synthetic-desktop",
-          ...inertDesktopInput(),
           getInfo: async () => ({ cpuCount: 2, memoryMB: 2048 }),
           commands: { run: command },
           files: { write },

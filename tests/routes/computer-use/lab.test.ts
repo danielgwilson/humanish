@@ -225,16 +225,6 @@ function makeFakeSandbox(
         calls.push(["stream.start"]);
       },
     },
-    // E2BDesktopLike actuation surface (driven by the real executor).
-    leftClick: record("leftClick"),
-    rightClick: record("rightClick"),
-    middleClick: record("middleClick"),
-    doubleClick: record("doubleClick"),
-    moveMouse: record("moveMouse"),
-    scroll: record("scroll"),
-    write: record("write"),
-    press: record("press"),
-    drag: record("drag"),
   };
   return sandbox as unknown as FakeSandbox;
 }
@@ -1042,7 +1032,7 @@ describe("runCuaActorLab", () => {
       await readFile(path.join(cwd, ".humanish", "runs", result.runId, "run.json"), "utf8"),
     );
     expect(bundle.streams[0].actor.modelSettings.maxOutputTokens).toBe(16);
-    expect(sandbox.calls.some(([name]) => name === "leftClick")).toBe(false);
+    expect(sandbox.calls).not.toContainEqual(["commands.run", "xdotool click 1"]);
   });
 
   it("refuses an invalid typed-library output limit before sandbox allocation", async () => {
@@ -1363,8 +1353,10 @@ describe("runCuaActorLab", () => {
     const openIndex = expectSafeBrowserOpen(sandbox.calls, "http://127.0.0.1:3000/");
 
     // The model's click actuated the desktop through the real executor.
-    expect(sandbox.calls).toContainEqual(["leftClick", 11, 22]);
-    expect(openIndex).toBeLessThan(sandbox.calls.findIndex(([name]) => name === "leftClick"));
+    expect(sandbox.calls).toContainEqual(["commands.run", "xdotool mousemove --sync 11 22"]);
+    expect(openIndex).toBeLessThan(
+      sandbox.calls.findIndex((call) => call[1] === "xdotool mousemove --sync 11 22"),
+    );
 
     // The prompt was composed from config (persona + mission + participant focus).
     const instructions = sessionOptionsSeen[0]?.instructions ?? "";
@@ -4370,7 +4362,7 @@ describe("runCuaActorLab", () => {
     expect(openIndex).toBeGreaterThan(probeIndex);
 
     // The model's click actuated the real executor against the served subject.
-    expect(sandbox.calls).toContainEqual(["leftClick", 11, 22]);
+    expect(sandbox.calls).toContainEqual(["commands.run", "xdotool mousemove --sync 11 22"]);
     expect(killed).toEqual(["fake-sandbox-001"]);
 
     // Provenance: repo + commit + env names, on the result and in evidence.

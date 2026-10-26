@@ -24,7 +24,6 @@ import {
   type PreparedOutputRoot,
 } from "../../src/run/contained-output.js";
 import { fullScreenXwininfo } from "../helpers/full-screen-xwininfo.js";
-import { inertDesktopInput } from "../helpers/inert-desktop-input.js";
 import { runComputerUse, runSharedWorld } from "../helpers/route-run.js";
 
 type Preparation = {
@@ -124,7 +123,6 @@ function desktopModule(events: string[], failCreate: boolean, world: FakeWorld) 
         const [width, height] = options.resolution ?? [1440, 950];
         const desktop = {
           sandboxId: record.id,
-          ...inertDesktopInput(),
           getInfo: async () => ({ cpuCount: 2, memoryMB: 2048 }),
           commands: {
             run: async (command: string) => {

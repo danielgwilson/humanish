@@ -7,8 +7,8 @@ import {
   startModalDesktop,
 } from "../../../src/substrates/modal/desktop.js";
 
-// The expected commands are those of @e2b/desktop 2.4.0's Sandbox class, which the executor and the
-// e2b-desktop modules were tuned against.
+// The expected commands are those of @e2b/desktop 2.4.0's Sandbox class, which the e2b-desktop
+// modules were tuned against. Input commands are in tests/substrates/x11/desktop-contract.test.ts.
 
 /** A command runner that records each command and answers from `answer`. */
 function recorder(answer: (command: string) => E2BCommandResult | Error = () => ({ exitCode: 0 })) {
@@ -28,50 +28,7 @@ const exit = (code: number) =>
 const hosts = new Map([[MODAL_STREAM_PORT, "ta-01abc-6080.w.modal.host"]]);
 const noFiles = async () => new Uint8Array();
 
-describe("Modal desktop input", () => {
-  it("sends @e2b/desktop's xdotool commands for clicks, keys, text, scroll and drag", async () => {
-    const { run, commands } = recorder();
-    const desktop = modalDesktopSurface(run, noFiles, hosts);
-    await desktop.leftClick(10, 20);
-    await desktop.doubleClick(5, 6);
-    await desktop.rightClick();
-    await desktop.press(["ctrl", "l"]);
-    await desktop.press("Enter");
-    await desktop.scroll("up", 3);
-    await desktop.drag([1, 2], [3, 4]);
-    expect(commands).toEqual([
-      "xdotool mousemove --sync 10 20",
-      "xdotool click 1",
-      "xdotool mousemove --sync 5 6",
-      "xdotool click --repeat 2 1",
-      "xdotool click 3",
-      "xdotool key Control_L+l",
-      "xdotool key Return",
-      "xdotool click --repeat 3 4",
-      "xdotool mousemove --sync 1 2",
-      "xdotool mousedown 1",
-      "xdotool mousemove --sync 3 4",
-      "xdotool mouseup 1",
-    ]);
-  });
-
-  it("types text in quoted chunks of 25 characters", async () => {
-    const { run, commands } = recorder();
-    await modalDesktopSurface(run, noFiles, hosts).write("it's a sentence of thirty-one");
-    expect(commands).toEqual([
-      "xdotool type --delay 75 -- 'it'\\''s a sentence of thirty'",
-      "xdotool type --delay 75 -- '-one'",
-    ]);
-  });
-
-  it("reads the cursor position xdotool reports", async () => {
-    const { run } = recorder(() => ({ exitCode: 0, stdout: "x:640 y:400 screen:0 window:123\n" }));
-    await expect(modalDesktopSurface(run, noFiles, hosts).getCursorPosition!()).resolves.toEqual({
-      x: 640,
-      y: 400,
-    });
-  });
-
+describe("Modal desktop screenshots", () => {
   it("returns a screenshot's bytes and removes the file", async () => {
     const { run, commands } = recorder();
     const png = Uint8Array.from([137, 80, 78, 71]);
