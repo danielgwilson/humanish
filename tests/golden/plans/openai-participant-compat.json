@@ -29,7 +29,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:cbff4e63cb5cf911",
+              "instructions": "sha256:b6d06e7f6bb706b8",
               "tools": [
                 {
                   "type": "computer"
@@ -65,7 +65,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:cbff4e63cb5cf911"
+                      "text": "sha256:b6d06e7f6bb706b8"
                     },
                     {
                       "type": "input_image",
@@ -81,7 +81,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:cbff4e63cb5cf911",
+              "instructions": "sha256:b6d06e7f6bb706b8",
               "tools": [
                 {
                   "type": "computer"
@@ -129,7 +129,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:cbff4e63cb5cf911",
+              "instructions": "sha256:b6d06e7f6bb706b8",
               "tools": [
                 {
                   "type": "computer"
@@ -198,7 +198,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:fb18d7bbbd6490b1",
+              "instructions": "sha256:31d95e233ba92e50",
               "tools": [
                 {
                   "type": "computer"
@@ -234,7 +234,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:fb18d7bbbd6490b1"
+                      "text": "sha256:31d95e233ba92e50"
                     },
                     {
                       "type": "input_image",
@@ -250,7 +250,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:fb18d7bbbd6490b1",
+              "instructions": "sha256:31d95e233ba92e50",
               "tools": [
                 {
                   "type": "computer"
@@ -298,7 +298,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:fb18d7bbbd6490b1",
+              "instructions": "sha256:31d95e233ba92e50",
               "tools": [
                 {
                   "type": "computer"
@@ -739,7 +739,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:df36ceaa7c983c79",
+              "instructions": "sha256:454dbf407e3f254e",
               "tools": [
                 {
                   "type": "computer"
@@ -775,7 +775,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:df36ceaa7c983c79"
+                      "text": "sha256:454dbf407e3f254e"
                     },
                     {
                       "type": "input_image",
@@ -801,7 +801,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:df36ceaa7c983c79",
+              "instructions": "sha256:454dbf407e3f254e",
               "tools": [
                 {
                   "type": "computer"
@@ -837,7 +837,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:df36ceaa7c983c79"
+                      "text": "sha256:454dbf407e3f254e"
                     },
                     {
                       "type": "input_image",
@@ -884,7 +884,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:781e2f30192c5afd",
+              "instructions": "sha256:13a6eac01e091074",
               "tools": [
                 {
                   "type": "computer"
@@ -920,7 +920,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:781e2f30192c5afd"
+                      "text": "sha256:13a6eac01e091074"
                     },
                     {
                       "type": "input_image",
@@ -936,7 +936,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:781e2f30192c5afd",
+              "instructions": "sha256:13a6eac01e091074",
               "tools": [
                 {
                   "type": "computer"
@@ -984,7 +984,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:781e2f30192c5afd",
+              "instructions": "sha256:13a6eac01e091074",
               "tools": [
                 {
                   "type": "computer"
@@ -1053,7 +1053,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:24ebc8927585807f",
+              "instructions": "sha256:8f8fdbbcc00693ea",
               "tools": [
                 {
                   "type": "computer"
@@ -1089,7 +1089,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:24ebc8927585807f"
+                      "text": "sha256:8f8fdbbcc00693ea"
                     },
                     {
                       "type": "input_image",
@@ -1105,7 +1105,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:24ebc8927585807f",
+              "instructions": "sha256:8f8fdbbcc00693ea",
               "tools": [
                 {
                   "type": "computer"
@@ -1153,7 +1153,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:24ebc8927585807f",
+              "instructions": "sha256:8f8fdbbcc00693ea",
               "tools": [
                 {
                   "type": "computer"
@@ -1222,7 +1222,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:d085b3c9cf468e4e",
+              "instructions": "sha256:4cfdd03314c0d1da",
               "tools": [
                 {
                   "type": "computer"
@@ -1258,7 +1258,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:d085b3c9cf468e4e"
+                      "text": "sha256:4cfdd03314c0d1da"
                     },
                     {
                       "type": "input_image",
@@ -1274,7 +1274,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:d085b3c9cf468e4e",
+              "instructions": "sha256:4cfdd03314c0d1da",
               "tools": [
                 {
                   "type": "computer"
@@ -1322,7 +1322,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:d085b3c9cf468e4e",
+              "instructions": "sha256:4cfdd03314c0d1da",
               "tools": [
                 {
                   "type": "computer"
@@ -1391,7 +1391,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:f5e67e40a665ba31",
+              "instructions": "sha256:3ec37a8099177816",
               "tools": [
                 {
                   "type": "computer"
@@ -1427,7 +1427,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:f5e67e40a665ba31"
+                      "text": "sha256:3ec37a8099177816"
                     },
                     {
                       "type": "input_image",
@@ -1443,7 +1443,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:f5e67e40a665ba31",
+              "instructions": "sha256:3ec37a8099177816",
               "tools": [
                 {
                   "type": "computer"
@@ -1491,7 +1491,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:f5e67e40a665ba31",
+              "instructions": "sha256:3ec37a8099177816",
               "tools": [
                 {
                   "type": "computer"
@@ -1582,7 +1582,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:3f54b6d02a23457a",
+              "instructions": "sha256:ce37f7f18bfae3a9",
               "tools": [
                 {
                   "type": "computer"
@@ -1618,7 +1618,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:3f54b6d02a23457a"
+                      "text": "sha256:ce37f7f18bfae3a9"
                     },
                     {
                       "type": "input_image",
@@ -1770,7 +1770,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:58f8387928ffff65",
+              "instructions": "sha256:0557455dda6a04b7",
               "tools": [
                 {
                   "type": "computer"
@@ -1806,7 +1806,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:58f8387928ffff65"
+                      "text": "sha256:0557455dda6a04b7"
                     },
                     {
                       "type": "input_image",
@@ -1832,7 +1832,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:df36ceaa7c983c79",
+              "instructions": "sha256:454dbf407e3f254e",
               "tools": [
                 {
                   "type": "computer"
@@ -1868,7 +1868,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:df36ceaa7c983c79"
+                      "text": "sha256:454dbf407e3f254e"
                     },
                     {
                       "type": "input_image",
@@ -1962,7 +1962,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:a762a8e1bde24479",
+              "instructions": "sha256:f391b409f846efd0",
               "tools": [
                 {
                   "type": "computer"
@@ -1998,7 +1998,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:a762a8e1bde24479"
+                      "text": "sha256:f391b409f846efd0"
                     },
                     {
                       "type": "input_image",
@@ -2024,7 +2024,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:dac95bd3b03284a5",
+              "instructions": "sha256:1f92c58a461d93dc",
               "tools": [
                 {
                   "type": "computer"
@@ -2060,7 +2060,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:dac95bd3b03284a5"
+                      "text": "sha256:1f92c58a461d93dc"
                     },
                     {
                       "type": "input_image",

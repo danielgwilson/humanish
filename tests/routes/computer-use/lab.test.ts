@@ -2500,9 +2500,9 @@ describe("runCuaActorLab", () => {
       device: { name: "desktop", preset: DEVICE_PRESETS.desktop },
     });
     expect(composed.instructions).toContain(CLOSING_LINE_DIRECTIVE);
-    expect(composed.instructions.indexOf("Lane focus: keyboard only")).toBeLessThan(
-      composed.instructions.indexOf(CLOSING_LINE_DIRECTIVE),
-    );
+    const focus = composed.instructions.indexOf("Your focus: keyboard only");
+    expect(focus).toBeGreaterThanOrEqual(0);
+    expect(focus).toBeLessThan(composed.instructions.indexOf(CLOSING_LINE_DIRECTIVE));
     // A report format, never a behavioural instruction: it does not tell the participant what to do.
     expect(CLOSING_LINE_DIRECTIVE).not.toMatch(/never|always|do not (type|click|use)/i);
   });

@@ -47,6 +47,14 @@ function stopObservationOf(observation: CuaObservation): StopConditionObservatio
 
 const pad = (value: number): string => value.toString().padStart(2, "0");
 
+/**
+ * The note after a dwell window, so the participant knows the time passed while it took no
+ * action. It does not say the study held or watched the page: a participant told it is observed
+ * acts as a tester (docs/principles/actor-fidelity.md).
+ */
+const dwellHint = (heldMs: number): string =>
+  `You stayed on this page for ${plural(Math.round(heldMs / 1000), "second")} without taking any action. Carry on from what the page shows now.`;
+
 export class DesktopObserver {
   /** New speech arrived since the provider last saw an observation. */
   heardNewSpeech = false;
@@ -105,7 +113,7 @@ export class DesktopObserver {
       // window that ends the session sends no turn; its closing request checks the frame itself.
       const framelessAfterWindow = missingFrame(session.provider, observation);
       if (framelessAfterWindow !== undefined) return { stop: framelessAfterWindow };
-      hint = `The study held this page under observation for ${Math.round(dwell.heldMs / 1000)} seconds (a declared dwell window; you took no actions in that time). Continue the mission from the current state of the page.`;
+      hint = dwellHint(dwell.heldMs);
     }
     const match = evaluateStopWhen(stopWhen, stopObservationOf(observation));
     if (match) {
