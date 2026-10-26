@@ -642,7 +642,7 @@
       ["onScreenshot",15],
       ["writeScreenshot","turn-01.png",15],
       ["onTrace",4,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
-      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"}}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"},"previousExecution":{"actions":[{"index":0,"status":"skipped"}]}}],
       ["onMessage","Finished."]
     ]
   }

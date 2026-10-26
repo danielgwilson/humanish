@@ -169,11 +169,10 @@ async function debriefExchange(
   plan: PlannedRequest,
   record: RecordDebrief,
 ): Promise<Debrief> {
-  const { provider } = session;
   const request: CuaTurnRequest = {
     instructions: session.settings.instructions,
     observation: trigger.observation,
-    ...(provider.requestPolicy !== "fail_closed" || context.previousExecution === undefined
+    ...(context.previousExecution === undefined
       ? {}
       : { previousExecution: context.previousExecution }),
     ...(context.previousResponseId === undefined

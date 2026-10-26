@@ -91,10 +91,15 @@ action**, not a fatal error:
   skipped: desktop command failed`, text = the public-safe action label + exit code + a
   redacted `stderrTail`), does **not** count the action as a material action, and
   **continues**. The next `observe()` hands the model a fresh screenshot/state to adapt to.
+  For a provider with `batchFailure: "halt"`, whose model takes a batch to stop at its first
+  failure, the loop sends none of the batch's later actions, acknowledges each
+  `not_dispatched`, and records a `batch halted after a skipped action` notice.
 - An executor error declared as `action_rejected` with disposition `not_dispatched` also
   does not end the session. The loop marks the rest of the batch `not_dispatched`, records
   an `action rejected before dispatch` notice, and sends the model a hint with the next
-  observation.
+  observation. A proposal the provider could not map to an action (`CuaTurn.rejectedProposal`)
+  takes the same path at the position after the turn's actions, with the provider's reason in
+  the notice and the hint; a reply that holds only such a proposal does not end the session.
 - **Every other error is re-thrown**, byte-identically preserving the existing
   fatal handling: a `raceSessionDeadline` deadline still classifies as `timed_out` (or
   `budget_reached` after material progress), a `CuaAbortError` as `harness_error`,

@@ -100,6 +100,40 @@ describe("a provider refusing the prompt under its usage policy", () => {
     expect(provider.nextTurn).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps the usage of a refusal the provider billed, and its category", async () => {
+    const debrief = vi.fn<NonNullable<CuaProvider["debrief"]>>();
+    const execute = vi.fn(async () => {});
+    const provider: CuaProvider = {
+      ...refusingProvider(),
+      nextTurn: async () => ({
+        actions: [{ kind: "click", x: 1, y: 2 }],
+        pendingSafetyChecks: [],
+        done: false,
+        interruption: "refused",
+        refusalCategory: "synthetic_category",
+        usage: { input: 1200, output: 8 },
+      }),
+      debrief,
+    };
+    const result = await runComputerUseLoop({
+      instructions: "Add one task.",
+      provider,
+      executor: { observe: async () => ({ stateSignature: "s" }), execute },
+      persona: { id: "fixture", traitsApplied: [], promptDigest: "fixture" },
+      redaction: defaultRedactionHooks,
+      now: Date.now,
+      timeoutMs: 60_000,
+    });
+    expect(result).toMatchObject({ status: "failed", completionReason: "actor_error" });
+    expect(result.trace.stopCause).toBe("provider_refused_prompt");
+    expect(result.trace.tokenUsage).toMatchObject({ input: 1200, output: 8 });
+    expect(
+      result.trace.items.find((item) => item.title === "provider refused the prompt"),
+    ).toMatchObject({ status: "error", text: expect.stringContaining("synthetic_category") });
+    expect(execute).not.toHaveBeenCalled();
+    expect(debrief).not.toHaveBeenCalled();
+  });
+
   it("does not match a lookalike error", () => {
     expect(isComputerUsePromptRefusedError(new Error("OpenAI refused the prompt"))).toBe(false);
     expect(

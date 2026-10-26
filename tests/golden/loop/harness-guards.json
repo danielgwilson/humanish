@@ -1000,7 +1000,7 @@
       ["writeScreenshot","turn-01.png",15],
       ["onTrace",3,{"input":100,"output":50,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50}]},{}],
       ["estimateTurnCostUsd",{"input":100,"output":50,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50}]},null],
-      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"}}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
       ["onMessage","Finished."],
       ["estimateTurnCostUsd",{"input":100,"output":50,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50}]},null]
     ]

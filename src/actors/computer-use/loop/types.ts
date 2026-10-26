@@ -131,14 +131,27 @@ export interface CuaSafetyCheck {
   message: string;
 }
 
+/**
+ * What the desktop did with one action of the provider's last batch. `completed`: the desktop
+ * acknowledged the input. `skipped`: its desktop command failed, or an observation action
+ * stalled. `not_dispatched`: no input was sent, because the action was rejected before dispatch,
+ * came after a rejected action or a halting skipped one, or the session ended first.
+ * `outcome_uncertain`: the loop stopped waiting before the desktop answered. An acknowledgement
+ * is never proof the app did what the participant meant.
+ */
+export interface CuaActionAcknowledgement {
+  /** The action's position in its batch, from 0. */
+  index: number;
+  status: "completed" | "skipped" | "not_dispatched" | "outcome_uncertain";
+}
+
 export interface CuaTurnRequest {
-  /** Host input acknowledgments for the preceding proposal, never proof of app success. */
-  previousExecution?: {
-    actions: Array<{
-      index: number;
-      status: "completed" | "skipped" | "not_dispatched" | "outcome_uncertain";
-    }>;
-  };
+  /**
+   * One acknowledgement per position of the provider's last batch, on every request after a turn
+   * that acted. A provider whose model expects an answer to each action it called answers each
+   * from these, and keeps state such as the pointer position only for completed actions.
+   */
+  previousExecution?: { actions: CuaActionAcknowledgement[] };
   /** Persona + task instruction, sent as the system-level steer (first turn). */
   instructions: string;
   /** The latest observation for the model to react to. */
@@ -177,8 +190,21 @@ export interface CuaTurn {
   reasoning?: string;
   /** Natural-language message (often the final summary on completion). */
   message?: string;
-  /** Actions to perform this turn. Empty means the model is done. */
+  /** Actions to perform this turn. Empty, with no `rejectedProposal`, means the model is done. */
   actions: CuaAction[];
+  /**
+   * A proposal of this reply that the provider could not turn into an action: an action name it
+   * has no action for, or a proposal missing what its action needs, such as a click with no
+   * coordinates while the pointer position is not known. It takes batch position `actions.length`:
+   * the provider maps the reply's proposals in order and stops there. The loop runs `actions`,
+   * acknowledges this position `not_dispatched`, gives the participant `reason` on its next
+   * request and goes on, so a reply with a rejected proposal never ends the session. The provider
+   * answers any later proposal of the reply as not dispatched itself.
+   */
+  rejectedProposal?: {
+    /** One sentence the participant can act on. The trace records it redacted. */
+    reason: string;
+  };
   /** Safety checks the provider flagged this turn. Non-empty pauses the run. */
   pendingSafetyChecks: CuaSafetyCheck[];
   /** Token accounting for this turn, if available. */
@@ -200,8 +226,13 @@ export interface CuaTurn {
   };
   /** True when the model reported a natural endpoint (no further action). */
   done: boolean;
-  /** Explicit provider interruption, independent of actions or participant intent. */
-  interruption?: "output_limit" | "token_limit" | "incomplete" | "unexpected_status";
+  /**
+   * Explicit provider interruption, independent of actions or participant intent. `refused`: the
+   * provider declined the request under its usage policy in a reply it billed, so its usage counts.
+   */
+  interruption?: "output_limit" | "token_limit" | "incomplete" | "unexpected_status" | "refused";
+  /** The provider's category for a `refused` reply, when it names one; recorded redacted. */
+  refusalCategory?: string;
   /** The participant's own word for how it ended, when its reply format carries one. */
   outcome?: ParticipantDeclaredOutcome;
   /** Present only for an accepted structured closing account. */
@@ -220,6 +251,13 @@ export interface CuaTurn {
 export interface CuaProvider {
   /** Single dispatch; the promise includes owned request cleanup. No stall retry. */
   readonly requestPolicy?: "fail_closed";
+  /**
+   * What an action the desktop skipped (its command failed, or an observation action stalled) does
+   * to the rest of its batch. Absent: the batch goes on with the next action. `halt`, for a model
+   * that takes a batch to stop at its first failure: no later action of the batch is sent, and
+   * each is acknowledged `not_dispatched`.
+   */
+  readonly batchFailure?: "halt";
   readonly executionProfile?: ActorExecutionProfile | undefined;
   readonly historyTurnsOmitted?: number;
   /** How the conversation was carried between requests, for the trace. */

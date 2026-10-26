@@ -75,6 +75,14 @@ export function declaredOutcomeOf(
 }
 
 /**
+ * Whether the participant ended its session with this reply: it said so, or proposed nothing. A
+ * reply with a rejected proposal never ends it, since the participant tried to act.
+ */
+export function endsSession(turn: CuaTurn): boolean {
+  return turn.rejectedProposal === undefined && (turn.done || turn.actions.length === 0);
+}
+
+/**
  * The participant reported a natural endpoint. "not_reached" is a participant who stopped without
  * finishing: gave_up, which tallies as abandoned. "blocked" keeps goal_satisfied here (the actor
  * did stop on purpose) and the route's credibility read turns it into a blocked participant, the
@@ -221,7 +229,9 @@ export function providerStalledTwice(turnNumber: number, afterMs: number): Stop 
  * action. Never interpret either as participant completion or dispatch actions from an explicitly
  * incomplete response.
  */
-export function providerInterrupted(interruption: NonNullable<CuaTurn["interruption"]>): Stop {
+export function providerInterrupted(
+  interruption: Exclude<CuaTurn["interruption"], "refused" | undefined>,
+): Stop {
   const tokenLimit = interruption === "token_limit" || interruption === "output_limit";
   const unexpectedStatus = interruption === "unexpected_status";
   const reason = tokenLimit
@@ -249,6 +259,36 @@ export function providerInterrupted(interruption: NonNullable<CuaTurn["interrupt
           : "provider response incomplete",
       reason,
     ),
+  };
+}
+
+const REFUSED_REASON =
+  "the provider refused the request under its usage policy; the participant did not report completion. No actions or closing request followed the refusal, and the request was not sent again.";
+
+/**
+ * A reply in which the provider declined the request under its usage policy. Like a refused
+ * prompt (stopForError), it is the provider's decision and not a harness fault; the reply's usage
+ * is already booked. `category` is the provider's word for the refusal.
+ */
+export function providerRefused(
+  category: string | undefined,
+  redactNarration: (text: string) => string,
+): Stop {
+  return {
+    completionReason: "actor_error",
+    reason: REFUSED_REASON,
+    stopCause: "provider_refused_prompt",
+    evidence: {
+      kind: "notice",
+      body: () =>
+        notice(
+          "error",
+          "provider refused the prompt",
+          category === undefined
+            ? REFUSED_REASON
+            : `category: ${redactNarration(category)}; ${REFUSED_REASON}`,
+        ),
+    },
   };
 }
 

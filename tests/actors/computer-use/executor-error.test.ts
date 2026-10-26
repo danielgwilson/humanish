@@ -247,12 +247,11 @@ describe("executor failure attribution", () => {
       const next = actor.nextTurn.mock.calls[1]![0];
       expect(next.observation.stateSignature).toBe("frame-2");
       expect(next.contextHint).toContain("rejected before dispatch");
-      if (requestPolicy)
-        expect(next.previousExecution?.actions).toEqual([
-          { index: 0, status: "completed" },
-          { index: 1, status: "not_dispatched" },
-          { index: 2, status: "not_dispatched" },
-        ]);
+      expect(next.previousExecution?.actions).toEqual([
+        { index: 0, status: "completed" },
+        { index: 1, status: "not_dispatched" },
+        { index: 2, status: "not_dispatched" },
+      ]);
       expect(result.trace.items.filter((item) => item.kind === "ui_action")).toHaveLength(3);
       expect(result.trace.counts).toMatchObject({ actions: 4, materialActions: 3 });
       expect(

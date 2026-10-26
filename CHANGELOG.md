@@ -8,6 +8,26 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- A library `ComputerUseProvider` can set `batchFailure: "halt"`: after a desktop command fails,
+  the loop sends none of that batch's later actions and acknowledges each as `not_dispatched`.
+- A `ComputerUseTurn` can carry `rejectedProposal: { reason }` for a proposal the provider could
+  not map to an action. The loop runs the turn's actions, acknowledges the proposal's position as
+  `not_dispatched`, gives the participant the reason and continues the session.
+- A `ComputerUseTurn` can report `interruption: "refused"` with an optional `refusalCategory`. The
+  session stops with stop cause `provider_refused_prompt`, keeps the reply's usage and records the
+  category in its notice.
+- A trace's `conversation.explicitReason` can be `stateless_api`, for a provider whose API keeps
+  no conversation between requests. Such a run gives no zero-data-retention warning.
+
+### Changed
+
+- Every `ComputerUseProvider` now receives `previousExecution` on each request after a turn that
+  acted, with one acknowledgement per batch position. Before, only providers with
+  `requestPolicy: "fail_closed"` received it. The OpenAI provider ignores it, so its requests are
+  unchanged.
+
 ## 0.148.0: Participants run gpt-6.1-sol (2026-10-26)
 
 humanish 0.148.0 runs a computer-use participant on `gpt-6.1-sol` at medium effort when its study

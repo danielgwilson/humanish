@@ -164,7 +164,7 @@
     ["writeScreenshot","turn-01.png",15],
     ["onTrace",3,{"input":100,"output":50,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50}]},{}],
     ["estimateTurnCostUsd",{"input":100,"output":50,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50}]},0.15],
-    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"}}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
     ["estimateTurnCostUsd",{"input":200,"output":100,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50},{"input":100,"output":50}]},0.3],
     ["executor.execute",{"kind":"click","x":10,"y":20}],
     ["executor.observe",2],
@@ -173,7 +173,7 @@
     ["writeScreenshot","turn-02.png",15],
     ["onTrace",5,{"input":200,"output":100,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50},{"input":100,"output":50}]},{}],
     ["estimateTurnCostUsd",{"input":200,"output":100,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50},{"input":100,"output":50}]},0.3],
-    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s2"}}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s2"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
     ["estimateTurnCostUsd",{"input":300,"output":150,"cachedInput":0,"cacheWriteInput":0,"turns":[{"input":100,"output":50},{"input":100,"output":50},{"input":100,"output":50}]},0.45]
   ]
 }
