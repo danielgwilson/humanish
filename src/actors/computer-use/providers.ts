@@ -4,7 +4,8 @@
 
 import type { ReasoningEffort } from "../reasoning-effort.js";
 import type { CuaProvider } from "./loop.js";
-import { createOpenAiResponsesProvider, type FetchLike } from "./openai-provider.js";
+import { createOpenAiResponsesProvider } from "./openai-provider.js";
+import type { FetchLike } from "./provider-http.js";
 
 /** What the route decides about an API participant's provider, and the transport tests replace. */
 export interface ParticipantProviderOptions {

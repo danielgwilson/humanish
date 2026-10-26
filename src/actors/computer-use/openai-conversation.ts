@@ -1,12 +1,13 @@
 import type { CuaTurn, CuaTurnRequest } from "./loop.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
-import {
-  closingReportSchema,
-  impressionsReplySchema,
-  strictOutputSchema,
-} from "../closing-report.js";
 import type { ActorConversation } from "../contract.js";
 import { isIdleTurn } from "./loop/actions.js";
+import {
+  closingAccount,
+  closingSchema,
+  replyFormText,
+  type ClosingRequest,
+} from "./closing-account.js";
 import { CarriedConversation, estimateTokens } from "./openai-context.js";
 import {
   asArray,
@@ -70,24 +71,18 @@ export type ZdrRejection = NonNullable<ActorConversation["rejection"]>;
  */
 const CLOSING_OUTPUT_LIMIT = 3072;
 
-/**
- * What a closing request asks for: the closing report after a harness-owned stop, or only
- * impressions after the participant ended the session itself.
- */
-export type ClosingRequest = "report" | "impressions";
-
 const CLOSING_FORMATS: Record<ClosingRequest, Record<string, unknown>> = {
   report: {
     type: "json_schema",
     name: "participant_closing_report",
     strict: true,
-    schema: strictOutputSchema(closingReportSchema),
+    schema: closingSchema("report"),
   },
   impressions: {
     type: "json_schema",
     name: "participant_impressions",
     strict: true,
-    schema: strictOutputSchema(impressionsReplySchema),
+    schema: closingSchema("impressions"),
   },
 };
 
@@ -334,39 +329,9 @@ function callNote(call: FunctionCall): string | undefined {
     : `There is no tool named ${JSON.stringify(call.name)}.`;
 }
 
-/**
- * What form a closing reply takes, said in the request itself because text.format would rewrite
- * the cached prefix: the schema the strict retry sets.
- */
+/** The closing ask's reply form as a user message (closing-account.ts). */
 function replyForm(closing: ClosingRequest): unknown {
-  const text = `Reply with only a JSON object that matches this JSON Schema, with no other text: ${JSON.stringify(CLOSING_FORMATS[closing].schema)}`;
-  return inputMessage("user", [{ type: "input_text", text }]);
-}
-
-/**
- * The account a closing reply's text gives: JSON the request's schema accepts, or none. A reply
- * sent without text.format must give every field the stated schema requires. With text.format the
- * provider holds the reply to that schema, and the check is the one any provider's report gets.
- */
-function closingAccount(
-  message: string | undefined,
-  closing: ClosingRequest,
-  strict: boolean,
-): Pick<CuaTurn, "closingReport"> | Pick<CuaTurn, "impressions"> | undefined {
-  // Without text.format a model may set the object in a code fence or after a message of its own.
-  const text = message ?? "";
-  let reply: unknown;
-  try {
-    reply = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
-  } catch {
-    return undefined;
-  }
-  if (closing === "report") {
-    const report = (strict ? closingReportSchema : closingReportSchema.required()).safeParse(reply);
-    return report.success ? { closingReport: report.data } : undefined;
-  }
-  const impressions = impressionsReplySchema.safeParse(reply);
-  return impressions.success ? { impressions: impressions.data.impressions } : undefined;
+  return inputMessage("user", [{ type: "input_text", text: replyFormText(closing) }]);
 }
 
 /** Whether a reply's messages include a refusal, which carries no output_text. */

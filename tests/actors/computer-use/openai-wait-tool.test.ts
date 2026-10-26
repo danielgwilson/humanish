@@ -7,10 +7,8 @@ import {
 } from "../../../src/actors/computer-use/loop.js";
 import { ComputerUseExecutorError } from "../../../src/actors/computer-use/executor-error.js";
 import type { LoopRunOptions } from "../../../src/actors/computer-use/loop/types.js";
-import {
-  createOpenAiResponsesProvider,
-  type FetchLike,
-} from "../../../src/actors/computer-use/openai-provider.js";
+import { createOpenAiResponsesProvider } from "../../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../../src/actors/computer-use/provider-http.js";
 import { perceptualSignature } from "../../../src/evidence/frame-signature.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 import { MINUTE, QUIET, waitItems, watchesOf } from "../../helpers/watching-loop.js";

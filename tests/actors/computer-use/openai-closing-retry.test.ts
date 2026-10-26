@@ -7,10 +7,8 @@ import {
   type CuaTurnRequest,
 } from "../../../src/actors/computer-use/loop.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
-import {
-  createOpenAiResponsesProvider,
-  type FetchLike,
-} from "../../../src/actors/computer-use/openai-provider.js";
+import { createOpenAiResponsesProvider } from "../../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../../src/actors/computer-use/provider-http.js";
 import { ComputerUseAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 
 // The closing request sent without text.format, and the strict request the loop may send after

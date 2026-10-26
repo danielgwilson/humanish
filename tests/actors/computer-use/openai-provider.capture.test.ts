@@ -15,13 +15,13 @@ import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import type { CuaObservation, CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
+import { createOpenAiResponsesProvider } from "../../../src/actors/computer-use/openai-provider.js";
 import {
   WIRE_CAPTURE_ENV,
-  createOpenAiResponsesProvider,
   redactWireJson,
   wireCaptureFileName,
   type FetchLike,
-} from "../../../src/actors/computer-use/openai-provider.js";
+} from "../../../src/actors/computer-use/provider-http.js";
 
 // Deterministic coverage for the opt-in response wire-capture seam: the fixture-
 // provenance lesson from the 0.6.1 parser incident (see src/actors/computer-use/openai-provider.ts

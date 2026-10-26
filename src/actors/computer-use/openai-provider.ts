@@ -1,27 +1,31 @@
-import type { ActorCapabilities, ActorConversation } from "../contract.js";
+import type { ActorConversation } from "../contract.js";
 import {
   ComputerUseAdmissionLimitError,
   isComputerUseAdmissionLimitError,
 } from "./admission-limit.js";
 import { ComputerUsePromptRefusedError } from "./provider-error.js";
 import type { CuaProvider, CuaSpendGate, CuaTurn, CuaTurnRequest } from "./loop.js";
+import type { ClosingRequest } from "./closing-account.js";
 import {
   OpenAiConversation,
-  type ClosingRequest,
   type ConversationRequest,
   type ZdrRejection,
 } from "./openai-conversation.js";
-import { optionalString, type OpenAiReasoningSummary } from "./openai-wire.js";
-import { redactText } from "../../evidence/redaction.js";
+import type { OpenAiReasoningSummary } from "./openai-wire.js";
 import type { ReasoningEffort } from "../reasoning-effort.js";
 import { isMaxOutputTokens } from "../output-token-limit.js";
-import {
-  prepareContainedOutputFile,
-  prepareSelectedOutputDirectory,
-  type PreparedSelectedOutputDirectory,
-  writeContainedOutputFile,
-} from "../../run/contained-output.js";
 import { OPENAI_RESPONSES_URL } from "../openai-endpoint.js";
+import {
+  API_COMPUTER_USE_CAPABILITIES,
+  createWireCapture,
+  defaultDelay,
+  defaultFetch,
+  isAbortError,
+  retryDelayMs,
+  wireCaptureDir,
+  type FetchLike,
+  type WireCapture,
+} from "./provider-http.js";
 
 // A public-safe re-derivation of the OpenAI Responses API computer-use provider,
 // behind the CuaProvider port from src/actors/computer-use/loop.ts. The pure wire mapping
@@ -38,36 +42,9 @@ import { OPENAI_RESPONSES_URL } from "../openai-endpoint.js";
 // and the engine handles redaction of CuaTurn fields downstream. Error messages
 // carry the HTTP status only, never the response body (it can echo the input).
 //
-// Wire capture (fixture provenance). In the 0.6.1 parser incident, the parser read
-// `computer_call.action` (singular) while the live API returns `actions` (array),
-// and the hand-written fixtures encoded the same wrong shape, so tests passed in
-// lockstep with the bug while every live action was silently dropped. It taught us
-// that deterministic fixtures must derive from captured live wire shapes, never
-// from memory. Setting HUMANISH_CUA_WIRE_CAPTURE_DIR makes the live shim persist
-// each successful Responses response body into that directory as pretty-printed
-// JSON, one file per provider call in call order (wire-001.json, wire-002.json,
-// ...), for refreshing fixtures. The capture seam is:
-//  - Opt-in: unset (or empty) env means zero behavior change, and nothing is written;
-//  - Response-side only: request bodies carry base64 screenshots and the persona
-//    instructions and are never captured; non-ok response bodies can echo the
-//    request and are never captured either;
-//  - Redacted: every string field (keys and values) passes through the shared
-//    redactText (src/evidence/redaction.ts) before writing, so a secret-shaped echo in a
-//    response cannot persist to disk.
-// Point the env var at a gitignored path (e.g. under .humanish/): raw captures must
-// never be committed; fixtures derived from them must be minimal, hand-reviewed
-// excerpts checked into tests deliberately.
+// Response wire capture (HUMANISH_CUA_WIRE_CAPTURE_DIR) is described in provider-http.ts.
 
-export const OPENAI_RESPONSES_CU_CAPABILITIES: ActorCapabilities = {
-  headless: true,
-  structuredTrace: true,
-  lanes: ["computer-use"],
-  producesScreenshots: true,
-  byoModel: false,
-  preGrantableApprovals: false,
-  inProcessTools: false,
-  license: "proprietary",
-};
+export const OPENAI_RESPONSES_CU_CAPABILITIES = API_COMPUTER_USE_CAPABILITIES;
 
 // The computer-use participant default. On the Taskly benchmark it matched gpt-5.6-sol's
 // analysis recall at about a third of the participant cost
@@ -88,77 +65,6 @@ export const DEFAULT_CODEX_MODEL = "gpt-5.6-sol";
  * to be able to say what will actually run.
  */
 export const DEFAULT_OPENAI_CU_REASONING_EFFORT: ReasoningEffort = "medium";
-
-// ---------------------------------------------------------------------------
-// Wire capture (see the module header). Pure helpers, exported for unit tests.
-// ---------------------------------------------------------------------------
-
-/** The opt-in gate for response wire capture: a directory path, or unset for off. */
-export const WIRE_CAPTURE_ENV = "HUMANISH_CUA_WIRE_CAPTURE_DIR";
-
-/**
- * Deep-copy a captured wire value with every string (object keys included)
- * passed through the shared redactText, so a secret-shaped echo in a response
- * can never persist to disk. Pure; non-string primitives pass through unchanged.
- */
-export function redactWireJson(value: unknown): unknown {
-  if (typeof value === "string") return redactText(value);
-  if (Array.isArray(value)) return value.map(redactWireJson);
-  if (typeof value === "object" && value !== null) {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, entry]) => [
-        redactText(key),
-        redactWireJson(entry),
-      ]),
-    );
-  }
-  return value;
-}
-
-/** Deterministic ordered capture file name for the 1-based nth provider call. */
-export function wireCaptureFileName(callNumber: number): string {
-  return `wire-${String(callNumber).padStart(3, "0")}.json`;
-}
-
-// ---------------------------------------------------------------------------
-// Live shim: a stateful CuaProvider over a raw POST to the Responses endpoint.
-// ---------------------------------------------------------------------------
-
-/**
- * The minimal slice of the fetch contract the shim depends on. Injecting this
- * (rather than importing a fetch type) keeps the module dependency-free and lets
- * CI tests run with a fake that never touches the network.
- */
-export type FetchLike = (
-  url: string,
-  init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal },
-) => Promise<{
-  ok: boolean;
-  status: number;
-  text(): Promise<string>;
-  json(): Promise<unknown>;
-  /** Optional so a scripted fake need not carry headers; the real fetch Response does. */
-  headers?: { get(name: string): string | null };
-}>;
-
-/** The longest wait a provider's Retry-After hint can impose on one retry. */
-export const RETRY_AFTER_CAP_MS = 60_000;
-
-/**
- * Parse a Retry-After header (delay-seconds or an HTTP-date) into milliseconds from `now`;
- * undefined when absent or unreadable. OpenAI's 2026-09-02 change added `429 slow_down` and
- * `503 server_is_overloaded`, both of which may carry it; a fixed 200/400/800 ms backoff against
- * a 20 s hint burns every retry inside the hint and ends the participant's session for nothing.
- */
-export function retryAfterMs(value: string | null | undefined, now: number): number | undefined {
-  if (value === null || value === undefined) return undefined;
-  const trimmed = value.trim();
-  if (trimmed.length === 0) return undefined;
-  if (/^\d+$/.test(trimmed)) return Number.parseInt(trimmed, 10) * 1000;
-  const at = Date.parse(trimmed);
-  if (Number.isNaN(at)) return undefined;
-  return Math.max(0, at - now);
-}
 
 /**
  * The provider error codes a participant's reason may name. Read from a non-ok body, which is never
@@ -261,8 +167,8 @@ export interface OpenAiResponsesProviderOptions {
   /** The clock the trace's conversation record reads. Defaults to Date.now. */
   now?: () => number;
   /**
-   * Environment for the wire-capture gate (HUMANISH_CUA_WIRE_CAPTURE_DIR; see the
-   * module header). Injectable so deterministic tests control the gate without
+   * Environment for the wire-capture gate (HUMANISH_CUA_WIRE_CAPTURE_DIR; see
+   * provider-http.ts). Injectable so deterministic tests control the gate without
    * mutating process.env. Defaults to process.env.
    */
   env?: Record<string, string | undefined>;
@@ -332,68 +238,6 @@ class SummaryRejectionError extends Error {
 // be verified to generate reasoning summaries."
 function isSummaryRejection(bodyText: string): boolean {
   return bodyText.includes("reasoning.summary") || bodyText.includes("reasoning summaries");
-}
-
-function defaultFetch(): FetchLike {
-  return async (url, init) => {
-    const res = await fetch(url, init);
-    return {
-      ok: res.ok,
-      status: res.status,
-      text: () => res.text(),
-      json: () => res.json() as Promise<unknown>,
-    };
-  };
-}
-
-function defaultDelay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    const timer = setTimeout(resolve, ms);
-    if (typeof timer.unref === "function") timer.unref();
-  });
-}
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === "AbortError";
-}
-
-/** Response wire capture for one provider: prepares each file before dispatch, then writes it. */
-interface WireCapture {
-  /** Preflight the next capture file; undefined when capture is off. */
-  prepareNext(): Promise<PreparedSelectedOutputDirectory | undefined>;
-  /** Persist one successful response body, redacted and pretty-printed. */
-  record(raw: unknown): Promise<void>;
-}
-
-// Opt-in response wire capture (see module header): an undefined directory means off and zero
-// behavior change. The counter is per-provider, so file order is call order.
-function createWireCapture(captureDir: string | undefined): WireCapture {
-  let captureCount = 0;
-  let preparedCaptureRoot: Promise<PreparedSelectedOutputDirectory> | undefined;
-  const prepareNext = async (): Promise<PreparedSelectedOutputDirectory | undefined> => {
-    if (captureDir === undefined) return undefined;
-    preparedCaptureRoot ??= prepareSelectedOutputDirectory(process.cwd(), captureDir);
-    const captureRoot = await preparedCaptureRoot;
-    await prepareContainedOutputFile(captureRoot, wireCaptureFileName(captureCount + 1));
-    return captureRoot;
-  };
-  return {
-    prepareNext,
-    // Fails loud: a silent capture failure would mean missing turns in a fixture refresh: the
-    // exact "fixtures drift from the wire" pathology capture exists to prevent.
-    record: async (raw) => {
-      if (captureDir === undefined) return;
-      const captureRoot = await prepareNext();
-      if (!captureRoot) return;
-      captureCount += 1;
-      await writeContainedOutputFile(
-        captureRoot,
-        wireCaptureFileName(captureCount),
-        `${JSON.stringify(redactWireJson(raw), null, 2)}\n`,
-        "utf8",
-      );
-    },
-  };
 }
 
 /** What one POST needs from its provider. */
@@ -504,12 +348,7 @@ async function postResponse(
     const retryable =
       res.status === 408 || res.status === 409 || res.status === 429 || res.status >= 500;
     if (retryable && attempt < retries) {
-      // The provider's own hint wins over the fixed backoff, up to the cap.
-      const backoff = 2 ** attempt * 200;
-      const hinted = retryAfterMs(res.headers?.get("retry-after"), Date.now());
-      await transport.delayFn(
-        hinted === undefined ? backoff : Math.min(Math.max(backoff, hinted), RETRY_AFTER_CAP_MS),
-      );
+      await transport.delayFn(retryDelayMs(attempt, res.headers));
       continue;
     }
     const code = namedProviderErrorCode(await res.text().catch(() => ""));
@@ -541,10 +380,7 @@ export function createOpenAiResponsesProvider(
   const model = options.model ?? DEFAULT_OPENAI_CU_MODEL;
   const reasoningEffort = options.reasoningEffort ?? DEFAULT_OPENAI_CU_REASONING_EFFORT;
   const maxRetries = options.singleDispatch === true ? 0 : (options.maxRetries ?? 3);
-  // An unset or empty capture variable leaves capture off.
-  const capture = createWireCapture(
-    optionalString((options.env ?? process.env)[WIRE_CAPTURE_ENV]?.trim()),
-  );
+  const capture = createWireCapture(wireCaptureDir(options.env ?? process.env));
   let interactionUsageIncomplete = false;
   const conversation = new OpenAiConversation({
     model,

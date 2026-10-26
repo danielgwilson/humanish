@@ -4,10 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ACTOR_STOP_CAUSES } from "../../../src/actors/contract.js";
 import { runComputerUseLoop, type CuaProvider } from "../../../src/actors/computer-use/loop.js";
-import {
-  createOpenAiResponsesProvider,
-  type FetchLike,
-} from "../../../src/actors/computer-use/openai-provider.js";
+import { createOpenAiResponsesProvider } from "../../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../../src/actors/computer-use/provider-http.js";
 import {
   ComputerUsePromptRefusedError,
   isComputerUsePromptRefusedError,

@@ -3,10 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import { runComputerUseLoop, type CuaTurn } from "../../../src/actors/computer-use/loop.js";
-import {
-  OPENAI_RESPONSES_CU_CAPABILITIES,
-  type FetchLike,
-} from "../../../src/actors/computer-use/openai-provider.js";
+import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../../src/actors/computer-use/provider-http.js";
 import { parseOpenAiResponse } from "../../../src/actors/computer-use/openai-wire.js";
 import type { ActorTokenUsage } from "../../../src/actors/contract.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";

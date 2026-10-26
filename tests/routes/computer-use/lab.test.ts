@@ -79,7 +79,7 @@ import {
   type ObserverResult,
   type ObserverServer,
 } from "../../../src/observer/render.js";
-import type { FetchLike } from "../../../src/actors/computer-use/openai-provider.js";
+import type { FetchLike } from "../../../src/actors/computer-use/provider-http.js";
 import type {
   BrowserScoringContext,
   RunAdapterScore,

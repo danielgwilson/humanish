@@ -2,7 +2,7 @@ import { ReadableStream } from "node:stream/web";
 import { PNG } from "pngjs";
 
 import type { CuaActorSessionOptions } from "../../src/actors/computer-use/actor.js";
-import type { FetchLike } from "../../src/actors/computer-use/openai-provider.js";
+import type { FetchLike } from "../../src/actors/computer-use/provider-http.js";
 import type {
   E2BCommandRunOptions,
   E2BDesktopCreateOptions,

@@ -8,8 +8,8 @@ import type { E2BDesktopLike } from "../../../src/substrates/e2b/desktop-executo
 import {
   DEFAULT_OPENAI_CU_MODEL,
   OPENAI_RESPONSES_CU_CAPABILITIES,
-  type FetchLike,
 } from "../../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../../src/actors/computer-use/provider-http.js";
 
 // A distinct, valid PNG per call so the executor's perceptual signature can register progress.
 function makePng(seed: number): Buffer {

@@ -2,10 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 import { parseStudy } from "../../src/study/config.js";
-import {
-  createOpenAiResponsesProvider,
-  type FetchLike,
-} from "../../src/actors/computer-use/openai-provider.js";
+import { createOpenAiResponsesProvider } from "../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../src/actors/computer-use/provider-http.js";
 import { runCuaActorSession } from "../../src/actors/computer-use/actor.js";
 
 const captured = (name: string): unknown =>
