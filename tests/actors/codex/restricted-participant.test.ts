@@ -506,6 +506,71 @@ describe("restricted participant conversation", () => {
     expect(sessionClose).toHaveBeenCalledTimes(1);
   });
 
+  it("offers the desktop reads and returns the pointer as text and each zoom as its own image", async () => {
+    let reply: Record<string, unknown> | undefined;
+    run
+      .mockImplementationOnce(async () => {
+        reply = JSON.parse(
+          await nativeTool()({
+            narration: "I will look closer at the label.",
+            actions: [
+              { kind: "read_pointer" },
+              { kind: "zoom", region: { x: 0, y: 0, width: 1, height: 1 } },
+              { kind: "triple_click", x: 1, y: 1 },
+            ],
+          }),
+        );
+        return result();
+      })
+      .mockResolvedValueOnce(result());
+    const h = createRestrictedCodexParticipant();
+    const signal = new AbortController().signal;
+    const first = await h.provider.nextTurn(request(frame(1)), signal);
+    expect(first.actions).toEqual([
+      { kind: "read_pointer" },
+      { kind: "zoom", region: { x: 0, y: 0, width: 1, height: 1 } },
+      { kind: "triple_click", x: 1, y: 1 },
+    ]);
+    const crop = frame(9);
+    const execution = {
+      actions: [
+        {
+          index: 0,
+          status: "completed" as const,
+          result: { kind: "pointer" as const, x: 3, y: 4 },
+        },
+        {
+          index: 1,
+          status: "completed" as const,
+          result: { kind: "frame" as const, screenshot: crop },
+        },
+        { index: 2, status: "completed" as const },
+      ],
+    };
+    await h.provider.nextTurn({ ...request(frame(2)), previousExecution: execution }, signal);
+    expect(reply).toEqual({
+      acknowledgments: [
+        { index: 0, status: "completed", pointer: { x: 3, y: 4 } },
+        { index: 1, status: "completed" },
+        { index: 2, status: "completed" },
+      ],
+      imageUrl: `data:image/png;base64,${frame(2).toString("base64")}`,
+      zoomImages: [{ index: 1, imageUrl: `data:image/png;base64,${crop.toString("base64")}` }],
+      contextHint: null,
+      closing: false,
+    });
+    // The closing request states the last acknowledgments the same way, never as raw bytes.
+    await h.provider.debrief!({ ...request(frame(3)), previousExecution: execution }, signal);
+    expect(JSON.parse(run.mock.calls[1]![0].evidence).previousExecution).toEqual({
+      actions: [
+        { index: 0, status: "completed", pointer: { x: 3, y: 4 } },
+        { index: 1, status: "completed" },
+        { index: 2, status: "completed" },
+      ],
+    });
+    await h.close();
+  });
+
   it("refuses changed instructions, unsupported continuation fields and invalid evidence without launching another native turn", async () => {
     run.mockResolvedValue(result());
     const h = createRestrictedCodexParticipant();

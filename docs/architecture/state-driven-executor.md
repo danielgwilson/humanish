@@ -55,7 +55,9 @@ The action union (`CuaAction` in `src/actors/computer-use/loop/types.ts`) holds 
 physically do: `click`, `double_click`, `triple_click`, `move`, `scroll`, `drag`, `mouse_down`,
 `mouse_up`, `type`, `keypress`, `hold_keys`, `wait`, `screenshot`, `read_pointer`, `zoom` and
 `speak`. A provider proposes only the actions its vendor's tool offers; the OpenAI provider never
-proposes the triple click, the button presses, `hold_keys` or the reads. E2B, Modal and the local
+proposes the triple click, the button presses, `hold_keys` or the reads. The local-agent
+participants (Codex and Claude Code) are offered every action except `heldKeys` on pointer
+actions, read from one schema, `participantActionSchema` in `src/browser-control/protocol.ts`. E2B, Modal and the local
 VM run every action through one translator, `src/substrates/x11/translator.ts`.
 
 - `mouse_down` and `mouse_up` press or release one button, at the pointer or at an optional
