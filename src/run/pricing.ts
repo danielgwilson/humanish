@@ -320,6 +320,20 @@ export const MODEL_RATES: Record<string, ModelRate> = {
     1,
     FAST_MODE_SHEET,
   ),
+  // Claude Haiku 5.5, standard tier, global inference, read 2026-10-26: $0.10 input, $0.125
+  // 5-minute cache write, $0.01 cache read, $0.50 output per 1M. A request whose prompt (uncached,
+  // cache read and cache write tokens together) is over 100,000 tokens bills every rate at 5x
+  // ($0.50 / $0.625 / $0.05 / $2.50). The participant sends no 1-hour cache writes ($0.20) and
+  // no inference_geo; a reply that reports either is marked as usage this table cannot price.
+  "claude-haiku-5-5": {
+    inputUsdPerToken: 0.1e-6,
+    cachedInputUsdPerToken: 0.01e-6,
+    cacheWriteUsdPerToken: 0.125e-6,
+    outputUsdPerToken: 0.5e-6,
+    longContext: { thresholdInputTokens: 100_000, inputMultiplier: 5, outputMultiplier: 5 },
+    asOf: "2026-10-26",
+    source: "platform.claude.com/docs/en/about-claude/pricing (Claude Haiku 5.5)",
+  },
   // Gemini analysis models, paid standard tier. Thinking tokens bill as output. No long-context
   // tier is published for them. Cached input is the implicit context-cache rate. On the free tier
   // these requests bill nothing, so the estimate is the paid-tier cost.

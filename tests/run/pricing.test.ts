@@ -487,3 +487,53 @@ describe("participant cap pricing", () => {
     expect(unpricedCapMessage("unpriced-model")).not.toMatch(/gemini/);
   });
 });
+
+describe("estimateActorCost: Claude Haiku 5.5", () => {
+  // Expected dollars are worked by hand from the pricing page's per-1M rates.
+  const request = (
+    input: number,
+    cachedInput: number,
+    cacheWriteInput: number,
+    output: number,
+  ) => ({
+    input,
+    cachedInput,
+    cacheWriteInput,
+    output,
+  });
+  const priced = (...turns: ReturnType<typeof request>[]) => {
+    const sum = (field: keyof ReturnType<typeof request>) =>
+      turns.reduce((total, turn) => total + turn[field], 0);
+    return estimateActorCost(
+      {
+        input: sum("input"),
+        cachedInput: sum("cachedInput"),
+        cacheWriteInput: sum("cacheWriteInput"),
+        output: sum("output"),
+        turns,
+      },
+      "claude-haiku-5-5",
+    );
+  };
+
+  it("prices a request of 100,000 prompt tokens or fewer at the base rates", () => {
+    // 1,992 uncached at $0.10, 3,456 written at $0.125, 162 out at $0.50 (a captured first turn).
+    expect(priced(request(5448, 0, 3456, 162)).estimatedCostUsd).toBe(0.000712);
+    // Exactly 100,000: $0.01 uncached, nothing above the threshold.
+    expect(priced(request(100_000, 0, 0, 0)).estimatedCostUsd).toBe(0.01);
+  });
+
+  it("prices a request over 100,000 prompt tokens at 5x, cache reads included in its size", () => {
+    // 20,000 uncached at $0.50, 100,000 read at $0.05, 1,000 out at $2.50.
+    const estimate = priced(request(120_000, 100_000, 0, 1000));
+    expect(estimate.estimatedCostUsd).toBe(0.0175);
+    expect(estimate.breakdown?.longContextTurns).toBe(1);
+  });
+
+  it("prices a compaction as a request of its own", () => {
+    // Compaction: 180,000 in at $0.50 + 3,500 out at $2.50; then 23,000 in at $0.10 + 1,000 out.
+    expect(priced(request(180_000, 0, 0, 3500), request(23_000, 0, 0, 1000)).estimatedCostUsd).toBe(
+      0.10155,
+    );
+  });
+});
