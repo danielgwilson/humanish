@@ -44,14 +44,8 @@ function screenDesktop(): E2BDesktopLike {
   const frame = PNG.sync.write(png);
   return {
     screenshot: () => frame,
-    leftClick: () => undefined,
-    rightClick: () => undefined,
-    middleClick: () => undefined,
-    doubleClick: () => undefined,
-    moveMouse: () => undefined,
-    scroll: () => undefined,
-    write: () => undefined,
-    drag: () => undefined,
+    commands: { run: async () => ({ exitCode: 0 }) },
+    files: { write: async () => undefined },
     wait: () => undefined,
   };
 }

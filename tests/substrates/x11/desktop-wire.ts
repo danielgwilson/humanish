@@ -14,7 +14,7 @@ import { MODAL_STREAM_PORT, modalDesktopSurface } from "../../../src/substrates/
 // its executor over a recording GuestDesktopTools.
 
 /** The desktop frame every harness addresses. */
-export const FRAME = { width: 1440, height: 950 } as const;
+const FRAME = { width: 1440, height: 950 } as const;
 
 const TYPE_DIRECTORY = "/tmp/humanish-type-T1";
 
@@ -29,7 +29,7 @@ export interface WireDesktop {
 }
 
 /** How a fake command fails: a thrown exit, or a returned exit with stderr. */
-export type CommandFailure =
+type CommandFailure =
   | { readonly throws: number }
   | { readonly returns: number; readonly stderr: string };
 

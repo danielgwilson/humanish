@@ -18,7 +18,6 @@ import type {
   E2BDesktopModule,
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
-import { inertDesktopInput } from "../../helpers/inert-desktop-input.js";
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
 
 // The E2B SDK names an account by the API key and domain each call carries, and reads
@@ -38,7 +37,6 @@ function recordingSdk() {
   const noop = async (): Promise<void> => {};
   const desktop = {
     sandboxId: "fake-sb-library",
-    ...inertDesktopInput(),
     getInfo: async () => ({ cpuCount: 8, memoryMB: 8192 }),
     commands: { run: async () => ({ exitCode: 0, stdout: "" }) },
     files: { write: noop },

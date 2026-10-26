@@ -1,5 +1,5 @@
-// How the E2B executor presses keys: it translates the participant's key names through the table
-// the guest desktop uses and runs the chord with xdotool on the desktop. The desktop's xdotool
+// How the hosted executor presses keys: the shared translator maps the participant's key names
+// through the X11 key table and the hosted transport runs the chord with xdotool on the desktop. The desktop's xdotool
 // prints "No such key name ... Ignoring it." and exits 0 for a name it does not know, so that
 // warning has to fail the action.
 
@@ -17,20 +17,10 @@ type CommandResult = { exitCode?: number; stderr?: string; stdout?: string };
 function keyDesktop(answer: (command: string) => CommandResult = () => ({ exitCode: 0 })) {
   const commands: string[] = [];
   const otherCalls: string[] = [];
-  const other = (name: string) => (): void => {
-    otherCalls.push(name);
-  };
   const desktop: E2BDesktopLike = {
     screenshot: () => new Uint8Array(),
-    leftClick: other("leftClick"),
-    rightClick: other("rightClick"),
-    middleClick: other("middleClick"),
-    doubleClick: other("doubleClick"),
-    moveMouse: other("moveMouse"),
-    scroll: other("scroll"),
-    write: other("write"),
-    drag: other("drag"),
-    wait: other("wait"),
+    wait: () => void otherCalls.push("wait"),
+    files: { write: async () => void otherCalls.push("files.write") },
     commands: {
       run: async (command) => {
         commands.push(command);
@@ -77,15 +67,6 @@ describe("createE2BDesktopExecutor keypress", () => {
       disposition: "not_dispatched",
     });
     expect(f.commands).toEqual([]);
-  });
-
-  it("refuses a keypress on a desktop with no command channel", async () => {
-    const f = keyDesktop();
-    delete f.desktop.commands;
-    await expect(f.executor.execute({ kind: "keypress", keys: ["ENTER"] })).rejects.toMatchObject({
-      code: "action_rejected",
-      disposition: "not_dispatched",
-    });
   });
 
   it("fails the action when xdotool ignores a key name and still exits 0", async () => {

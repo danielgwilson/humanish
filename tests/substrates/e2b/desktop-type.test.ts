@@ -1,4 +1,4 @@
-// How the E2B executor types text. Typed text can be a credential, so every case also checks that
+// How the hosted executor types text. Typed text can be a credential, so every case also checks that
 // the text and its temp-file path stay out of what the executor reports.
 
 import { describe, expect, it } from "vitest";
@@ -16,7 +16,6 @@ import {
 type CommandResult = { exitCode?: number; stderr?: string; stdout?: string };
 
 type Recorder = {
-  writeCalls: string[];
   fileWrites: Array<{ path: string; data: unknown }>;
   commandRuns: string[];
 };
@@ -30,39 +29,23 @@ const TYPE_DIR = "/tmp/humanish-type-Abc12345";
  */
 function makeFakeDesktop(
   opts: {
-    write?: (text: string) => void | Promise<void>;
     fileWrite?: (path: string, data: unknown) => void | Promise<void>;
     onCommand?: (command: string) => CommandResult | undefined;
     throwOn?: RegExp;
-    omitSurfaces?: boolean;
   } = {},
 ): { desktop: E2BDesktopLike; rec: Recorder } {
-  const rec: Recorder = { writeCalls: [], fileWrites: [], commandRuns: [] };
-  const noop = (): void => {};
+  const rec: Recorder = { fileWrites: [], commandRuns: [] };
   const desktop: E2BDesktopLike = {
     screenshot: () => new Uint8Array(),
-    leftClick: noop,
-    rightClick: noop,
-    middleClick: noop,
-    doubleClick: noop,
-    moveMouse: noop,
-    scroll: noop,
-    drag: noop,
-    wait: noop,
-    write: async (text: string) => {
-      rec.writeCalls.push(text);
-      if (opts.write) await opts.write(text);
-    },
-  };
-  if (!opts.omitSurfaces) {
-    desktop.files = {
+    wait: () => {},
+    files: {
       write: async (target: string, data: string | ArrayBuffer) => {
         rec.fileWrites.push({ path: target, data });
         if (opts.fileWrite) await opts.fileWrite(target, data);
         return undefined;
       },
-    };
-    desktop.commands = {
+    },
+    commands: {
       run: async (command: string) => {
         rec.commandRuns.push(command);
         if (opts.throwOn?.test(command))
@@ -75,8 +58,8 @@ function makeFakeDesktop(
         if (answer) return answer;
         return command.includes("mktemp") ? { exitCode: 0, stdout: TYPE_DIR } : { exitCode: 0 };
       },
-    };
-  }
+    },
+  };
   return { desktop, rec };
 }
 
@@ -165,8 +148,7 @@ fs.writeFileSync(${JSON.stringify(record)}, JSON.stringify({
         expect(recorded.text).toBe(text);
         expect(recorded.fileMode).toBe("600");
         expect(recorded.dirMode).toBe("700");
-        // One attempt: the SDK write is never tried, and the text never passes through the shell.
-        expect(rec.writeCalls).toEqual([]);
+        // One attempt, and the text never passes through the shell.
         expect(rec.commandRuns.join("\n")).not.toContain(SECRET);
         directory = path.dirname(rec.fileWrites[0]!.path);
         await expect(stat(directory)).rejects.toMatchObject({ code: "ENOENT" });
@@ -177,10 +159,9 @@ fs.writeFileSync(${JSON.stringify(record)}, JSON.stringify({
     },
   );
 
-  it("types ASCII text through xdotool too, never the SDK write", async () => {
+  it("types ASCII text through the same xdotool command", async () => {
     const { desktop, rec } = makeFakeDesktop();
     expect(await typeWith(desktop, "hello@example.test")).toBeUndefined();
-    expect(rec.writeCalls).toEqual([]);
     expect(rec.fileWrites).toEqual([{ path: `${TYPE_DIR}/text`, data: "hello@example.test" }]);
     expect(rec.commandRuns).toHaveLength(3);
     expect(rec.commandRuns[1]).toContain(
@@ -192,7 +173,6 @@ fs.writeFileSync(${JSON.stringify(record)}, JSON.stringify({
   it("fails the step without retrying when xdotool fails, and still removes the directory", async () => {
     const { desktop, rec } = makeFakeDesktop({ throwOn: /xdotool type/ });
     expectPhaseOnly(await typeWith(desktop), "text-command", 1);
-    expect(rec.writeCalls).toEqual([]);
     expect(rec.commandRuns.filter((command) => command.includes("xdotool type"))).toHaveLength(1);
     expect(rec.commandRuns.at(-1)).toBe(`rm -rf -- '${TYPE_DIR}'`);
   });
@@ -244,11 +224,7 @@ fs.writeFileSync(${JSON.stringify(record)}, JSON.stringify({
     expect(rec.commandRuns.at(-1)).toBe(`rm -rf -- '${TYPE_DIR}'`);
   });
 
-  it("never types any character twice: one xdotool command, no SDK write, whatever fails", async () => {
-    // The SDK write types 25-character chunks and can fail after typing one; this fake does both.
-    const typesThenFails = () => {
-      throw new Error("chunk 2 failed after chunk 1 was typed");
-    };
+  it("never types any character twice: one xdotool command, whatever fails", async () => {
     for (const text of ["Plan the weekly sync now. Review", "Plan the weekly sync now. Réunion"])
       for (const failure of [
         { throwOn: /xdotool type/ },
@@ -257,26 +233,10 @@ fs.writeFileSync(${JSON.stringify(record)}, JSON.stringify({
             command.includes("xdotool type") ? { exitCode: 1 } : undefined,
         },
       ]) {
-        const { desktop, rec } = makeFakeDesktop({ ...failure, write: typesThenFails });
+        const { desktop, rec } = makeFakeDesktop(failure);
         await typeWith(desktop, text);
-        expect(rec.writeCalls).toEqual([]);
         expect(rec.commandRuns.filter((command) => command.includes("xdotool"))).toHaveLength(1);
       }
-  });
-
-  it("keeps the SDK write, with no retry, on a desktop without command and file surfaces", async () => {
-    const { desktop, rec } = makeFakeDesktop({ omitSurfaces: true });
-    expect(await typeWith(desktop)).toBeUndefined();
-    expect(rec.writeCalls).toEqual([SECRET]);
-
-    const failing = makeFakeDesktop({
-      omitSurfaces: true,
-      write: (text) => {
-        throw new Error(`xdotool type -- '${text}' exited 1`);
-      },
-    });
-    expectPhaseOnly(await typeWith(failing.desktop), "desktop-write");
-    expect(failing.rec.writeCalls).toEqual([SECRET]);
   });
 
   it("never puts the text or its path into the error", async () => {

@@ -94,14 +94,13 @@ function hostedDesktop(): { desktop: E2BDesktopLike; calls: [string, ...unknown[
     calls,
     desktop: {
       screenshot: async () => frame(),
-      leftClick: record("leftClick"),
-      rightClick: record("rightClick"),
-      middleClick: record("middleClick"),
-      doubleClick: record("doubleClick"),
-      moveMouse: record("moveMouse"),
-      scroll: record("scroll"),
-      write: record("write"),
-      drag: record("drag"),
+      commands: {
+        run: async (command: string) => {
+          calls.push(["run", command]);
+          return { exitCode: 0, stdout: "" };
+        },
+      },
+      files: { write: async () => undefined },
       wait: record("wait"),
     },
   };
@@ -165,7 +164,9 @@ describe("a wait with no duration on a hosted desktop", () => {
     const { calls } = await hostedWaits([{ kind: "click", x: 10, y: 10 }, { kind: "wait" }]);
 
     expect(calls).toEqual([
-      ["leftClick", 10, 10],
+      ["run", "xdotool getmouselocation"],
+      ["run", "xdotool mousemove --sync 10 10"],
+      ["run", "xdotool click 1"],
       ["wait", 500],
     ]);
   });

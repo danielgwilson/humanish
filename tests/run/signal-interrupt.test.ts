@@ -39,8 +39,6 @@ const CHILD = `
     launch: noop, open: noop, wait: noop,
     screenshot: async () => frame,
     stream: { getAuthKey: () => "k", getUrl: () => "https://stream.invalid/k", start: noop },
-    leftClick: noop, rightClick: noop, middleClick: noop, doubleClick: noop, moveMouse: noop,
-    scroll: noop, write: noop, press: noop, drag: noop,
   };
   const module = {
     Sandbox: {

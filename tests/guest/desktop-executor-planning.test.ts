@@ -1,16 +1,15 @@
-// The guest desktop executor's pure parts, tested directly: the frame-size check, input planning,
-// and the decisions a failed action makes about the session and the error it throws.
+// The guest desktop executor's pure parts, tested directly: the frame-size check and the decisions
+// a failed action makes about the session and the error it throws. Input planning is the shared
+// translator's (tests/substrates/x11/translator.test.ts).
 
 import { describe, expect, it } from "vitest";
 
 import { ComputerUseExecutorError } from "../../src/actors/computer-use/executor-error.js";
-import type { CuaAction } from "../../src/actors/computer-use/loop.js";
 import { BROWSER_CONTROL_LIMITS } from "../../src/browser-control/protocol.js";
 import {
   failureEndsSession,
   failureError,
   isValidFrameSize,
-  planActionInput,
 } from "../../src/guest/desktop-executor.js";
 
 const { dimension, pixels } = BROWSER_CONTROL_LIMITS;
@@ -28,49 +27,6 @@ describe("isValidFrameSize", () => {
     [dimension, Math.floor(pixels / dimension) + 1, false],
   ])("%j by %j is %j", (width, height, valid) => {
     expect(isValidFrameSize(width, height)).toBe(valid);
-  });
-});
-
-describe("planActionInput", () => {
-  const frame = { width: 100, height: 80 };
-  it.each([
-    [{ kind: "move", x: 0, y: 0 }, [["mousemove", "0", "0"]]],
-    [{ kind: "move", x: 99.4, y: 79.9 }, [["mousemove", "99", "79"]]],
-    [
-      { kind: "click", x: 1, y: 2, button: "right", heldKeys: ["SHIFT"] },
-      [
-        ["keydown", "shift"],
-        ["mousemove", "1", "2"],
-        ["click", "3"],
-        ["keyup", "shift"],
-      ],
-    ],
-    [{ kind: "scroll", x: 1, y: 1, dx: 0, dy: 0, heldKeys: ["SHIFT"] }, []],
-    [
-      { kind: "scroll", x: 1, y: 1, dx: -120, dy: 0 },
-      [
-        ["mousemove", "1", "1"],
-        ["click", "6"],
-      ],
-    ],
-    [{ kind: "type", text: "plain" }, []],
-    [{ kind: "wait" }, []],
-  ] as [CuaAction, string[][]][])("plans %j", (action, expected) => {
-    expect(planActionInput(frame, action)).toEqual(expected);
-  });
-
-  it.each([
-    [{ kind: "move", x: 100, y: 0 }],
-    [{ kind: "move", x: 0, y: -0.1 }],
-    [{ kind: "drag", path: [{ x: 1, y: 1 }] }],
-    [{ kind: "scroll", x: 1, y: 1, dx: 12_001, dy: 0 }],
-    [{ kind: "type", text: "a\0b" }],
-    [{ kind: "speak", text: "hello" }],
-    [{ kind: "click", x: 1, y: 1, heldKeys: ["HYPER"] }],
-  ] as [CuaAction][])("refuses %j as not dispatched", (action) => {
-    expect(() => planActionInput(frame, action)).toThrow(
-      expect.objectContaining({ disposition: "not_dispatched" }),
-    );
   });
 });
 

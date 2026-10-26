@@ -210,15 +210,6 @@ export function makeFanoutModule(options: FanoutModuleOptions = {}): FanoutModul
         getUrl: () => "https://stream.invalid/fake-auth-key",
         start: async () => undefined,
       },
-      leftClick: record("leftClick"),
-      rightClick: record("rightClick"),
-      middleClick: record("middleClick"),
-      doubleClick: record("doubleClick"),
-      moveMouse: record("moveMouse"),
-      scroll: record("scroll"),
-      write: record("write"),
-      press: record("press"),
-      drag: record("drag"),
     } as unknown as E2BDesktopSandbox;
   };
 

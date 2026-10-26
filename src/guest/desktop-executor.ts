@@ -1,7 +1,6 @@
 import { perceptualSignature } from "../evidence/frame-signature.js";
 import { setTimeout as delay } from "node:timers/promises";
 import type { CuaAction, CuaExecutor } from "../actors/computer-use/loop.js";
-import { CUA_WAIT_LIMITS } from "../actors/computer-use/wait.js";
 import {
   BROWSER_CONTROL_LIMITS,
   validateBrowserControlAction,
@@ -11,17 +10,18 @@ import {
   ComputerUseExecutorError,
   isComputerUseExecutorError,
 } from "../actors/computer-use/executor-error.js";
-import { xdotoolChord, xdotoolHeldModifiers } from "./desktop-keys.js";
+import {
+  executeX11Action,
+  type X11TextChannel,
+  type X11Transport,
+} from "../substrates/x11/desktop.js";
+import { guestX11Dialect, type X11Dialect, type X11Frame } from "../substrates/x11/translator.js";
 
-/** Internal guest port. Implementations recheck signal synchronously before native dispatch. */
-export interface GuestDesktopTools {
-  capture(signal: AbortSignal): Promise<Buffer>;
-  input(args: readonly string[], signal: AbortSignal): Promise<void>;
-  prepareText(
-    text: string,
-    signal: AbortSignal,
-  ): Promise<{ paste(): Promise<void>; close(): Promise<void> }>;
-}
+/**
+ * Internal guest port: the X11 transport's input, capture and text, which the executor wraps with
+ * its authority checks. Implementations recheck signal synchronously before native dispatch.
+ */
+export type GuestDesktopTools = Pick<X11Transport, "capture" | "input" | "prepareText">;
 
 export interface GuestDesktopExecutorOptions {
   width: number;
@@ -32,15 +32,10 @@ export interface GuestDesktopExecutorOptions {
   onTerminal: () => void;
 }
 
-/** The frame an executor addresses, in pixels. */
-interface Frame {
-  readonly width: number;
-  readonly height: number;
-}
-
 /** The fixed inputs every observe and execute call reads. */
-interface GuestExecutorContext extends Frame {
+interface GuestExecutorContext extends X11Frame {
   readonly tools: GuestDesktopTools;
+  readonly dialect: X11Dialect;
   readonly authoritySignal: AbortSignal;
   /** Calls the owner's onTerminal, read from the options at the time of the call. */
   readonly onTerminal: () => void;
@@ -54,17 +49,13 @@ interface GuestExecutorState {
   terminal: boolean;
 }
 
-type TextChannel = Awaited<ReturnType<GuestDesktopTools["prepareText"]>>;
-
 /** What one execute call has done so far. Its failure and cleanup paths read it. */
 interface ActionProgress {
   /** Native input or a text insertion may have reached the desktop. */
   dispatched: boolean;
   /** Text preparation started. */
   preparing: boolean;
-  /** The modifiers a keydown pressed and no keyup has released yet. */
-  keysHeld: string | undefined;
-  text: TextChannel | undefined;
+  text: X11TextChannel | undefined;
 }
 
 /** Headed X11 input and full-frame captures. Browser metadata is deliberately absent. */
@@ -76,6 +67,7 @@ export function createGuestDesktopExecutor(options: GuestDesktopExecutorOptions)
     width,
     height,
     tools,
+    dialect: guestX11Dialect({ width, height }),
     authoritySignal,
     onTerminal: () => options.onTerminal(),
   };
@@ -147,8 +139,8 @@ async function observeFrame(
 }
 
 /**
- * Runs one action: validates and plans all of it first, pastes text, waits, then sends each
- * native command with the authority checked immediately before it.
+ * Runs one action through the X11 translator, over the guest's tools with the authority checked
+ * immediately before each native input and text insertion.
  */
 async function executeAction(
   context: GuestExecutorContext,
@@ -156,56 +148,19 @@ async function executeAction(
   value: CuaAction,
   callerSignal: AbortSignal | undefined,
 ): Promise<void> {
-  const { tools, authoritySignal } = context;
+  const { authoritySignal, dialect } = context;
   const signal = callerSignal ? AbortSignal.any([authoritySignal, callerSignal]) : authoritySignal;
   begin(state, signal);
-  const progress: ActionProgress = {
-    dispatched: false,
-    preparing: false,
-    keysHeld: undefined,
-    text: undefined,
-  };
+  const progress: ActionProgress = { dispatched: false, preparing: false, text: undefined };
   try {
     const action = validateBrowserControlAction(value);
-    const commands = planActionInput(context, action); // Validate the entire action before any preparation/input.
-    if (action.kind === "type" && action.text.length) {
-      progress.preparing = true;
-      progress.text = await tools.prepareText(action.text, signal);
-      assertOpen(state, signal);
-      progress.dispatched = true;
-      try {
-        await progress.text.paste();
-      } catch (error) {
-        // This transaction has no earlier input. Its private bridge can
-        // prove that no insertion or native input was sent.
-        if (isComputerUseExecutorError(error) && error.disposition === "not_dispatched")
-          progress.dispatched = false;
-        throw error;
-      }
-    }
-    // The loop sends every wait with its length; planWait owns the lengths.
-    if (action.kind === "wait")
-      await delay(action.ms ?? CUA_WAIT_LIMITS.settleMs, undefined, { signal });
-    for (const command of commands) {
-      assertOpen(state, signal, progress.dispatched);
-      // No await between authority check and the native port invocation.
-      progress.dispatched = true;
-      // A keydown can press some keys before it fails; a failed keyup is not retried.
-      if (command[0] === "keydown") progress.keysHeld = command[1];
-      if (command[0] === "keyup") progress.keysHeld = undefined;
-      await tools.input(command, signal);
-    }
+    await executeX11Action(
+      action,
+      { dialect, transport: authorizedTransport(context, state, signal, progress) },
+      signal,
+    );
     assertOpen(state, signal, progress.dispatched);
   } catch (error) {
-    // A failed pointer input still releases its modifiers. After revocation nothing more is
-    // sent, as for the mouse button below.
-    if (progress.keysHeld !== undefined && !signal.aborted) {
-      try {
-        await tools.input(["keyup", progress.keysHeld], signal);
-      } catch {
-        // The session ends below either way.
-      }
-    }
     if (failureEndsSession(progress, error, signal)) terminate(state, context);
     // Do not send mouseup/key-release after revocation: it can itself click/drop. failureError
     // reads the signal after terminate, because onTerminal can abort it.
@@ -224,6 +179,52 @@ async function executeAction(
       state.busy = false;
     }
   }
+}
+
+/**
+ * The guest's tools as the translator's transport, recording progress. Each input and text
+ * insertion checks the authority first, with no await before the native call. The runner's held-
+ * key release goes through the same check, so nothing is released after revocation. The text
+ * channel is closed by executeAction after its failure handling, so the owner's onTerminal runs
+ * before the browser text channel closes.
+ */
+function authorizedTransport(
+  context: GuestExecutorContext,
+  state: GuestExecutorState,
+  signal: AbortSignal,
+  progress: ActionProgress,
+): X11Transport {
+  const { tools } = context;
+  return {
+    capture: (captureSignal) => tools.capture(captureSignal),
+    input(args, inputSignal) {
+      assertOpen(state, signal, progress.dispatched);
+      progress.dispatched = true;
+      return tools.input(args, inputSignal);
+    },
+    async prepareText(text, textSignal) {
+      progress.preparing = true;
+      const channel = await tools.prepareText(text, textSignal);
+      progress.text = channel;
+      return {
+        async paste() {
+          assertOpen(state, signal);
+          progress.dispatched = true;
+          try {
+            await channel.paste();
+          } catch (error) {
+            // This transaction has no earlier input. Its private bridge can
+            // prove that no insertion or native input was sent.
+            if (isComputerUseExecutorError(error) && error.disposition === "not_dispatched")
+              progress.dispatched = false;
+            throw error;
+          }
+        },
+        close: async () => {},
+      };
+    },
+    wait: (ms, waitSignal) => delay(ms, undefined, { signal: waitSignal }),
+  };
 }
 
 /**
@@ -269,86 +270,4 @@ export function failureError(
   return isComputerUseExecutorError(error)
     ? error
     : new ComputerUseExecutorError("execution_failed", "not_dispatched");
-}
-
-/**
- * The native commands for an action, wrapped in keydown/keyup when it holds modifiers. It throws
- * the refusal for an action the desktop cannot take, before anything is sent.
- */
-export function planActionInput(frame: Frame, action: CuaAction): string[][] {
-  const commands = actionCommands(frame, action);
-  const held = "heldKeys" in action ? xdotoolHeldModifiers(action.heldKeys) : undefined;
-  return held === undefined || commands.length === 0
-    ? commands
-    : [["keydown", held], ...commands, ["keyup", held]];
-}
-
-/** A pointer position as xdotool arguments. */
-function framePoint(frame: Frame, x: number, y: number): string[] {
-  const { width, height } = frame;
-  // Reject out-of-frame input instead of clicking a clamped, unintended target.
-  if (x < 0 || y < 0 || x >= width || y >= height)
-    throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
-  return [String(Math.min(width - 1, Math.round(x))), String(Math.min(height - 1, Math.round(y)))];
-}
-
-/** The native commands for an action, before any held modifiers. */
-function actionCommands(frame: Frame, action: CuaAction): string[][] {
-  switch (action.kind) {
-    case "move":
-      return [["mousemove", ...framePoint(frame, action.x, action.y)]];
-    case "click":
-      return [
-        ["mousemove", ...framePoint(frame, action.x, action.y)],
-        ["click", { left: "1", middle: "2", right: "3" }[action.button ?? "left"]],
-      ];
-    case "double_click":
-      return [
-        ["mousemove", ...framePoint(frame, action.x, action.y)],
-        ["click", "--repeat", "2", "--delay", "100", "1"],
-      ];
-    case "keypress":
-      return [["key", "--clearmodifiers", xdotoolChord(action.keys)]];
-    case "type": {
-      // Text transports require exact UTF-8; NUL truncation and lone surrogates
-      // must be refused instead of silently changing the requested text.
-      if (
-        action.text.includes("\0") ||
-        Buffer.from(action.text, "utf8").toString("utf8") !== action.text
-      )
-        throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
-      return [];
-    }
-    case "drag": {
-      const points = action.path.map((p) => framePoint(frame, p.x, p.y));
-      if (points.length < 2)
-        throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
-      return [
-        ["mousemove", ...points[0]!],
-        ["mousedown", "1"],
-        ...points.slice(1).map((p) => ["mousemove", ...p]),
-        ["mouseup", "1"],
-      ];
-    }
-    case "scroll": {
-      const origin = framePoint(frame, action.x, action.y);
-      // Native X11 wheel steps do not promise exact pixel scroll distances.
-      const horizontal = Math.ceil(Math.abs(action.dx) / 120),
-        vertical = Math.ceil(Math.abs(action.dy) / 120);
-      if (horizontal + vertical > 100)
-        throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
-      return horizontal + vertical === 0
-        ? []
-        : [
-            ["mousemove", ...origin],
-            ...Array.from({ length: horizontal }, () => ["click", action.dx > 0 ? "7" : "6"]),
-            ...Array.from({ length: vertical }, () => ["click", action.dy > 0 ? "5" : "4"]),
-          ];
-    }
-    case "wait":
-    case "screenshot":
-      return [];
-    case "speak":
-      throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
-  }
 }

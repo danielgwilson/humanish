@@ -61,14 +61,13 @@ function makeFakeDesktop(): RecordingDesktop {
       frame += 1;
       return makePng(frame);
     },
-    leftClick: record("leftClick"),
-    rightClick: record("rightClick"),
-    middleClick: record("middleClick"),
-    doubleClick: record("doubleClick"),
-    moveMouse: record("moveMouse"),
-    scroll: record("scroll"),
-    write: record("write"),
-    drag: record("drag"),
+    commands: {
+      run: async (command) => {
+        calls.push(["run", command]);
+        return { exitCode: 0, stdout: "" };
+      },
+    },
+    files: { write: async (path) => void calls.push(["files.write", path]) },
     wait: record("wait"),
   };
 }
@@ -120,8 +119,9 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
     expect(result.trace.lane).toBe("computer-use");
     expect(result.trace.protocol).toBe("cua-loop");
     expect(result.trace.provider).toBe("openai-responses-cu");
-    // The real executor translated the model's click into a real desktop call:
-    expect(desktop.calls).toContainEqual(["leftClick", 11, 22]);
+    // The real executor translated the model's click into real desktop commands:
+    expect(desktop.calls).toContainEqual(["run", "xdotool mousemove --sync 11 22"]);
+    expect(desktop.calls).toContainEqual(["run", "xdotool click 1"]);
   });
 
   it("emits a conformant humanish.actor-trace.v1", async () => {
@@ -319,7 +319,7 @@ describe("openai-computer-use actor (deterministic, no spend)", () => {
 
     expect(result.status).toBe("passed");
     // Acknowledged checks proceed: the flagged click was actuated.
-    expect(desktop.calls).toContainEqual(["leftClick", 1, 2]);
+    expect(desktop.calls).toContainEqual(["run", "xdotool mousemove --sync 1 2"]);
     // And the follow-up POST echoes the verbatim wire triple on the call output.
     const second = bodies[1] as { input?: Array<Record<string, unknown>> };
     const callOutput = (second.input ?? []).find((item) => item.type === "computer_call_output") as
