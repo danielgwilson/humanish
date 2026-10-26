@@ -268,6 +268,12 @@ export interface CuaTurn {
       serviceTier?: string;
     }>;
   };
+  /**
+   * What the trace should say about this reply that no other field carries, each recorded as a
+   * warning notice with its text redacted: for example a reply billed at a tier or in a region the
+   * rate table does not price.
+   */
+  notices?: ReadonlyArray<{ readonly title: string; readonly text: string }>;
   /** True when the model reported a natural endpoint (no further action). */
   done: boolean;
   /**

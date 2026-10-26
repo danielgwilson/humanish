@@ -21,7 +21,7 @@ export function retryAfterOutputLimit(
   if (session.provider.outputLimitRetry !== true || alreadyRetried) return undefined;
   session.trace.bump("turns");
   session.lastResponseId = turn.responseId ?? session.lastResponseId;
-  session.usage.record(turn, "interaction");
+  session.recordReply(turn, "interaction");
   const output = turn.usage?.output;
   session.trace.record("notice", () =>
     notice(
