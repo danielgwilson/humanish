@@ -1,0 +1,99 @@
+{
+  "model": "claude-haiku-5-5",
+  "id": "msg_01ReplanAfterFailure",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "The click failed with a desktop command error, and the screenshot shown is just a plain user-provided image with no embedded instructions. I'll just retry clicking the text box and verify it works.\n\n",
+      "signature": "<signature removed>"
+    },
+    {
+      "type": "text",
+      "text": "My last click failed, so none of the batch ran. The screen still shows an empty task box and no tasks, so nothing was added yet. I'll click the text box again and type the first task, then check the box before pressing Add."
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ReplanAfterFailure0001",
+      "name": "left_click",
+      "input": {
+        "coordinate": [
+          651,
+          192
+        ]
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ReplanAfterFailure0002",
+      "name": "wait",
+      "input": {
+        "duration": 1
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ReplanAfterFailure0003",
+      "name": "type",
+      "input": {
+        "text": "Call the plumber"
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ReplanAfterFailure0004",
+      "name": "wait",
+      "input": {
+        "duration": 1
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ReplanAfterFailure0005",
+      "name": "screenshot",
+      "input": {},
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    }
+  ],
+  "container": null,
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "stop_details": null,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 2118,
+    "cache_read_input_tokens": 5994,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 2118,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 461,
+    "output_tokens_details": {
+      "thinking_tokens": 260
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+  },
+  "diagnostics": null
+}

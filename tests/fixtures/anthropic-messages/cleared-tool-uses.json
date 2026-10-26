@@ -1,0 +1,112 @@
+{
+  "model": "claude-haiku-5-5",
+  "id": "msg_01ClearedToolUses",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "I've just been taking screenshots without actually doing anything. Time to stop observing and act: click the text box, type \"Buy milk\", then click Add.\n\n",
+      "signature": "<signature removed>"
+    },
+    {
+      "type": "text",
+      "text": "I've taken a lot of screenshots without doing anything, so I'll actually add the task now: click the input, type \"Buy milk\", and press Add."
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ClearedToolUses0001",
+      "name": "left_click",
+      "input": {
+        "coordinate": [
+          650,
+          192
+        ]
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ClearedToolUses0002",
+      "name": "type",
+      "input": {
+        "text": "Buy milk"
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ClearedToolUses0003",
+      "name": "left_click",
+      "input": {
+        "coordinate": [
+          922,
+          192
+        ]
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ClearedToolUses0004",
+      "name": "wait",
+      "input": {
+        "duration": 1
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ClearedToolUses0005",
+      "name": "screenshot",
+      "input": {},
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    }
+  ],
+  "container": null,
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "stop_details": null,
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 66370,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 66370,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 259,
+    "output_tokens_details": {
+      "thinking_tokens": 72
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+  },
+  "input_transformations": [],
+  "diagnostics": null,
+  "context_management": {
+    "applied_edits": [
+      {
+        "type": "clear_tool_uses_20250919",
+        "cleared_input_tokens": 535248,
+        "cleared_tool_uses": 4
+      }
+    ]
+  }
+}

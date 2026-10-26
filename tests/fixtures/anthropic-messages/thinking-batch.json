@@ -1,0 +1,102 @@
+{
+  "model": "claude-haiku-5-5",
+  "id": "msg_01ThinkingBatch",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "I'll add the tasks one at a time without reloading the page, to avoid losing progress \u2014 typing into the text box and clicking Add for the first task, screenshotting, then repeating for the second.\n\n",
+      "signature": "<signature removed>"
+    },
+    {
+      "type": "text",
+      "text": "I'll add the first task, then take a screenshot to confirm it appeared before adding the second. I won't reload the page, since that could clear the list."
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ThinkingBatch0001",
+      "name": "left_click",
+      "input": {
+        "coordinate": [
+          651,
+          192
+        ]
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ThinkingBatch0002",
+      "name": "type",
+      "input": {
+        "text": "Call the plumber"
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ThinkingBatch0003",
+      "name": "left_click",
+      "input": {
+        "coordinate": [
+          922,
+          192
+        ]
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ThinkingBatch0004",
+      "name": "wait",
+      "input": {
+        "duration": 1
+      },
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01ThinkingBatch0005",
+      "name": "screenshot",
+      "input": {},
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    }
+  ],
+  "container": null,
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "stop_details": null,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 5994,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 5994,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 309,
+    "output_tokens_details": {
+      "thinking_tokens": 122
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+  },
+  "diagnostics": null
+}

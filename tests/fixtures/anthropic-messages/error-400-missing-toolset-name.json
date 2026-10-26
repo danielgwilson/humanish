@@ -1,0 +1,8 @@
+{
+  "type": "error",
+  "error": {
+    "type": "invalid_request_error",
+    "message": "messages.2.content.0: a tool_result answering a member tool_use must carry the paired tool_use's toolset_name ('computer'); this one carries no toolset_name"
+  },
+  "request_id": "req_01Fixture"
+}
