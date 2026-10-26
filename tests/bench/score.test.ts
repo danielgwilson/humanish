@@ -372,3 +372,115 @@ describe("the Taskly scorer on analysis wordings of D1 and D5", () => {
     }
   });
 });
+
+// Rubric v4. Every wording below is quoted from a 2026-10-24 or 2026-10-25 bench report or
+// analysis finding.
+describe("the Taskly scorer on an edit lost across a reload", () => {
+  const lostEdit = [
+    "Laundry edit did not persist after Save and refresh.",
+    "The attempted groceries edit did not survive refresh.",
+    "The attempted task edit remained open and was absent after reload.",
+    "Edited wording reverted after Save and reload.",
+    "I tried again, but after reloading, the added words were gone.",
+    "After refreshing, the old wording returned.",
+    "It stayed in the editing box without confirmation, and after refreshing it was back to Wednesday.",
+  ];
+
+  it("reads it as D5 on the builds that keep tasks, where only Save can lose an edit", () => {
+    for (const report of lostEdit) {
+      const planted = scoreReport(participant(report, { storage: "local" }), "planted");
+      expect(planted.detected.D5, report).toBe(true);
+      expect(planted.invented, report).toEqual([]);
+      const clean = scoreReport(participant(report, { storage: "local" }), "clean");
+      expect(
+        clean.invented.map((match) => match.classId),
+        report,
+      ).toEqual(["D5"]);
+    }
+  });
+
+  it("leaves it to B10 on the memory builds, where a reload loses every task", () => {
+    for (const report of [
+      "Laundry edit did not persist after Save and refresh.",
+      "The attempted groceries edit did not survive refresh.",
+    ]) {
+      const score = scoreReport(participant(report), "clean");
+      expect(
+        score.supported.map((match) => match.classId),
+        report,
+      ).toEqual(["B10"]);
+      expect(score.invented, report).toEqual([]);
+    }
+  });
+
+  it("keeps B10 for every task lost on reload, an edit among them", () => {
+    for (const report of [
+      "After I refreshed the page, my tasks and edit were gone.",
+      "Refreshing the page erased all five tasks, including their completion state and my edit.",
+    ]) {
+      const score = scoreReport(participant(report, { storage: "local" }), "planted");
+      expect(
+        score.invented.map((match) => match.classId),
+        report,
+      ).toEqual(["B10"]);
+      expect(score.detected.D5, report).toBe(false);
+    }
+  });
+
+  it("reads a reload that only reset the selected filter as no lost task", () => {
+    const report = "Refreshing reset the filter to All, though the tasks themselves remained.";
+    const score = scoreReport(participant(report, { storage: "local" }), "clean");
+    expect(score.invented).toEqual([]);
+  });
+});
+
+describe("the Taskly scorer on Save leaving the row in its editing box", () => {
+  it("reads Save that left an editing box or field open as D5", () => {
+    for (const report of [
+      "I edited groceries to Buy groceries on Tuesday and clicked Save, but it stayed in an editing box.",
+      "I tried changing groceries to Buy groceries on Tuesday, but Save left the item in an editing box.",
+      "I changed laundry from Tuesday to Saturday and clicked Save, but it stayed in an editing field.",
+      "I shortened it using Edit, but clicking Save left the editing box open.",
+      "I edited that errand and clicked Save, but the edit box stayed open.",
+    ]) {
+      expect(scoreReport(participant(report), "planted").detected.D5, report).toBe(true);
+    }
+  });
+
+  it("does not read an edit field that Save closed, or Enter in an edit field, as D5", () => {
+    for (const report of [
+      "Enter in the edit field did not finish the edit; I had to Tab to Save and press Enter.",
+      "I switched to the pointer, then had to click inside the edit field before typing.",
+      "Clicking Edit did not focus the new edit field.",
+    ]) {
+      const score = scoreReport(participant(report), "clean");
+      expect(
+        score.invented.map((match) => match.classId),
+        report,
+      ).not.toContain("D5");
+    }
+  });
+});
+
+describe("the Taskly scorer on a task name cut off mid-word", () => {
+  it("reads a cut-off errand or reminder, or a day name cut short, as D2", () => {
+    for (const report of [
+      "My library reminder appeared cut off at Thursd, without any explanation.",
+      "The library errand displayed Tuesda rather than the full Tuesday, making it look cut off.",
+      "The library errand ended at Thursd on screen rather than showing the full wording.",
+      "Return library books on Wednesday became Return library books on Wednes, with no visible warning.",
+    ]) {
+      expect(scoreReport(participant(report), "planted").detected.D2, report).toBe(true);
+    }
+  });
+
+  it("does not read a full day name, a stop in the session or a quoted cut day name alone as D2", () => {
+    for (const report of [
+      "I changed groceries from Monday to Wednesday and clicked Save, but the editing box stayed open.",
+      "Once refreshing made the whole list disappear, I stopped: I wouldn't trust it to remember this week's errands.",
+      "Both the initial edit view and the later Completed view showed an edit field reading Return library books on Wednes, with a Save button.",
+    ]) {
+      expect(scoreReport(participant(report), "planted").detected.D2, report).toBe(false);
+    }
+  });
+});
