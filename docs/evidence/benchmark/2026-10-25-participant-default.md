@@ -127,6 +127,32 @@ runs, and no report or narration of its 35 planted runs over both days names Cle
 study that needs participants to keep going past early failures can name `gpt-5.6-sol` in
 `actor.model`.
 
+## Rubric version 4 rescored these runs on 2026-10-26
+
+`pnpm bench --rescore` with rubric version 4 re-read the saved bundles and analyses offline; no
+run was repeated. The tables above keep the version 3 counts. Counts below are rubric version 3,
+version 4, then by hand where a hand count exists.
+
+| | A0 | A3 |
+| --- | --- | --- |
+| Report recall | 53, 54, 56 of 75 | 35, 51, 52 of 75 |
+| Analysis recall | 48, 50, 53 of 70 | 42, 50, 52 of 75 |
+| D2 in reports | 0, 0, 0 | 4, 7, 7 |
+| D5 in reports | 9, 10, 12 | 1, 14, 15 |
+| D5 in analyses | 8, 10, 12 | 5, 13, 15 |
+| Invented on the clean arm, reports | 3, 1, 0 | 1, 1, 0 |
+| Invented on the clean arm, analyses | 1, 0, 0 | 0, 0, 0 |
+| Invented on the planted arm, analyses | 1, 1 | 7, 0 |
+| D2 engagement: typed more than 30 characters | 1/15 (v4 only) | 7/15 (v4 only) |
+
+Version 3 scored 7 A3 analysis findings such as "Laundry edit did not persist after Save and
+refresh" as invented B10 claims; version 4 reads them as D5. B10 took only 1 A3 report line. Most
+of the A3 report gap was the wording "clicked Save, but it stayed in an editing box", which version
+3 did not match. The clean-arm report lines left are "refreshed the page to confirm the list
+persisted, and cleared the completed items" (B10, A0) and "switched the view back to All" (D3, A3);
+both are true. The D2 engagement flag read false because the bench read participant items from
+run.json, which from run bundle v2 leaves them in `actor.json`.
+
 ## What these numbers are not
 
 - The localStorage builds are a variant of the same app. A second app with a different layout was
