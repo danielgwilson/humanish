@@ -110,7 +110,9 @@ const anthropic = (() => {
         env: {},
       }),
     batch: ok(fixture("batch")),
-    batchKinds: ["click", "type", "click", "wait", "screenshot"],
+    // The batch's last call is a screenshot: the loop's observation after the batch is its screen,
+    // so it reaches no desktop.
+    batchKinds: ["click", "type", "click", "wait"],
     waitOnly: ok(waitOnly),
     ending: ok(fixture("end-turn")),
     outputLimit: ok(fixture("max-tokens")),

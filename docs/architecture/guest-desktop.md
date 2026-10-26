@@ -35,8 +35,8 @@ before its first input. A pointer action's held keys must be modifiers (Shift,
 Ctrl, Alt, Super). They go down with one `keydown` before the action and up with
 one `keyup` after it. `hold_keys` holds any key-table chord the same way, for at most 30 seconds.
 `mouse_down` and `mouse_up` at a point are checked against the frame as a click is. `read_pointer`
-runs `xdotool getmouselocation`, and `zoom` takes one capture and crops a region that must lie
-inside the frame; neither sends input. When an input fails, the `keyup` is still sent once, unless
+runs `xdotool getmouselocation`, `zoom` takes one capture and crops a region that must lie
+inside the frame, and `screenshot` takes one capture and returns all of it; none sends input. When an input fails, the `keyup` is still sent once, unless
 the session was revoked; the failure then closes the executor as below.
 
 Each input checks the current authority after asynchronous preparation. A

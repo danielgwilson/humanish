@@ -42,7 +42,10 @@ const SCREEN_NOW = "This is the screen now.";
 /** How a member call that ran answers when its result carries no screenshot. */
 const OK = "OK";
 
-/** A screenshot call before the end of its batch: the screen comes once, after the batch. */
+/**
+ * A screenshot call before the end of its batch whose desktop returned no frame: the screen then
+ * comes once, after the batch.
+ */
 const SCREEN_AT_END = "The screen after this turn's last action is in its last result.";
 
 export class AnthropicConversation {
@@ -243,11 +246,12 @@ const NOT_COMPLETED: Readonly<
 /**
  * One tool_result per call, in order. A call answers OK when every action it ran completed, and
  * a read answers with what it read: `cursor_position` the pointer's coordinates, `zoom` its
- * image. The first call that did not complete answers why, and every later one the halt text, as
- * the toolset documents for a batch that stops at its first failure. A read that completed but
- * returned nothing answers as an error without halting the batch, whose later actions ran. The
- * screen after the batch goes into the last result when that one completed and holds no image of
- * its own; an error result may carry text only, so otherwise the screen follows the results.
+ * image, and a `screenshot` before the last call the screen the desktop captured there. The first
+ * call that did not complete answers why, and every later one the halt text, as the toolset
+ * documents for a batch that stops at its first failure. A read that completed but returned
+ * nothing answers as an error without halting the batch, whose later actions ran. The screen
+ * after the batch goes into the last result when that one completed and holds no image of its
+ * own; an error result may carry text only, so otherwise the screen follows the results.
  */
 function answers(
   calls: readonly MemberCall[],
@@ -271,9 +275,28 @@ function answers(
     const last = index === calls.length - 1;
     screenInLast = last;
     if (last) return toolResult(call, OK, { screen });
-    return toolResult(call, call.name === "screenshot" ? SCREEN_AT_END : OK);
+    return call.name === "screenshot" ? screenshotAnswer(call, done[0]) : toolResult(call, OK);
   });
   return screenInLast ? results : [...results, { type: "text", text: SCREEN_NOW }, screen];
+}
+
+/**
+ * A screenshot before the last call: the screen the desktop captured at that point of the batch,
+ * through the same size check as every screen sent. An executor that returned no frame leaves the
+ * call pointing to the screen after the batch.
+ */
+function screenshotAnswer(
+  call: MemberCall,
+  ack: CuaActionAcknowledgement | undefined,
+): Record<string, unknown> {
+  const result = ack?.result;
+  if (result?.kind !== "frame") return toolResult(call, SCREEN_AT_END);
+  try {
+    return toolResult(call, OK, { screen: screenImage(result.screenshot) });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "The screenshot could not be sent.";
+    return toolResult(call, reason, { isError: true });
+  }
 }
 
 function unfinishedStatus(

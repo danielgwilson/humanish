@@ -175,7 +175,7 @@ describe("executor failure attribution", () => {
     { kind: "click", x: 1, y: 2 },
     { kind: "move", x: 1, y: 2 },
     { kind: "wait", ms: 1 },
-    { kind: "screenshot" },
+    { kind: "read_pointer" },
     { kind: "type", text: "synthetic-private-value" },
   ] satisfies CuaAction[])(
     "does not recover or mark a failed $kind as completed",
@@ -456,7 +456,7 @@ describe("executor failure attribution", () => {
     expect(result.trace.items.some((item) => /retrying|skipped/.test(item.title))).toBe(false);
   });
 
-  it.each([{ kind: "wait", ms: 5 }, { kind: "screenshot" }] satisfies CuaAction[])(
+  it.each([{ kind: "wait", ms: 5 }, { kind: "read_pointer" }] satisfies CuaAction[])(
     "does not skip a marked $kind when the loop bound wins before the client",
     async (action) => {
       vi.useFakeTimers();

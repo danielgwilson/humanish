@@ -282,6 +282,9 @@ export async function runActionBatch(
     return done();
   };
   const idleTurn = isIdleTurn(actions);
+  // A screenshot is sent only where the provider shows its frame (CuaProvider.batchScreenshots).
+  const sendsScreenshot = (index: number): boolean =>
+    session.provider.batchScreenshots === "frame" && index < actions.length - 1;
   let waits = 0;
   for (const [index, requested] of actions.entries()) {
     if (session.signal?.aborted) throw new CuaAbortError();
@@ -318,7 +321,7 @@ export async function runActionBatch(
     let result: CuaActionResult | undefined;
     try {
       ({ status, result } =
-        watchedMs === undefined
+        watchedMs === undefined && !(action.kind === "screenshot" && !sendsScreenshot(index))
           ? await dispatchAction(session, action, title, wait?.steps)
           : { status: "completed", result: undefined });
     } catch (error) {
@@ -469,7 +472,11 @@ function readResult(action: CuaAction, returned: unknown): CuaActionResult | und
     return Number.isSafeInteger(value.x) && Number.isSafeInteger(value.y)
       ? { kind: "pointer", x: value.x as number, y: value.y as number }
       : undefined;
-  if (action.kind === "zoom" && value.kind === "frame" && Buffer.isBuffer(value.screenshot))
+  if (
+    (action.kind === "zoom" || action.kind === "screenshot") &&
+    value.kind === "frame" &&
+    Buffer.isBuffer(value.screenshot)
+  )
     return { kind: "frame", screenshot: value.screenshot };
   return undefined;
 }

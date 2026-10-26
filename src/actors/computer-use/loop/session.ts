@@ -117,6 +117,8 @@ export class LoopSession {
   lastScreenshotRef: ScreenshotRef | undefined;
   /** How many zoom frames the session has kept, which numbers the next one (frames.ts). */
   zoomFrames = 0;
+  /** How many screenshots within a batch the session has kept, numbered the same way. */
+  screenshotFrames = 0;
   lastResponseId: string | undefined;
   // Whether any observation carried appState. trace.ts states it in redaction.notes; the appState
   // itself is never persisted.

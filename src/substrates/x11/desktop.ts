@@ -58,7 +58,7 @@ const POINTER_READ_TIMEOUT_MS = 500;
  * Run one action: plan it (a refusal throws before anything is sent), press any held keys, run
  * each step, then release them. The signal is checked before the first step and after a pointer
  * read; the transport checks it before each input it sends. It resolves with what the action
- * read, for `read_pointer` and `zoom`, and with undefined for every other action.
+ * read, for `read_pointer`, `zoom` and `screenshot`, and with undefined for every other action.
  */
 export async function executeX11Action(
   action: CuaAction,
@@ -108,6 +108,9 @@ async function runSteps(
           kind: "frame",
           screenshot: cropPng(await transport.capture(signal), step.region),
         };
+        break;
+      case "report-screen":
+        result = { kind: "frame", screenshot: await transport.capture(signal) };
         break;
     }
   }

@@ -8,8 +8,13 @@ import {
   createAnthropicMessagesProvider,
   type AnthropicMessagesProviderOptions,
 } from "../../../src/actors/computer-use/anthropic-provider.js";
-import type { CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
+import {
+  runComputerUseLoop,
+  type CuaAction,
+  type CuaTurnRequest,
+} from "../../../src/actors/computer-use/loop.js";
 import type { FetchLike } from "../../../src/actors/computer-use/provider-http.js";
+import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
 // The provider at its transport: headers, retries, errors, settings and what it records. Replies
 // are captured or documented shapes from tests/fixtures/anthropic-messages/.
@@ -202,5 +207,48 @@ describe("wire capture", () => {
     const captured = readFileSync(join(dir, "wire-001.json"), "utf8");
     expect(captured).not.toContain("opaque-signature");
     expect(captured).toContain("<signature removed>");
+  });
+});
+
+describe("a screenshot within a batch", () => {
+  it("is captured where it stands and sent back as that call's image", async () => {
+    const batch = fixture("batch");
+    const [text, click, , , , screenshot] = batch.content as Json[];
+    const typed = (batch.content as Json[])[2]!;
+    // The captured batch ends with its screenshot; moved between two calls, it is a mid-batch one.
+    const midBatch = { ...batch, content: [text, click, screenshot, typed] };
+    const { provider, sent } = scripted([reply(midBatch), reply(fixture("end-turn"))]);
+    const screen = PNG.sync.write(new PNG({ width: 1440, height: 950 }));
+    const captured = new PNG({ width: 1440, height: 950 });
+    captured.data.fill(90);
+    const frame = PNG.sync.write(captured);
+    const executed: CuaAction["kind"][] = [];
+    await runComputerUseLoop({
+      instructions: request.instructions,
+      provider,
+      executor: {
+        observe: async () => ({ screenshot: screen, stateSignature: `s${executed.length}` }),
+        execute: async (action) => {
+          executed.push(action.kind);
+          return action.kind === "screenshot" ? { kind: "frame", screenshot: frame } : undefined;
+        },
+      },
+      persona: { id: "fixture", traitsApplied: [], promptDigest: "fixture" },
+      redaction: defaultRedactionHooks,
+      now: Date.now,
+      timeoutMs: 60_000,
+    });
+    expect(executed).toEqual(["click", "screenshot", "type"]);
+    const messages = sent[1]!.body.messages as Array<{ role: string; content: Json[] }>;
+    const results = messages.findLast((entry) => entry.role === "user")!.content;
+    const image = (result: Json | undefined) =>
+      ((result?.content as Json[] | undefined)?.[1]?.source as Json | undefined)?.data;
+    expect(results.map((result) => result.tool_use_id)).toEqual([
+      click!.id,
+      screenshot!.id,
+      typed.id,
+    ]);
+    expect(image(results[1])).toBe(frame.toString("base64"));
+    expect(image(results[2])).toBe(screen.toString("base64"));
   });
 });

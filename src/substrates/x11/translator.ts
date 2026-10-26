@@ -45,7 +45,9 @@ export type X11Step =
   /** Read the pointer and return its position as the action's result. */
   | { readonly kind: "report-pointer" }
   /** Capture the desktop and return `region` of it as the action's result. */
-  | { readonly kind: "report-region"; readonly region: X11Region };
+  | { readonly kind: "report-region"; readonly region: X11Region }
+  /** Capture the desktop and return the whole frame as the action's result. */
+  | { readonly kind: "report-screen" };
 
 /** A rectangle of the desktop in whole pixels. */
 export type X11Region = Readonly<CuaRegion>;
@@ -211,8 +213,9 @@ function actionSteps(action: StepAction, dialect: X11Dialect): X11Step[] {
       // The loop sends every wait with its length; planWait owns the lengths.
       return [{ kind: "wait", ms: action.ms ?? CUA_WAIT_LIMITS.settleMs }];
     case "screenshot":
-      // The loop captures each frame with observe(), so the action sends nothing.
-      return [];
+      // The loop sends a screenshot only where its participant is shown the frame it returns: the
+      // screen after a batch is the loop's own observe().
+      return [{ kind: "report-screen" }];
     case "speak":
       throw refused();
   }

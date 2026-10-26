@@ -303,6 +303,51 @@ describe("a read's answer", () => {
   });
 });
 
+describe("a screenshot before the end of its batch", () => {
+  const midImage = new PNG({ width: 1440, height: 950 });
+  midImage.data.fill(200);
+  const MID = PNG.sync.write(midImage);
+  const answered = (ack: CuaActionAcknowledgement): Block[] => {
+    const c = conversation();
+    c.request(req()).accept(
+      reply("batch", [
+        call("left_click", { coordinate: [10, 20] }),
+        call("screenshot"),
+        call("type", { text: "milk" }),
+      ]),
+    );
+    const previousExecution = {
+      actions: [
+        { index: 0, status: "completed" as const },
+        ack,
+        { index: 2, status: "completed" as const },
+      ],
+    };
+    return added(c.request(req({ previousExecution })).body as Body);
+  };
+  const imageData = (result: Block | undefined): string | undefined =>
+    ((result?.content as Block[] | undefined)?.[1] as { source?: { data?: string } } | undefined)
+      ?.source?.data;
+
+  it("answers with the frame the desktop captured there", () => {
+    const results = answered({
+      index: 1,
+      status: "completed",
+      result: { kind: "frame", screenshot: MID },
+    });
+    expect(results[1]!.is_error).toBeUndefined();
+    expect(imageData(results[1])).toBe(MID.toString("base64"));
+    // The screen after the batch still rides the last result.
+    expect(imageData(results[2])).toBe(SCREEN.toString("base64"));
+  });
+
+  it("points to the screen after the batch when the desktop returned no frame", () => {
+    const results = answered({ index: 1, status: "completed" });
+    expect((results[1]!.content as Block[]).map((block) => block.type)).toEqual(["text"]);
+    expect(results[1]!.is_error).toBeUndefined();
+  });
+});
+
 describe("the pointer position a coordinate-free click uses", () => {
   const moveThenClick = (status: CuaActionAcknowledgement["status"]) => {
     const c = conversation();

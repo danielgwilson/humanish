@@ -22,8 +22,8 @@
         "notes": "4 unblurred screenshots kept for local use and not redacted for publishing; set redactScreenshots to blur screenshots in a bundle you plan to share"
       },
       "startedAt": "1970-01-01T00:00:01.000Z",
-      "completedAt": "1970-01-01T00:00:24.000Z",
-      "durationMs": 23000,
+      "completedAt": "1970-01-01T00:00:21.000Z",
+      "durationMs": 20000,
       "status": "abandoned",
       "completionReason": "gave_up",
       "reason": "gave up: 3 consecutive turns with no material UI action (only screenshot/wait)",
@@ -62,7 +62,7 @@
           "kind": "ui_action",
           "lifecycle": "completed",
           "title": "screenshot",
-          "at": "1970-01-01T00:00:07.000Z"
+          "at": "1970-01-01T00:00:06.000Z"
         },
         {
           "id": "screenshot-003",
@@ -73,14 +73,14 @@
             "path": "screenshots/turn-01.png",
             "redaction": "none"
           },
-          "at": "1970-01-01T00:00:09.000Z"
+          "at": "1970-01-01T00:00:08.000Z"
         },
         {
           "id": "ui_action-004",
           "kind": "ui_action",
           "lifecycle": "completed",
           "title": "screenshot",
-          "at": "1970-01-01T00:00:13.000Z"
+          "at": "1970-01-01T00:00:11.000Z"
         },
         {
           "id": "screenshot-005",
@@ -91,7 +91,7 @@
             "path": "screenshots/turn-02.png",
             "redaction": "none"
           },
-          "at": "1970-01-01T00:00:15.000Z"
+          "at": "1970-01-01T00:00:13.000Z"
         },
         {
           "id": "notice-006",
@@ -99,14 +99,14 @@
           "title": "Participant context hint",
           "text": "You are only waiting or taking screenshots for 2 step(s). If your task calls for waiting, you may continue within the remaining session time. When the relevant controls become actionable, continue your task; describe any blocker you actually encounter.",
           "lifecycle": "completed",
-          "at": "1970-01-01T00:00:18.000Z"
+          "at": "1970-01-01T00:00:16.000Z"
         },
         {
           "id": "ui_action-007",
           "kind": "ui_action",
           "lifecycle": "completed",
           "title": "screenshot",
-          "at": "1970-01-01T00:00:20.000Z"
+          "at": "1970-01-01T00:00:17.000Z"
         },
         {
           "id": "screenshot-008",
@@ -117,7 +117,7 @@
             "path": "screenshots/turn-03.png",
             "redaction": "none"
           },
-          "at": "1970-01-01T00:00:22.000Z"
+          "at": "1970-01-01T00:00:19.000Z"
         },
         {
           "id": "notice-009",
@@ -130,7 +130,7 @@
             "path": "screenshots/turn-03.png",
             "redaction": "none"
           },
-          "at": "1970-01-01T00:00:23.000Z"
+          "at": "1970-01-01T00:00:20.000Z"
         }
       ],
       "affordanceUse": {
@@ -166,21 +166,18 @@
     ["writeScreenshot","turn-00-start.png",15],
     ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
     ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"same"}}],
-    ["executor.execute",{"kind":"screenshot"}],
     ["executor.observe",1],
     ["onObservedUrl",null],
     ["onScreenshot",15],
     ["writeScreenshot","turn-01.png",15],
     ["onTrace",3,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
     ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"same"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
-    ["executor.execute",{"kind":"screenshot"}],
     ["executor.observe",2],
     ["onObservedUrl",null],
     ["onScreenshot",15],
     ["writeScreenshot","turn-02.png",15],
     ["onTrace",5,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
     ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"same"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]},"contextHint":"You are only waiting or taking screenshots for 2 step(s). If your task calls for waiting, you may continue within the remaining session time. When the relevant controls become actionable, continue your task; describe any blocker you actually encounter."}],
-    ["executor.execute",{"kind":"screenshot"}],
     ["executor.observe",3],
     ["onObservedUrl",null],
     ["onScreenshot",15],

@@ -98,7 +98,10 @@ export interface CuaRegion {
 export type CuaActionResult =
   /** `read_pointer`: the pointer position in desktop pixels. */
   | { kind: "pointer"; x: number; y: number }
-  /** `zoom`: PNG bytes of the region, captured when the action ran. */
+  /**
+   * `zoom`: PNG bytes of the region, captured when the action ran. `screenshot`: PNG bytes of the
+   * whole desktop, captured when the action ran.
+   */
   | { kind: "frame"; screenshot: Buffer };
 
 /** A captured desktop state: the (optional) frame plus a coarse signature for progress. */
@@ -183,8 +186,8 @@ export interface CuaActionAcknowledgement {
   index: number;
   status: "completed" | "skipped" | "not_dispatched" | "outcome_uncertain";
   /**
-   * What a completed `read_pointer` or `zoom` read from the desktop. Absent for every other action,
-   * and for a read whose executor returned no result of its kind.
+   * What a completed `read_pointer`, `zoom` or sent `screenshot` read from the desktop. Absent for
+   * every other action, and for a read whose executor returned no result of its kind.
    */
   result?: CuaActionResult;
 }
@@ -308,6 +311,14 @@ export interface CuaProvider {
    * each is acknowledged `not_dispatched`.
    */
   readonly batchFailure?: "halt";
+  /**
+   * What a screenshot before the last action of its batch does. Absent: it is not sent to the
+   * desktop, and the screen comes once, from the loop's observation after the batch. `frame`, for
+   * a model that is shown each screenshot it calls: the desktop captures the whole screen at that
+   * point of the batch, the frame comes back as that action's result, and the bundle keeps it. A
+   * batch's last screenshot is never sent, since the observation after the batch is its screen.
+   */
+  readonly batchScreenshots?: "frame";
   readonly executionProfile?: ActorExecutionProfile | undefined;
   readonly historyTurnsOmitted?: number;
   /** How the conversation was carried between requests, for the trace. */
@@ -385,8 +396,9 @@ export interface CuaExecutor {
    * Perform one action. The optional signal ends with this action's loop wait; honor it
    * before dispatching after async preparation. Wrappers must forward it and its result.
    * Cancellation does not imply an already-dispatched desktop operation can be stopped. An action
-   * that reads the desktop (`read_pointer`, `zoom`) resolves with what it read; every other
-   * action resolves with nothing.
+   * that reads the desktop (`read_pointer`, `zoom`, `screenshot`) resolves with what it read;
+   * every other action resolves with nothing. The loop sends a `screenshot` only to a provider
+   * with batchScreenshots, and never as the last action of its batch.
    */
   execute(action: CuaAction, signal?: AbortSignal): Promise<CuaActionResult | void>;
 }

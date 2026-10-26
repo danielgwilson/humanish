@@ -249,10 +249,13 @@ const ROWS: readonly Row[] = [
     guest: [],
   },
   {
-    name: "a screenshot action sends nothing, since observe captures",
+    name: "a screenshot captures one fresh frame and returns all of it",
     action: { kind: "screenshot" },
     hosted: [],
-    guest: [],
+    e2b: ["scrot --pointer <shot>", "files.read <shot>", "files.remove <shot>"],
+    modal: ["scrot --pointer <shot>", "readBytes <shot>", "rm -f <shot>"],
+    guest: ["capture"],
+    result: { kind: "frame", region: { x: 0, y: 0, width: 1440, height: 950 } },
   },
   {
     name: "speech is refused",
