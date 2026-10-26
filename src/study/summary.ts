@@ -25,6 +25,8 @@ import {
 import { inspectStudyManifest } from "./discover.js";
 import { computerUseParticipantCount, isComputerUseComposition } from "./routing.js";
 import type { StudyConfig } from "./types.js";
+import type { StudyRoute } from "./routing.js";
+import { actorParticipantModel } from "../actors/computer-use/models.js";
 import { probeKeySources, type KeyResolutionDeps } from "../keys/key-resolution.js";
 import { receivingRequiredKey } from "../comms/setup.js";
 import { participantList, declaredParticipantCount } from "./study-fields.js";
@@ -256,9 +258,7 @@ export async function readStudySummary(
     ...(typeof config.description === "string" ? { description: config.description.trim() } : {}),
     ...(subject === undefined ? {} : { subject }),
     ...(participants === undefined ? {} : { participants }),
-    model:
-      inspected.config.actor?.model ??
-      (route === "terminal" ? DEFAULT_CODEX_MODEL : DEFAULT_OPENAI_CU_MODEL),
+    model: inspected.config.actor?.model ?? defaultModelOf(inspected.config.actor, route),
     reasoningEffort: reasoningEffortOf(inspected.config),
     ...(caps === undefined ? {} : { caps }),
     mode,
@@ -266,4 +266,11 @@ export async function readStudySummary(
     ...(missingKeys === undefined ? {} : { missingKeys }),
     ...(planRefusal === undefined ? {} : { planRefusal }),
   };
+}
+
+/** The model a study that names none runs: Codex's on the terminal route, else its vendor's. */
+function defaultModelOf(actor: StudyConfig["actor"], route: StudyRoute | undefined): string {
+  if (route === "terminal") return DEFAULT_CODEX_MODEL;
+  const resolved = actorParticipantModel(actor);
+  return resolved?.ok === true ? resolved.model : DEFAULT_OPENAI_CU_MODEL;
 }

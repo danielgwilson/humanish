@@ -84,6 +84,27 @@ describe("planLab", () => {
     );
   });
 
+  it("pins the dry and live plan of a computer-use study on each participant vendor", async () => {
+    const studies = {
+      "claude-haiku-5-5": parsed({
+        ...cuApp,
+        actor: { type: "computer-use", model: "claude-haiku-5-5", reasoningEffort: "medium" },
+        caps: { maxUsd: 0.5 },
+      }),
+      "unlisted model on anthropic": parsed({
+        ...cuApp,
+        actor: { type: "computer-use", model: "claude-sonnet-9", provider: "anthropic" },
+      }),
+      "computer-use default": parsed({ ...cuApp, actor: { type: "computer-use" } }),
+    };
+    const plans = Object.fromEntries(
+      Object.entries(studies).map(([name, config]) => [name, dryAndLive(config)]),
+    );
+    await expect(`${JSON.stringify(plans, null, 2)}\n`).toMatchFileSnapshot(
+      "../golden/plans/participant-vendors.json",
+    );
+  });
+
   it("derives computer-use concurrency, session budget and sandbox time as the participant plan does", async () => {
     const configs: [string, StudyConfig, number | undefined][] = [
       ...(await committedLabs(ROOT))

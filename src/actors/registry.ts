@@ -15,7 +15,7 @@ import { codexResultToActorTrace } from "./codex/app-server-actor-trace.js";
 import { runCuaActorSession, type CuaActorSessionOptions } from "./computer-use/actor.js";
 import { LOCAL_AGENT_CAPABILITIES } from "./local-agent/cli.js";
 import type { CuaLoopResult } from "./computer-use/loop.js";
-import { OPENAI_RESPONSES_CU_CAPABILITIES } from "./computer-use/openai-provider.js";
+import { API_COMPUTER_USE_CAPABILITIES } from "./computer-use/provider-http.js";
 import {
   runScriptedBrowserSession,
   type ScriptedBrowserSessionOptions,
@@ -26,6 +26,7 @@ import {
 // actor registration does not ship. See docs/architecture/actor-contract.md.
 export type ActorId =
   | "codex-app-server"
+  | "computer-use"
   | "openai-computer-use"
   | "local-agent"
   | "scripted-browser"
@@ -46,13 +47,14 @@ export interface CodexActorDescriptor extends ActorDescriptorBase {
 
 // CuaActorDescriptor covers every actor of the computer-use run kind. The ids share a session
 // entry and differ in where the provider comes from: local-agent builds it from the operator's
-// signed-in CLI, openai-computer-use from a keyed API client. The id stays distinct because it is
-// the slot a study names when it chooses a brain. There is no toActorTrace: runComputerUseLoop
+// signed-in CLI; computer-use from a keyed API client of the vendor its model resolves to
+// (src/actors/computer-use/models.ts); openai-computer-use is computer-use with the vendor pinned
+// to OpenAI. The id stays distinct because it is the slot a study names when it chooses a brain. There is no toActorTrace: runComputerUseLoop
 // already returns a complete ActorTrace at result.trace, so a mapper would be an identity
 // function. The union is intentionally heterogeneous: each descriptor exposes only the entries
 // it has.
 export interface CuaActorDescriptor extends ActorDescriptorBase {
-  id: "openai-computer-use" | "local-agent";
+  id: "computer-use" | "openai-computer-use" | "local-agent";
   runSession(options: CuaActorSessionOptions): Promise<CuaLoopResult>;
 }
 
@@ -139,10 +141,16 @@ export const actorRegistry: Record<ActorId, ActorDescriptor> = {
     capabilities: LOCAL_AGENT_CAPABILITIES,
     runSession: runCuaActorSession,
   },
+  "computer-use": {
+    id: "computer-use",
+    label: "Computer use (API key, any listed vendor)",
+    capabilities: API_COMPUTER_USE_CAPABILITIES,
+    runSession: runCuaActorSession,
+  },
   "openai-computer-use": {
     id: "openai-computer-use",
     label: "OpenAI Computer Use",
-    capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
+    capabilities: API_COMPUTER_USE_CAPABILITIES,
     runSession: runCuaActorSession,
   },
   // Same naming convention: the ActorId names the slot; the trace's `provider` stays the

@@ -1,3 +1,4 @@
+import { isApiParticipantActor } from "../../actors/computer-use/models.js";
 import type { StudyConfig } from "../../study/types.js";
 import { participantList } from "../../study/study-fields.js";
 import {
@@ -20,7 +21,7 @@ export function isLocalBrowserStudy(config: StudyConfig): boolean {
   return (
     config.subject.source === "app-url" &&
     config.execution?.target === "local" &&
-    ["local-agent", "openai-computer-use"].includes(config.actor?.type ?? "")
+    (config.actor?.type === "local-agent" || isApiParticipantActor(config.actor?.type))
   );
 }
 
@@ -32,7 +33,8 @@ export function localBrowserDefaults(config: StudyConfig): StudyConfig {
     ...config,
     actor: {
       ...actor,
-      model: actor.model ?? "gpt-6-astra",
+      // A study that names its vendor runs that vendor's default model.
+      ...(actor.provider === undefined ? { model: actor.model ?? "gpt-6-astra" } : {}),
       reasoningEffort: actor.reasoningEffort ?? "low",
     },
     execution: {
@@ -65,7 +67,7 @@ export function localBrowserUnsupportedReason(config: StudyConfig): string | und
     !actor ||
     (actor.type === "local-agent" && actor.localAgent !== undefined && actor.localAgent !== "codex")
   ) {
-    return "Local browser studies support only Codex local-agent or openai-computer-use participants.";
+    return "Local browser studies support only Codex local-agent or API computer-use participants (computer-use or openai-computer-use).";
   }
   if (
     (desktop?.browser !== undefined && !["default", "chromium"].includes(desktop.browser)) ||

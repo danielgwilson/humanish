@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createRestrictedCodexParticipant } from "../../src/actors/codex/restricted-participant.js";
 import type { CuaProvider, CuaTurnRequest } from "../../src/actors/computer-use/loop.js";
+import { createAnthropicMessagesProvider } from "../../src/actors/computer-use/anthropic-provider.js";
 import { createOpenAiResponsesProvider } from "../../src/actors/computer-use/openai-provider.js";
 import { type FetchLike } from "../../src/actors/computer-use/provider-http.js";
 import type { LocalAgentId } from "../../src/actors/local-agent/cli.js";
@@ -180,6 +181,52 @@ async function storeLessOpenAiViews(): Promise<string[]> {
   return views;
 }
 
+/**
+ * The Messages API keeps no conversation: each request's messages are all the model holds, so the
+ * provider has to send the whole history every turn.
+ */
+async function anthropicViews(): Promise<string[]> {
+  const views: string[] = [];
+  const fetchFn: FetchLike = async (_url, init) => {
+    const body = JSON.parse(init.body) as { messages: unknown[] };
+    views.push(JSON.stringify(body.messages));
+    const turn = views.length;
+    const value = {
+      id: `msg_${turn}`,
+      type: "message",
+      role: "assistant",
+      model: "claude-haiku-5-5",
+      content: [
+        { type: "text", text: turn === 1 ? TURN_ONE : "Next." },
+        {
+          type: "tool_use",
+          id: `toolu_${turn}`,
+          name: "left_click",
+          input: { coordinate: [1, 1] },
+          toolset_name: "computer",
+        },
+      ],
+      stop_reason: "tool_use",
+      usage: { input_tokens: 10, output_tokens: 1, service_tier: "standard" },
+    };
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
+  };
+  await drive(
+    createAnthropicMessagesProvider({
+      apiKey: "test-key",
+      fetchFn,
+      delayFn: async () => undefined,
+      env: {},
+    }),
+  );
+  return views;
+}
+
 /** One `claude` process is one session; its transcript is what the model holds. */
 async function claudeSessionViews(): Promise<string[]> {
   const views: string[] = [];
@@ -265,6 +312,8 @@ const LOCAL_AGENT_BRAINS = {
  * fails typecheck here until it gets a memory case.
  */
 const BRAINS: Record<ActorId, Record<string, BrainCase>> = {
+  // On OpenAI, computer-use builds the same provider openai-computer-use does (cases below).
+  "computer-use": { "anthropic (history sent with every request)": { views: anthropicViews } },
   "openai-computer-use": {
     "threaded (previous_response_id)": { views: () => openAiViews(false) },
     explicit_context: { views: () => openAiViews(true) },

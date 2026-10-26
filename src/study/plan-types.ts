@@ -4,7 +4,7 @@
 // host" stay checks in planStudy.
 
 import type { AnalysisConfig } from "../analysis/types.js";
-import type { ParticipantVendor } from "../actors/computer-use/providers.js";
+import type { ParticipantKeyName, ParticipantVendor } from "../actors/computer-use/providers.js";
 import type { LocalAgentId } from "../actors/local-agent/cli.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import type { BrowserSurface } from "../actors/scripted-browser/types.js";
@@ -42,12 +42,8 @@ type AtLeastTwo<T> = readonly [T, T, ...T[]];
 export type Requirement =
   | {
       readonly kind: "key";
-      readonly name:
-        | "OPENAI_API_KEY"
-        | "ANTHROPIC_API_KEY"
-        | "E2B_API_KEY"
-        | "MODAL_TOKEN_ID"
-        | "MODAL_TOKEN_SECRET";
+      /** A participant vendor's key, or a sandbox provider's. */
+      readonly name: ParticipantKeyName | "E2B_API_KEY" | "MODAL_TOKEN_ID" | "MODAL_TOKEN_SECRET";
     }
   /** The terminal runtime key: CODEX_API_KEY, else OPENAI_API_KEY. */
   | { readonly kind: "key-one-of"; readonly names: readonly ["CODEX_API_KEY", "OPENAI_API_KEY"] }

@@ -124,7 +124,7 @@ describe("actorRegistry", () => {
     const cuaIds = Object.values(actorRegistry)
       .filter(isCuaActorDescriptor)
       .map((descriptor) => descriptor.id);
-    expect(cuaIds.toSorted()).toEqual(["local-agent", "openai-computer-use"]);
+    expect(cuaIds.toSorted()).toEqual(["computer-use", "local-agent", "openai-computer-use"]);
     const localAgent: ActorDescriptor = actorRegistry["local-agent"];
     // This comparison fails to typecheck if the narrowed id type drops local-agent.
     expect(isCuaActorDescriptor(localAgent) && localAgent.id === "local-agent").toBe(true);

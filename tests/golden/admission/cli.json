@@ -432,7 +432,7 @@
       "study": "adm-clone-codex-app-server",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
+        "message": "clone subjects need a registered computer-use actor (one of: local-agent, computer-use, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
       },
       "warnings": []
     },
@@ -450,7 +450,7 @@
       "study": "adm-clone-codex-app-server",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
+        "message": "clone subjects need a registered computer-use actor (one of: local-agent, computer-use, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
       },
       "warnings": []
     },

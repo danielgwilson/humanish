@@ -16,6 +16,7 @@ import {
   runComputerUseLoopWithTaps,
   type CuaProvider,
 } from "../../src/actors/computer-use/loop.js";
+import { createAnthropicMessagesProvider } from "../../src/actors/computer-use/anthropic-provider.js";
 import { createOpenAiResponsesProvider } from "../../src/actors/computer-use/openai-provider.js";
 import { type FetchLike } from "../../src/actors/computer-use/provider-http.js";
 import { createLocalAgentProvider, type LocalAgentId } from "../../src/actors/local-agent/cli.js";
@@ -187,6 +188,62 @@ function openAi(
   );
 }
 
+const anthropicFixture = (name: string): Record<string, unknown> =>
+  JSON.parse(
+    readFileSync(new URL(`../fixtures/anthropic-messages/${name}.json`, import.meta.url), "utf8"),
+  ) as Record<string, unknown>;
+
+/** The OpenAI closing fixture's reply text, which answers the same closing schema. */
+function closingText(name: string): string {
+  const output = (fixture(name) as { output: { type: string; content?: { text: string }[] }[] })
+    .output;
+  return output.find((item) => item.type === "message")!.content![0]!.text;
+}
+
+/**
+ * The captured Messages shapes. After a stop: one left_click, then a closing reply. When the
+ * participant ends the session itself: its end_turn message, then the impressions-only reply.
+ * The closing replies carry the OpenAI fixtures' text, since both providers ask for one schema.
+ */
+function anthropic(endsItself = false, capped = false): Promise<ActorTrace> {
+  const batch = anthropicFixture("batch");
+  const click = {
+    ...batch,
+    content: [
+      (batch.content as unknown[])[0],
+      { ...(batch.content as Record<string, unknown>[])[1], input: { coordinate: [1, 1] } },
+    ],
+  };
+  const closing = (text: string) => ({
+    ...anthropicFixture("closing-report"),
+    content: [{ type: "text", text }],
+  });
+  const fetchFn: FetchLike = async (_url, init) => {
+    const body = JSON.parse(init.body) as { tool_choice?: { type: string } };
+    const value =
+      body.tool_choice?.type === "none"
+        ? closing(closingText(endsItself ? "impressions-only" : "typed-closing-report-impressions"))
+        : endsItself
+          ? anthropicFixture("end-turn")
+          : click;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify(value),
+      json: async () => value,
+    };
+  };
+  return session(
+    createAnthropicMessagesProvider({
+      apiKey: "synthetic-key",
+      fetchFn,
+      delayFn: async () => undefined,
+      env: {},
+    }),
+    capped,
+  );
+}
+
 async function codexParticipant(endsItself: boolean, capped = false): Promise<ActorTrace> {
   codex.endsItself = endsItself;
   const participant = createRestrictedCodexParticipant();
@@ -284,6 +341,11 @@ const LOCAL_AGENT_BRAINS = {
  * fails typecheck here until it gets a closing-account case.
  */
 const BRAINS: Record<ActorId, Record<string, ClosingCase>> = {
+  // On OpenAI, computer-use builds the same provider openai-computer-use does (cases below).
+  "computer-use": {
+    "anthropic, after a stop": { collects: () => anthropic() },
+    "anthropic, ending the session itself": { collects: () => anthropic(true) },
+  },
   "openai-computer-use": {
     "threaded, after a stop": { collects: () => openAi(false) },
     "threaded, ending the session itself": { collects: () => openAi(false, true) },
@@ -376,6 +438,7 @@ const CAPPED_LOCAL_AGENTS = {
 const CAPPED = Object.entries({
   "openai-computer-use threaded": { collects: true, run: () => openAi(false, false, true) },
   "openai-computer-use explicit_context": { collects: true, run: () => openAi(true, false, true) },
+  "computer-use anthropic": { collects: true, run: () => anthropic(false, true) },
   ...Object.fromEntries(
     Object.entries(CAPPED_LOCAL_AGENTS).map(([agent, closing]) => [
       `local-agent ${agent}`,

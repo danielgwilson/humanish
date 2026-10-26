@@ -44,6 +44,7 @@ import {
   desktopMediaValidationReason,
   networkCaptureValidationReason,
   outputTokenLimitValidationReason,
+  participantModelValidationReason,
   serviceTierValidationReason,
   receivingEmailValidationReason,
   taskProtocolValidationReason,
@@ -206,6 +207,11 @@ function unsupportedDeclarationReason(
   const reason =
     desktopMediaValidationReason(config) ||
     networkCaptureValidationReason(config, "computer-use") ||
+    // A caller's own provider runs whatever model it runs, so only a study's API participant is
+    // resolved against the participant model table.
+    (driving.createProvider || driving.inProcess
+      ? null
+      : participantModelValidationReason(config)) ||
     outputTokenLimitValidationReason(config) ||
     serviceTierValidationReason(config) ||
     waitLimitValidationReason(config);
@@ -304,13 +310,13 @@ function driverReason(
   driving: CallerDriving,
   { localAppSubject, inProcessRoute }: DeclaredSubjectRoute,
 ): Rejection {
-  // A custom executor needs a custom provider too: the default OpenAI provider is vision-based
-  // and would fail closed against an executor that returns no screenshot.
+  // A custom executor needs a custom provider too: every API participant's provider reads
+  // screenshots and would fail closed against an executor that returns none.
   if (driving.inProcess && !driving.createProvider)
     return {
       code: "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
       message:
-        "RunStudyOptions.inProcess needs RunStudyOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session.",
+        "RunStudyOptions.inProcess needs RunStudyOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The API computer-use providers read screenshots and would stop the session.",
     };
   // There is no built-in in-process driver for a local app.
   if (localAppSubject && !inProcessRoute)

@@ -338,7 +338,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
-      "message": "RunStudyOptions.inProcess needs RunStudyOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session."
+      "message": "RunStudyOptions.inProcess needs RunStudyOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The API computer-use providers read screenshots and would stop the session."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {
@@ -927,7 +927,7 @@
     "warnings": [],
     "error": {
       "code": "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
-      "message": "RunStudyOptions.inProcess needs RunStudyOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session."
+      "message": "RunStudyOptions.inProcess needs RunStudyOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The API computer-use providers read screenshots and would stop the session."
     },
     "automaticAnalysisTrigger": "default",
     "automaticAnalysis": {

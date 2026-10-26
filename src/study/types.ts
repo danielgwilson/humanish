@@ -2,6 +2,7 @@ import { type StudyAnalysis } from "../analysis/automatic-config.js";
 import type { StudyTask } from "./tasks.js";
 import type { DwellWindow, StopWhen } from "../actors/stop-conditions.js";
 import { type ReasoningEffort } from "../actors/reasoning-effort.js";
+import type { ParticipantVendor } from "../actors/computer-use/providers.js";
 import type { StudyRoute } from "./routing.js";
 
 /** The study format: it declares its route, one actor, its participants and one caps block. */
@@ -418,9 +419,17 @@ export interface StudyActor {
    * preflight.
    */
   tasks?: StudyTask[];
-  /** Provider model override. Consumed on the app-url route. */
+  /**
+   * The participant model. For `computer-use`, the vendor comes from the participant model table
+   * (src/actors/computer-use/models.ts); `openai-computer-use` runs any id on OpenAI.
+   */
   model?: string;
-  /** First-party OpenAI CUA only: per-response output limit including reasoning, not a dollar cap. */
+  /**
+   * `computer-use` only: the vendor of a model the participant model table does not list yet. A
+   * listed model needs none, and a provider that disagrees with the table is refused.
+   */
+  provider?: ParticipantVendor;
+  /** API participants only: per-response output limit including reasoning, not a dollar cap. */
   maxOutputTokens?: number;
   /**
    * Computer-use and shared-world: the longest one `wait` action lasts, in whole milliseconds from
@@ -472,7 +481,7 @@ export interface StudyActor {
   reasoningEffort?: ReasoningEffort;
   /**
    * `fast` sends every participant request in OpenAI Fast mode (`service_tier: "fast"`), which
-   * bills at its own per-token rates. Absent sends no tier. `openai-computer-use` only, and only for
+   * bills at its own per-token rates. Absent sends no tier. API participants only, and only for
    * a model whose Fast mode rate src/run/pricing.ts carries, so the spend estimate and caps price it.
    * Each request's trace usage records the tier that served it.
    */

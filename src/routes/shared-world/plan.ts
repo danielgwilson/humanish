@@ -3,7 +3,6 @@
 // external state: keys and subject env values, the external comms catch, the packed working tree
 // and email receiving setup.
 
-import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { studyUrlCredentialReason } from "../../study/url-credentials.js";
 import {
   actorRegistry,
@@ -17,6 +16,7 @@ import {
   desktopRequirements,
   isNonEmpty,
   planBase,
+  pricedModel,
 } from "../../study/plan-base.js";
 import { sharedWorldParticipants } from "../../study/plan-participants.js";
 import { DESKTOP_FILES_ROUTE_REASON } from "../../study/desktop-files.js";
@@ -36,6 +36,7 @@ import {
   networkCaptureValidationReason,
   externalPublicSharedWorldValidationReason,
   outputTokenLimitValidationReason,
+  participantModelValidationReason,
   serviceTierValidationReason,
   receivingEmailValidationReason,
   taskProtocolValidationReason,
@@ -135,6 +136,7 @@ export function planSharedWorldStudy(
   const invalidReason =
     // A library caller's config skips the parser, which refuses these first.
     studyUrlCredentialReason(config) ??
+    participantModelValidationReason(config) ??
     outputTokenLimitValidationReason(config) ??
     serviceTierValidationReason(config) ??
     waitLimitValidationReason(config) ??
@@ -148,11 +150,13 @@ export function planSharedWorldStudy(
     return refuse(invalid, "serviceTier is not sent by a custom runSession.", actor);
 
   // A live cap is priced here, at plan time, so its refusal wins over the route's key checks.
+  const brain = brainOf(config, false);
+  if (brain.kind === "caller") throw new Error("a shared-world participant has no caller brain");
   const unpriced = input.dryRun
     ? undefined
     : unpricedCapCheck({
         caps: config.caps ?? {},
-        model: (config.actor?.model ?? DEFAULT_OPENAI_CU_MODEL).trim().toLowerCase(),
+        model: pricedModel(brain),
         code: "HUMANISH_SHARED_WORLD_UNPRICED_CAP",
       });
   if (unpriced) return refuse(unpriced.code, unpriced.message, actor);
@@ -202,8 +206,6 @@ export function planSharedWorldStudy(
     ceilingMs: ceiling.ms,
   });
   if (deadlineReason) return refuse(invalid, deadlineReason, actor);
-  const brain = brainOf(config, false);
-  if (brain.kind === "caller") throw new Error("a shared-world participant has no caller brain");
   const base = planBase(config, { dryRun: input.dryRun, analysis });
   return {
     ok: true,

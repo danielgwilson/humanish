@@ -38,9 +38,9 @@ function lab(actor: Record<string, unknown>, participants?: unknown): Record<str
 }
 
 describe("reasoning effort is a declarable study variable", () => {
-  it("accepts every documented level on the actor", () => {
+  it("accepts every documented level on the actor of a model with no recorded levels", () => {
     for (const effort of REASONING_EFFORTS) {
-      const parsed = parseStudy(lab({ reasoningEffort: effort }));
+      const parsed = parseStudy(lab({ model: "gpt-9-preview", reasoningEffort: effort }));
       expect(parsed.ok, `${effort} should parse`).toBe(true);
       if (parsed.ok) expect(parsed.config.actor?.reasoningEffort).toBe(effort);
     }

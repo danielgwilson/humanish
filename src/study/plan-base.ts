@@ -1,7 +1,7 @@
 // What every route planner shares: the plan fields common to all routes, the frozen residual config,
 // and the requirement and subject helpers.
 
-import { DEFAULT_OPENAI_CU_MODEL } from "../actors/computer-use/openai-provider.js";
+import { actorParticipantModel, resolveParticipantModel } from "../actors/computer-use/models.js";
 import { PARTICIPANT_VENDORS } from "../actors/computer-use/providers.js";
 import { redactEncodedText } from "../evidence/encoded-text.js";
 import type {
@@ -132,10 +132,11 @@ export function brainOf(config: StudyConfig, callerProvider: boolean): Brain {
   const declared = declaredModelOf(config);
   if (actor?.type === "local-agent")
     return { kind: "local-agent", agent: actor.localAgent ?? "codex", ...declared };
-  // An openai-computer-use actor runs every model id on OpenAI, including one humanish has no rate
-  // for: an id OpenAI does not serve fails on the first turn with OpenAI's own error.
-  const model = actor?.model ?? DEFAULT_OPENAI_CU_MODEL;
-  return { kind: "provider-key", vendor: "openai", model, ...declared };
+  // The planner refused a model actorParticipantModel cannot resolve before it asks for the brain.
+  // An actor of no API participant type keeps the OpenAI default it always planned with.
+  const resolved = actorParticipantModel(actor) ?? resolveParticipantModel(undefined);
+  if (!resolved.ok) throw new Error(resolved.reason);
+  return { kind: "provider-key", vendor: resolved.vendor, model: resolved.model, ...declared };
 }
 
 /** The brain of a run whose provider the library caller supplies. */

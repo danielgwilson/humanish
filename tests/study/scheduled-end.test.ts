@@ -259,7 +259,7 @@ describe("a scheduled end on a participant model with no closing request", () =>
       },
     );
     expect(closingWarning(result)).toEqual([
-      "1 participant has a scheduled end (participants[].endAfterMs), and Claude as a local-agent participant model cannot be asked for a closing report, so it ends with the scheduled end as its reason and no closing account. A computer-use model (actor.type: openai-computer-use) or Codex (actor.localAgent: codex) writes one.",
+      "1 participant has a scheduled end (participants[].endAfterMs), and Claude as a local-agent participant model cannot be asked for a closing report, so it ends with the scheduled end as its reason and no closing account. An API participant (actor.type: computer-use) or Codex (actor.localAgent: codex) writes one.",
     ]);
   });
 

@@ -145,7 +145,7 @@
   "maxOutputTokens on local-agent": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actor.maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it."
+      "message": "actor.maxOutputTokens is supported only by API computer-use participants (computer-use and openai-computer-use); terminal, local-agent, scripted and custom in-process routes cannot enforce it."
     },
     "runStudy": {
       "runs": false,
@@ -169,7 +169,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_SUBJECT_INVALID",
-          "message": "actor.maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it."
+          "message": "actor.maxOutputTokens is supported only by API computer-use participants (computer-use and openai-computer-use); terminal, local-agent, scripted and custom in-process routes cannot enforce it."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {
@@ -429,7 +429,7 @@
   "local-app with scripted actor": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"scripted-browser\"."
+      "message": "actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, computer-use, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"scripted-browser\"."
     },
     "runStudy": {
       "runs": false,
@@ -751,7 +751,7 @@
   "cu app-url unknown actor": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"not-an-actor\"."
+      "message": "actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, computer-use, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"not-an-actor\"."
     },
     "runStudy": {
       "runs": false,
@@ -792,7 +792,7 @@
   "cu app-url codex-app-server": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
+      "message": "actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, computer-use, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
     },
     "runStudy": {
       "runs": false,
@@ -1305,7 +1305,7 @@
   "cu local-tree terminal actor": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "actor.type must be a registered computer-use actor for local-tree subjects (one of: local-agent, openai-computer-use); the actor drives the hosted desktop that serves the packed working tree. Got \"codex-exec\"."
+      "message": "actor.type must be a registered computer-use actor for local-tree subjects (one of: local-agent, computer-use, openai-computer-use); the actor drives the hosted desktop that serves the packed working tree. Got \"codex-exec\"."
     },
     "runStudy": {
       "runs": false,
@@ -1387,7 +1387,7 @@
   "codex-app-server on clone": {
     "parser": {
       "code": "HUMANISH_STUDY_INVALID",
-      "message": "clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
+      "message": "clone subjects need a registered computer-use actor (one of: local-agent, computer-use, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
     },
     "runStudy": {
       "runs": false,
@@ -2805,7 +2805,7 @@
         "warnings": [],
         "error": {
           "code": "HUMANISH_COMPUTER_USE_EXECUTOR_NO_PROVIDER",
-          "message": "RunStudyOptions.inProcess needs RunStudyOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The default OpenAI computer-use provider reads screenshots and would stop the session."
+          "message": "RunStudyOptions.inProcess needs RunStudyOptions.createProvider: an in-process executor returns no screenshot, so it needs a provider that does not read images. The API computer-use providers read screenshots and would stop the session."
         },
         "automaticAnalysisTrigger": "default",
         "automaticAnalysis": {

@@ -9,6 +9,10 @@ import type {
 import { isReasoningEffort, reasoningEffortNames } from "../../actors/reasoning-effort.js";
 import { isMaxOutputTokens } from "../../actors/output-token-limit.js";
 import { waitFieldsReason } from "../../actors/computer-use/wait.js";
+import {
+  PARTICIPANT_VENDOR_NAMES,
+  isParticipantVendor,
+} from "../../actors/computer-use/providers.js";
 import { isHttpUrl } from "./subject.js";
 import { entryCredentialReason, urlCredentialReason } from "./url-credentials.js";
 import {
@@ -113,6 +117,13 @@ export function parseActorFields(
   if (modelReason) return invalid(modelReason);
   const model = str(entry.model);
   if (model) actor.model = model;
+  if (entry.provider !== undefined) {
+    if (!isParticipantVendor(entry.provider))
+      return invalid(
+        `${path}.provider must be one of: ${PARTICIPANT_VENDOR_NAMES.join(", ")} (the vendor of a model humanish does not list yet).`,
+      );
+    actor.provider = entry.provider;
+  }
   if (entry.maxOutputTokens !== undefined) {
     if (!isMaxOutputTokens(entry.maxOutputTokens))
       return invalid(`${path}.maxOutputTokens must be a positive safe integer.`);
@@ -137,7 +148,7 @@ export function parseActorFields(
   if (entry.reasoningEffort !== undefined) {
     if (!isReasoningEffort(entry.reasoningEffort)) {
       return invalid(
-        `${path}.reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`,
+        `${path}.reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent: a level a listed participant model does not accept is refused, and any other model refuses it on the first turn rather than silently downgrading it.`,
       );
     }
     actor.reasoningEffort = entry.reasoningEffort;
@@ -145,7 +156,7 @@ export function parseActorFields(
   if (entry.serviceTier !== undefined) {
     if (entry.serviceTier !== "fast")
       return invalid(
-        `${path}.serviceTier must be "fast" (OpenAI Fast mode), or left out for the standard tier.`,
+        `${path}.serviceTier must be "fast" (OpenAI Fast mode, OpenAI models only), or left out for the standard tier.`,
       );
     actor.serviceTier = entry.serviceTier;
   }
@@ -243,7 +254,7 @@ export function parseParticipantEntries(
     if (entry.reasoningEffort !== undefined) {
       if (!isReasoningEffort(entry.reasoningEffort)) {
         return invalid(
-          `${paths.entry(entryIndex)}.reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent, so a level this model does not accept fails on the first turn rather than being silently downgraded.`,
+          `${paths.entry(entryIndex)}.reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent: a level a listed participant model does not accept is refused, and any other model refuses it on the first turn rather than silently downgrading it.`,
         );
       }
       parsedEntry.reasoningEffort = entry.reasoningEffort;
