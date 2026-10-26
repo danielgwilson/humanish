@@ -51,13 +51,14 @@ export type FetchLike = (
   headers?: { get(name: string): string | null };
 }>;
 
-/** The fetch a provider uses when none is injected. */
+/** The fetch a provider uses when none is injected, with the headers a retry reads. */
 export function defaultFetch(): FetchLike {
   return async (url, init) => {
     const res = await fetch(url, init);
     return {
       ok: res.ok,
       status: res.status,
+      headers: res.headers,
       text: () => res.text(),
       json: () => res.json() as Promise<unknown>,
     };
