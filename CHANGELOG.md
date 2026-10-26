@@ -42,6 +42,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   side is refused.
 - `claude-haiku-5-5` has a rate: $0.10 input, $0.01 cache read, $0.125 cache write and $0.50
   output per 1M tokens, 5x each for a request over 100,000 prompt tokens.
+- A `ComputerUseProvider` can set `requireReportedUsageForSpendCap: true`. Every session with a
+  declared cap (`maxUsd` or a study budget) then runs as with the loop option of that name: a
+  request that stalls or fails without a reply stops the session with `stopCause:
+  "usage_unreported"` instead of being booked at a worst case and sent again. The Anthropic
+  provider sets it, since that worst case cannot bound a request priced by prompt-size tiers.
 - A `ComputerUseTurn` can carry `notices`, which the trace records as warnings. A trace's
   `conversation.requests[]` can carry `clearedInputTokens`, the input the provider's server-side
   context editing cleared.
@@ -52,6 +57,9 @@ The Unreleased section holds the full notes for the next version until it is tag
   acted, with one acknowledgement per batch position. Before, only providers with
   `requestPolicy: "fail_closed"` received it. The OpenAI provider ignores it, so its requests are
   unchanged.
+- An OpenAI participant whose reply body is lost while it is read, after the request reached
+  OpenAI, now has its usage marked incomplete and the request handled as lost in transit, as a
+  dropped connection already was. Before, that request's usage went missing without a mark.
 - The default provider fetch passes response headers through, so a live OpenAI participant
   waits for a 429 or 5xx reply's `Retry-After` hint, up to 60 s, before it retries.
 - E2B, Modal and local VM desktops translate computer-use actions through one shared X11
