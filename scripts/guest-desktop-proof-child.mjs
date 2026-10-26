@@ -8,6 +8,7 @@ import { mkdir, mkdtemp, writeFile, rm, readdir, readFile } from "node:fs/promis
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright-core";
+import { PNG } from "pngjs";
 import { createGuestDesktopExecutor } from "./dist/guest/desktop-executor.js";
 import { createGuestDesktopNativeTools } from "./dist/guest/desktop-native.js";
 import { createGuestBrowserTools } from "./dist/guest/browser-tools.js";
@@ -116,8 +117,8 @@ try {
   child("/usr/bin/openbox", ["--config-file", "/etc/xdg/openbox/rc.xml"]);
   const html = `<!doctype html><meta charset="utf-8"><title>NoteShelf native input proof</title>
 <style>body{font:20px system-ui;margin:28px;background:#f7f8fb}textarea{width:780px;height:100px;font:20px monospace}button{font-size:20px;padding:10px}#pad{width:400px;height:130px;background:#dbeafe;margin-top:24px}#spacer{height:1600px}</style>
-<h1>NoteShelf</h1><label for="note">Draft</label><br><textarea id="note" autofocus></textarea><br><button id="save">Save note</button><p id="count">Saved 0</p><div id="pad">Pointer test area</div><div id="spacer"></div><p>End of page</p>
-<script>window.proof={saves:0,downs:0,ups:0,moves:0,double:0,savedText:null,clicks:[]};save.onclick=()=>{proof.saves++;proof.savedText=note.value;count.textContent='Saved '+proof.saves};pad.onmousedown=()=>proof.downs++;pad.onmouseup=()=>proof.ups++;pad.onmousemove=()=>proof.moves++;pad.ondblclick=()=>proof.double++;pad.onclick=(e)=>proof.clicks.push({shift:e.shiftKey,ctrl:e.ctrlKey,alt:e.altKey});</script>`;
+<h1>NoteShelf</h1><label for="note">Draft</label><br><textarea id="note" autofocus></textarea><br><button id="save">Save note</button><p id="count">Saved 0</p><div id="pad">Pointer test area</div><p id="para">Alpha bravo charlie delta echo.</p><div id="spacer"></div><p>End of page</p>
+<script>window.proof={saves:0,downs:0,ups:0,moves:0,double:0,savedText:null,clicks:[],buttons:[],keys:[],details:[]};save.onclick=()=>{proof.saves++;proof.savedText=note.value;count.textContent='Saved '+proof.saves};pad.onmousedown=(e)=>{proof.downs++;proof.buttons.push(['down',e.button,e.screenX,e.screenY])};pad.onmouseup=(e)=>{proof.ups++;proof.buttons.push(['up',e.button,e.screenX,e.screenY])};pad.onmousemove=()=>proof.moves++;pad.ondblclick=()=>proof.double++;pad.onclick=(e)=>proof.clicks.push({shift:e.shiftKey,ctrl:e.ctrlKey,alt:e.altKey});para.onclick=(e)=>proof.details.push(e.detail);pad.oncontextmenu=(e)=>e.preventDefault();addEventListener('keydown',(e)=>proof.keys.push(['down',e.key,performance.now()]));addEventListener('keyup',(e)=>proof.keys.push(['up',e.key,performance.now()]));</script>`;
   server = createServer((req, res) => {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     res.end(html);
@@ -534,6 +535,78 @@ try {
       { shift: false, ctrl: false, alt: false },
     ]);
     return { clicks };
+  });
+  await test("triple click selects a paragraph", async () => {
+    const point = await target("#para");
+    await action({ kind: "triple_click", ...point });
+    await page.waitForFunction(() => proof.details.includes(3));
+    const selection = await page.evaluate(() => getSelection().toString());
+    assert.equal(selection.trim(), "Alpha bravo charlie delta echo.");
+    return { details: await page.evaluate(() => proof.details), selection };
+  });
+  await test("button presses and releases at a point and in place", async () => {
+    const point = await target("#pad");
+    const before = await page.evaluate(() => proof.buttons.length);
+    const end = { x: point.x + 40, y: point.y + 10 };
+    await action({ kind: "mouse_down", ...point });
+    await action({ kind: "mouse_up", ...end });
+    await action({ kind: "mouse_down", button: "right" });
+    await action({ kind: "mouse_up", button: "right" });
+    await page.waitForFunction((count) => proof.buttons.length === count + 4, before);
+    const buttons = (await page.evaluate(() => proof.buttons)).slice(before);
+    assert.deepEqual(buttons, [
+      ["down", 0, point.x, point.y],
+      ["up", 0, end.x, end.y],
+      ["down", 2, end.x, end.y],
+      ["up", 2, end.x, end.y],
+    ]);
+    return { buttons };
+  });
+  await test("held keys stay down for the hold and come up", async () => {
+    await action({ kind: "click", ...(await target("#pad")) });
+    const before = await page.evaluate(() => proof.keys.length);
+    await action({ kind: "hold_keys", keys: ["shift"], ms: 800 });
+    await page.waitForFunction(
+      (count) => proof.keys.slice(count).some(([type, key]) => type === "up" && key === "Shift"),
+      before,
+    );
+    const keys = (await page.evaluate(() => proof.keys)).slice(before);
+    const down = keys.find(([type, key]) => type === "down" && key === "Shift");
+    const up = keys.find(([type, key]) => type === "up" && key === "Shift");
+    const heldMs = Math.round(up[2] - down[2]);
+    assert.ok(heldMs >= 700, "shift came up after " + heldMs + " ms");
+    return { heldMs };
+  });
+  await test("pointer read returns the pointer position", async () => {
+    await action({ kind: "move", x: 321, y: 432 });
+    const read = await action({ kind: "read_pointer" });
+    assert.deepEqual(read, { kind: "pointer", x: 321, y: 432 });
+    return { read };
+  });
+  await test("zoom returns a fresh crop of the frame", async () => {
+    const region = { x: 40, y: 60, width: 200, height: 50 };
+    const zoomed = await action({ kind: "zoom", region });
+    const frame = (await executor.observe()).screenshot;
+    await writeFile(join(output, "zoom.png"), zoomed.screenshot);
+    const crop = PNG.sync.read(zoomed.screenshot);
+    const full = PNG.sync.read(frame);
+    assert.deepEqual([crop.width, crop.height], [region.width, region.height]);
+    let differing = 0;
+    for (let y = 0; y < region.height; y++)
+      for (let x = 0; x < region.width; x++) {
+        const a = ((region.y + y) * full.width + region.x + x) * 4;
+        const b = (y * region.width + x) * 4;
+        if ([0, 1, 2].some((i) => full.data[a + i] !== crop.data[b + i])) differing++;
+      }
+    assert.equal(differing, 0);
+    await assert.rejects(
+      action({ kind: "zoom", region: { x: 950, y: 0, width: 20, height: 10 } }),
+      {
+        code: "action_rejected",
+        disposition: "not_dispatched",
+      },
+    );
+    return { region, differing };
   });
   result.browser = context.browser()?.version();
   result.chromiumSandbox = true;

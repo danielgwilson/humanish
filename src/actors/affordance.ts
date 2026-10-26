@@ -51,7 +51,10 @@ export type AffordanceClass =
    * edge:, brave:.
    */
   | "browser-internal"
-  /** The actor observing or pausing rather than acting: screenshots, waits, pointer moves. */
+  /**
+   * The actor observing or pausing rather than acting: screenshots, waits, pointer moves, pointer
+   * reads and zooms.
+   */
   | "observation";
 
 /** Classes that a person operating this product through its own surfaces could produce. */
@@ -121,14 +124,22 @@ export function classifyCuaAction(action: CuaAction): AffordanceObservation {
   switch (action.kind) {
     case "click":
     case "double_click":
+    case "triple_click":
+    case "mouse_down":
+    case "mouse_up":
     case "drag":
     case "scroll":
       return { affordance: "pointer" };
     case "wait":
     case "screenshot":
+    // Reading the pointer or zooming into the screen sends no input: the actor is looking.
+    case "read_pointer":
+    case "zoom":
     // A bare pointer move actuates nothing on its own; it is the actor looking around.
     case "move":
       return { affordance: "observation" };
+    // Holding F12 opens the developer tools as pressing it does.
+    case "hold_keys":
     case "keypress": {
       const chord = normalizeChord(action.keys);
       if (DEVTOOLS_CHORDS.has(chord)) {

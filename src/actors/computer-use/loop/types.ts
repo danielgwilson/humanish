@@ -60,7 +60,46 @@ export type CuaAction =
   | { kind: "drag"; path: Array<{ x: number; y: number }>; heldKeys?: string[] }
   | { kind: "wait"; ms?: number }
   | { kind: "speak"; text: string }
-  | { kind: "screenshot" };
+  | { kind: "screenshot" }
+  /** Three left clicks at one point, as a person selects a line or paragraph. */
+  | { kind: "triple_click"; x: number; y: number; heldKeys?: string[] }
+  /**
+   * Press (`mouse_down`) or release (`mouse_up`) one button, left by default: where the pointer
+   * is, or at (x, y) after a move there. Give both coordinates or neither. A press with no release
+   * leaves the button down for the participant's next actions, as a person holding it would.
+   */
+  | { kind: "mouse_down"; button?: "left" | "right" | "middle"; x?: number; y?: number }
+  | { kind: "mouse_up"; button?: "left" | "right" | "middle"; x?: number; y?: number }
+  /**
+   * Hold `keys` (one key or a chord, named as for `keypress`) down for `ms`, then release them.
+   * At most CUA_WAIT_LIMITS.stepMs, the longest one desktop call carries.
+   */
+  | { kind: "hold_keys"; keys: string[]; ms: number }
+  /** Read where the pointer is. The position comes back as a `pointer` CuaActionResult. */
+  | { kind: "read_pointer" }
+  /**
+   * Look closer at a region of the screen: a capture taken when the action runs, cropped to
+   * `region` at the desktop's own pixels. The crop comes back as a `frame` CuaActionResult.
+   */
+  | { kind: "zoom"; region: CuaRegion };
+
+/** A rectangle of the desktop in whole pixels, from its top-left corner. */
+export interface CuaRegion {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * What an action read from the desktop, returned by CuaExecutor.execute and passed to the provider
+ * in that action's acknowledgement. Every action that returns data answers through this union.
+ */
+export type CuaActionResult =
+  /** `read_pointer`: the pointer position in desktop pixels. */
+  | { kind: "pointer"; x: number; y: number }
+  /** `zoom`: PNG bytes of the region, captured when the action ran. */
+  | { kind: "frame"; screenshot: Buffer };
 
 /** A captured desktop state: the (optional) frame plus a coarse signature for progress. */
 export interface CuaObservation {
@@ -143,6 +182,11 @@ export interface CuaActionAcknowledgement {
   /** The action's position in its batch, from 0. */
   index: number;
   status: "completed" | "skipped" | "not_dispatched" | "outcome_uncertain";
+  /**
+   * What a completed `read_pointer` or `zoom` read from the desktop. Absent for every other action,
+   * and for a read whose executor returned no result of its kind.
+   */
+  result?: CuaActionResult;
 }
 
 export interface CuaTurnRequest {
@@ -325,10 +369,12 @@ export interface CuaExecutor {
   observe(): Promise<CuaObservation>;
   /**
    * Perform one action. The optional signal ends with this action's loop wait; honor it
-   * before dispatching after async preparation. Wrappers must forward it. Cancellation
-   * does not imply an already-dispatched desktop operation can be stopped.
+   * before dispatching after async preparation. Wrappers must forward it and its result.
+   * Cancellation does not imply an already-dispatched desktop operation can be stopped. An action
+   * that reads the desktop (`read_pointer`, `zoom`) resolves with what it read; every other
+   * action resolves with nothing.
    */
-  execute(action: CuaAction, signal?: AbortSignal): Promise<void>;
+  execute(action: CuaAction, signal?: AbortSignal): Promise<CuaActionResult | void>;
 }
 
 export interface CuaLoopOptions {

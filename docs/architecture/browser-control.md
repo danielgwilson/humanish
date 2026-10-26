@@ -116,10 +116,19 @@ loop observes the screen every `actor.idleWaitMs` until it changes or the wait's
 (`src/actors/computer-use/loop/watch.ts`), so a waiting participant costs one observe request per
 look.
 
-Click, double-click, move, scroll and drag may carry `heldKeys`, which the
+Click, double-click, triple-click, move, scroll and drag may carry `heldKeys`, which the
 OpenAI provider maps from its computer tool's `keys`. The Codex participant's
 tool schema does not offer them. A guest older than this field refuses such an
 action as an invalid request.
+
+The wire also carries `triple_click`, `mouse_down`, `mouse_up` (a button, and an optional point),
+`hold_keys` (a chord and `ms`), `read_pointer` and `zoom` (a `region`). The Codex participant's
+tool schema does not offer them. The wire checks their shape only; the guest's X11 translator
+refuses a hold over 30 seconds, one coordinate without the other, and a zoom region that is not
+whole pixels inside the frame, as a rejected action, as the hosted desktops do. A successful
+`EXECUTE` reply to a read carries `result`: `{ kind: "pointer", x, y }` in whole pixels, or
+`{ kind: "frame", png }` with the crop as base64, admitted by the same PNG checks as an observation.
+A reply to any other operation that carries `result` is invalid.
 
 PNG admission checks signature, IHDR before decoder allocation, chunk framing,
 IDAT/IEND presence, no trailing bytes, CRCs and full decode. Version 1 admits

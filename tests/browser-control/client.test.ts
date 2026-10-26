@@ -4,7 +4,7 @@ import { createBrowserControlClient } from "../../src/browser-control/client.js"
 import { attachBrowserControlDispatcher } from "../../src/browser-control/dispatcher.js";
 import { BrowserControlTransport } from "../../src/browser-control/transport.js";
 import { ComputerUseExecutorError } from "../../src/actors/computer-use/executor-error.js";
-import { frame, identity, observation, pair, reply, request, setup, tick } from "./fixture.js";
+import { frame, identity, observation, pair, png, reply, request, setup, tick } from "./fixture.js";
 
 const click = { kind: "click" as const, x: 12.125, y: 15.75 };
 const recording = {
@@ -39,6 +39,37 @@ describe("browser control client and dispatcher", () => {
     const sent = f.leftWrites.map((bytes) => JSON.parse(bytes.subarray(4).toString()));
     expect(sent.map((value) => value.operation)).toEqual(["HELLO", "OBSERVE", "EXECUTE"]);
     expect(sent[2].action).toEqual(speak);
+    f.close();
+  });
+  it("returns what a guest action read: a pointer position and a zoomed frame", async () => {
+    const zoomed = png();
+    const execute = vi.fn(async (action: { kind: string }) => {
+      if (action.kind === "read_pointer") return { kind: "pointer" as const, x: 40, y: 7 };
+      if (action.kind === "zoom") return { kind: "frame" as const, screenshot: zoomed };
+      return undefined;
+    });
+    const f = setup({ executor: { observe: async () => observation(), execute } });
+    await expect(f.client.executor.execute({ kind: "read_pointer" })).resolves.toEqual({
+      kind: "pointer",
+      x: 40,
+      y: 7,
+    });
+    const region = { x: 0, y: 0, width: 2, height: 2 };
+    const result = await f.client.executor.execute({ kind: "zoom", region });
+    expect(result).toMatchObject({ kind: "frame" });
+    expect((result as { screenshot: Buffer }).screenshot.equals(zoomed)).toBe(true);
+    expect(await f.client.executor.execute(click)).toBeUndefined();
+    f.close();
+  });
+  it("treats a guest result that is not a PNG as an invalid reply", async () => {
+    const execute = vi.fn(async () => ({
+      kind: "frame" as const,
+      screenshot: Buffer.from("not a png"),
+    }));
+    const f = setup({ executor: { observe: async () => observation(), execute } });
+    await expect(
+      f.client.executor.execute({ kind: "zoom", region: { x: 0, y: 0, width: 1, height: 1 } }),
+    ).rejects.toMatchObject({ disposition: "outcome_uncertain" });
     f.close();
   });
   it("rejects concurrent operations including during `HELLO` rather than queuing", async () => {

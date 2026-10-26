@@ -1,6 +1,6 @@
 import { PNG } from "pngjs";
 import { z } from "zod";
-import type { CuaAction, CuaObservation } from "../actors/computer-use/loop.js";
+import type { CuaAction, CuaActionResult, CuaObservation } from "../actors/computer-use/loop.js";
 import { CUA_SPEECH_LIMITS, type HeardSpeech } from "../actors/computer-use/speech.js";
 import { EXTERNAL_HANDOFF_LIMITS } from "../actors/computer-use/external-handoff.js";
 import {
@@ -96,6 +96,27 @@ const waitAction = z.strictObject({
 const participantWaitAction = z.strictObject({ kind: z.literal("wait"), ms: waitMs.optional() });
 const screenshotAction = z.strictObject({ kind: z.literal("screenshot") });
 const speakAction = z.strictObject({ kind: z.literal("speak"), text: speechText });
+const tripleClickAction = z.strictObject({ kind: z.literal("triple_click"), ...point });
+// A press or release at the pointer, or at a point. The translator refuses one coordinate alone.
+const mouseButton = {
+  button: z.enum(["left", "right", "middle"]).optional(),
+  x: coordinate.optional(),
+  y: coordinate.optional(),
+};
+const mouseDownAction = z.strictObject({ kind: z.literal("mouse_down"), ...mouseButton });
+const mouseUpAction = z.strictObject({ kind: z.literal("mouse_up"), ...mouseButton });
+// The translator refuses a hold longer than one request carries and a region that is not whole
+// pixels inside the frame, so every desktop refuses them the same way, as a rejected action.
+const holdKeysAction = z.strictObject({
+  kind: z.literal("hold_keys"),
+  keys: chord,
+  ms: coordinate,
+});
+const readPointerAction = z.strictObject({ kind: z.literal("read_pointer") });
+const zoomAction = z.strictObject({
+  kind: z.literal("zoom"),
+  region: z.strictObject({ ...point, width: coordinate, height: coordinate }),
+});
 const participantActionSchemas = [
   clickAction,
   doubleClickAction,
@@ -115,7 +136,8 @@ export const participantSpeechActionSchema = z
   .discriminatedUnion("kind", [...participantActionSchemas, speakAction])
   .transform(toCuaAction);
 // What crosses the host-guest wire: the participant actions plus held keys on pointer actions,
-// which the OpenAI provider maps from its computer tool.
+// which the OpenAI provider maps from its computer tool, and the desktop actions only API
+// providers propose.
 const held = { heldKeys: chord.optional() };
 const wireActions = z.discriminatedUnion("kind", [
   clickAction.extend(held),
@@ -128,6 +150,12 @@ const wireActions = z.discriminatedUnion("kind", [
   waitAction,
   screenshotAction,
   speakAction,
+  tripleClickAction.extend(held),
+  mouseDownAction,
+  mouseUpAction,
+  holdKeysAction,
+  readPointerAction,
+  zoomAction,
 ]);
 const wireActionSchema = wireActions.transform(toCuaAction);
 
@@ -145,8 +173,17 @@ function toCuaAction(action: z.output<typeof wireActions>): CuaAction {
         ...heldKeys,
       };
     case "double_click":
+    case "triple_click":
     case "move":
       return { kind: action.kind, x: action.x, y: action.y, ...heldKeys };
+    case "mouse_down":
+    case "mouse_up":
+      return {
+        kind: action.kind,
+        ...(action.button !== undefined ? { button: action.button } : {}),
+        ...(action.x !== undefined ? { x: action.x } : {}),
+        ...(action.y !== undefined ? { y: action.y } : {}),
+      };
     case "scroll":
       return {
         kind: action.kind,
@@ -163,6 +200,10 @@ function toCuaAction(action: z.output<typeof wireActions>): CuaAction {
     default:
       return action;
   }
+}
+/** A whole pixel position inside the largest frame the wire admits. */
+function pixelSchema() {
+  return z.number().int().min(0).max(BROWSER_CONTROL_LIMITS.dimension);
 }
 const heardSpeechSchema = z.strictObject({
   id: token,
@@ -251,12 +292,25 @@ const replyBase = {
   operation: z.enum(["HELLO", "OBSERVE", "EXECUTE", "FINISH_RECORDING"]),
   actionId: token.optional(),
 };
+const pngBase64 = z
+  .string()
+  .min(1)
+  .max(4 * Math.ceil(BROWSER_CONTROL_LIMITS.pngBytes / 3))
+  .regex(/^[A-Za-z0-9+/]*={0,2}$/)
+  .refine((value) => value.length % 4 === 0);
+// What an executed action read: read_pointer's position, zoom's frame.
+const resultSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("pointer"), x: pixelSchema(), y: pixelSchema() }),
+  z.strictObject({ kind: z.literal("frame"), png: pngBase64 }),
+]);
+type WireResult = z.infer<typeof resultSchema>;
 const replySchema = z.discriminatedUnion("ok", [
   z.strictObject({
     ...replyBase,
     ok: z.literal(true),
     observation: observationSchema.optional(),
     recording: desktopRecordingMetadataSchema.optional(),
+    result: resultSchema.optional(),
   }),
   z.strictObject({
     ...replyBase,
@@ -308,7 +362,8 @@ export function parseBrowserControlReply(value: unknown): BrowserControlReply {
       (reply.error.code !== "action_rejected" || reply.error.disposition !== "not_dispatched")) ||
     (reply.ok &&
       ((reply.operation === "OBSERVE") !== (reply.observation !== undefined) ||
-        (reply.operation === "FINISH_RECORDING") !== (reply.recording !== undefined)))
+        (reply.operation === "FINISH_RECORDING") !== (reply.recording !== undefined) ||
+        (reply.operation !== "EXECUTE" && reply.result !== undefined)))
   )
     throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
   return reply;
@@ -424,6 +479,28 @@ export function decodeBrowserControlObservation(value: unknown): CuaObservation 
         }
       : {}),
   };
+}
+/** An action result as the wire carries it. A frame must pass the PNG admission checks. */
+export function encodeBrowserControlResult(result: CuaActionResult): WireResult {
+  if (result.kind === "pointer") {
+    const parsed = resultSchema.safeParse({ kind: "pointer", x: result.x, y: result.y });
+    if (!parsed.success)
+      throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
+    return parsed.data;
+  }
+  if (!Buffer.isBuffer(result.screenshot))
+    throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
+  validateBrowserControlPng(result.screenshot);
+  return { kind: "frame", png: result.screenshot.toString("base64") };
+}
+/** The action result a reply carried, with a frame decoded and checked as an observation is. */
+export function decodeBrowserControlResult(value: WireResult): CuaActionResult {
+  if (value.kind === "pointer") return { kind: "pointer", x: value.x, y: value.y };
+  const screenshot = Buffer.from(value.png, "base64");
+  if (screenshot.toString("base64") !== value.png)
+    throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
+  validateBrowserControlPng(screenshot);
+  return { kind: "frame", screenshot };
 }
 export function safeBrowserControlFailure(
   error: unknown,

@@ -20,6 +20,15 @@ The Unreleased section holds the full notes for the next version until it is tag
   category in its notice.
 - A trace's `conversation.explicitReason` can be `stateless_api`, for a provider whose API keeps
   no conversation between requests. Such a run gives no zero-data-retention warning.
+- `ComputerUseAction` has six more desktop actions, run on E2B, Modal and local VM desktops through
+  the shared X11 translator: `triple_click`, `mouse_down` and `mouse_up` (a button, at the pointer
+  or a point), `hold_keys` (a chord held for up to 30 seconds), `read_pointer`, and `zoom` (a fresh
+  capture cropped to a region at the desktop's own pixels). The OpenAI provider never proposes
+  them, so its requests are unchanged.
+- `ComputerUseExecutor.execute` may resolve with a result, `{ kind: "pointer", x, y }` for
+  `read_pointer` or `{ kind: "frame", screenshot }` for `zoom`. The loop passes it to the provider
+  in that action's acknowledgement (`previousExecution.actions[i].result`). An executor that
+  returns nothing is unchanged.
 
 ### Changed
 

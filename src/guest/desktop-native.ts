@@ -4,10 +4,13 @@ import { mkdtemp, open, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { ComputerUseExecutorError } from "../actors/computer-use/executor-error.js";
 import { BROWSER_CONTROL_LIMITS } from "../browser-control/protocol.js";
+import { parseMouseLocation } from "../substrates/x11/desktop.js";
 import type { GuestDesktopTools } from "./desktop-executor.js";
 
 /** Private owner port; never expose its command array to a participant. */
-export interface GuestDesktopNativeTools extends Pick<GuestDesktopTools, "input" | "capture"> {
+export interface GuestDesktopNativeTools extends Required<
+  Pick<GuestDesktopTools, "input" | "capture" | "readPointer">
+> {
   activeWindowId(signal: AbortSignal): Promise<string>;
   typeAscii(text: string, signal: AbortSignal): Promise<void>;
 }
@@ -18,14 +21,16 @@ class UnconfirmedHelperExit extends ComputerUseExecutorError {
   }
 }
 
-/** Guest-only helpers. Not a host administration API or an actor-visible command runner. */
-export function createGuestDesktopNativeTools(options: {
+interface GuestDesktopNativeOptions {
   display: string;
   /** An owner-created private directory inside the disposable guest. */
   temporaryDirectory: string;
   /** Owner-created cookie file; never inherit an operator's `XAUTHORITY`. */
   xauthority: string;
-}): GuestDesktopNativeTools {
+}
+
+/** The only environment a helper gets, after the owner's paths are checked. */
+function helperEnvironment(options: GuestDesktopNativeOptions): NodeJS.ProcessEnv {
   if (
     !/^:[0-9]{1,3}(?:\.[0-9])?$/.test(options.display) ||
     !options.temporaryDirectory.startsWith("/") ||
@@ -33,7 +38,7 @@ export function createGuestDesktopNativeTools(options: {
   ) {
     throw new ComputerUseExecutorError("invalid_request", "not_dispatched");
   }
-  const environment = {
+  return {
     PATH: "/usr/bin:/bin",
     HOME: options.temporaryDirectory,
     DISPLAY: options.display,
@@ -41,6 +46,13 @@ export function createGuestDesktopNativeTools(options: {
     LANG: "C.UTF-8",
     LC_ALL: "C.UTF-8",
   };
+}
+
+/** Guest-only helpers. Not a host administration API or an actor-visible command runner. */
+export function createGuestDesktopNativeTools(
+  options: GuestDesktopNativeOptions,
+): GuestDesktopNativeTools {
+  const environment = helperEnvironment(options);
 
   // The direct child handle remains the only termination authority. Native helper
   // stderr can contain user text; consume it with a bound, never return or log it.
@@ -111,6 +123,11 @@ export function createGuestDesktopNativeTools(options: {
   return {
     async input(args, signal) {
       await helper("xdotool", args, signal);
+    },
+    async readPointer(signal) {
+      return parseMouseLocation(
+        (await helper("xdotool", ["getmouselocation"], signal)).toString("utf8"),
+      );
     },
     async activeWindowId(signal) {
       const value = (await helper("xdotool", ["getactivewindow"], signal)).toString("utf8");

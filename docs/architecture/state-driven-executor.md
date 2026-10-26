@@ -26,8 +26,13 @@ This is the "plural harnesses / transport-agnostic" intent of
 ```ts
 interface ComputerUseExecutor {
   observe(): Promise<ComputerUseObservation>; // capture current state
-  execute(action: ComputerUseAction, signal?: AbortSignal): Promise<void>; // perform one action
+  // perform one action; a read returns what it read
+  execute(action: ComputerUseAction, signal?: AbortSignal): Promise<ComputerUseActionResult | void>;
 }
+
+type ComputerUseActionResult =
+  | { kind: "pointer"; x: number; y: number } // read_pointer
+  | { kind: "frame"; screenshot: Buffer }; // zoom
 
 interface ComputerUseObservation {
   screenshot?: Buffer; // OPTIONAL — a state executor omits it
@@ -38,12 +43,37 @@ interface ComputerUseObservation {
 
 The loop aborts an action's optional signal when its wait ends, including cancellation or a
 deadline. An executor that prepares asynchronously should check the signal before dispatching
-an input; wrappers must forward it (`execute: (...args) => inner.execute(...args)`). Existing
+an input; wrappers must forward it and return the result (`execute: (...args) =>
+inner.execute(...args)`). Existing
 one-argument executors remain compatible. This does not cancel already-dispatched substrate
 operations. The desktop executor uses this boundary while reading the current cursor before
 left/double clicks: an exact integer match avoids redundant movement; uncertain or fractional
 coordinates retain the original SDK path. The cursor read adds at most 500 ms of preparation
 wait and does not cache a previous action's position.
+
+The action union (`CuaAction` in `src/actors/computer-use/loop/types.ts`) holds what a desktop can
+physically do: `click`, `double_click`, `triple_click`, `move`, `scroll`, `drag`, `mouse_down`,
+`mouse_up`, `type`, `keypress`, `hold_keys`, `wait`, `screenshot`, `read_pointer`, `zoom` and
+`speak`. A provider proposes only the actions its vendor's tool offers; the OpenAI provider never
+proposes the triple click, the button presses, `hold_keys` or the reads. E2B, Modal and the local
+VM run every action through one translator, `src/substrates/x11/translator.ts`.
+
+- `mouse_down` and `mouse_up` press or release one button, at the pointer or at an optional
+  `x`/`y`. A press with no release leaves the button down for the next actions.
+- `hold_keys` holds one key or a chord for `ms`, at most 30 seconds (`CUA_WAIT_LIMITS.stepMs`), and
+  releases it after the hold even when the hold fails. Any key may be held.
+- `read_pointer` and `zoom` send no input. They count as looking: not a material action, bounded
+  like a screenshot, and a turn of only reads is backstopped as a turn of screenshots. `zoom`
+  captures a fresh frame when it runs and crops `region` (whole pixels, inside the frame) at the
+  desktop's own pixels.
+
+An action that reads the desktop resolves `execute` with its result, and the loop passes it to
+the provider in that action's acknowledgement (`previousExecution.actions[i].result`), so the
+provider can answer its model. Every action that returns data uses this one channel. The loop
+keeps only a result of the kind the action reads (a `pointer` of whole pixels for `read_pointer`,
+a `frame` Buffer for `zoom`) and drops anything else an executor returns. A read whose executor
+returned nothing is acknowledged `completed` with no result. The trace records each read's title
+(`read pointer`, `zoom 30x20 at (100, 50)`), not the position or the crop.
 
 - **`screenshot` is optional.** A non-vision (state) executor omits it. The loop
   persists no screenshot that turn; `counts.screenshots` stays 0, so the trace's

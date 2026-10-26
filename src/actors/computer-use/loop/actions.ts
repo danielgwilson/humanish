@@ -16,7 +16,13 @@ import {
 } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
-import type { CuaAction, CuaActionAcknowledgement, CuaTurn, CuaTurnRequest } from "./types.js";
+import type {
+  CuaAction,
+  CuaActionAcknowledgement,
+  CuaActionResult,
+  CuaTurn,
+  CuaTurnRequest,
+} from "./types.js";
 import { planWait } from "../wait.js";
 
 // The participant's actions: their public labels, what counts as a material action, and how one
@@ -65,6 +71,21 @@ function describeAction(action: CuaAction): string {
       return action.ms === undefined ? "wait" : `wait ${action.ms}ms`;
     case "screenshot":
       return "screenshot";
+    case "triple_click":
+      return `triple-click (${action.x}, ${action.y})`;
+    case "mouse_down":
+    case "mouse_up": {
+      const at = action.x === undefined ? "" : ` (${action.x}, ${action.y})`;
+      return `${action.kind === "mouse_down" ? "mouse down" : "mouse up"} ${action.button ?? "left"}${at}`;
+    }
+    case "hold_keys":
+      return `hold ${action.keys.join("+")} ${action.ms}ms`;
+    case "read_pointer":
+      return "read pointer";
+    case "zoom": {
+      const { x, y, width, height } = action.region;
+      return `zoom ${width}x${height} at (${x}, ${y})`;
+    }
   }
 }
 
@@ -102,18 +123,58 @@ export function actionFingerprint(actions: readonly CuaAction[]): string {
           return "wait";
         case "screenshot":
           return "screenshot";
+        case "triple_click":
+          return `triple_click@${bucket(action.x)},${bucket(action.y)}${held}`;
+        case "mouse_down":
+        case "mouse_up":
+          return `${action.kind}:${action.button ?? "left"}@${action.x === undefined ? "pointer" : `${bucket(action.x)},${bucket(action.y ?? 0)}`}`;
+        case "hold_keys":
+          return `hold_keys:${action.keys.join("+")}`;
+        case "read_pointer":
+          return "read_pointer";
+        case "zoom":
+          return `zoom@${bucket(action.region.x)},${bucket(action.region.y)}`;
       }
     })
     .join("|");
 }
 
-/** Screenshots and waits only look; every other action is the participant acting. */
+/**
+ * Screenshots, waits and the reads (`read_pointer`, `zoom`) only look or pause and send no input;
+ * every other action is the participant acting. A read is watched and backstopped as a
+ * screenshot is.
+ */
 function isIdleAction(action: CuaAction): boolean {
-  return action.kind === "screenshot" || action.kind === "wait";
+  switch (action.kind) {
+    case "screenshot":
+    case "wait":
+    case "read_pointer":
+    case "zoom":
+      return true;
+    default:
+      return false;
+  }
 }
 
 export function isIdleTurn(actions: readonly CuaAction[]): boolean {
   return actions.every(isIdleAction);
+}
+
+/** The point a pointer action pressed at, for the Observer's pins; absent for the rest. */
+function pressedAt(action: CuaAction): { x: number; y: number } | undefined {
+  switch (action.kind) {
+    case "click":
+    case "double_click":
+    case "triple_click":
+      return { x: action.x, y: action.y };
+    case "mouse_down":
+    case "mouse_up":
+      return action.x === undefined || action.y === undefined
+        ? undefined
+        : { x: action.x, y: action.y };
+    default:
+      return undefined;
+  }
 }
 
 type ExecutionStatus = CuaActionAcknowledgement["status"];
@@ -137,7 +198,7 @@ export interface ActionBatch {
    * stopped the batch.
    */
   readonly hint: string | undefined;
-  /** An action of the batch other than a wait or screenshot may have reached the desktop. */
+  /** An action of the batch other than a wait, screenshot or read may have reached the desktop. */
   readonly sent: boolean;
 }
 
@@ -253,11 +314,12 @@ export async function runActionBatch(
     actionHistory.affordances.push(classifyCuaAction(action));
     session.phase = `executing ${title}`;
     let status: ExecutionStatus;
+    let result: CuaActionResult | undefined;
     try {
-      status =
+      ({ status, result } =
         watchedMs === undefined
           ? await dispatchAction(session, action, title, wait?.steps)
-          : "completed";
+          : { status: "completed", result: undefined });
     } catch (error) {
       const declared = isComputerUseExecutorError(error)
         ? error.disposition
@@ -297,17 +359,16 @@ export async function runActionBatch(
       if (halting) return haltAfter(index, title);
       continue;
     }
-    execution.actions.push({ index, status });
+    execution.actions.push({ index, status, ...(result === undefined ? {} : { result }) });
     countAttempt(session, action, title, status);
+    const coord = pressedAt(action);
     trace.record("ui_action", () => ({
       lifecycle: "completed",
       title,
       ...(action.kind === "speak" ? { text: session.redactNarration(action.text) } : {}),
-      // Structured pin coordinates, exactly the click classes the Observer
+      // Structured pin coordinates, exactly the presses the Observer
       // pins render: recorded fact instead of a title re-parse downstream.
-      ...(action.kind === "click" || action.kind === "double_click"
-        ? { coord: { x: action.x, y: action.y } }
-        : {}),
+      ...(coord === undefined ? {} : { coord }),
       ...(watched !== undefined && waitIndex === watched.endedOn ? { watch: watched.watch } : {}),
       ...(requested.kind === "wait" && requested.ms !== undefined ? { namedMs: requested.ms } : {}),
     }));
@@ -352,10 +413,16 @@ function countAttempt(
   session.trace.counts.materialActions += 1;
 }
 
+/** How one dispatched action ended, with what it read. */
+interface Dispatched {
+  readonly status: "completed" | "skipped";
+  readonly result: CuaActionResult | undefined;
+}
+
 /**
- * Execute one action. Idle actions only look: a `wait` that hangs inside the SDK has in
- * effect waited, so a stalled one is skipped with a notice, its remaining steps are not sent, and
- * it loses nothing the participant chose. An action is recorded as completed only after every
+ * Execute one action. Idle actions only look: a `wait` that hangs inside the SDK has
+ * in effect waited, so a stalled one is skipped with a notice, its remaining steps are not sent,
+ * and it loses nothing the participant chose. An action is recorded as completed only after every
  * desktop call it takes resolves. A wait is sent as `waitSteps`, its planWait steps.
  */
 async function dispatchAction(
@@ -363,19 +430,18 @@ async function dispatchAction(
   action: CuaAction,
   title: string,
   waitSteps: readonly number[] | undefined,
-): Promise<"completed" | "skipped"> {
-  if (!isIdleAction(action)) {
-    await executeAction(session, action, title);
-    return "completed";
-  }
+): Promise<Dispatched> {
+  if (!isIdleAction(action))
+    return { status: "completed", result: await executeAction(session, action, title) };
   const calls: CuaAction[] = waitSteps?.map((ms) => ({ kind: "wait", ms })) ?? [action];
   try {
+    let result: CuaActionResult | undefined;
     for (const call of calls) {
       if (session.signal?.aborted) throw new CuaAbortError();
       const boundMs = session.observationTimeoutMs + (call.kind === "wait" ? (call.ms ?? 0) : 0);
-      await executeAction(session, call, title, boundMs);
+      result = await executeAction(session, call, title, boundMs);
     }
-    return "completed";
+    return { status: "completed", result };
   } catch (error) {
     if (!(error instanceof CuaStallError)) throw error;
     session.trace.record("notice", () =>
@@ -385,22 +451,48 @@ async function dispatchAction(
         `${error.what} produced nothing within ${error.afterMs}ms; the desktop was not asked again and the next screenshot decides`,
       ),
     );
-    return "skipped";
+    return { status: "skipped", result: undefined };
   }
 }
 
+/**
+ * What a read action returned, when it is the result that action reads. Anything else an executor
+ * returns, such as a value an executor written before results passes along, is dropped.
+ */
+function readResult(action: CuaAction, returned: unknown): CuaActionResult | undefined {
+  if (typeof returned !== "object" || returned === null) return undefined;
+  const value = returned as Partial<Record<"kind" | "x" | "y" | "screenshot", unknown>>;
+  if (action.kind === "read_pointer" && value.kind === "pointer")
+    return Number.isSafeInteger(value.x) && Number.isSafeInteger(value.y)
+      ? { kind: "pointer", x: value.x as number, y: value.y as number }
+      : undefined;
+  if (action.kind === "zoom" && value.kind === "frame" && Buffer.isBuffer(value.screenshot))
+    return { kind: "frame", screenshot: value.screenshot };
+  return undefined;
+}
+
+/** Execute one action and return what it read (readResult). */
 async function executeAction(
   session: LoopSession,
   action: CuaAction,
   title: string,
   boundMs?: number,
-): Promise<void> {
+): Promise<CuaActionResult | undefined> {
   const { signal } = session;
   const scope = requestScope(signal);
   try {
     const pending = session.executor.execute(action, scope.signal);
-    if (boundMs === undefined) await raceSessionDeadline(pending, session.remaining(), signal);
-    else await raceCallBound(`idle action ${title}`, pending, session.remaining(), boundMs, signal);
+    const returned =
+      boundMs === undefined
+        ? await raceSessionDeadline(pending, session.remaining(), signal)
+        : await raceCallBound(
+            `idle action ${title}`,
+            pending,
+            session.remaining(),
+            boundMs,
+            signal,
+          );
+    return readResult(action, returned);
   } catch (error) {
     if (error instanceof CuaStallError && session.executor.stallRecovery === "fail_closed") {
       throw new ComputerUseExecutorError("deadline_exceeded", "outcome_uncertain");
