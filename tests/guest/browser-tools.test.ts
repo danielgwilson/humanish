@@ -12,6 +12,7 @@ function fixture() {
     capture: vi.fn(async () => Buffer.alloc(0)),
     activeWindowId: vi.fn(async () => "123"),
     typeAscii: vi.fn(async () => {}),
+    readPointer: vi.fn(async () => ({ x: 0, y: 0 })),
   };
   const contentTransaction = { paste: vi.fn(async () => {}), close: vi.fn(async () => {}) };
   const content = {
@@ -39,6 +40,7 @@ describe("owned browser text routing", () => {
     const f = fixture();
     await f.tools.input(navigation, f.authority.signal);
     await f.tools.capture(f.authority.signal); // Looking does not change navigation intent.
+    await f.tools.readPointer?.(f.authority.signal);
     const transaction = await f.tools.prepareText("https://example.test/a?b=1", f.authority.signal);
     await transaction.paste();
     await transaction.close();

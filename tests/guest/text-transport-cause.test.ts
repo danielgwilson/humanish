@@ -53,6 +53,7 @@ async function typeThrough(failure: Error) {
     capture: vi.fn(async () => frame),
     activeWindowId: vi.fn(async () => "owned-window"),
     typeAscii: vi.fn(async () => {}),
+    readPointer: vi.fn(async () => ({ x: 0, y: 0 })),
   };
   const authority = new AbortController();
   const guest = createGuestDesktopExecutor({

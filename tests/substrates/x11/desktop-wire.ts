@@ -35,8 +35,27 @@ type CommandFailure =
 
 export type SubstrateName = "e2b" | "modal" | "guest";
 
+/** The value every channel of the fake frame holds at (x, y), so a crop can be checked by pixel. */
+export function framePixel(x: number, y: number): number {
+  return (x * 7 + y * 13) % 256;
+}
+
+let frame: Buffer | undefined;
+
 function framePng(): Buffer {
-  return PNG.sync.write(new PNG({ width: FRAME.width, height: FRAME.height }));
+  frame ??= drawFrame();
+  return frame;
+}
+
+function drawFrame(): Buffer {
+  const png = new PNG({ width: FRAME.width, height: FRAME.height });
+  for (let y = 0; y < FRAME.height; y++)
+    for (let x = 0; x < FRAME.width; x++) {
+      const offset = (y * FRAME.width + x) * 4;
+      png.data.fill(framePixel(x, y), offset, offset + 3);
+      png.data[offset + 3] = 255;
+    }
+  return PNG.sync.write(png);
 }
 
 function exitError(exitCode: number): Error {
@@ -136,6 +155,10 @@ function guestDesktop(): WireDesktop {
           failures.splice(index, 1);
           throw exitError(1);
         }
+      },
+      async readPointer() {
+        harness.wire.push("readPointer");
+        return { ...harness.pointer };
       },
       async prepareText(text) {
         harness.wire.push(`prepareText ${text}`);

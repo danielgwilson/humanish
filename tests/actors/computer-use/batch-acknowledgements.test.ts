@@ -197,3 +197,72 @@ describe("a proposal the provider could not map to an action", () => {
     expect(result.trace.counts.materialActions).toBe(0);
   });
 });
+
+describe("what a read action returns", () => {
+  const readPointer: CuaAction = { kind: "read_pointer" };
+  const zoom: CuaAction = { kind: "zoom", region: { x: 1, y: 2, width: 3, height: 4 } };
+  const frame = Buffer.from("synthetic-crop");
+
+  /** An executor whose reads return results and whose screen changes after every action. */
+  function readingDesktop() {
+    let frameNumber = 0;
+    return {
+      observe: async () => ({ stateSignature: `frame-${frameNumber}` }),
+      execute: vi.fn(async (action: CuaAction) => {
+        frameNumber += 1;
+        if (action.kind === "read_pointer") return { kind: "pointer" as const, x: 5, y: 6 };
+        if (action.kind === "zoom") return { kind: "frame" as const, screenshot: frame };
+        return undefined;
+      }),
+    };
+  }
+
+  it("reaches the provider in that action's acknowledgement", async () => {
+    const { provider, requests } = scripted([turn({ actions: [click, readPointer, zoom] })]);
+    const result = await run(provider, readingDesktop());
+    const actions = requests[1]?.previousExecution?.actions;
+    expect(actions?.map(({ index, status }) => ({ index, status }))).toEqual([
+      { index: 0, status: "completed" },
+      { index: 1, status: "completed" },
+      { index: 2, status: "completed" },
+    ]);
+    expect(actions?.[0]).not.toHaveProperty("result");
+    expect(actions?.[1]?.result).toEqual({ kind: "pointer", x: 5, y: 6 });
+    expect(actions?.[2]?.result).toMatchObject({ kind: "frame" });
+    // A read sends no input, so only the click counts as the participant acting.
+    expect(result.trace.counts.materialActions).toBe(1);
+  });
+
+  it("drops a value an executor returns for an action that reads nothing", async () => {
+    const { provider, requests } = scripted([turn({ actions: [click, readPointer] })]);
+    await run(provider, {
+      observe: async () => ({ stateSignature: String(Math.random()) }),
+      // A library executor written before results may pass along whatever its driver returned.
+      execute: (async (action: CuaAction) =>
+        action.kind === "click" ? { ok: true } : { kind: "pointer", x: 1.5, y: 2 }) as never,
+    });
+    expect(requests[1]?.previousExecution?.actions).toEqual([
+      { index: 0, status: "completed" },
+      { index: 1, status: "completed" },
+    ]);
+  });
+
+  it("records a pin coordinate for every press at a point", async () => {
+    const { provider } = scripted([
+      turn({
+        actions: [
+          { kind: "triple_click", x: 7, y: 8 },
+          { kind: "mouse_down", x: 9, y: 10 },
+          { kind: "mouse_up" },
+        ],
+      }),
+    ]);
+    const result = await run(provider, readingDesktop());
+    const pressed = result.trace.items.filter((item) => item.kind === "ui_action");
+    expect(pressed.map((item) => [item.title, item.coord])).toEqual([
+      ["triple-click (7, 8)", { x: 7, y: 8 }],
+      ["mouse down left (9, 10)", { x: 9, y: 10 }],
+      ["mouse up left", undefined],
+    ]);
+  });
+});

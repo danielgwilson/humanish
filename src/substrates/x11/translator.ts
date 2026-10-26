@@ -1,5 +1,5 @@
 import { ComputerUseExecutorError } from "../../actors/computer-use/executor-error.js";
-import type { CuaAction } from "../../actors/computer-use/loop.js";
+import type { CuaAction, CuaRegion } from "../../actors/computer-use/loop.js";
 import { CUA_WAIT_LIMITS } from "../../actors/computer-use/wait.js";
 import { xdotoolChord, xdotoolHeldModifiers } from "./keys.js";
 
@@ -41,7 +41,14 @@ export type X11Step =
   /** Insert text at the keyboard focus through the transport's text path. */
   | { readonly kind: "text"; readonly text: string }
   /** Wait on the desktop. */
-  | { readonly kind: "wait"; readonly ms: number };
+  | { readonly kind: "wait"; readonly ms: number }
+  /** Read the pointer and return its position as the action's result. */
+  | { readonly kind: "report-pointer" }
+  /** Capture the desktop and return `region` of it as the action's result. */
+  | { readonly kind: "report-region"; readonly region: X11Region };
+
+/** A rectangle of the desktop in whole pixels. */
+export type X11Region = Readonly<CuaRegion>;
 
 /** An action's native steps and the modifiers held down around them. */
 export interface X11Plan {
@@ -86,7 +93,10 @@ export interface X11Dialect {
    * truthy coordinates, so a hosted click at x 0 clicks where the pointer is.
    */
   readonly clicksInPlaceAtZero: boolean;
-  /** xdotool's `--delay` between the two clicks of a double click; undefined keeps its default. */
+  /**
+   * xdotool's `--delay` between the clicks of a double or triple click; undefined keeps its
+   * default.
+   */
   readonly doubleClickDelayMs: number | undefined;
   readonly scroll: X11Scroll;
   /**
@@ -153,12 +163,16 @@ function refused(): ComputerUseExecutorError {
  * holds no keys either.
  */
 export function planX11Action(action: CuaAction, dialect: X11Dialect): X11Plan {
+  if (action.kind === "hold_keys") return holdPlan(action);
   const held = "heldKeys" in action ? xdotoolHeldModifiers(action.heldKeys) : undefined;
   const steps = actionSteps(action, dialect);
   return { held: steps.length === 0 ? undefined : held, steps };
 }
 
-function actionSteps(action: CuaAction, dialect: X11Dialect): X11Step[] {
+/** An action whose steps run with at most its pointer modifiers held. */
+type StepAction = Exclude<CuaAction, { kind: "hold_keys" }>;
+
+function actionSteps(action: StepAction, dialect: X11Dialect): X11Step[] {
   switch (action.kind) {
     case "move":
       return [move(dialect, action)];
@@ -166,16 +180,25 @@ function actionSteps(action: CuaAction, dialect: X11Dialect): X11Step[] {
       const button = action.button ?? "left";
       return clickSteps(dialect, action, button, ["click", BUTTONS[button]]);
     }
-    case "double_click": {
-      const delay = dialect.doubleClickDelayMs;
-      return clickSteps(dialect, action, "left", [
-        "click",
-        "--repeat",
-        "2",
-        ...(delay === undefined ? [] : ["--delay", String(delay)]),
-        "1",
+    case "double_click":
+      return clickSteps(dialect, action, "left", repeatedClick(dialect, 2));
+    case "triple_click":
+      return guardedMoveThen(dialect, action, xdotool(repeatedClick(dialect, 3)));
+    case "mouse_down":
+    case "mouse_up": {
+      const press = xdotool([
+        action.kind === "mouse_down" ? "mousedown" : "mouseup",
+        BUTTONS[action.button ?? "left"],
       ]);
+      const { x, y } = action;
+      if (x === undefined && y === undefined) return [press];
+      if (x === undefined || y === undefined) throw refused();
+      return guardedMoveThen(dialect, { x, y }, press);
     }
+    case "read_pointer":
+      return [{ kind: "report-pointer" }];
+    case "zoom":
+      return [{ kind: "report-region", region: checkedRegion(dialect, action.region) }];
     case "scroll":
       return scrollSteps(dialect, action);
     case "drag":
@@ -193,6 +216,58 @@ function actionSteps(action: CuaAction, dialect: X11Dialect): X11Step[] {
     case "speak":
       throw refused();
   }
+}
+
+/**
+ * Hold a chord for the action's length: one keydown, a wait on the desktop and one keyup, which
+ * the runner sends even when the wait fails. Any key may be held, since holding is the action; a
+ * hold longer than one desktop call carries is refused.
+ */
+function holdPlan(action: Extract<CuaAction, { kind: "hold_keys" }>): X11Plan {
+  const { ms } = action;
+  if (!Number.isFinite(ms) || ms < 0 || ms > CUA_WAIT_LIMITS.stepMs) throw refused();
+  return { held: xdotoolChord(action.keys), steps: [{ kind: "wait", ms }] };
+}
+
+/** `click --repeat count`, with the dialect's delay between clicks, on the left button. */
+function repeatedClick(dialect: X11Dialect, count: number): string[] {
+  const delay = dialect.doubleClickDelayMs;
+  return [
+    "click",
+    "--repeat",
+    String(count),
+    ...(delay === undefined ? [] : ["--delay", String(delay)]),
+    "1",
+  ];
+}
+
+/**
+ * A move to `at`, then `command`. On a dialect with the pointer guard the move is skipped when the
+ * pointer is already there, for every button. The actions added after the hosted desktops' command
+ * set was fixed use this; click and double_click keep clickSteps' older rules.
+ */
+function guardedMoveThen(dialect: X11Dialect, at: X11Point, command: X11Command): X11Step[] {
+  const step = move(dialect, at);
+  if (!dialect.skipsRedundantClickMoves) return [step, command];
+  return [
+    { kind: "read-pointer", at: { x: at.x, y: at.y } },
+    { ...step, unlessPointerThere: true },
+    command,
+  ];
+}
+
+/**
+ * A zoom region of whole pixels, at least one wide and high. A dialect with a frame refuses a
+ * region that leaves it here; elsewhere the runner checks it against the captured frame.
+ */
+function checkedRegion(dialect: X11Dialect, region: X11Region): X11Region {
+  const { x, y, width, height } = region;
+  if (![x, y, width, height].every(Number.isSafeInteger) || x < 0 || y < 0) throw refused();
+  if (width < 1 || height < 1) throw refused();
+  const frame = dialect.frame;
+  if (frame !== undefined && (x + width > frame.width || y + height > frame.height))
+    throw refused();
+  return { x, y, width, height };
 }
 
 /** A one-command step. */

@@ -1,5 +1,10 @@
 import type { Duplex, Writable } from "node:stream";
-import type { CuaAction, CuaExecutor, CuaObservation } from "../actors/computer-use/loop.js";
+import type {
+  CuaAction,
+  CuaActionResult,
+  CuaExecutor,
+  CuaObservation,
+} from "../actors/computer-use/loop.js";
 import {
   ComputerUseExecutorError,
   type CuaExecutorErrorCode,
@@ -9,6 +14,7 @@ import {
   BROWSER_CONTROL_LIMITS,
   BROWSER_CONTROL_VERSION,
   decodeBrowserControlObservation,
+  decodeBrowserControlResult,
   parseBrowserControlReply,
   sameBrowserControlIdentity,
   validateBrowserControlAction,
@@ -303,7 +309,7 @@ async function execute(
   session: ClientSession,
   action: CuaAction,
   signal: AbortSignal | undefined,
-): Promise<void> {
+): Promise<CuaActionResult | undefined> {
   const validAction = validateBrowserControlAction(action);
   if (validAction.kind === "speak" && !session.speechEnabled) {
     throw new ComputerUseExecutorError("action_rejected", "not_dispatched");
@@ -316,7 +322,14 @@ async function execute(
       throw new ComputerUseExecutorError(error.code, "not_dispatched");
     throw error;
   }
-  await exchange(session, "EXECUTE", validAction, signal);
+  const reply = await exchange(session, "EXECUTE", validAction, signal);
+  if (!reply.ok || reply.result === undefined) return undefined;
+  try {
+    return decodeBrowserControlResult(reply.result);
+  } catch {
+    session.transport.close("invalid_response");
+    throw new ComputerUseExecutorError("invalid_response", "outcome_uncertain");
+  }
 }
 
 async function finishRecording(

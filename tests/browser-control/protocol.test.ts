@@ -44,6 +44,13 @@ describe("browser control closed v1 protocol", () => {
       ],
       heldKeys: ["SHIFT"],
     },
+    { kind: "triple_click", x: 1, y: 2, heldKeys: ["SHIFT"] },
+    { kind: "mouse_down" },
+    { kind: "mouse_down", button: "right", x: 1.5, y: 2 },
+    { kind: "mouse_up", button: "middle", x: 1, y: 2 },
+    { kind: "hold_keys", keys: ["SHIFT", "a"], ms: 1500 },
+    { kind: "read_pointer" },
+    { kind: "zoom", region: { x: 0, y: 4, width: 20, height: 10 } },
   ])("preserves admitted action exactly: $kind", (action) =>
     expect(validateBrowserControlAction(action)).toEqual(action),
   );
@@ -66,6 +73,12 @@ describe("browser control closed v1 protocol", () => {
     { kind: "click", x: 1, y: 2, heldKeys: Array(17).fill("SHIFT") },
     { kind: "type", text: "a", heldKeys: ["SHIFT"] },
     { kind: "keypress", keys: ["A"], heldKeys: ["SHIFT"] },
+    { kind: "mouse_down", heldKeys: ["SHIFT"] },
+    { kind: "mouse_up", button: "back" },
+    { kind: "hold_keys", keys: [], ms: 10 },
+    { kind: "hold_keys", keys: ["a"] },
+    { kind: "read_pointer", x: 1 },
+    { kind: "zoom", region: { x: 0, y: 0, width: 1 } },
   ])("rejects invalid or over-limit action $kind", (action) =>
     expect(() => validateBrowserControlAction(action)).toThrow(ComputerUseExecutorError),
   );
@@ -90,6 +103,9 @@ describe("browser control closed v1 protocol", () => {
     expect(() => parseBrowserControlRequest(value)).toThrow(ComputerUseExecutorError),
   );
   it.each([
+    reply(1, "HELLO", { result: { kind: "pointer", x: 1, y: 2 } }),
+    reply(2, "EXECUTE", { actionId: "action-2", result: { kind: "pointer", x: 1.5, y: 2 } }),
+    reply(2, "EXECUTE", { actionId: "action-2", result: { kind: "frame", png: "not base64!" } }),
     reply(1, "HELLO", { actionId: "action-1" }),
     reply(2, "EXECUTE"),
     reply(2, "OBSERVE"),

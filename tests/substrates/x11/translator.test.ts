@@ -37,6 +37,18 @@ describe("the guest dialect", () => {
       { held: undefined, steps: [{ kind: "text", text: "plain" }] },
     ],
     [{ kind: "wait" }, { held: undefined, steps: [{ kind: "wait", ms: 500 }] }],
+    [
+      { kind: "hold_keys", keys: ["Control+a"], ms: 30_000 },
+      { held: "ctrl+a", steps: [{ kind: "wait", ms: 30_000 }] },
+    ],
+    [{ kind: "read_pointer" }, { held: undefined, steps: [{ kind: "report-pointer" }] }],
+    [
+      { kind: "zoom", region: { x: 90, y: 70, width: 10, height: 10 } },
+      {
+        held: undefined,
+        steps: [{ kind: "report-region", region: { x: 90, y: 70, width: 10, height: 10 } }],
+      },
+    ],
   ] as [CuaAction, X11Plan][])("plans %j", (action, expected) => {
     expect(planX11Action(action, guest)).toEqual(expected);
   });
@@ -60,6 +72,14 @@ describe("the guest dialect", () => {
     [{ kind: "type", text: "\ud800" }],
     [{ kind: "speak", text: "hello" }],
     [{ kind: "click", x: 1, y: 1, heldKeys: ["HYPER"] }],
+    [{ kind: "triple_click", x: 1, y: 80 }],
+    [{ kind: "mouse_up", y: 1 }],
+    [{ kind: "hold_keys", keys: ["shift"], ms: Number.NaN }],
+    [{ kind: "hold_keys", keys: ["shift"], ms: -1 }],
+    [{ kind: "hold_keys", keys: ["shift", "shift"], ms: 10 }],
+    [{ kind: "zoom", region: { x: -1, y: 0, width: 10, height: 10 } }],
+    [{ kind: "zoom", region: { x: 0, y: 0, width: 101, height: 10 } }],
+    [{ kind: "zoom", region: { x: 0, y: 0, width: 10, height: 0 } }],
   ] as [CuaAction][])("refuses %j as not dispatched", (action) => {
     expect(() => planX11Action(action, guest)).toThrow(
       expect.objectContaining({ code: "action_rejected", disposition: "not_dispatched" }),

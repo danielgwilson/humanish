@@ -1068,9 +1068,16 @@ Core-owned fields:
   long-context tier pricing needs). Both are additive and absent on
   producers that do not report them. Items may
   carry `at` (ISO-8601 recording stamp from the loop's clock) and, on
-  click-like `ui_action` items, structured `coord` (`x`/`y`). Both are additive:
+  click-like `ui_action` items (a click, double or triple click, or a mouse
+  down or up at a point), structured `coord` (`x`/`y`). Both are additive:
   absent on older bundles and non-stamping producers, and absence means
   "timing/position unrecorded", never zero
+- computer-use `ui_action` titles come from `describeCuaAction`
+  (`src/actors/computer-use/loop/actions.ts`). The desktop actions API providers add are titled
+  `triple-click (x, y)`, `mouse down <button>` or `mouse up <button>` with ` (x, y)` when the
+  action named a point, `hold <chord> <ms>ms`, `read pointer` and `zoom <width>x<height> at
+  (x, y)`. A read's result (the pointer position, the zoomed crop) is passed to the provider and
+  not recorded
 - optional `items[].watch` (`ActorWatch` in `src/actors/contract.ts`), on the
   computer-use `ui_action` of the wait during which a watch ended. A turn whose
   actions are only waits and screenshots, and that asks for wait time, sends no
@@ -1777,14 +1784,14 @@ kind of route an actor took, per dispatched action, as counts by class:
 
 | Class              | What it covers                                                                                                |
 | ------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `pointer`          | click, double-click, drag, scroll: interaction with what is rendered                                          |
-| `keyboard`         | typed text and key presses into the page                                                                      |
+| `pointer`          | click, double-, triple-click, mouse down and up, drag, scroll: interaction with what is rendered              |
+| `keyboard`         | typed text, key presses and held keys into the page                                                           |
 | `speech`           | spoken input from a `speak` action                                                                            |
 | `url-navigation`   | typing a URL (the `nav` subset); a human affordance, see below                                                |
 | `script-execution` | a `javascript:` or `data:` URL; not a human affordance                                                        |
 | `devtools`         | developer tooling opened by keyboard chord                                                                    |
 | `browser-internal` | `chrome://`, `about:`, `view-source:`, `devtools:`, `file:`, `edge:`, `brave:` (the browser, not the product) |
-| `observation`      | screenshots, waits, bare pointer moves: the actor looking rather than acting                                  |
+| `observation`      | screenshots, waits, bare pointer moves, pointer reads, zooms: the actor looking rather than acting            |
 
 `counts` omits classes that never occurred; `total` is the denominator for any
 rate; `shortcutTotal` rolls up `script-execution` + `devtools` +

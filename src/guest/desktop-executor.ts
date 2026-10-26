@@ -1,6 +1,6 @@
 import { perceptualSignature } from "../evidence/frame-signature.js";
 import { setTimeout as delay } from "node:timers/promises";
-import type { CuaAction, CuaExecutor } from "../actors/computer-use/loop.js";
+import type { CuaAction, CuaActionResult, CuaExecutor } from "../actors/computer-use/loop.js";
 import {
   BROWSER_CONTROL_LIMITS,
   validateBrowserControlAction,
@@ -18,10 +18,14 @@ import {
 import { guestX11Dialect, type X11Dialect, type X11Frame } from "../substrates/x11/translator.js";
 
 /**
- * Internal guest port: the X11 transport's input, capture and text, which the executor wraps with
- * its authority checks. Implementations recheck signal synchronously before native dispatch.
+ * Internal guest port: the X11 transport's input, capture, text and pointer read, which the
+ * executor wraps with its authority checks. Implementations recheck signal synchronously before
+ * native dispatch. Without readPointer the guest refuses `read_pointer`.
  */
-export type GuestDesktopTools = Pick<X11Transport, "capture" | "input" | "prepareText">;
+export type GuestDesktopTools = Pick<
+  X11Transport,
+  "capture" | "input" | "prepareText" | "readPointer"
+>;
 
 export interface GuestDesktopExecutorOptions {
   width: number;
@@ -147,19 +151,20 @@ async function executeAction(
   state: GuestExecutorState,
   value: CuaAction,
   callerSignal: AbortSignal | undefined,
-): Promise<void> {
+): Promise<CuaActionResult | undefined> {
   const { authoritySignal, dialect } = context;
   const signal = callerSignal ? AbortSignal.any([authoritySignal, callerSignal]) : authoritySignal;
   begin(state, signal);
   const progress: ActionProgress = { dispatched: false, preparing: false, text: undefined };
   try {
     const action = validateBrowserControlAction(value);
-    await executeX11Action(
+    const result = await executeX11Action(
       action,
       { dialect, transport: authorizedTransport(context, state, signal, progress) },
       signal,
     );
     assertOpen(state, signal, progress.dispatched);
+    return result;
   } catch (error) {
     if (failureEndsSession(progress, error, signal)) terminate(state, context);
     // Do not send mouseup/key-release after revocation: it can itself click/drop. failureError
@@ -195,8 +200,13 @@ function authorizedTransport(
   progress: ActionProgress,
 ): X11Transport {
   const { tools } = context;
+  const { readPointer } = tools;
   return {
     capture: (captureSignal) => tools.capture(captureSignal),
+    // A pointer read sends no input, so it needs no dispatch record.
+    ...(readPointer === undefined
+      ? {}
+      : { readPointer: (readSignal: AbortSignal) => readPointer.call(tools, readSignal) }),
     input(args, inputSignal) {
       assertOpen(state, signal, progress.dispatched);
       progress.dispatched = true;

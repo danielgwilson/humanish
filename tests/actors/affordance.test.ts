@@ -44,6 +44,19 @@ describe("affordance classification", () => {
     expect(classOf({ kind: "screenshot" })).toBe("observation");
   });
 
+  it("classifies the desktop actions only API providers propose by what they send", () => {
+    expect(classOf({ kind: "triple_click", x: 1, y: 2 })).toBe("pointer");
+    expect(classOf({ kind: "mouse_down", button: "right" })).toBe("pointer");
+    expect(classOf({ kind: "mouse_up", x: 1, y: 2 })).toBe("pointer");
+    expect(classOf({ kind: "hold_keys", keys: ["shift"], ms: 500 })).toBe("keyboard");
+    expect(classOf({ kind: "hold_keys", keys: ["F12"], ms: 500 })).toBe("devtools");
+    // Reading the pointer or the screen sends no input.
+    expect(classOf({ kind: "read_pointer" })).toBe("observation");
+    expect(classOf({ kind: "zoom", region: { x: 0, y: 0, width: 10, height: 10 } })).toBe(
+      "observation",
+    );
+  });
+
   it("treats direct URL navigation as human, separate from script execution", () => {
     // The empirical point: people type URLs. Classifying this as a shortcut would make an
     // ordinary human participant look unfaithful.

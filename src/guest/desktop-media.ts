@@ -371,7 +371,7 @@ async function executeWithSpeech(
   channel: SpeechChannel,
   action: Parameters<CuaExecutor["execute"]>[0],
   signal?: AbortSignal,
-): Promise<void> {
+): ReturnType<CuaExecutor["execute"]> {
   if (state.closed) throw new ComputerUseExecutorError("execution_failed", "not_dispatched");
   const candidate = action as { kind?: unknown; text?: unknown };
   if (candidate.kind !== "speak") return executor.execute(action, signal);

@@ -5,6 +5,7 @@ import {
   BROWSER_CONTROL_LIMITS,
   BROWSER_CONTROL_VERSION,
   encodeBrowserControlObservation,
+  encodeBrowserControlResult,
   parseBrowserControlRequest,
   safeBrowserControlFailure,
   sameBrowserControlIdentity,
@@ -244,12 +245,16 @@ async function execute(
     // No await between the owner gate in dispatch and invocation. The physical driver must
     // check this signal again immediately before each actual input after preparation.
     invoked = true;
-    await session.options.executor.execute(request.action, signal);
+    const result = await session.options.executor.execute(request.action, signal);
     if (session.closed || signal.aborted || !authorized(session.options)) {
       session.transport.close("session_revoked");
       return;
     }
-    reply = { ...common, ok: true };
+    reply = {
+      ...common,
+      ok: true,
+      ...(result ? { result: encodeBrowserControlResult(result) } : {}),
+    };
   } catch (error) {
     reply = failure(common, error, invoked);
   }

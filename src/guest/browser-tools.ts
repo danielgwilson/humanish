@@ -19,6 +19,8 @@ export function createGuestBrowserTools(
   let generation = 0;
   return {
     capture: (signal) => native.capture(signal),
+    // A pointer read is not input, so it leaves an armed address bar armed.
+    readPointer: (signal) => native.readPointer(signal),
     async input(args, signal) {
       addressBarArmed = false;
       const inputGeneration = ++generation;

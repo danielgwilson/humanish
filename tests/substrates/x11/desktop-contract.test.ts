@@ -1,7 +1,8 @@
+import { PNG } from "pngjs";
 import { describe, expect, it } from "vitest";
 
 import type { CuaAction } from "../../../src/actors/computer-use/loop.js";
-import { normalizeWire, wireDesktop, type SubstrateName } from "./desktop-wire.js";
+import { framePixel, normalizeWire, wireDesktop, type SubstrateName } from "./desktop-wire.js";
 
 // One table of actions run on every X11 desktop, asserting the exact native calls each sends. The
 // expected lines were captured from the executors before they shared a translator, so any change
@@ -25,6 +26,8 @@ interface Row {
   readonly guest: Expected;
   readonly e2b?: Expected;
   readonly modal?: Expected;
+  /** What the action returns; absent for an action that returns nothing. */
+  readonly result?: unknown;
 }
 
 const TYPE_DIRECTORY =
@@ -259,6 +262,166 @@ const ROWS: readonly Row[] = [
   },
 ];
 
+// The actions added after the translator was shared. Their hosted pointer moves always take the
+// pointer guard and never click in place at 0, since no earlier hosted command set had them.
+const ADDED_ROWS: readonly Row[] = [
+  {
+    name: "a triple click repeats the left button three times",
+    action: { kind: "triple_click", x: 30, y: 40 },
+    hosted: [
+      "xdotool getmouselocation",
+      "xdotool mousemove --sync 30 40",
+      "xdotool click --repeat 3 1",
+    ],
+    guest: ["input mousemove 30 40", "input click --repeat 3 --delay 100 1"],
+  },
+  {
+    name: "a triple click where the pointer already is skips the hosted move",
+    action: { kind: "triple_click", x: 30, y: 40 },
+    pointer: { x: 30, y: 40 },
+    hosted: ["xdotool getmouselocation", "xdotool click --repeat 3 1"],
+    guest: ["input mousemove 30 40", "input click --repeat 3 --delay 100 1"],
+  },
+  {
+    name: "a triple click at x 0 moves there on every desktop",
+    action: { kind: "triple_click", x: 0, y: 40 },
+    hosted: [
+      "xdotool getmouselocation",
+      "xdotool mousemove --sync 0 40",
+      "xdotool click --repeat 3 1",
+    ],
+    guest: ["input mousemove 0 40", "input click --repeat 3 --delay 100 1"],
+  },
+  {
+    name: "a triple click holding shift presses it around the clicks",
+    action: { kind: "triple_click", x: 30, y: 40, heldKeys: ["shift"] },
+    hosted: [
+      key("keydown shift"),
+      "xdotool getmouselocation",
+      "xdotool mousemove --sync 30 40",
+      "xdotool click --repeat 3 1",
+      key("keyup shift"),
+    ],
+    guest: [
+      "input keydown shift",
+      "input mousemove 30 40",
+      "input click --repeat 3 --delay 100 1",
+      "input keyup shift",
+    ],
+  },
+  {
+    name: "a mouse down with no point presses the left button where the pointer is",
+    action: { kind: "mouse_down" },
+    hosted: ["xdotool mousedown 1"],
+    guest: ["input mousedown 1"],
+  },
+  {
+    name: "a right mouse down at a point moves there first",
+    action: { kind: "mouse_down", button: "right", x: 10, y: 20 },
+    hosted: ["xdotool getmouselocation", "xdotool mousemove --sync 10 20", "xdotool mousedown 3"],
+    guest: ["input mousemove 10 20", "input mousedown 3"],
+  },
+  {
+    name: "a mouse up where the pointer already is skips the hosted move",
+    action: { kind: "mouse_up", x: 10, y: 20 },
+    pointer: { x: 10, y: 20 },
+    hosted: ["xdotool getmouselocation", "xdotool mouseup 1"],
+    guest: ["input mousemove 10 20", "input mouseup 1"],
+  },
+  {
+    name: "a middle mouse up with no point releases where the pointer is",
+    action: { kind: "mouse_up", button: "middle" },
+    hosted: ["xdotool mouseup 2"],
+    guest: ["input mouseup 2"],
+  },
+  {
+    name: "a mouse down with only one coordinate is refused",
+    action: { kind: "mouse_down", x: 10 },
+    hosted: REFUSED,
+    guest: REFUSED,
+  },
+  {
+    name: "a mouse up outside the frame is refused on the guest only",
+    action: { kind: "mouse_up", x: 1440, y: 20 },
+    hosted: ["xdotool getmouselocation", "xdotool mousemove --sync 1440 20", "xdotool mouseup 1"],
+    guest: REFUSED,
+  },
+  {
+    name: "a held key goes down, waits on the desktop and comes up",
+    action: { kind: "hold_keys", keys: ["shift"], ms: 250 },
+    hosted: [key("keydown shift"), key("keyup shift")],
+    e2b: [key("keydown shift"), "sleep 0.25", key("keyup shift")],
+    guest: ["input keydown shift", "input keyup shift"],
+  },
+  {
+    name: "a held chord may hold an ordinary key",
+    action: { kind: "hold_keys", keys: ["ctrl", "a"], ms: 0 },
+    hosted: [key("keydown ctrl+a"), key("keyup ctrl+a")],
+    e2b: [key("keydown ctrl+a"), "sleep 0", key("keyup ctrl+a")],
+    guest: ["input keydown ctrl+a", "input keyup ctrl+a"],
+  },
+  {
+    name: "a hold longer than one desktop call carries is refused",
+    action: { kind: "hold_keys", keys: ["shift"], ms: 30_001 },
+    hosted: REFUSED,
+    guest: REFUSED,
+  },
+  {
+    name: "a hold of an unknown key is refused",
+    action: { kind: "hold_keys", keys: ["nonsense"], ms: 100 },
+    hosted: REFUSED,
+    guest: REFUSED,
+  },
+  {
+    name: "a keypress may name X keysyms, as a model writing xdotool syntax does",
+    action: { kind: "keypress", keys: ["ctrl+Prior"] },
+    hosted: [key("key --clearmodifiers ctrl+Prior")],
+    guest: ["input key --clearmodifiers ctrl+Prior"],
+  },
+  {
+    name: "a keypad Enter is its own key",
+    action: { kind: "keypress", keys: ["KP_Enter"] },
+    hosted: [key("key --clearmodifiers KP_Enter")],
+    guest: ["input key --clearmodifiers KP_Enter"],
+  },
+  {
+    name: "a keysym alias reaches xdotool as the table's name",
+    action: { kind: "keypress", keys: ["Page_Down"] },
+    hosted: [key("key --clearmodifiers Next")],
+    guest: ["input key --clearmodifiers Next"],
+  },
+  {
+    name: "a held keypad key goes down and up by its keysym",
+    action: { kind: "hold_keys", keys: ["KP_Add"], ms: 0 },
+    hosted: [key("keydown KP_Add"), key("keyup KP_Add")],
+    e2b: [key("keydown KP_Add"), "sleep 0", key("keyup KP_Add")],
+    guest: ["input keydown KP_Add", "input keyup KP_Add"],
+  },
+  {
+    name: "a pointer read reads the pointer and sends no input",
+    action: { kind: "read_pointer" },
+    pointer: { x: 321, y: 123 },
+    hosted: ["xdotool getmouselocation"],
+    guest: ["readPointer"],
+    result: { kind: "pointer", x: 321, y: 123 },
+  },
+  {
+    name: "a zoom captures one fresh frame",
+    action: { kind: "zoom", region: { x: 100, y: 50, width: 30, height: 20 } },
+    hosted: [],
+    e2b: ["scrot --pointer <shot>", "files.read <shot>", "files.remove <shot>"],
+    modal: ["scrot --pointer <shot>", "readBytes <shot>", "rm -f <shot>"],
+    guest: ["capture"],
+    result: { kind: "frame", region: { x: 100, y: 50, width: 30, height: 20 } },
+  },
+  {
+    name: "a zoom with an empty or fractional region is refused",
+    action: { kind: "zoom", region: { x: 0, y: 0, width: 0.5, height: 10 } },
+    hosted: REFUSED,
+    guest: REFUSED,
+  },
+];
+
 const SUBSTRATES: readonly SubstrateName[] = ["e2b", "modal", "guest"];
 
 function expectedFor(row: Row, substrate: SubstrateName): Expected {
@@ -266,11 +429,28 @@ function expectedFor(row: Row, substrate: SubstrateName): Expected {
   return row[substrate] ?? row.hosted;
 }
 
-describe("every X11 desktop sends the native calls it sent before the shared translator", () => {
-  const cases = ROWS.flatMap((row) =>
+/** The action's result, with a frame checked against the fake frame and replaced by its region. */
+function readResult(result: unknown, expected: unknown): unknown {
+  if (typeof result !== "object" || result === null || !("screenshot" in result)) return result;
+  const region = (expected as { region: { x: number; y: number; width: number; height: number } })
+    .region;
+  const crop = PNG.sync.read(result.screenshot as Buffer);
+  const matches = Array.from({ length: crop.width * crop.height }, (_, index) => {
+    const x = index % crop.width;
+    const y = Math.floor(index / crop.width);
+    return crop.data[index * 4] === framePixel(region.x + x, region.y + y);
+  }).every(Boolean);
+  return {
+    kind: "frame",
+    region: matches ? { ...region, width: crop.width, height: crop.height } : "other pixels",
+  };
+}
+
+function runRows(rows: readonly Row[]) {
+  const cases = rows.flatMap((row) =>
     SUBSTRATES.map((substrate) => ({ ...row, substrate, expected: expectedFor(row, substrate) })),
   );
-  it.each(cases)("$substrate: $name", async ({ substrate, action, pointer, expected }) => {
+  it.each(cases)("$substrate: $name", async ({ substrate, action, pointer, expected, result }) => {
     const desktop = wireDesktop(substrate);
     if (pointer) Object.assign(desktop.pointer, pointer);
     const execution = desktop.executor.execute(action);
@@ -281,10 +461,16 @@ describe("every X11 desktop sends the native calls it sent before the shared tra
       });
       expect(desktop.wire).toEqual([]);
     } else {
-      await execution;
-      expect(desktop.wire).toEqual(expected);
+      expect(readResult(await execution, result)).toEqual(result);
+      // The hosted desktops remove a captured frame's file without waiting for it.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(normalizeWire(desktop.wire)).toEqual(expected);
     }
   });
+}
+
+describe("every X11 desktop sends the native calls it sent before the shared translator", () => {
+  runRows(ROWS);
 
   it.each([
     ["e2b", ["scrot --pointer <shot>", "files.read <shot>", "files.remove <shot>"]],
@@ -296,6 +482,35 @@ describe("every X11 desktop sends the native calls it sent before the shared tra
     // The hosted desktops remove the frame file without waiting for it.
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(normalizeWire(desktop.wire)).toEqual(expected);
+  });
+});
+
+describe("every X11 desktop sends the same native calls for the actions added after it", () => {
+  runRows(ADDED_ROWS);
+});
+
+describe("a zoom whose region leaves the frame is refused before anything is sent", () => {
+  const zoom: CuaAction = { kind: "zoom", region: { x: 1430, y: 0, width: 11, height: 10 } };
+
+  it.each(["e2b", "modal"] as const)(
+    "%s: the hosted desktop learns the frame from its capture and refuses there",
+    async (substrate) => {
+      const desktop = wireDesktop(substrate);
+      await expect(desktop.executor.execute(zoom)).rejects.toMatchObject({
+        code: "action_rejected",
+        disposition: "not_dispatched",
+      });
+      expect(desktop.wire.filter((line) => line.startsWith("xdotool"))).toEqual([]);
+    },
+  );
+
+  it("guest: refuses against its frame before it captures", async () => {
+    const desktop = wireDesktop("guest");
+    await expect(desktop.executor.execute(zoom)).rejects.toMatchObject({
+      code: "action_rejected",
+      disposition: "not_dispatched",
+    });
+    expect(desktop.wire).toEqual([]);
   });
 });
 

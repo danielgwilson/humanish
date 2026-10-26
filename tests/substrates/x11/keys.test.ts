@@ -103,6 +103,32 @@ describe("xdotoolChord", () => {
   });
 
   it.each([
+    [["Prior"], "Prior"],
+    [["Next"], "Next"],
+    [["Page_Up"], "Prior"],
+    [["KP_Enter"], "KP_Enter"],
+    [["KP_0"], "KP_0"],
+    [["KP_9"], "KP_9"],
+    [["KP_Add"], "KP_Add"],
+    [["KP_Subtract"], "KP_Subtract"],
+    [["KP_Multiply"], "KP_Multiply"],
+    [["KP_Divide"], "KP_Divide"],
+    [["KP_Decimal"], "KP_Decimal"],
+    [["KP_Page_Down"], "Next"],
+    [["kp_home"], "Home"],
+    [["KP_Delete"], "Delete"],
+    [["ISO_Left_Tab"], "ISO_Left_Tab"],
+    [["Control_L", "Alt_R", "Shift_L", "Super_R"], "Control_L+Alt_R+Shift_L+Super_R"],
+    [["Meta_L"], "Super_L"],
+    [["ctrl+minus"], "ctrl+minus"],
+    [["ctrl+equal"], "ctrl+equal"],
+    [["shift+question"], "shift+question"],
+    [["BackSpace"], "BackSpace"],
+  ])("takes the X keysym name %j that xdotool-syntax models send as %s", (keys, chord) => {
+    expect(xdotoolChord(keys)).toBe(chord);
+  });
+
+  it.each([
     [["Control+a"], "ctrl+a"],
     [["SHIFT+/"], "shift+slash"],
     [["ctrl++"], "ctrl+plus"],
@@ -114,6 +140,7 @@ describe("xdotoolChord", () => {
   it.each([
     ["an unknown name", ["ARROW_DOWN"]],
     ["an X11 name outside the table", ["Hyper_L"]],
+    ["a keypad key with no main key", ["KP_Begin"]],
     ["a non-ASCII character", ["é"]],
     ["an empty name", [""]],
     ["a name with a trailing plus", ["ctrl+"]],

@@ -34,12 +34,14 @@ import type {
 
 export type {
   CuaAction,
+  CuaActionResult,
   CuaExecutor,
   CuaLiveMetadata,
   CuaLoopOptions,
   CuaLoopResult,
   CuaObservation,
   CuaProvider,
+  CuaRegion,
   CuaSafetyCheck,
   CuaSpendGate,
   CuaTurn,
