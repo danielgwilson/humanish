@@ -9,60 +9,6 @@ The Unreleased section holds the full notes for the next version until it is tag
 ## Unreleased
 
 ### Added
-
-- A library `ComputerUseProvider` can set `batchFailure: "halt"`: after a desktop command fails,
-  the loop sends none of that batch's later actions and acknowledges each as `not_dispatched`.
-- A `ComputerUseTurn` can carry `rejectedProposal: { reason }` for a proposal the provider could
-  not map to an action. The loop runs the turn's actions, acknowledges the proposal's position as
-  `not_dispatched`, gives the participant the reason and continues the session.
-- A `ComputerUseTurn` can report `interruption: "refused"` with an optional `refusalCategory`. The
-  session stops with stop cause `provider_refused_prompt`, keeps the reply's usage and records the
-  category in its notice.
-- A trace's `conversation.explicitReason` can be `stateless_api`, for a provider whose API keeps
-  no conversation between requests. Such a run gives no zero-data-retention warning.
-- `ComputerUseAction` has six more desktop actions, run on E2B, Modal and local VM desktops through
-  the shared X11 translator: `triple_click`, `mouse_down` and `mouse_up` (a button, at the pointer
-  or a point), `hold_keys` (a chord held for up to 30 seconds), `read_pointer`, and `zoom` (a fresh
-  capture cropped to a region at the desktop's own pixels). The OpenAI provider never proposes
-  them, so its requests are unchanged.
-- `ComputerUseExecutor.execute` may resolve with a result, `{ kind: "pointer", x, y }` for
-  `read_pointer` or `{ kind: "frame", screenshot }` for `zoom`. The loop passes it to the provider
-  in that action's acknowledgement (`previousExecution.actions[i].result`). An executor that
-  returns nothing is unchanged.
-- Keypresses and held keys accept the X keysym names a model writing xdotool syntax sends:
-  `Prior`, `Next`, `KP_Enter`, `KP_0` to `KP_9`, the keypad operators, `ISO_Left_Tab`, the sided
-  modifiers (`Control_L`, `Shift_R` and the rest) and punctuation keysym names such as `minus`. The
-  keypad's navigation names (`KP_Home`, `KP_Page_Down` and the rest) press the main keys. Before,
-  each of these was rejected before dispatch.
-- `createAnthropicMessagesProvider` builds a computer-use participant on Claude through the
-  Anthropic Messages API and Claude's `computer_toolset_20260801`, on `claude-haiku-5-5` at effort
-  `medium` with a 16,000-token output limit by default. A library caller passes it to
-  `runComputerUseLoop`, and a study reaches it with `actor.type: computer-use` (below). All 17 of Claude's computer actions run,
-  `zoom` and `cursor_position` answered from what the desktop read, and a desktop over 2,000 px a
-  side is refused.
-- `claude-haiku-5-5` has a rate: $0.10 input, $0.01 cache read, $0.125 cache write and $0.50
-  output per 1M tokens, 5x each for a request over 100,000 prompt tokens.
-- A `ComputerUseProvider` can set `requireReportedUsageForSpendCap: true`. Every session with a
-  declared cap (`maxUsd` or a study budget) then runs as with the loop option of that name: a
-  request that stalls or fails without a reply stops the session with `stopCause:
-  "usage_unreported"` instead of being booked at a worst case and sent again. The Anthropic
-  provider sets it, since that worst case cannot bound a request priced by prompt-size tiers.
-- A `ComputerUseTurn` can carry `notices`, which the trace records as warnings. A trace's
-  `conversation.requests[]` can carry `clearedInputTokens`, the input the provider's server-side
-  context editing cleared.
-- `actor.type: local-agent` participants can propose every desktop action, including the six
-  above. Codex's `humanish_ui` tool schema and Claude Code's reply shape both come from one
-  schema. A `read_pointer` position comes back as text: in Codex's acknowledgment, and in Claude
-  Code's next message. A `zoom` crop comes back as an image enlarged to fit the screenshot, as
-  for Claude through the Anthropic provider: in Codex's tool result as `zoomImages`, and to Claude
-  Code as an image file in its folder, which it opens with Read.
-- A computer-use participant's zooms and pointer reads are run evidence. The image a zoom gave the
-  participant is kept as `screenshots/zoom-NNN` beside the turn screenshots, at the desktop's own
-  pixels, and referenced from the zoom's `ui_action` with the zoomed `region`. It follows every
-  screenshot rule: blurred under `policies.redactScreenshots`, lossless WebP otherwise, listed in
-  the stream's screenshots and checked by `humanish verify`. A pointer read's `ui_action` records
-  `pointer`, the position it read. The Observer shows a zoom's image on its activity row, and
-  analysis offers it as a capture the analyst can cite.
 - `actor.type: computer-use` runs each participant on the vendor of its `actor.model`:
   `claude-haiku-5-5` on Anthropic with `ANTHROPIC_API_KEY`, the `gpt-*` models on OpenAI with
   `OPENAI_API_KEY`, and `gpt-6.1-sol` when the study names no model. It runs on E2B and Modal
@@ -76,6 +22,59 @@ The Unreleased section holds the full notes for the next version until it is tag
   `humanish keys set anthropic`. A remote run on E2B keeps it in E2B's egress proxy, added to
   requests for `api.anthropic.com` as `x-api-key`; a Modal runner receives it as an environment
   variable.
+- `actor.type: local-agent` participants can propose every desktop action, including the six
+  above. Codex's `humanish_ui` tool schema and Claude Code's reply shape both come from one
+  schema. A `read_pointer` position comes back as text: in Codex's acknowledgment, and in Claude
+  Code's next message. A `zoom` crop comes back as an image enlarged to fit the screenshot, as
+  for Claude through the Anthropic provider: in Codex's tool result as `zoomImages`, and to Claude
+  Code as an image file in its folder, which it opens with Read.
+- A computer-use participant's zooms and pointer reads are run evidence. The image a zoom gave the
+  participant is kept as `screenshots/zoom-NNN` beside the turn screenshots, at the desktop's own
+  pixels, and referenced from the zoom's `ui_action` with the zoomed `region`. It follows every
+  screenshot rule: blurred under `policies.redactScreenshots`, lossless WebP otherwise, listed in
+  the stream's screenshots and checked by `humanish verify`. A pointer read's `ui_action` records
+  `pointer`, the position it read. The Observer shows a zoom's image on its activity row, and
+  analysis offers it as a capture the analyst can cite.
+- `claude-haiku-5-5` has a rate: $0.10 input, $0.01 cache read, $0.125 cache write and $0.50
+  output per 1M tokens, 5x each for a request over 100,000 prompt tokens.
+- `createAnthropicMessagesProvider` builds a computer-use participant on Claude through the
+  Anthropic Messages API and Claude's `computer_toolset_20260801`, on `claude-haiku-5-5` at effort
+  `medium` with a 16,000-token output limit by default. A library caller passes it to
+  `runComputerUseLoop`, and a study reaches it with `actor.type: computer-use` (below). All 17 of Claude's computer actions run,
+  `zoom` and `cursor_position` answered from what the desktop read, and a desktop over 2,000 px a
+  side is refused.
+- `ComputerUseAction` has six more desktop actions, run on E2B, Modal and local VM desktops through
+  the shared X11 translator: `triple_click`, `mouse_down` and `mouse_up` (a button, at the pointer
+  or a point), `hold_keys` (a chord held for up to 30 seconds), `read_pointer`, and `zoom` (a fresh
+  capture cropped to a region at the desktop's own pixels). The OpenAI provider never proposes
+  them, so its requests are unchanged.
+- Keypresses and held keys accept the X keysym names a model writing xdotool syntax sends:
+  `Prior`, `Next`, `KP_Enter`, `KP_0` to `KP_9`, the keypad operators, `ISO_Left_Tab`, the sided
+  modifiers (`Control_L`, `Shift_R` and the rest) and punctuation keysym names such as `minus`. The
+  keypad's navigation names (`KP_Home`, `KP_Page_Down` and the rest) press the main keys. Before,
+  each of these was rejected before dispatch.
+- A library `ComputerUseProvider` can set `batchFailure: "halt"`: after a desktop command fails,
+  the loop sends none of that batch's later actions and acknowledges each as `not_dispatched`.
+- A `ComputerUseTurn` can carry `rejectedProposal: { reason }` for a proposal the provider could
+  not map to an action. The loop runs the turn's actions, acknowledges the proposal's position as
+  `not_dispatched`, gives the participant the reason and continues the session.
+- A `ComputerUseTurn` can report `interruption: "refused"` with an optional `refusalCategory`. The
+  session stops with stop cause `provider_refused_prompt`, keeps the reply's usage and records the
+  category in its notice.
+- A trace's `conversation.explicitReason` can be `stateless_api`, for a provider whose API keeps
+  no conversation between requests. Such a run gives no zero-data-retention warning.
+- `ComputerUseExecutor.execute` may resolve with a result, `{ kind: "pointer", x, y }` for
+  `read_pointer` or `{ kind: "frame", screenshot }` for `zoom`. The loop passes it to the provider
+  in that action's acknowledgement (`previousExecution.actions[i].result`). An executor that
+  returns nothing is unchanged.
+- A `ComputerUseProvider` can set `requireReportedUsageForSpendCap: true`. Every session with a
+  declared cap (`maxUsd` or a study budget) then runs as with the loop option of that name: a
+  request that stalls or fails without a reply stops the session with `stopCause:
+  "usage_unreported"` instead of being booked at a worst case and sent again. The Anthropic
+  provider sets it, since that worst case cannot bound a request priced by prompt-size tiers.
+- A `ComputerUseTurn` can carry `notices`, which the trace records as warnings. A trace's
+  `conversation.requests[]` can carry `clearedInputTokens`, the input the provider's server-side
+  context editing cleared.
 
 ### Changed
 
