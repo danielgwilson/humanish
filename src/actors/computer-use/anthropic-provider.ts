@@ -41,11 +41,13 @@ const ANTHROPIC_BETAS = "compact-2026-01-12,thinking-binding-controls-2026-08-01
 export const DEFAULT_ANTHROPIC_CU_MODEL = "claude-haiku-5-5";
 
 /**
- * The output limit every request carries when the caller names none. The API requires one, so
- * it is always sent and recorded: the largest a non-streaming request should ask for, thinking
- * included.
+ * The output limit every request carries when the caller names none. The API requires one, so it
+ * is always sent and recorded. It also bounds the server's compaction of a long session: on a
+ * 54,000-token Taskly session its notes took 23,660 and 26,625 output tokens, thinking included,
+ * and at 16,000 they came back empty three times in three. Such a request took about 100 s, inside
+ * the loop's 180 s turn timeout. A participant's own replies stay far below it.
  */
-const DEFAULT_MAX_OUTPUT_TOKENS = 16_000;
+const DEFAULT_MAX_OUTPUT_TOKENS = 32_000;
 
 /**
  * The largest request body sent. The Messages API refuses a request over 32 MB. A request carries
@@ -63,7 +65,10 @@ export interface AnthropicMessagesProviderOptions {
    * medium. none and minimal have no Anthropic equivalent and throw.
    */
   reasoningEffort?: ReasoningEffort;
-  /** `max_tokens` per request, thinking included. Absent sends 16,000. Not a spend cap. */
+  /**
+   * `max_tokens` per request, thinking included, which also bounds the server's compaction notes.
+   * Absent sends 32,000. Not a spend cap.
+   */
   maxOutputTokens?: number;
   /**
    * One HTTP dispatch per turn and no retries, not even of a 429 or 5xx. A capped session never

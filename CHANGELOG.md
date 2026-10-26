@@ -30,13 +30,15 @@ The Unreleased section holds the full notes for the next version until it is tag
   what it did and saw, and what it still means to do, and carries on from them. Later requests
   start from those notes and no longer send the screenshots before them. The trace's conversation
   record gives each request's size in `requestBytes`, marks the compacted request
-  `compacted: true` and counts the replies the notes replaced in `summarizedTurns`. The compaction is billed
-  as an inference of its own, with its own row in `tokenUsage.turns`, and the cost estimate and
-  spend cap include it. Notes that reach the request's output limit stop short, so they are left
-  out with the reasoning built on them, and the next request compacts again; a closing request
-  does not compact. The server's tool-result clearing is no longer sent: it cleared one screenshot
-  per request and left the billed input nearly unchanged. A session whose screenshots pass 30 MB
-  before the server compacts still stops before the limit, naming the size.
+  `compacted: true` and counts the replies the notes replaced in `summarizedTurns`. The compaction
+  is billed as an inference of its own, with its own row in `tokenUsage.turns`, and the cost
+  estimate and spend cap include it. The notes count toward the request's output limit, so a
+  Claude participant's default `maxOutputTokens` rises from 16,000 to 32,000: on a 54,000-token
+  session the notes took 23,660 to 26,625 tokens. Notes that reach the limit stop short, so they
+  are left out with the reasoning built on them, and the next request compacts again; a closing
+  request does not compact. The server's tool-result clearing is no longer sent: it cleared one
+  screenshot per request and left the billed input nearly unchanged. A session whose screenshots
+  pass 30 MB before the server compacts still stops before the limit, naming the size.
 
 ## 0.150.0: Claude participants see every screenshot they take (2026-10-26)
 

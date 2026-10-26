@@ -87,13 +87,13 @@ describe("the Anthropic provider's requests", () => {
     });
   });
 
-  it("send and record medium effort and 16,000 output tokens when the caller names neither", async () => {
+  it("send and record medium effort and 32,000 output tokens when the caller names neither", async () => {
     const { provider, sent } = scripted([reply(fixture("batch"))]);
     await provider.nextTurn(request, signal);
-    expect(provider.modelSettings).toEqual({ reasoningEffort: "medium", maxOutputTokens: 16_000 });
+    expect(provider.modelSettings).toEqual({ reasoningEffort: "medium", maxOutputTokens: 32_000 });
     expect(sent[0]!.body).toMatchObject({
       model: "claude-haiku-5-5",
-      max_tokens: 16_000,
+      max_tokens: 32_000,
       output_config: { effort: "medium" },
       tools: [{ type: "computer_toolset_20260801" }],
     });

@@ -105,7 +105,7 @@ default brain, and `ComputerUseAdmissionLimitError` is how a provider refuses a 
 
 `createAnthropicMessagesProvider` builds a brain on Claude: the Anthropic Messages API with Claude's
 own computer-use toolset, on `claude-haiku-5-5` unless `model` names another. It takes
-the key as `apiKey` and reads no environment variable. It sends effort `medium` and a 16,000-token
+the key as `apiKey` and reads no environment variable. It sends effort `medium` and a 32,000-token
 output limit unless `reasoningEffort` and `maxOutputTokens` say otherwise, and records both on the
 trace. Screenshots go to the model at full size, so a desktop wider or taller than 2,000 px is
 refused before the first request. Every one of Claude's 17 computer actions runs: `zoom` gets a
