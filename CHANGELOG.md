@@ -53,8 +53,9 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `actor.type: local-agent` participants can propose every desktop action, including the six
   above. Codex's `humanish_ui` tool schema and Claude Code's reply shape both come from one
   schema. A `read_pointer` position comes back as text: in Codex's acknowledgment, and in Claude
-  Code's next message. A `zoom` crop comes back as an image: in Codex's tool result as
-  `zoomImages`, and to Claude Code as an image file in its folder, which it opens with Read.
+  Code's next message. A `zoom` crop comes back as an image enlarged to fit the screenshot, as
+  for Claude through the Anthropic provider: in Codex's tool result as `zoomImages`, and to Claude
+  Code as an image file in its folder, which it opens with Read.
 - A computer-use participant's zooms and pointer reads are run evidence. The image a zoom gave the
   participant is kept as `screenshots/zoom-NNN` beside the turn screenshots, at the desktop's own
   pixels, and referenced from the zoom's `ui_action` with the zoomed `region`. It follows every
@@ -84,10 +85,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   `moveMouse`, `scroll`, `write`, `press`, `drag` and the other clicks), since humanish sends input
   as xdotool commands; code that called them through this type should call the `@e2b/desktop`
   Sandbox directly.
-- The Anthropic provider gives Claude a zoom's image enlarged to fit the screenshot size, with its
-  aspect ratio kept, as Claude's computer-use toolset documents for `zoom`. Before, it sent the
-  crop at the desktop's own pixels, which Claude Haiku 5.5 found too small to read. The run bundle
-  keeps the crop at desktop pixels.
+- A participant is given a zoom's image enlarged to fit its screenshot, with the aspect ratio kept
+  (bilinear), as Claude's computer-use toolset documents for `zoom`. This covers Claude through
+  the Anthropic provider and Codex and Claude Code on the local-agent route. Before, each got the
+  crop at the desktop's own pixels, which Claude Haiku 5.5 found too small to read, and local
+  agents enlarged the page with Ctrl+= instead. The run bundle keeps the crop at desktop pixels.
 - Analysis instructions say a zoom capture is the participant's closer look at a region and not a
   full screen. The added paragraph raises each analysis request's input by about 145 tokens.
 

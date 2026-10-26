@@ -1,7 +1,7 @@
 import { PNG } from "pngjs";
 import { describe, expect, it } from "vitest";
 
-import { ZOOM_FIT, zoomView } from "../../../src/actors/computer-use/zoom-view.js";
+import { ZOOM_FIT, screenSize, zoomView } from "../../../src/actors/computer-use/zoom-view.js";
 
 // What a participant is shown for a zoom: the crop enlarged to fit the usual screenshot size with
 // its aspect ratio kept, as Anthropic's computer-use toolset documents for its zoom member. The
@@ -51,7 +51,14 @@ describe("the image a participant is shown for a zoom", () => {
     expect(row).toEqual([0, 0, 32, 96, 159, 223, 255, 255]);
   });
 
-  it("leaves a frame that is not a PNG to the caller", () => {
-    expect(() => zoomView(Buffer.from("not an image"))).toThrow(/unrecognised content/);
+  it("returns bytes that are not a PNG unchanged, for the caller's own checks to refuse", () => {
+    const bytes = Buffer.from("not an image");
+    expect(zoomView(bytes)).toBe(bytes);
+  });
+
+  it("reads the screenshot size a zoom fits from the screenshot itself", () => {
+    expect(screenSize(png(40, 30, () => 0))).toEqual({ width: 40, height: 30 });
+    expect(screenSize(Buffer.from("89504e470d0a1a0a", "hex"))).toBeUndefined();
+    expect(screenSize(undefined)).toBeUndefined();
   });
 });

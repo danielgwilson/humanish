@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import type { CuaObservation } from "../../../src/actors/computer-use/loop.js";
+import { pngOfSize, sizeOf } from "../../helpers/zoom-frames.js";
 import {
   startClaudeSession,
   turnFromResult,
@@ -254,7 +255,8 @@ describe("the participant's declared outcome", () => {
 
 describe("what a Claude Code session is told its last actions read", () => {
   it("hands back a pointer reading as text and a zoom frame as a file in the session folder", async () => {
-    const zoomPng = Buffer.from("zoom-crop");
+    const zoomPng = pngOfSize(9, 9);
+    const screen = { screenshot: pngOfSize(36, 18), stateSignature: "s1" };
     const seen: Array<{ text: string; zoom?: Buffer }> = [];
     const replies = [
       {
@@ -289,7 +291,7 @@ describe("what a Claude Code session is told its last actions read", () => {
     await session.provider.nextTurn(
       {
         instructions: "i",
-        observation: observation(),
+        observation: screen,
         previousExecution: {
           actions: [
             { index: 0, status: "completed", result: { kind: "pointer", x: 31, y: 47 } },
@@ -309,7 +311,8 @@ describe("what a Claude Code session is told its last actions read", () => {
       new AbortController().signal,
     );
     expect(seen[1]!.text).toContain("(31, 47)");
-    expect(seen[1]!.zoom).toEqual(zoomPng);
+    // The 9x9 crop is handed over enlarged to fit the 36x18 screenshot.
+    expect(sizeOf(seen[1]!.zoom!)).toEqual([18, 18]);
     // Once the agent has looked, the crop leaves the disk with the screenshot it came with.
     expect(existsSync(zoomFile)).toBe(false);
     expect(seen[2]!.text).not.toContain("zoom");

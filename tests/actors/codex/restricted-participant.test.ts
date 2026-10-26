@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PNG } from "pngjs";
+import { pngOfSize, sizeOf } from "../../helpers/zoom-frames.js";
 import { createRestrictedCodexParticipant } from "../../../src/actors/codex/restricted-participant.js";
 import {
   PARTICIPANT_FINAL_SCHEMA,
@@ -531,7 +532,7 @@ describe("restricted participant conversation", () => {
       { kind: "zoom", region: { x: 0, y: 0, width: 1, height: 1 } },
       { kind: "triple_click", x: 1, y: 1 },
     ]);
-    const crop = frame(9);
+    const crop = pngOfSize(1, 1);
     const execution = {
       actions: [
         {
@@ -555,10 +556,13 @@ describe("restricted participant conversation", () => {
         { index: 2, status: "completed" },
       ],
       imageUrl: `data:image/png;base64,${frame(2).toString("base64")}`,
-      zoomImages: [{ index: 1, imageUrl: `data:image/png;base64,${crop.toString("base64")}` }],
+      zoomImages: [{ index: 1, imageUrl: expect.stringMatching(/^data:image\/png;base64,/) }],
       contextHint: null,
       closing: false,
     });
+    // The 1x1 crop is shown enlarged to fit the 2x2 screenshot.
+    const zoomUrl = (reply!.zoomImages as Array<{ imageUrl: string }>)[0]!.imageUrl;
+    expect(sizeOf(Buffer.from(zoomUrl.split(",")[1]!, "base64"))).toEqual([2, 2]);
     // The closing request states the last acknowledgments the same way, never as raw bytes.
     await h.provider.debrief!({ ...request(frame(3)), previousExecution: execution }, signal);
     expect(JSON.parse(run.mock.calls[1]![0].evidence).previousExecution).toEqual({

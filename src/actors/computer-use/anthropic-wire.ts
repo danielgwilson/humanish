@@ -597,14 +597,8 @@ export function toolResult(
 const MAX_SIDE_PX = 2000;
 const MAX_VISUAL_TOKENS = 4784;
 
-/** A frame's width and height in pixels. */
-export interface Size {
-  readonly width: number;
-  readonly height: number;
-}
-
 /** A PNG's width and height from its IHDR chunk, or undefined for anything else. */
-export function pngSize(bytes: Buffer): Size | undefined {
+function pngSize(bytes: Buffer): { width: number; height: number } | undefined {
   const signature = "89504e470d0a1a0a";
   if (bytes.length < 24 || bytes.subarray(0, 8).toString("hex") !== signature) return undefined;
   if (bytes.subarray(12, 16).toString("latin1") !== "IHDR") return undefined;

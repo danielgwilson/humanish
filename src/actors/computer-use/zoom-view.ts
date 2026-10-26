@@ -9,11 +9,19 @@ import { PNG } from "pngjs";
  *  screenshot size Anthropic's computer-use guide recommends for web applications. */
 export const ZOOM_FIT: Readonly<{ width: number; height: number }> = { width: 1280, height: 800 };
 
+/** The width and height a PNG's IHDR declares, or undefined for bytes that are not a PNG. */
+export function screenSize(png: Buffer | undefined): { width: number; height: number } | undefined {
+  if (png === undefined || png.length < 24) return undefined;
+  if (png.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") return undefined;
+  if (png.subarray(12, 16).toString("latin1") !== "IHDR") return undefined;
+  return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
+}
+
 /**
  * `crop` (a PNG) enlarged to fit within `fit`, its usual screenshot size, with its aspect ratio
  * kept, by bilinear sampling. A crop that already reaches `fit` on either side comes back
- * unchanged: a zoom never shows less than the desktop's own pixels. Throws on bytes that are not
- * a PNG.
+ * unchanged: a zoom never shows less than the desktop's own pixels. Bytes that are not a PNG
+ * come back unchanged too, for the caller's own image checks to refuse.
  *
  * Bilinear rather than nearest: the factor is rarely a whole number (a 220x20 strip fit to
  * 1440x950 is 6.5x), and nearest sampling at a fractional factor repeats some source columns once
@@ -24,7 +32,12 @@ export function zoomView(
   crop: Buffer,
   fit: Readonly<{ width: number; height: number }> = ZOOM_FIT,
 ): Buffer {
-  const source = PNG.sync.read(crop);
+  let source: PNG;
+  try {
+    source = PNG.sync.read(crop);
+  } catch {
+    return crop;
+  }
   const scale = Math.min(fit.width / source.width, fit.height / source.height);
   if (!(scale > 1)) return crop;
   const width = Math.max(1, Math.min(fit.width, Math.round(source.width * scale)));

@@ -18,6 +18,7 @@ import {
 } from "../computer-use/provider-error.js";
 import { validateBrowserControlPng, validateHeardSpeech } from "../../browser-control/protocol.js";
 import { resolveWaitSettings } from "../computer-use/wait.js";
+import { screenSize, zoomView } from "../computer-use/zoom-view.js";
 import {
   createRestrictedCodexSession,
   type RestrictedCodexSession,
@@ -100,7 +101,7 @@ const toolDescription = (
     idleWaitMs,
   }: { maxWaitMs: number; watchMaxMs: number; idleWaitMs: number },
 ): string =>
-  `Act on the participant's browser through humanish. Submit one to four UI actions${speechEnabled ? ", including speak when you need to reply aloud," : ""} and a short public comment; never private reasoning. humanish returns a JSON STRING with execution acknowledgments${speechEnabled ? ", speech heard from the actual participant speaker sink," : ""} and a fresh screenshot. In Code Mode use: const r = JSON.parse(await tools.humanish_ui({narration: "...", actions: [...]})); text({acknowledgments: r.acknowledgments${speechEnabled ? ", heardSpeech: r.heardSpeech" : ""}, contextHint: r.contextHint, closing: r.closing}); image(r.imageUrl); for (const z of r.zoomImages ?? []) image(z.imageUrl). A read_pointer acknowledgment carries pointer {x, y}; each zoom's crop arrives in zoomImages under its action index. Call serially and inspect each returned screenshot${speechEnabled ? " and heardSpeech array" : ""} before deciding what to do next. A call whose actions are only waits and that asks for some wait time asks to wait its waits' ms together; an ask under ${idleWaitMs} ms counts as ${idleWaitMs} ms, and named ms count up to ${watchMaxMs} ms${speechEnabled ? ". It returns when speech is heard" : ""}. contextHint says how long it waited and why it returned, and what happened outside the browser, such as a link that opened another app. A wait among other actions lasts its ms, at most ${maxWaitMs} ms.${speechEnabled ? " Use speak only after the visible UI shows that you joined the call and your microphone is unmuted; it sends audio into that call." : ""} Acknowledged input does not prove an application outcome. If closing is true, stop calling tools and give your final account.`;
+  `Act on the participant's browser through humanish. Submit one to four UI actions${speechEnabled ? ", including speak when you need to reply aloud," : ""} and a short public comment; never private reasoning. humanish returns a JSON STRING with execution acknowledgments${speechEnabled ? ", speech heard from the actual participant speaker sink," : ""} and a fresh screenshot. In Code Mode use: const r = JSON.parse(await tools.humanish_ui({narration: "...", actions: [...]})); text({acknowledgments: r.acknowledgments${speechEnabled ? ", heardSpeech: r.heardSpeech" : ""}, contextHint: r.contextHint, closing: r.closing}); image(r.imageUrl); for (const z of r.zoomImages ?? []) image(z.imageUrl). A read_pointer acknowledgment carries pointer {x, y}; each zoom's crop arrives in zoomImages under its action index, enlarged to fit the screenshot; coordinates you send stay those of the full screenshot. Call serially and inspect each returned screenshot${speechEnabled ? " and heardSpeech array" : ""} before deciding what to do next. A call whose actions are only waits and that asks for some wait time asks to wait its waits' ms together; an ask under ${idleWaitMs} ms counts as ${idleWaitMs} ms, and named ms count up to ${watchMaxMs} ms${speechEnabled ? ". It returns when speech is heard" : ""}. contextHint says how long it waited and why it returned, and what happened outside the browser, such as a link that opened another app. A wait among other actions lasts its ms, at most ${maxWaitMs} ms.${speechEnabled ? " Use speak only after the visible UI shows that you joined the call and your microphone is unmuted; it sends audio into that call." : ""} Acknowledged input does not prove an application outcome. If closing is true, stop calling tools and give your final account.`;
 
 const participantInstructions = (prompt: string, speechEnabled: boolean): string =>
   `${prompt}\n\nYou are the study participant throughout this conversation, including its closing account. Use only the supplied screenshots and humanish_ui tool to interact. The tool returns a JSON string: parse it, inspect acknowledgments${speechEnabled ? " and heardSpeech captured from the actual participant speaker sink" : ""}, and display imageUrl and each zoomImages imageUrl with Code Mode image(). Do not print an image data URL as text. Keep your persona and earlier observations throughout the session.${speechEnabled ? " A speak action plays into the participant microphone; use it only after the visible UI shows that you joined the call and the microphone is unmuted." : ""} Speak publicly about your experience, never reveal private reasoning. Completed inputs do not prove application outcomes; verify on the next screenshot. When the task ends, return only the required final JSON with outcome, summary, frictionReports and impressions. Report observed confusion and recovered mistakes as well as blockers. ${IMPRESSIONS_ASK} Do not invent observations.`;
@@ -243,9 +244,12 @@ function toolReply(
 ): string {
   const { actions } = req.previousExecution!;
   // Each zoom frame is an image the model displays like the screenshot, so it travels beside the
-  // acknowledgments the model prints as text.
+  // acknowledgments the model prints as text, enlarged to fit the screenshot (zoom-view.ts).
+  const fit = screenSize(req.observation.screenshot);
   const zoomImages = actions.flatMap(({ index, result }) =>
-    result?.kind === "frame" ? [{ index, imageUrl: pngDataUrl(result.screenshot) }] : [],
+    result?.kind === "frame"
+      ? [{ index, imageUrl: pngDataUrl(zoomView(result.screenshot, fit)) }]
+      : [],
   );
   return JSON.stringify({
     acknowledgments: acknowledgmentsForModel(actions),
