@@ -638,6 +638,22 @@ try {
     await assert.rejects(action(outside), { code: "action_rejected" });
     return { region };
   });
+  await test("screenshot returns the whole frame", async () => {
+    const shot = await action({ kind: "screenshot" });
+    const frame = PNG.sync.read((await executor.observe()).screenshot);
+    await writeFile(join(output, "screenshot.png"), shot.screenshot);
+    const image = PNG.sync.read(shot.screenshot);
+    assert.deepEqual([image.width, image.height], [frame.width, frame.height]);
+    // The page holds still between the two captures; a caret blink may change a few pixels.
+    let differing = 0;
+    for (let i = 0; i < image.data.length; i += 4)
+      if (image.data.readUInt32BE(i) !== frame.data.readUInt32BE(i)) differing += 1;
+    assert.ok(
+      differing < (image.width * image.height) / 100,
+      "the screenshot differs from the next frame",
+    );
+    return { width: image.width, height: image.height, differing };
+  });
   result.browser = context.browser()?.version();
   result.chromiumSandbox = true;
   result.terminalCount = terminalCount;

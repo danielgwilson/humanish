@@ -25,6 +25,7 @@ export const GUEST_PROOF_CASES = Object.freeze({
     "X keysym names reach the page as their keys",
     "pointer read returns the pointer position",
     "zoom returns a fresh crop of the frame",
+    "screenshot returns the whole frame",
   ],
   "owned-stream": [
     "bootstrap and immediate HELLO",
