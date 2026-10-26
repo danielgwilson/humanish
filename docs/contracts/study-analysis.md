@@ -349,7 +349,11 @@ certify visual legibility, correct interpretation, or exhaustive issue discovery
 
 New packets declare `captureVersion: 2`, bound into their input digest. They
 include captures attached to `screenshot` and scripted `ui_action` events,
-preserving the original action IDs and evidence basis. Error notices that refer
+preserving the original action IDs and evidence basis. A computer-use zoom's `ui_action`
+carries its capture the same way: the region it looked at, at the desktop's own pixels. The
+instructions tell the analyst that such a capture shows one region and that text and control
+sizes are judged from full-screen captures. A pointer read's entry text
+ends with the position it read (`pointer at (x, y)`). Error notices that refer
 to an earlier capture retain that context without creating another frame.
 Scripted participants use their recorded `ui.intent` goal when no participant assignment
 exists. Missing assignments and declared captures without supported trace

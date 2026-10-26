@@ -169,6 +169,13 @@ export interface ActorTraceItem {
    *  it, before any cap. Absent on a wait that named no length, such as the OpenAI computer
    *  tool's `wait`, on other items and producers, and in older bundles. */
   namedMs?: number;
+  /** On a computer-use zoom's `ui_action`: the region of the desktop it looked at, in desktop
+   *  pixels. Its `screenshotRef` is the image of that region the participant was given, kept at the
+   *  desktop's own pixels. Additive: absent on other items and producers, and in older bundles. */
+  region?: { x: number; y: number; width: number; height: number };
+  /** On a computer-use pointer read's `ui_action`: the position the read returned, in desktop
+   *  pixels. Additive: absent on other items and producers, and in older bundles. */
+  pointer?: { x: number; y: number };
 }
 
 /**

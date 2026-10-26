@@ -1174,6 +1174,31 @@ appear in text and analysis as well as pixels. Malformed receiving metadata fail
 bundle validation. The projection holds counts, local IDs and lifecycle/coverage
 status; private provider identities and cleanup authority are kept outside the run.
 
+## Zoom frames
+
+The image a computer-use participant was given for a `zoom` is a frame of the bundle, so a
+decision the participant made on it can be checked. The loop writes it as it writes a screenshot
+(`persistFrame` in `src/actors/computer-use/loop/frames.ts`), as `zoom-NNN.png` beside the turn
+screenshots, numbered from 001 in the order the participant zoomed, and references it from the
+zoom's `ui_action` item through `screenshotRef`, with the zoomed `region` beside it
+([schemas](schemas.md)). Every rule above for a stream screenshot applies to it: the metadata
+chunks are dropped, a study that blurs its screenshots keeps the redactor's blurred PNG, a study
+that does not ends with the lossless WebP, the frame is listed in the stream's screenshot
+artifacts and the trace index's `screenshots` count, verify reads it under the screenshot checks
+and grades it `RAW_SCREENSHOTS` unless it is blurred, and export blurs it. The frame holds the
+region at the desktop's own pixels, as the screen held it. A provider that enlarges a zoom for its
+model sends the enlarged copy and keeps nothing else: the Anthropic provider fits it within the
+screenshot size, as Claude's computer-use toolset documents for `zoom`.
+
+A pointer read records the position it returned as `pointer` on its `ui_action` item; it writes
+no file.
+
+A zoom's item is not a frame of the participant's replay (`isCapture` in `src/run/run-clock.ts`):
+the Observer shows the image on the zoom's activity row and opens a cited zoom at the screen it
+was taken on, and analysis offers it as a capture the analyst can cite. humanish versions before
+this one read the bundle and verify it, since a `ui_action` with a `screenshotRef` is already
+valid evidence, but their Observer shows a zoom frame as a replay frame.
+
 ## Redacted Derivative Workspace
 
 `humanish export --run RUN --format bundle --redact-screenshots --out DIRECTORY`

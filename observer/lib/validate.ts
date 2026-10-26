@@ -33,7 +33,10 @@ const item = (value: unknown): boolean =>
       typeof value.screenshotRef.path === "string" &&
       optionalString(value.screenshotRef.redaction))) &&
   (value.coord === undefined ||
-    (object(value.coord) && finite(value.coord.x) && finite(value.coord.y)));
+    (object(value.coord) && finite(value.coord.x) && finite(value.coord.y))) &&
+  (value.pointer === undefined ||
+    (object(value.pointer) && finite(value.pointer.x) && finite(value.pointer.y))) &&
+  (value.region === undefined || size(value.region));
 
 const DISPLAY_STATES = [
   "running",

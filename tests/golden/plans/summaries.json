@@ -9,8 +9,8 @@
           "trigger": "default",
           "participants": 2,
           "expectedCostUsd": {
-            "low": 0.16086,
-            "high": 0.76806
+            "low": 0.161223,
+            "high": 0.768423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.16 to $0.77 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -43,8 +43,8 @@
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
-            "low": 0.15086,
-            "high": 0.75806
+            "low": 0.151223,
+            "high": 0.758423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -75,8 +75,8 @@
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
-            "low": 0.15086,
-            "high": 0.75806
+            "low": 0.151223,
+            "high": 0.758423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -107,8 +107,8 @@
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
-            "low": 0.15086,
-            "high": 0.75806
+            "low": 0.151223,
+            "high": 0.758423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -139,8 +139,8 @@
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
-            "low": 0.15086,
-            "high": 0.75806
+            "low": 0.151223,
+            "high": 0.758423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -172,8 +172,8 @@
           "trigger": "default",
           "participants": 2,
           "expectedCostUsd": {
-            "low": 0.16086,
-            "high": 0.76806
+            "low": 0.161223,
+            "high": 0.768423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.16 to $0.77 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -204,8 +204,8 @@
           "trigger": "default",
           "participants": 4,
           "expectedCostUsd": {
-            "low": 0.18086,
-            "high": 0.78806
+            "low": 0.181223,
+            "high": 0.788423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.18 to $0.79 for 4 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -275,8 +275,8 @@
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
-            "low": 0.15086,
-            "high": 0.75806
+            "low": 0.151223,
+            "high": 0.758423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -321,8 +321,8 @@
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
-            "low": 0.15086,
-            "high": 0.75806
+            "low": 0.151223,
+            "high": 0.758423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -354,8 +354,8 @@
           "trigger": "default",
           "participants": 3,
           "expectedCostUsd": {
-            "low": 0.17086,
-            "high": 0.77806
+            "low": 0.171223,
+            "high": 0.778423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.17 to $0.78 for 3 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -392,8 +392,8 @@
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
-            "low": 0.15086,
-            "high": 0.75806
+            "low": 0.151223,
+            "high": 0.758423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -425,8 +425,8 @@
           "trigger": "default",
           "participants": 2,
           "expectedCostUsd": {
-            "low": 0.16086,
-            "high": 0.76806
+            "low": 0.161223,
+            "high": 0.768423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.16 to $0.77 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -478,8 +478,8 @@
           "trigger": "default",
           "participants": 3,
           "expectedCostUsd": {
-            "low": 0.17086,
-            "high": 0.77806
+            "low": 0.171223,
+            "high": 0.778423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.17 to $0.78 for 3 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -516,8 +516,8 @@
           "trigger": "default",
           "participants": 3,
           "expectedCostUsd": {
-            "low": 0.17086,
-            "high": 0.77806
+            "low": 0.171223,
+            "high": 0.778423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.17 to $0.78 for 3 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -554,8 +554,8 @@
           "trigger": "default",
           "participants": 2,
           "expectedCostUsd": {
-            "low": 0.16086,
-            "high": 0.76806
+            "low": 0.161223,
+            "high": 0.768423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.16 to $0.77 for 2 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -591,8 +591,8 @@
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
-            "low": 0.15086,
-            "high": 0.75806
+            "low": 0.151223,
+            "high": 0.758423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -620,8 +620,8 @@
           "trigger": "default",
           "participants": 1,
           "expectedCostUsd": {
-            "low": 0.15086,
-            "high": 0.75806
+            "low": 0.151223,
+            "high": 0.758423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },
@@ -655,8 +655,8 @@
             "trigger": "default",
             "participants": 1,
             "expectedCostUsd": {
-              "low": 0.15086,
-              "high": 0.75806
+              "low": 0.151223,
+              "high": 0.758423
             },
             "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
           },
@@ -724,8 +724,8 @@
             "trigger": "default",
             "participants": 1,
             "expectedCostUsd": {
-              "low": 0.15086,
-              "high": 0.75806
+              "low": 0.151223,
+              "high": 0.758423
             },
             "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
           },
@@ -758,8 +758,8 @@
             "trigger": "default",
             "participants": 1,
             "expectedCostUsd": {
-              "low": 0.15086,
-              "high": 0.75806
+              "low": 0.151223,
+              "high": 0.758423
             },
             "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
           },
@@ -856,8 +856,8 @@
             "trigger": "default",
             "participants": 1,
             "expectedCostUsd": {
-              "low": 0.15086,
-              "high": 0.75806
+              "low": 0.151223,
+              "high": 0.758423
             },
             "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
           },
@@ -925,8 +925,8 @@
             "trigger": "default",
             "participants": 1,
             "expectedCostUsd": {
-              "low": 0.15086,
-              "high": 0.75806
+              "low": 0.151223,
+              "high": 0.758423
             },
             "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.15 to $0.76 for 1 participant, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
           },
@@ -958,8 +958,8 @@
           "trigger": "default",
           "participants": 4,
           "expectedCostUsd": {
-            "low": 0.18086,
-            "high": 0.78806
+            "low": 0.181223,
+            "high": 0.788423
           },
           "line": "After live runs: default analysis · gpt-6.1-sol at medium effort · expected $0.18 to $0.79 for 4 participants, depending on how much evidence the run keeps · refused before it starts if both its worst case and its expected cost plus a 10% margin are over $10; this is not a billing cap. Set review.analysis: false to disable."
         },

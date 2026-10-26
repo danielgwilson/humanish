@@ -1076,8 +1076,19 @@ Core-owned fields:
   (`src/actors/computer-use/loop/actions.ts`). The desktop actions API providers add are titled
   `triple-click (x, y)`, `mouse down <button>` or `mouse up <button>` with ` (x, y)` when the
   action named a point, `hold <chord> <ms>ms`, `read pointer` and `zoom <width>x<height> at
-  (x, y)`. A read's result (the pointer position, the zoomed crop) is passed to the provider and
-  not recorded
+  (x, y)`
+- optional `items[].region` and `items[].pointer`, on the computer-use `ui_action` of a read
+  that completed and returned its result. A zoom's item carries `region` (`x`, `y`, `width`,
+  `height` in desktop pixels) and a `screenshotRef` to the image the desktop returned:
+  `screenshots/zoom-NNN.png` (under `screenshots/<participant id>/` for more than one
+  participant), numbered from 001 in the order the participant zoomed. The frame is the region
+  at the desktop's own pixels, as the screen held it; a provider that enlarges it for the model
+  (the Anthropic provider does, to fit the screenshot size) sends a copy and the bundle keeps the
+  crop. It is persisted, redacted, converted to WebP and verified as a screenshot is
+  ([run bundle](run-bundle.md#zoom-frames)). A pointer read's item carries `pointer` (`x`, `y`
+  in desktop pixels), the position the read returned. An item with `region` is not a replay
+  frame: the Observer shows its image on the zoom's activity row, and analysis offers it as a
+  capture. Additive: absent on other items and producers, and in older bundles
 - optional `items[].watch` (`ActorWatch` in `src/actors/contract.ts`), on the
   computer-use `ui_action` of the wait during which a watch ended. A turn whose
   actions are only waits and screenshots, and that asks for wait time, sends no

@@ -14,6 +14,7 @@ import {
   raceSessionDeadline,
   requestScope,
 } from "./race.js";
+import { readEvidence } from "./frames.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 import type {
@@ -362,9 +363,11 @@ export async function runActionBatch(
     execution.actions.push({ index, status, ...(result === undefined ? {} : { result }) });
     countAttempt(session, action, title, status);
     const coord = pressedAt(action);
+    const read = await readEvidence(session, action, result);
     trace.record("ui_action", () => ({
       lifecycle: "completed",
       title,
+      ...read,
       ...(action.kind === "speak" ? { text: session.redactNarration(action.text) } : {}),
       // Structured pin coordinates, exactly the presses the Observer
       // pins render: recorded fact instead of a title re-parse downstream.

@@ -6,6 +6,7 @@ import { tracePage } from "../../../evidence/trace-page.js";
 import { dwellCompleted, missingFrame, stopWhenMatched, type Stop } from "./ending.js";
 import { CuaAbortError, CuaStallError, raceCallBound } from "./race.js";
 import type { LoopSession } from "./session.js";
+import { persistFrame } from "./frames.js";
 import { notice } from "./trace.js";
 import type { CuaObservation } from "./types.js";
 import { plural } from "../../../run/text.js";
@@ -302,16 +303,9 @@ export class DesktopObserver {
     const { session } = this;
     const frame = observation.screenshot;
     if (frame === undefined) return;
-    session.phase = `writing screenshot ${label}`;
-    // Default: persist the raw frame (full fidelity, local-only). redactScreenshots flips to the
-    // publish-safe blurred thumbnail. Either way the bytes the model already saw were raw.
-    const { bytes, method } = session.redactScreenshots
-      ? await session.settings.redaction
-          .redactScreenshot(frame, { label })
-          .then((r) => ({ bytes: r.buffer, method: r.method }))
-      : { bytes: frame, method: "none" as const };
-    const path = await session.writeScreenshot(`${label}.png`, bytes);
-    const screenshotRef = { path, redaction: method };
+    // Persisted raw by default (full fidelity, local-only); redactScreenshots keeps the
+    // publish-safe blurred thumbnail instead.
+    const screenshotRef = await persistFrame(session, frame, label);
     session.lastScreenshotRef = screenshotRef;
     const page = session.finalPage;
     session.trace.record("screenshot", () => ({

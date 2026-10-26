@@ -55,6 +55,13 @@ The Unreleased section holds the full notes for the next version until it is tag
   schema. A `read_pointer` position comes back as text: in Codex's acknowledgment, and in Claude
   Code's next message. A `zoom` crop comes back as an image: in Codex's tool result as
   `zoomImages`, and to Claude Code as an image file in its folder, which it opens with Read.
+- A computer-use participant's zooms and pointer reads are run evidence. The image a zoom gave the
+  participant is kept as `screenshots/zoom-NNN` beside the turn screenshots, at the desktop's own
+  pixels, and referenced from the zoom's `ui_action` with the zoomed `region`. It follows every
+  screenshot rule: blurred under `policies.redactScreenshots`, lossless WebP otherwise, listed in
+  the stream's screenshots and checked by `humanish verify`. A pointer read's `ui_action` records
+  `pointer`, the position it read. The Observer shows a zoom's image on its activity row, and
+  analysis offers it as a capture the analyst can cite.
 
 ### Changed
 
@@ -81,6 +88,8 @@ The Unreleased section holds the full notes for the next version until it is tag
   aspect ratio kept, as Claude's computer-use toolset documents for `zoom`. Before, it sent the
   crop at the desktop's own pixels, which Claude Haiku 5.5 found too small to read. The run bundle
   keeps the crop at desktop pixels.
+- Analysis instructions say a zoom capture is the participant's closer look at a region and not a
+  full screen. The added paragraph raises each analysis request's input by about 145 tokens.
 
 ## 0.148.0: Participants run gpt-6.1-sol (2026-10-26)
 

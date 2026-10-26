@@ -159,11 +159,16 @@ export function resolveReportMoment(data: ObserverData, streamId: string, eventI
   const row = model?.rows.find((item) => item.id === eventId);
   const candidate = row ? model?.frames[row.frameIndex] : undefined;
   // Events before the first retained capture do not acquire a future screenshot.
-  const frame: PlayerFrame | null =
+  const shown: PlayerFrame | null =
     candidate &&
     !(row?.atMs !== undefined && candidate.atMs !== undefined && row.atMs < candidate.atMs)
       ? candidate
       : null;
+  // A cited zoom shows the region the participant looked at, and opens at the screen it was on.
+  const frame: PlayerFrame | null =
+    shown && row?.zoomHref !== undefined
+      ? { ...shown, itemId: row.id, title: row.title, href: row.zoomHref }
+      : shown;
   const item = traceItems(stream).find((item) => item.id === eventId);
   const event = stream.timeline.find((item) => item.id === eventId);
   if (!row && !item && !event) return null;

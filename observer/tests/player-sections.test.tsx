@@ -193,6 +193,26 @@ describe("the inspector", () => {
     expect(container.querySelector(".acts .thought-full")?.textContent).toBe("I look.");
   });
 
+  it("shows a zoom's image small on its activity row", async () => {
+    model = {
+      ...model,
+      rows: [
+        row({
+          id: "zoom",
+          title: "zoom 98x22 at (817, 177)",
+          zoomHref: "../screenshots/zoom-001.webp",
+        }),
+        row({ id: "click", title: "click (100, 100)" }),
+      ],
+    };
+    await render({ initialFrame: 0 });
+    const images = container.querySelectorAll<HTMLImageElement>(".acts .arow img");
+    expect([...images].map((image) => image.getAttribute("src"))).toEqual([
+      "../screenshots/zoom-001.webp",
+    ]);
+    expect(images[0]?.closest(".arow")?.textContent).toContain("zoom 98x22 at (817, 177)");
+  });
+
   it("lists the recorded actor, viewport, affordances and redaction in Details", async () => {
     stream = {
       ...stream,

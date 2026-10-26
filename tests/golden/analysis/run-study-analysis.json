@@ -79,7 +79,7 @@
         "usageComplete": false,
         "dispatched": false,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.20668
+        "estimatedAdmissionUsd": 0.2074
       },
       "result": null,
       "error": "analysis_api_key_missing"
@@ -90,7 +90,7 @@
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.20668,
+        "estimatedAdmissionUsd": 0.2074,
         "status": "failed"
       }
     ]
@@ -165,7 +165,7 @@
         "usageComplete": true,
         "dispatched": true,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.20668
+        "estimatedAdmissionUsd": 0.2074
       },
       "result": {
         "summary": "The participant encountered an obstacle.",
@@ -232,7 +232,7 @@
         "url": "https://api.openai.com/v1/responses",
         "model": "gpt-5.6-sol",
         "maxOutputTokens": 8192,
-        "bodySha256": "bfb81a98659fa6ff"
+        "bodySha256": "20f96f48f1b65815"
       }
     ],
     "progress": [
@@ -240,25 +240,25 @@
         "phase": "admitted",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.20668
+        "estimatedAdmissionUsd": 0.2074
       },
       {
         "phase": "requesting",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.20668
+        "estimatedAdmissionUsd": 0.2074
       },
       {
         "phase": "validating",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.20668
+        "estimatedAdmissionUsd": 0.2074
       },
       {
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.20668,
+        "estimatedAdmissionUsd": 0.2074,
         "status": "complete"
       }
     ]
@@ -333,7 +333,7 @@
         "usageComplete": false,
         "dispatched": false,
         "ratesAsOf": "2026-09-03",
-        "estimatedAdmissionUsd": 0.20668
+        "estimatedAdmissionUsd": 0.2074
       },
       "result": null,
       "error": "analysis_cancelled"
@@ -344,7 +344,7 @@
         "phase": "finished",
         "evidenceCount": 1,
         "captureCount": 0,
-        "estimatedAdmissionUsd": 0.20668,
+        "estimatedAdmissionUsd": 0.2074,
         "status": "cancelled"
       }
     ]
@@ -497,7 +497,7 @@
         "model": "gpt-6-astra",
         "maxOutputTokens": null,
         "images": 0,
-        "bodySha256": "b090af04c279803c"
+        "bodySha256": "0ef01c1dcf2041d9"
       }
     ],
     "progress": [
