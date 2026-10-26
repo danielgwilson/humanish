@@ -1,4 +1,5 @@
 import type { ActorCapabilities } from "../contract.js";
+import type { CuaTurn } from "./loop/types.js";
 import { redactText } from "../../evidence/redaction.js";
 import {
   prepareContainedOutputFile,
@@ -165,9 +166,18 @@ export function wireCaptureFileName(callNumber: number): string {
 export interface WireCapture {
   /** Preflight the next capture file; undefined when capture is off. */
   prepareNext(): Promise<PreparedSelectedOutputDirectory | undefined>;
-  /** Persist one successful response body, redacted and pretty-printed. */
-  record(raw: unknown): Promise<void>;
+  /**
+   * Persist the successful response body behind `turn`, redacted and pretty-printed, and return
+   * the turn. Called once the turn is built, so a write that fails loses none of its billed usage:
+   * the turn comes back with a notice instead, which the trace records.
+   */
+  record(turn: CuaTurn, raw: unknown): Promise<CuaTurn>;
 }
+
+const CAPTURE_NOT_WRITTEN = {
+  title: "wire capture not written",
+  text: "The reply could not be written to HUMANISH_CUA_WIRE_CAPTURE_DIR; its usage is kept. Check that the capture directory is writable.",
+};
 
 /**
  * Response wire capture into `captureDir`; undefined means off and zero behavior change. The
@@ -184,20 +194,29 @@ export function createWireCapture(captureDir: string | undefined): WireCapture {
     await prepareContainedOutputFile(captureRoot, wireCaptureFileName(captureCount + 1));
     return captureRoot;
   };
+  const write = async (raw: unknown): Promise<void> => {
+    const captureRoot = await prepareNext();
+    if (!captureRoot) return;
+    captureCount += 1;
+    await writeContainedOutputFile(
+      captureRoot,
+      wireCaptureFileName(captureCount),
+      `${JSON.stringify(redactWireJson(raw), null, 2)}\n`,
+      "utf8",
+    );
+  };
   return {
     prepareNext,
-    // Fails loud: a silent capture failure would leave turns missing from a fixture refresh.
-    record: async (raw) => {
-      if (captureDir === undefined) return;
-      const captureRoot = await prepareNext();
-      if (!captureRoot) return;
-      captureCount += 1;
-      await writeContainedOutputFile(
-        captureRoot,
-        wireCaptureFileName(captureCount),
-        `${JSON.stringify(redactWireJson(raw), null, 2)}\n`,
-        "utf8",
-      );
+    // A failure is reported on the turn: a silent one would leave turns missing from a fixture
+    // refresh.
+    record: async (turn, raw) => {
+      if (captureDir === undefined) return turn;
+      try {
+        await write(raw);
+        return turn;
+      } catch {
+        return { ...turn, notices: [...(turn.notices ?? []), CAPTURE_NOT_WRITTEN] };
+      }
     },
   };
 }
