@@ -51,6 +51,32 @@ export type FetchLike = (
   headers?: { get(name: string): string | null };
 }>;
 
+/** A response with its ok body already read. */
+export type SentRequest =
+  | { readonly ok: true; readonly reply: unknown }
+  | {
+      readonly ok: false;
+      readonly status: number;
+      readonly headers?: { get(name: string): string | null } | undefined;
+      text(): Promise<string>;
+    };
+
+/**
+ * Send one request and, when it succeeds, read its reply body. A provider bills a request once it
+ * has answered, so losing the body while it is read loses billed usage just as a dropped
+ * connection does: the read happens here, inside the same failure a provider accounts for as a
+ * request lost in transit.
+ */
+export async function sendRequest(
+  fetchFn: FetchLike,
+  url: string,
+  init: Parameters<FetchLike>[1],
+): Promise<SentRequest> {
+  const res = await fetchFn(url, init);
+  if (res.ok) return { ok: true, reply: await res.json() };
+  return { ok: false, status: res.status, headers: res.headers, text: () => res.text() };
+}
+
 /** The fetch a provider uses when none is injected, with the headers a retry reads. */
 export function defaultFetch(): FetchLike {
   return async (url, init) => {

@@ -22,8 +22,10 @@ import {
   defaultFetch,
   isAbortError,
   retryDelayMs,
+  sendRequest,
   wireCaptureDir,
   type FetchLike,
+  type SentRequest,
   type WireCapture,
 } from "./provider-http.js";
 
@@ -275,9 +277,10 @@ async function postResponse(
   let sawNetworkError = false;
   for (let attempt = 0; attempt <= retries; attempt += 1) {
     signal?.throwIfAborted();
-    let res: Awaited<ReturnType<FetchLike>>;
+    let res: SentRequest;
     try {
-      res = await transport.fetchFn(transport.endpoint, {
+      // The reply body is read inside the dispatch, so losing it counts as a lost request.
+      res = await sendRequest(transport.fetchFn, transport.endpoint, {
         method: "POST",
         headers,
         body: payload,
@@ -304,7 +307,7 @@ async function postResponse(
       throw new Error("OpenAI Responses network error");
     }
     if (res.ok) {
-      const parsed: unknown = await res.json();
+      const parsed = res.reply;
       // Capture after ok and before parse-to-CuaTurn: responses only, never the
       // request (screenshots/instructions) and never a non-ok body (input echo).
       await transport.capture.record(parsed);

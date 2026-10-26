@@ -23,8 +23,11 @@ type Json = Record<string, unknown>;
 const read = (path: string): Json =>
   JSON.parse(readFileSync(new URL(`../../fixtures/${path}.json`, import.meta.url), "utf8")) as Json;
 
-/** One answer of the fake transport: a reply body with its status, or a lost request. */
-type Answer = { readonly status: number; readonly body: Json } | "lost";
+/**
+ * One answer of the fake transport: a reply body with its status, a request lost in transit, or
+ * a 200 whose body was lost while it was read.
+ */
+type Answer = { readonly status: number; readonly body: Json } | "lost" | "body-lost";
 const ok = (body: Json): Answer => ({ status: 200, body });
 
 interface Column {
@@ -143,11 +146,21 @@ async function run(column: Column, session: Session) {
   const bodies: Json[] = [];
   // Requests past the scripted answers, such as an impressions request after the participant's
   // own ending, get the vendor's ending reply.
-  const billed: Array<Exclude<Answer, "lost">> = [];
+  const billed: Array<Exclude<Answer, string>> = [];
   const fetchFn: FetchLike = async (_url, init) => {
     bodies.push(JSON.parse(init.body) as Json);
     const answer = session.answers[bodies.length - 1] ?? column.ending;
     if (answer === "lost") throw new TypeError("fetch failed");
+    if (answer === "body-lost") {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => "",
+        json: async () => {
+          throw new TypeError("terminated");
+        },
+      };
+    }
     if (answer.status === 200) billed.push(answer);
     return {
       ok: answer.status === 200,
@@ -236,6 +249,38 @@ describe.each(COLUMNS)("the $vendor provider in the loop", (column) => {
     expect(result.trace.tokenUsage?.input).toBe(
       billed.length === 0 ? undefined : column.billedInput(billed[0]!.body),
     );
+  });
+
+  it("reports usage as incomplete when a billed reply's body is lost, and sends the request again", async () => {
+    const { result, bodies } = await run(column, {
+      answers: ["body-lost", column.batch, column.ending],
+    });
+    expect(bodies[1]).toEqual(bodies[0]);
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(result.trace.interactionUsageIncomplete).toBe(true);
+  });
+
+  it("reports usage as incomplete when a dispatched request is cancelled", async () => {
+    const controller = new AbortController();
+    const provider = column.create(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () =>
+            reject(Object.assign(new Error("aborted"), { name: "AbortError" })),
+          );
+          controller.abort();
+        }),
+    );
+    await expect(
+      provider.nextTurn(
+        {
+          instructions: "Add a task called Buy milk.",
+          observation: { screenshot: SCREEN, stateSignature: "s" },
+        },
+        controller.signal,
+      ),
+    ).rejects.toThrow("aborted");
+    expect(provider.interactionUsageIncomplete).toBe(true);
   });
 
   it("asks for the closing account again with the schema set when the first reply is not its JSON", async () => {

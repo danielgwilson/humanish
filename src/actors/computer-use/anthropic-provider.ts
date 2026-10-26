@@ -12,8 +12,10 @@ import {
   defaultFetch,
   isAbortError,
   retryDelayMs,
+  sendRequest,
   wireCaptureDir,
   type FetchLike,
+  type SentRequest,
   type WireCapture,
 } from "./provider-http.js";
 
@@ -111,6 +113,11 @@ function errorDetail(bodyText: string): string {
   return `${named}${path === undefined ? "" : ` at ${path}`}`;
 }
 
+const CAPTURE_NOT_WRITTEN = {
+  title: "wire capture not written",
+  text: "The reply could not be written to HUMANISH_CUA_WIRE_CAPTURE_DIR; its usage is kept. Check that the capture directory is writable.",
+};
+
 const isRetryable = (status: number): boolean =>
   status === 408 || status === 409 || status === 429 || status >= 500;
 
@@ -163,28 +170,25 @@ async function postMessages(
   };
   for (let attempt = 0; ; attempt += 1) {
     signal.throwIfAborted();
-    let res: Awaited<ReturnType<FetchLike>>;
+    let res: SentRequest;
     try {
-      res = await transport.fetchFn(transport.endpoint, {
+      res = await sendRequest(transport.fetchFn, transport.endpoint, {
         method: "POST",
         headers,
         body: payload,
         signal,
       });
     } catch (error) {
-      if (signal.aborted || isAbortError(error)) throw error;
-      // Under a spend cap the loop accounts for the lost request; without one, the trace says so.
+      // From dispatch until its reply body is read, a request may have been billed, cancelled
+      // ones included. Under a spend cap the loop accounts for it; without one, the trace says so.
       if (interaction && spend === undefined) transport.markUsageIncomplete();
+      if (signal.aborted || isAbortError(error)) throw error;
       if (spend !== undefined || attempt >= retries)
-        throw new Error("Anthropic Messages network error");
+        throw new Error("Anthropic Messages request lost in transit");
       await transport.delayFn(2 ** attempt * 200);
       continue;
     }
-    if (res.ok) {
-      const reply: unknown = await res.json();
-      await transport.capture.record(forCapture(reply));
-      return reply;
-    }
+    if (res.ok) return res.reply;
     if (isRetryable(res.status) && attempt < retries) {
       await transport.delayFn(retryDelayMs(attempt, res.headers));
       continue;
@@ -241,16 +245,37 @@ export function createAnthropicMessagesProvider(
     spend?: CuaSpendGate,
   ): Promise<CuaTurn> => {
     const request = conversation.request(req);
-    return request.accept(
-      await postMessages(transport, request.body, signal, { retries, interaction: true, spend }),
-    );
+    const reply = await postMessages(transport, request.body, signal, {
+      retries,
+      interaction: true,
+      spend,
+    });
+    return captured(request.accept(reply), reply);
   };
 
   // A closing request is posted once, with no retries; the loop decides on a second one.
-  const requestClosing = (req: CuaTurnRequest, signal: AbortSignal, closing: ClosingRequest) =>
-    conversation.close(req, closing, (body) =>
-      postMessages(transport, body, signal, { retries: 0, interaction: false }),
-    );
+  const requestClosing = async (
+    req: CuaTurnRequest,
+    signal: AbortSignal,
+    closing: ClosingRequest,
+  ): Promise<CuaTurn> => {
+    let reply: unknown;
+    const turn = await conversation.close(req, closing, async (body) => {
+      reply = await postMessages(transport, body, signal, { retries: 0, interaction: false });
+      return reply;
+    });
+    return captured(turn, reply);
+  };
+
+  // Written after the turn is built, so a capture that cannot be written loses no usage.
+  const captured = async (turn: CuaTurn, reply: unknown): Promise<CuaTurn> => {
+    try {
+      await transport.capture.record(forCapture(reply));
+      return turn;
+    } catch {
+      return { ...turn, notices: [...(turn.notices ?? []), CAPTURE_NOT_WRITTEN] };
+    }
+  };
 
   return {
     id: "anthropic-messages-cu",

@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PNG } from "pngjs";
@@ -168,7 +168,26 @@ describe("the conversation record", () => {
 describe("wire capture", () => {
   let dir: string | undefined;
   afterEach(() => {
-    if (dir !== undefined) rmSync(dir, { recursive: true, force: true });
+    if (dir === undefined) return;
+    chmodSync(dir, 0o700);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("keeps a reply's usage when its capture cannot be written, and says so", async () => {
+    dir = mkdtempSync(join(tmpdir(), "humanish-anthropic-capture-"));
+    const captureDir = dir;
+    const { provider } = scripted([reply(fixture("batch"))], {
+      env: { HUMANISH_CUA_WIRE_CAPTURE_DIR: captureDir },
+      // The directory turns read-only after the provider prepared the capture file.
+      fetchFn: async () => {
+        chmodSync(captureDir, 0o500);
+        const body = fixture("batch");
+        return { ok: true, status: 200, text: async () => "", json: async () => body };
+      },
+    });
+    const turn = await provider.nextTurn(request, signal);
+    expect(turn.usage?.input).toBe(5448);
+    expect(turn.notices?.map((notice) => notice.title)).toEqual(["wire capture not written"]);
   });
 
   it("writes each reply without its thinking signatures", async () => {
