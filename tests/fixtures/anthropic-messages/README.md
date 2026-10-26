@@ -21,21 +21,27 @@ Captured on 2026-10-26:
   the rest the halt text.
 - `closing-strict.json`: a closing request with `output_config.format` set.
 - `max-tokens.json`: `max_tokens: 64`; the reply stops inside its first member call.
-- `cleared-tool-uses.json`: a request of 36 screenshot exchanges (66,370 input tokens) with
-  `clear_tool_uses_20250919` at a 60,000-token trigger; `applied_edits` reports 4 cleared tool
-  uses.
 - `error-400-missing-toolset-name.json`: the 400 body for a `tool_result` without
   `toolset_name`.
 - `mid-batch-screenshot.json`: a reply from a live Taskly run, effort `medium`: a thinking
   summary, text, then six member calls (`left_click`, `wait`, `screenshot`, `left_click`,
   `wait`, `screenshot`), so its first `screenshot` comes before the end of the batch.
 
+Captured on 2026-10-26 from the provider itself, driven turn by turn with screenshots recorded
+in a live Taskly session:
+
+- `compaction.json`: request 22 of that session (43 messages), sent with `compact_20260112` at
+  a 60,000-token trigger and an earlier wording of the provider's summary instructions. The reply starts with a
+  `compaction` block holding the participant's notes, and `usage.iterations` has a `compaction`
+  entry, with its cache write, ahead of the `message` entry.
+- `compaction-cut-off.json`: a reply from a live 65-minute Taskly session whose compaction wrote
+  16,000 output tokens, the request's `max_tokens`, so its notes stop mid-sentence. The app's
+  address in the notes was replaced with `taskly.example.test`.
+
 Built from the documented shapes, not captured, because they cannot be produced on demand:
 
 - `documented-refusal.json`: `stop_reason: refusal` with `stop_details.category: cyber`
   (docs: refusals and stop details).
-- `documented-compaction-iterations.json`: `usage.iterations` with a `compaction` entry ahead
-  of the `message` entry, using the counts from the compaction docs' example.
 - `documented-error-429.json`, `documented-error-529.json`: the error body shape from the
   errors page.
 

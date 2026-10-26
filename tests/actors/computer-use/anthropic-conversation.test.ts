@@ -217,6 +217,58 @@ describe("an Anthropic participant's conversation", () => {
   });
 });
 
+describe("a server-side compaction", () => {
+  it("after a compaction, sends the compacted reply first and nothing from before it", () => {
+    const c = conversation();
+    const done = (count: number) => ({
+      previousExecution: acks(...Array.from({ length: count }, () => "completed" as const)),
+    });
+    c.request(req()).accept(reply("batch"));
+    c.request(req(done(5))).accept(reply("batch"));
+    const compacting = c.request(req(done(5)));
+    const compaction = reply("compaction");
+    compacting.accept(compaction);
+    const after = c.request(req(done(1))).body as Body;
+    // The server reads nothing before the compaction block, so the client stops sending it.
+    expect(after.messages[0]).toEqual({ role: "assistant", content: compaction.content });
+    expect(after.messages.slice(1).map((entry) => entry.role)).toEqual(["user"]);
+    expect(JSON.stringify(after).length).toBeLessThan(JSON.stringify(compacting.body).length / 2);
+    // From the compaction on, the history is appended to again.
+    const later = c.request(req(done(1)));
+    later.accept(reply("batch"));
+    const last = c.request(req(done(5))).body as Body;
+    expect(last.messages.slice(0, after.messages.length)).toEqual(after.messages);
+  });
+
+  it("is not recorded when its reply is set aside and asked again", () => {
+    const c = conversation();
+    c.request(req()).accept(reply("batch"));
+    const compacting = c.request(req({ previousExecution: acks("completed", "completed") }));
+    compacting.accept({ ...reply("compaction"), stop_reason: "max_tokens" });
+    expect(c.request(req({ previousExecution: acks("completed", "completed") })).body).toEqual(
+      compacting.body,
+    );
+    const record = c.record();
+    expect(record.requests.at(-1)!.compacted).toBeUndefined();
+    expect(record.summarizedTurns).toBe(0);
+  });
+
+  it("after cut-off notes, carries the whole conversation again and only appends to it", () => {
+    const c = conversation();
+    c.request(req()).accept(reply("batch"));
+    const done = {
+      previousExecution: acks("completed", "completed", "completed", "completed", "completed"),
+    };
+    const cutOff = c.request(req(done));
+    cutOff.accept(reply("compaction-cut-off"));
+    const next = c.request(req({ previousExecution: acks("completed") })).body as Body;
+    const sent = (cutOff.body as Body).messages;
+    expect(next.messages.slice(0, sent.length)).toEqual(sent);
+    const answered = next.messages[sent.length]!.content as Block[];
+    expect(answered.map((block) => block.type)).toEqual(["tool_use"]);
+  });
+});
+
 describe("a read's answer", () => {
   const ZOOMED = PNG.sync.write(new PNG({ width: 300, height: 150 }));
   const readThenType = (
@@ -374,6 +426,28 @@ describe("the pointer position a coordinate-free click uses", () => {
 });
 
 describe("the closing request", () => {
+  it("reads the session uncompacted, keeping earlier notes valid", async () => {
+    // A closing request's 4,096-token limit would cut off a compaction's notes, and the account
+    // should come from the whole session since the last notes. Compaction blocks already sent
+    // are only accepted alongside the compaction strategy, so it stays, with a trigger the
+    // request cannot reach.
+    const c = conversation();
+    c.request(req()).accept(reply("compaction"));
+    let body: Record<string, unknown> | undefined;
+    await c.close(req({ previousExecution: acks("completed") }), "report", async (payload) => {
+      body = JSON.parse(payload) as Record<string, unknown>;
+      return reply("closing-report");
+    });
+    expect(body!.context_management).toEqual({
+      edits: [
+        expect.objectContaining({
+          type: "compact_20260112",
+          trigger: { type: "input_tokens", value: 1_000_000 },
+        }),
+      ],
+    });
+  });
+
   it("answers the open calls, asks in text, turns tools off and keeps its own output limit", async () => {
     const c = conversation(2048);
     c.request(req()).accept(reply("batch"));
@@ -381,8 +455,8 @@ describe("the closing request", () => {
     const turn = await c.close(
       req({ contextHint: "The session is over. Give your closing account." }),
       "impressions",
-      async (body) => {
-        bodies.push(body as Body);
+      async (payload) => {
+        bodies.push(JSON.parse(payload) as Body);
         return reply("closing-json");
       },
     );
@@ -401,8 +475,8 @@ describe("the closing request", () => {
     const c = conversation();
     c.request(req()).accept(reply("end-turn"));
     const bodies: Body[] = [];
-    const send = async (body: Record<string, unknown>) => {
-      bodies.push(body as Body);
+    const send = async (payload: string) => {
+      bodies.push(JSON.parse(payload) as Body);
       return reply("closing-json");
     };
     await c.close(req(), "impressions", send);
@@ -420,8 +494,8 @@ describe("the closing request", () => {
       const c = conversation();
       c.request(req()).accept(reply("end-turn"));
       const bodies: Body[] = [];
-      const send = async (body: Record<string, unknown>) => {
-        bodies.push(body as Body);
+      const send = async (payload: string) => {
+        bodies.push(JSON.parse(payload) as Body);
         return reply("closing-json");
       };
       await c.close(req(), closing, send);

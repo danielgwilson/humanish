@@ -22,6 +22,24 @@ The Unreleased section holds the full notes for the next version until it is tag
   changes for every study. Evidence:
   `docs/evidence/computer-use/persona-adherence-2026-10-26.md`.
 
+### Fixed
+
+- A Claude participant held to a scheduled end, such as an hour or a working day, no longer stops
+  at the Messages API's 32 MB request limit. Once a request carries 60,000 input tokens, the
+  server compacts the session: the participant writes first-person notes on what it set out to do,
+  what it did and saw, and what it still means to do, and carries on from them. Later requests
+  start from those notes and no longer send the screenshots before them. The trace's conversation
+  record gives each request's size in `requestBytes`, marks the compacted request
+  `compacted: true` and counts the replies the notes replaced in `summarizedTurns`. The compaction
+  is billed as an inference of its own, with its own row in `tokenUsage.turns`, and the cost
+  estimate and spend cap include it. The notes count toward the request's output limit, so a
+  Claude participant's default `maxOutputTokens` rises from 16,000 to 32,000: on a 54,000-token
+  session the notes took 23,660 to 26,625 tokens. Notes that reach the limit stop short, so they
+  are left out with the reasoning built on them, and the next request compacts again; a closing
+  request does not compact. The server's tool-result clearing is no longer sent: it cleared one
+  screenshot per request and left the billed input nearly unchanged. A session whose screenshots
+  pass 30 MB before the server compacts still stops before the limit, naming the size.
+
 ## 0.150.0: Claude participants see every screenshot they take (2026-10-26)
 
 humanish 0.150.0 fixes two gaps in Claude participants. A `screenshot` Claude calls in the middle

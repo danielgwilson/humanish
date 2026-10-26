@@ -160,8 +160,9 @@ together pass V8's longest string. It was measured on 25 participants with 30 Mi
 ## Per-request lists
 
 From v4, three lists that gain one entry per model request are only in each participant's trace
-file: `tokenUsage.turns` (each request's usage), `conversation.requests` (each request's mode and,
-in explicit_context, what it carried) and `providerRequests` (an account participant's receipt for
+file: `tokenUsage.turns` (each request's usage, with a row of its own ahead of it for a server-side
+compaction the request ran), `conversation.requests` (each request's mode and, in
+explicit_context, what it carried and whether it was compacted) and `providerRequests` (an account participant's receipt for
 each dispatch). Before v4 run.json held a copy of each beside the trace file's, and a flush wrote
 every running participant's usage rows into run.json and observer-data.json. A synthetic run of
 30 participants making 2,880 requests each, written through the run writer, leaves a run.json of

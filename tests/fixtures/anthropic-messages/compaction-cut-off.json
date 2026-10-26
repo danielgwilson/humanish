@@ -1,0 +1,76 @@
+{
+  "model": "claude-haiku-5-5",
+  "id": "msg_01CompactionCutOff",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "compaction",
+      "content": "**Where I am:** The last check was 18:43, so about 52 minutes remain before the session ends at 19:35. I'm using Taskly, the to-do app at taskly.example.test, as my monthly errands list for the whole session. All entries are practice errands I made up.\n\n**What I set out to do:** Start with a fern task, add 29 more errands one at a time, delete the fern once all 30 were in, then keep the list going to the end. While it runs I check off finished items, look at All, Active and Completed after each change, rename tasks when plans change, undo a completion now and then, delete what no longer matters, and add new errands. At the end I report what worked, what behaved differ"
+    },
+    {
+      "type": "thinking",
+      "thinking": "The summary notes my last check was 18:43 with 52 minutes remaining, and mentions I'm using Taskly with made-up practice errands as Alex, a first-time trial user. Since the summary seems incomplete, I shouldn't assume previous actions finished, so I should take a screenshot to confirm the current state first.\n\n",
+      "signature": "<signature removed>"
+    },
+    {
+      "type": "tool_use",
+      "id": "toolu_01CompactionCutOff0001",
+      "name": "screenshot",
+      "input": {},
+      "toolset_name": "computer",
+      "caller": {
+        "type": "direct"
+      }
+    }
+  ],
+  "container": null,
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "stop_details": null,
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 5428,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 5428,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "iterations": [
+      {
+        "input_tokens": 238,
+        "output_tokens": 16000,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 50443,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 50443,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "type": "compaction"
+      },
+      {
+        "input_tokens": 2,
+        "output_tokens": 257,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 5428,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 5428,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+      }
+    ],
+    "output_tokens": 257,
+    "output_tokens_details": {
+      "thinking_tokens": 197
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+  },
+  "input_transformations": [],
+  "diagnostics": null,
+  "context_management": {
+    "applied_edits": []
+  }
+}

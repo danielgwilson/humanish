@@ -26,12 +26,15 @@ import { screenSize, zoomView } from "./zoom-view.js";
 // thinking block when anything sent before it changes. The history is therefore append-only:
 // the system prompt is the study instructions, fixed by the first request; the toolset is one
 // constant; each reply is appended verbatim; and every later request adds only new messages.
-// Old screenshots leave what the model reads through the server's tool-result clearing
-// (anthropic-wire.ts), never through an edit here.
+// The one cut is at a server-side compaction (anthropic-wire.ts): a reply that starts with a
+// compaction summary replaces everything before it, which the server no longer reads and the
+// thinking check no longer covers, so the history restarts at that reply.
 
 /** One request of the conversation, built once, so a retry sends the same body. */
 export interface ConversationRequest {
   readonly body: Record<string, unknown>;
+  /** The body as JSON, the bytes the request sends. */
+  readonly payload: string;
   /** Move the conversation on to the request's reply and return the reply's turn. */
   accept(reply: unknown): CuaTurn;
 }
@@ -49,7 +52,10 @@ const OK = "OK";
 const SCREEN_AT_END = "The screen after this turn's last action is in its last result.";
 
 export class AnthropicConversation {
-  /** Every message sent and received so far, in order. Only ever appended to. */
+  /**
+   * Every message sent and received since the latest compaction, in order. Only ever appended
+   * to, apart from the cut a compaction makes.
+   */
   private readonly history: unknown[] = [];
   private instructions: string | undefined;
   /** The latest accepted reply: the next request answers each of its member calls. */
@@ -58,8 +64,10 @@ export class AnthropicConversation {
   private pointer: Point | undefined;
   /** The messages of a closing request whose reply was not the stated JSON, for its retry. */
   private openClosing: readonly unknown[] | undefined;
-  /** Accepted replies so far, each carried in every later request. */
+  /** Accepted replies the history holds, each carried in every later request. */
   private replies = 0;
+  /** Accepted replies a compaction summarized, which no later request carries. */
+  private summarized = 0;
   private readonly requests: ActorConversation["requests"] = [];
   /** Why replies' usage could not be priced, each told to the trace once. */
   private readonly unpricedReasons = new Set<string>();
@@ -70,14 +78,17 @@ export class AnthropicConversation {
   request(req: CuaTurnRequest): ConversationRequest {
     const sent = this.newMessages(req);
     const pointer = this.pointerAfterBatch(req);
+    const body = requestBody(this.settings, this.fixInstructions(req.instructions), [
+      ...this.history,
+      ...sent,
+    ]);
+    const payload = JSON.stringify(body);
     return {
-      body: requestBody(this.settings, this.fixInstructions(req.instructions), [
-        ...this.history,
-        ...sent,
-      ]),
+      body,
+      payload,
       accept: (reply) => {
-        const parsed = parseMessage(reply, pointer);
-        this.recordRequest(sent, parsed);
+        const parsed = parseMessage(reply, pointer, outputLimit(body));
+        this.recordRequest(sent, parsed, payload);
         // A reply that ended without a decision (output limit, refusal, an unexpected stop) is
         // set aside, so asking again sends this same request.
         if (parsed.turn.interruption === undefined) this.moveOn(sent, parsed, pointer);
@@ -87,31 +98,32 @@ export class AnthropicConversation {
   }
 
   /**
-   * The read-only closing request carrying `req`'s screen, sent once with `send`. It answers the
-   * latest reply's calls, then asks for the closing account with its JSON Schema stated in text,
-   * since an output format would miss the cached prefix. A completed reply that is not JSON the
-   * schema accepts comes back marked closingRetry and leaves the conversation where it was; the
-   * next closing request sends the same messages with the schema set as the output format.
+   * The read-only closing request carrying `req`'s screen, sent once as JSON with `send`. It
+   * answers the latest reply's calls, then asks for the closing account with its JSON Schema
+   * stated in text, since an output format would miss the cached prefix. A completed reply that
+   * is not JSON the schema accepts comes back marked closingRetry and leaves the conversation
+   * where it was; the next closing request sends the same messages with the schema set as the
+   * output format.
    */
   async close(
     req: CuaTurnRequest,
     closing: ClosingRequest,
-    send: (body: Record<string, unknown>) => Promise<unknown>,
+    send: (payload: string) => Promise<unknown>,
   ): Promise<CuaTurn> {
     const strict = this.openClosing !== undefined;
     const sent = this.openClosing ?? this.newMessages(req, closing);
     this.openClosing = undefined;
     const pointer = this.pointerAfterBatch(req);
-    const reply = await send(
-      requestBody(
-        this.settings,
-        this.fixInstructions(req.instructions),
-        [...this.history, ...sent],
-        strict ? { schema: closingSchema(closing) } : {},
-      ),
+    const body = requestBody(
+      this.settings,
+      this.fixInstructions(req.instructions),
+      [...this.history, ...sent],
+      strict ? { schema: closingSchema(closing) } : {},
     );
-    const parsed = parseMessage(reply, pointer);
-    if (closing === "impressions") this.recordRequest(sent, parsed, "impressions");
+    const payload = JSON.stringify(body);
+    const reply = await send(payload);
+    const parsed = parseMessage(reply, pointer, outputLimit(body));
+    if (closing === "impressions") this.recordRequest(sent, parsed, payload, "impressions");
     const completed = parsed.stopReason === "end_turn";
     const account = completed ? closingAccount(parsed.turn.message, closing, strict) : undefined;
     if (completed && account === undefined && !strict) {
@@ -135,7 +147,7 @@ export class AnthropicConversation {
     return {
       mode: "explicit_context",
       explicitReason: "stateless_api",
-      summarizedTurns: 0,
+      summarizedTurns: this.summarized,
       requests: this.requests.map((request) => ({ ...request })),
     };
   }
@@ -204,28 +216,48 @@ export class AnthropicConversation {
     const text = `${reason} Its tokens are counted at the standard rates, so the cost estimate may be low, and a session with a spend cap stops before its next request.`;
     return {
       ...parsed.turn,
-      notices: [{ title: "participant usage outside the rate table", text }],
+      notices: [
+        ...(parsed.turn.notices ?? []),
+        { title: "participant usage outside the rate table", text },
+      ],
     };
   }
 
   private moveOn(sent: readonly unknown[], parsed: ParsedMessage, pointer: Point | undefined) {
-    this.history.push(...sent, message("assistant", parsed.content));
+    if (parsed.compacted) {
+      this.summarized += this.replies;
+      this.replies = 0;
+      this.history.length = 0;
+    } else this.history.push(...sent);
+    this.history.push(message("assistant", parsed.content));
     this.latest = parsed;
     this.pointer = pointer;
     this.replies += 1;
   }
 
-  private recordRequest(sent: readonly unknown[], parsed: ParsedMessage, kind?: "impressions") {
+  private recordRequest(
+    sent: readonly unknown[],
+    parsed: ParsedMessage,
+    payload: string,
+    kind?: "impressions",
+  ) {
     this.requests.push({
       mode: "explicit_context",
       ...(kind === undefined ? {} : { kind }),
       carriedExchanges: this.replies,
       carriedScreenshots: countImages([...this.history, ...sent]),
-      ...(parsed.clearedInputTokens === undefined
-        ? {}
-        : { clearedInputTokens: parsed.clearedInputTokens }),
+      requestBytes: Buffer.byteLength(payload),
+      // A reply set aside is asked again uncompacted, so its summary replaced nothing.
+      ...(parsed.compacted && parsed.turn.interruption === undefined
+        ? { compacted: true as const }
+        : {}),
     });
   }
+}
+
+/** A request body's max_tokens, which also bounds a compaction it runs. */
+function outputLimit(body: Record<string, unknown>): number | undefined {
+  return typeof body.max_tokens === "number" ? body.max_tokens : undefined;
 }
 
 type Acknowledgements = ReadonlyMap<number, CuaActionAcknowledgement>;

@@ -183,20 +183,36 @@ async function storeLessOpenAiViews(): Promise<string[]> {
 
 /**
  * The Messages API keeps no conversation: each request's messages are all the model holds, so the
- * provider has to send the whole history every turn.
+ * provider has to send the whole history every turn. With `compactOnTurn`, the server compacts on
+ * that turn: it summarizes what it read, keeping turn 1's text as the summary instructions ask,
+ * and from then on reads nothing before the compaction block, whatever the client still sends.
  */
-async function anthropicViews(): Promise<string[]> {
+async function anthropicViews(compactOnTurn?: number): Promise<string[]> {
   const views: string[] = [];
   const fetchFn: FetchLike = async (_url, init) => {
-    const body = JSON.parse(init.body) as { messages: unknown[] };
-    views.push(JSON.stringify(body.messages));
-    const turn = views.length;
+    const body = JSON.parse(init.body) as { messages: Array<{ content: unknown }> };
+    const from = body.messages.findLastIndex((entry) =>
+      JSON.stringify(entry.content).includes('"type":"compaction"'),
+    );
+    const read = JSON.stringify(body.messages.slice(Math.max(from, 0)));
+    const turn = views.length + 1;
+    const compaction =
+      turn === compactOnTurn
+        ? [
+            {
+              type: "compaction",
+              content: read.includes(TURN_ONE) ? `My notes: ${TURN_ONE}` : "My notes.",
+            },
+          ]
+        : [];
+    views.push(compaction.length > 0 ? JSON.stringify(compaction) : read);
     const value = {
       id: `msg_${turn}`,
       type: "message",
       role: "assistant",
       model: "claude-haiku-5-5",
       content: [
+        ...compaction,
         { type: "text", text: turn === 1 ? TURN_ONE : "Next." },
         {
           type: "tool_use",
@@ -313,7 +329,10 @@ const LOCAL_AGENT_BRAINS = {
  */
 const BRAINS: Record<ActorId, Record<string, BrainCase>> = {
   // On OpenAI, computer-use builds the same provider openai-computer-use does (cases below).
-  "computer-use": { "anthropic (history sent with every request)": { views: anthropicViews } },
+  "computer-use": {
+    "anthropic (history sent with every request)": { views: () => anthropicViews() },
+    "anthropic after a server-side compaction": { views: () => anthropicViews(2) },
+  },
   "openai-computer-use": {
     "threaded (previous_response_id)": { views: () => openAiViews(false) },
     explicit_context: { views: () => openAiViews(true) },
