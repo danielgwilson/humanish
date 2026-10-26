@@ -17,22 +17,22 @@ import type { RunBundle } from "../../src/run/bundle.js";
 
 // A composed participant prompt of the shape the report describes: authored text naming a runtime
 // inbox.
-const LANE_PROMPT = [
+const FOCUS_PROMPT = [
   "Persona: skeptical-power-user.",
   "",
   "Sign up and verify your email.",
   "",
-  "Lane focus: read your mail at https://8025-ixyzsandbox123.e2b.app/inbox and follow the link.",
+  "Your focus: read your mail at https://8025-ixyzsandbox123.e2b.app/inbox and follow the link.",
 ].join("\n");
 
 describe("scenario.goal redaction", () => {
   it("the raw prompt is exactly what the scanner rejects", () => {
     // Establishes the premise: without redaction this text fails the public-safety gate.
-    expect(containsSensitive(LANE_PROMPT)).toBe(true);
+    expect(containsSensitive(FOCUS_PROMPT)).toBe(true);
   });
 
   it("redaction clears the gate while keeping the prompt readable", () => {
-    const stored = redactText(LANE_PROMPT);
+    const stored = redactText(FOCUS_PROMPT);
     expect(containsSensitive(stored)).toBe(false);
     // The runtime URL is gone...
     expect(stored).not.toContain("ixyzsandbox123.e2b.app");
@@ -56,7 +56,7 @@ describe("scenario.goal redaction", () => {
       scenario: {
         id: "s",
         title: "T",
-        goal: redactText(LANE_PROMPT),
+        goal: redactText(FOCUS_PROMPT),
         source: "test",
         sourceDigest: "d",
       },

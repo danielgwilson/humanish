@@ -8,6 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A computer-use participant whose study names no mission now reads "You are trying a web app for
+  the first time ... Use it the way you actually would, until you have decided whether you would
+  keep using it, then stop." It used to read "You are testing a web application", and with that
+  mission 4 of 8 live reports described the data they entered as test or placeholder data; with
+  the new one, 1 of 8 did. A shared-world participant with no mission is now told it is one of many
+  people using a shared app. Other text a participant reads drops harness and tester words: the
+  per-participant focus line reads `Your focus:` (was `Lane focus:`), the inbox lines no longer say
+  "test identity" or "harness limitations", the dwell note says how long the participant stayed on
+  the page, and a Claude Code participant's notes begin `Note:`. The participant prompt digest
+  changes for every study. Evidence:
+  `docs/evidence/computer-use/persona-adherence-2026-10-26.md`.
+
 ## 0.150.0: Claude participants see every screenshot they take (2026-10-26)
 
 humanish 0.150.0 fixes two gaps in Claude participants. A `screenshot` Claude calls in the middle
