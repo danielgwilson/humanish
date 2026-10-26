@@ -1242,8 +1242,15 @@ Core-owned fields:
   the optional `kind` field is absent on participant turns and in older bundles.
   The Anthropic computer-use provider's requests are all `explicit_context` with
   `explicitReason: stateless_api`; each entry carries `carriedExchanges`,
-  `carriedScreenshots` and, when the server's tool-result clearing removed input before the
-  model read it, `clearedInputTokens` as the reply reported it.
+  `carriedScreenshots` and `requestBytes`, the size of the body sent, which the Messages API
+  limits to 32 MB. Once a request carries 60,000 input tokens, the server compacts the
+  session: the participant writes first-person notes on everything the request carried, and
+  answers from them. That request's entry has `compacted: true`. Later requests start with the
+  reply that holds the notes and carry nothing from before it, so `carriedExchanges`,
+  `carriedScreenshots` and `requestBytes` start again from there, and `summarizedTurns`
+  counts the earlier replies that compactions replaced. The compaction is billed as an inference of its own: it has its own
+  row in `tokenUsage.turns`, ahead of the reply's row. Bundles from before compaction may carry
+  `clearedInputTokens`, the input the server's tool-result clearing removed from that request.
   Impressions carry the context the next turn would carry, with the same budget
   and summarization of older turns. The closing report and impressions requests
   send no `text.format`, so they can read the session from the prompt cache; the

@@ -115,6 +115,28 @@ describe("an Anthropic participant's conversation", () => {
     }
   });
 
+  it("after a compaction, sends the compacted reply first and nothing from before it", () => {
+    const c = conversation();
+    const done = (count: number) => ({
+      previousExecution: acks(...Array.from({ length: count }, () => "completed" as const)),
+    });
+    c.request(req()).accept(reply("batch"));
+    c.request(req(done(5))).accept(reply("batch"));
+    const compacting = c.request(req(done(5)));
+    const compaction = reply("compaction");
+    compacting.accept(compaction);
+    const after = c.request(req(done(1))).body as Body;
+    // The server reads nothing before the compaction block, so the client stops sending it.
+    expect(after.messages[0]).toEqual({ role: "assistant", content: compaction.content });
+    expect(after.messages.slice(1).map((entry) => entry.role)).toEqual(["user"]);
+    expect(JSON.stringify(after).length).toBeLessThan(JSON.stringify(compacting.body).length / 2);
+    // From the compaction on, the history is appended to again.
+    const later = c.request(req(done(1)));
+    later.accept(reply("batch"));
+    const last = c.request(req(done(5))).body as Body;
+    expect(last.messages.slice(0, after.messages.length)).toEqual(after.messages);
+  });
+
   it("answers every member call of the latest reply once, echoing its toolset", () => {
     const c = conversation();
     const first = reply("batch");
@@ -381,8 +403,8 @@ describe("the closing request", () => {
     const turn = await c.close(
       req({ contextHint: "The session is over. Give your closing account." }),
       "impressions",
-      async (body) => {
-        bodies.push(body as Body);
+      async (payload) => {
+        bodies.push(JSON.parse(payload) as Body);
         return reply("closing-json");
       },
     );
@@ -401,8 +423,8 @@ describe("the closing request", () => {
     const c = conversation();
     c.request(req()).accept(reply("end-turn"));
     const bodies: Body[] = [];
-    const send = async (body: Record<string, unknown>) => {
-      bodies.push(body as Body);
+    const send = async (payload: string) => {
+      bodies.push(JSON.parse(payload) as Body);
       return reply("closing-json");
     };
     await c.close(req(), "impressions", send);
@@ -420,8 +442,8 @@ describe("the closing request", () => {
       const c = conversation();
       c.request(req()).accept(reply("end-turn"));
       const bodies: Body[] = [];
-      const send = async (body: Record<string, unknown>) => {
-        bodies.push(body as Body);
+      const send = async (payload: string) => {
+        bodies.push(JSON.parse(payload) as Body);
         return reply("closing-json");
       };
       await c.close(req(), closing, send);

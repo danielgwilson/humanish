@@ -497,8 +497,9 @@ export interface ActorConversation {
   switchedAtRequest?: number;
   /**
    * Earlier turns the latest explicit_context request no longer carried whole, to stay within the
-   * budget: written as lines of a text note, or only counted once the note reached its cap. Their
-   * screenshots were dropped. 0 when no explicit_context request summarized any.
+   * budget: written as lines of a text note, or only counted once the note reached its cap, or
+   * summarized by the provider's server-side compaction. Their screenshots were dropped. 0 when
+   * no explicit_context request summarized any.
    */
   summarizedTurns: number;
   /**
@@ -512,11 +513,19 @@ export interface ActorConversation {
     carriedExchanges?: number;
     carriedScreenshots?: number;
     estimatedInputTokens?: number;
+    /** The size of the request body sent, in bytes, where the provider records it. */
+    requestBytes?: number;
     /**
      * Input tokens the provider's server-side context editing cleared from this request before
      * the model read it, as its reply reported them. Present only when it cleared some.
      */
     clearedInputTokens?: number;
+    /**
+     * The provider's server-side compaction summarized everything this request carried before
+     * the model answered it, and later requests carry the summary in its place. Present only when
+     * it did.
+     */
+    compacted?: true;
   }>;
 }
 

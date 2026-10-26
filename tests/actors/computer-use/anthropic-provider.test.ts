@@ -15,6 +15,7 @@ import {
 } from "../../../src/actors/computer-use/loop.js";
 import type { FetchLike } from "../../../src/actors/computer-use/provider-http.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
+import { estimateActorCost } from "../../../src/run/pricing.js";
 
 // The provider at its transport: headers, retries, errors, settings and what it records. Replies
 // are captured or documented shapes from tests/fixtures/anthropic-messages/.
@@ -31,10 +32,16 @@ const fixture = (name: string): Json =>
 type Answer = { status: number; body: Json; retryAfter?: string } | Error;
 
 function scripted(answers: Answer[], options: Partial<AnthropicMessagesProviderOptions> = {}) {
-  const sent: Array<{ url: string; headers: Record<string, string>; body: Json }> = [];
+  const sent: Array<{ url: string; headers: Record<string, string>; body: Json; bytes: number }> =
+    [];
   const delays: number[] = [];
   const fetchFn: FetchLike = async (url, init) => {
-    sent.push({ url, headers: init.headers, body: JSON.parse(init.body) as Json });
+    sent.push({
+      url,
+      headers: init.headers,
+      body: JSON.parse(init.body) as Json,
+      bytes: Buffer.byteLength(init.body),
+    });
     const answer = answers[sent.length - 1] ?? answers.at(-1)!;
     if (answer instanceof Error) throw answer;
     return {
@@ -75,7 +82,7 @@ describe("the Anthropic provider's requests", () => {
     expect(sent[0]!.headers).toEqual({
       "x-api-key": "sk-ant-synthetic",
       "anthropic-version": "2023-06-01",
-      "anthropic-beta": "context-management-2025-06-27,thinking-binding-controls-2026-08-01",
+      "anthropic-beta": "compact-2026-01-12,thinking-binding-controls-2026-08-01",
       "content-type": "application/json",
     });
   });
@@ -151,19 +158,70 @@ describe("a reply billed outside the rate table", () => {
 });
 
 describe("the conversation record", () => {
-  it("says every request carried the whole conversation, and what clearing removed", async () => {
-    const { provider } = scripted([reply(fixture("cleared-tool-uses"))]);
+  const next = (patch: Partial<CuaTurnRequest> = {}): CuaTurnRequest => ({
+    ...request,
+    previousExecution: {
+      actions: [0, 1, 2, 3, 4].map((index) => ({ index, status: "completed" as const })),
+    },
+    ...patch,
+  });
+
+  it("says what each request carried, its size, and which one the server compacted", async () => {
+    const { provider, sent } = scripted([
+      reply(fixture("batch")),
+      reply(fixture("compaction")),
+      reply(fixture("end-turn")),
+    ]);
     await provider.nextTurn(request, signal);
+    await provider.nextTurn(next(), signal);
+    await provider.nextTurn(
+      next({ previousExecution: { actions: [{ index: 0, status: "completed" }] } }),
+      signal,
+    );
     expect(provider.conversation).toEqual({
       mode: "explicit_context",
       explicitReason: "stateless_api",
-      summarizedTurns: 0,
+      summarizedTurns: 1,
       requests: [
+        { mode: "explicit_context", carriedExchanges: 0, carriedScreenshots: 1 },
+        { mode: "explicit_context", carriedExchanges: 1, carriedScreenshots: 2, compacted: true },
+        { mode: "explicit_context", carriedExchanges: 1, carriedScreenshots: 1 },
+      ].map((entry, index) => ({ ...entry, requestBytes: sent[index]!.bytes })),
+    });
+  });
+
+  it("stops before a request near the 32 MB limit, as when screenshots outgrow compaction", async () => {
+    // A 1440x950 frame of noise is about 5.5 MB as PNG: six of them pass the byte budget long
+    // before their tokens reach the compaction trigger.
+    const noise = new PNG({ width: 1440, height: 950 });
+    let seed = 2_463_534_242;
+    for (let at = 0; at < noise.data.length; at += 1) {
+      seed ^= seed << 13;
+      seed ^= seed >>> 17;
+      seed ^= seed << 5;
+      noise.data[at] = at % 4 === 3 ? 255 : seed & 0xff;
+    }
+    const busy = { screenshot: PNG.sync.write(noise), stateSignature: "s" };
+    const { provider, sent } = scripted([reply(fixture("batch"))]);
+    await provider.nextTurn({ ...request, observation: busy }, signal);
+    const stopped = async (): Promise<unknown> => {
+      for (let turn = 0; turn < 8; turn += 1)
+        await provider.nextTurn(next({ observation: busy }), signal);
+      return undefined;
+    };
+    await expect(stopped()).rejects.toThrow(/MB with its screenshots, near the .* 32 MB/);
+    expect(JSON.stringify(sent.at(-1)!.body).length).toBeLessThan(30 * 2 ** 20);
+  });
+
+  it("asks the server to compact past 60,000 input tokens, with the participant's own notes", async () => {
+    const { provider, sent } = scripted([reply(fixture("batch"))]);
+    await provider.nextTurn(request, signal);
+    expect(sent[0]!.body.context_management).toEqual({
+      edits: [
         {
-          mode: "explicit_context",
-          carriedExchanges: 0,
-          carriedScreenshots: 1,
-          clearedInputTokens: 535_248,
+          type: "compact_20260112",
+          trigger: { type: "input_tokens", value: 60_000 },
+          instructions: expect.any(String),
         },
       ],
     });
@@ -247,5 +305,31 @@ describe("a screenshot within a batch", () => {
     expect(results.map((result) => result.tool_use_id)).toEqual(ids);
     expect(image(results[2])).toBe(frame.toString("base64"));
     expect(image(results[5])).toBe(screen.toString("base64"));
+  });
+});
+
+describe("a capped session", () => {
+  it("counts a compaction toward the spend cap", async () => {
+    // The captured compaction wrote 56,182 tokens to the cache and 1,762 of notes, about $0.0079;
+    // the reply after it cost under $0.001. A $0.005 cap stops the session only when the compaction counts.
+    const { provider, sent } = scripted([reply(fixture("compaction")), reply(fixture("batch"))]);
+    const screen = PNG.sync.write(new PNG({ width: 1440, height: 950 }));
+    const result = await runComputerUseLoop({
+      instructions: request.instructions,
+      provider,
+      executor: {
+        observe: async () => ({ screenshot: screen, stateSignature: `s${sent.length}` }),
+        execute: async () => undefined,
+      },
+      persona: { id: "fixture", traitsApplied: [], promptDigest: "fixture" },
+      redaction: defaultRedactionHooks,
+      now: Date.now,
+      timeoutMs: 60_000,
+      maxUsd: 0.005,
+      estimateTurnCostUsd: (usage) => estimateActorCost(usage, "claude-haiku-5-5").estimatedCostUsd,
+    });
+    expect(sent).toHaveLength(1);
+    expect(result.trace.stopCause).toBe("spend_limit");
+    expect(result.trace.tokenUsage?.turns).toHaveLength(2);
   });
 });

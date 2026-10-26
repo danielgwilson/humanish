@@ -97,19 +97,30 @@ describe("how a reply ends", () => {
 });
 
 describe("usage per inference", () => {
-  it("prices a compaction as an inference of its own (documented shape)", () => {
-    expect(parseMessage(fixture("documented-compaction-iterations"), undefined).turn.usage).toEqual(
-      {
-        input: 203_000,
-        output: 4500,
-        cachedInput: 0,
-        cacheWriteInput: 0,
-        turns: [
-          { input: 180_000, output: 3500, cachedInput: 0, cacheWriteInput: 0 },
-          { input: 23_000, output: 1000, cachedInput: 0, cacheWriteInput: 0 },
-        ],
-      },
-    );
+  it("prices a compaction as an inference of its own, with the cache it wrote", () => {
+    // Captured: the compaction read the 56,422-token conversation without the toolset, writing
+    // 56,182 of it to the cache, and the reply then read the 5,852-token summary and toolset.
+    expect(parseMessage(fixture("compaction"), undefined).turn.usage).toEqual({
+      input: 62_274,
+      output: 2067,
+      cachedInput: 0,
+      cacheWriteInput: 62_032,
+      turns: [
+        { input: 56_422, output: 1762, cachedInput: 0, cacheWriteInput: 56_182 },
+        { input: 5852, output: 305, cachedInput: 0, cacheWriteInput: 5850 },
+      ],
+    });
+  });
+
+  it("says when a reply starts from a compaction summary", () => {
+    expect(parseMessage(fixture("compaction"), undefined).compacted).toBe(true);
+    expect(parseMessage(fixture("batch"), undefined).compacted).toBe(false);
+    // A summarization that called a tool returns the block with no summary, which the API then
+    // skips, so nothing before it was replaced.
+    const failed = fixture("compaction");
+    const [, ...rest] = failed.content as unknown[];
+    const empty = { ...failed, content: [{ type: "compaction", content: null }, ...rest] };
+    expect(parseMessage(empty, undefined).compacted).toBe(false);
   });
 
   it("says why a reply billed outside the global standard rates cannot be priced", () => {
@@ -123,11 +134,6 @@ describe("usage per inference", () => {
     expect(
       served({ cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 40 } }),
     ).toMatch(/40 tokens to the 1-hour prompt cache/);
-  });
-
-  it("reports what the server's tool-result clearing removed", () => {
-    expect(parseMessage(fixture("cleared-tool-uses"), undefined).clearedInputTokens).toBe(535_248);
-    expect(parseMessage(fixture("batch"), undefined).clearedInputTokens).toBeUndefined();
   });
 });
 

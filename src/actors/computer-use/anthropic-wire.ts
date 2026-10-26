@@ -295,8 +295,11 @@ export interface ParsedMessage {
   readonly stopReason: string | undefined;
   /** Why the reply's usage cannot be priced from the rate table, when it cannot. */
   readonly unpricedUsage?: string;
-  /** Input tokens the server's tool-result clearing removed before the model read the request. */
-  readonly clearedInputTokens?: number;
+  /**
+   * Whether the reply starts from a compaction summary: the server summarized everything the
+   * request carried, and reads nothing sent before the reply from then on.
+   */
+  readonly compacted: boolean;
 }
 
 const INTERRUPTIONS: Readonly<Record<string, CuaTurn["interruption"]>> = {
@@ -353,7 +356,6 @@ export function parseMessage(raw: unknown, pointer: Point | undefined): ParsedMe
   const usage = isRecord(root.usage) ? root.usage : undefined;
   const turnUsage = usage === undefined ? undefined : usageOf(usage);
   const unpriced = usage === undefined ? undefined : unpricedUsage(usage);
-  const cleared = clearedInputTokens(root.context_management);
   const turn: CuaTurn = {
     actions,
     pendingSafetyChecks: [],
@@ -374,7 +376,7 @@ export function parseMessage(raw: unknown, pointer: Point | undefined): ParsedMe
     calls,
     stopReason,
     ...(unpriced === undefined ? {} : { unpricedUsage: unpriced }),
-    ...(cleared === undefined ? {} : { clearedInputTokens: cleared }),
+    compacted: content.some(isSummary),
   };
 }
 
@@ -391,14 +393,17 @@ function mapMember(
   return mapper(call.name, input, pointer);
 }
 
-function clearedInputTokens(value: unknown): number | undefined {
-  if (!isRecord(value) || !Array.isArray(value.applied_edits)) return undefined;
-  let cleared = 0;
-  for (const edit of value.applied_edits as unknown[]) {
-    if (isRecord(edit) && isNonNegativeSafeInteger(edit.cleared_input_tokens))
-      cleared += edit.cleared_input_tokens;
-  }
-  return cleared > 0 ? cleared : undefined;
+/**
+ * A compaction block that holds a summary. One that came back without a summary, which a
+ * summarization that called a tool returns, replaces nothing: the API reads past it.
+ */
+function isSummary(block: unknown): boolean {
+  return (
+    isRecord(block) &&
+    block.type === "compaction" &&
+    typeof block.content === "string" &&
+    block.content.trim() !== ""
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -509,20 +514,31 @@ export interface MessagesSettings {
 const CLOSING_OUTPUT_LIMIT = 4096;
 
 /**
- * Server-side tool-result clearing: past 60,000 input tokens, the oldest screenshots' results are
- * cleared before the model reads the request, keeping the newest 8 tool uses, and only when the
- * clearing frees 20,000 tokens or more, since each clearing rewrites the cached prefix. The
- * trigger matches the OpenAI provider's 64,000-token conversation budget and keeps requests
- * under the 100,000-token prompt above which Claude Haiku 5.5 bills 5x. Clearing on the server
- * keeps the client's history append-only, which the thinking blocks in it require.
+ * What the participant writes when the server compacts its session: its own first-person notes,
+ * which stand in for everything before them from then on. A custom prompt replaces the default
+ * one, whose summary is a task report addressed to a user. The last sentence keeps the
+ * summarization from calling a computer action, which would leave the compaction without a
+ * summary.
+ */
+const COMPACTION_INSTRUCTIONS =
+  "Write down where you are in this session, so you can carry on from here once the conversation above is gone. Write in the first person, as your own notes: what you set out to do here, in your own words; what you have done so far and how each attempt turned out; what you saw on the screen, with the exact names, labels, numbers and messages, and anything you typed or noted down; what surprised you, confused you or did not work the way you expected; and what you still mean to do or find out. Keep exact wording for anything you noted down. Say only what you did, saw and thought, in plain words, and nothing about this conversation, your tools, screen coordinates or how you see the screen. Do not use any tools while writing this; reply with text only, and put the whole note inside <summary></summary> tags.";
+
+/**
+ * Server-side compaction: once a request carries 60,000 input tokens, the server first has the
+ * model summarize everything the request carries (COMPACTION_INSTRUCTIONS), then answers from that
+ * summary. The client then stops sending what came before it, which keeps a session's request
+ * bytes bounded: about 35 screenshots at most between compactions. At 60,000 tokens a request and
+ * its compaction stay under the 100,000-token prompt above which Claude Haiku 5.5 bills 5x, and
+ * the trigger matches the OpenAI provider's 64,000-token conversation budget. The server's
+ * tool-result clearing is not sent: on toolset screenshots it cleared one result per request and
+ * left the billed input nearly unchanged, while rewriting the cached prefix each time.
  */
 const CONTEXT_MANAGEMENT = {
   edits: [
     {
-      type: "clear_tool_uses_20250919",
+      type: "compact_20260112",
       trigger: { type: "input_tokens", value: 60_000 },
-      keep: { type: "tool_uses", value: 8 },
-      clear_at_least: { type: "input_tokens", value: 20_000 },
+      instructions: COMPACTION_INSTRUCTIONS,
     },
   ],
 } as const;
@@ -544,7 +560,7 @@ function withoutItemLimits(value: unknown): unknown {
 
 /**
  * A request body. Every request carries the same system prompt, toolset, thinking, effort, cache
- * and clearing settings, so each one's prefix is the one before it. Thinking is adaptive with
+ * and compaction settings, so each one's prefix is the one before it. Thinking is adaptive with
  * readable summaries, and `prefix_mismatch_behavior: "error"` makes any edit of earlier history
  * a 400 in place of reasoning silently dropped. A closing request sends no tool choice, its own
  * output limit and, on its strict retry, the reply's JSON Schema.

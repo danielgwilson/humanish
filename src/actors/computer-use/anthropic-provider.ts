@@ -33,9 +33,9 @@ import {
 /** The Messages endpoint. Callers may pass a test override; nothing reads it from env. */
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
-// Server-side tool-result clearing, and the opt-in that turns an edit of earlier history into a
-// 400 rather than silently dropped thinking.
-const ANTHROPIC_BETAS = "context-management-2025-06-27,thinking-binding-controls-2026-08-01";
+// Server-side compaction at a token threshold, and the opt-in that turns an edit of earlier
+// history into a 400 rather than silently dropped thinking.
+const ANTHROPIC_BETAS = "compact-2026-01-12,thinking-binding-controls-2026-08-01";
 
 /** The model an Anthropic participant runs when none is named. */
 export const DEFAULT_ANTHROPIC_CU_MODEL = "claude-haiku-5-5";
@@ -48,9 +48,9 @@ export const DEFAULT_ANTHROPIC_CU_MODEL = "claude-haiku-5-5";
 const DEFAULT_MAX_OUTPUT_TOKENS = 16_000;
 
 /**
- * The largest request body sent. The Messages API refuses a request over 32 MB, and a session
- * carries every screenshot it took (server-side clearing shortens what the model reads, not what
- * is sent), so a long session reaches it after some 60 to 300 turns.
+ * The largest request body sent. The Messages API refuses a request over 32 MB. A request carries
+ * every screenshot since the latest compaction, which the server runs at a token count that
+ * 1440x950 screenshots reach at 20 MB or less, so only larger or busier screens reach this first.
  */
 const REQUEST_BYTE_BUDGET = 30 * 1024 * 1024;
 
@@ -136,25 +136,24 @@ interface Attempts {
 }
 
 /**
- * POST `body` and return the parsed reply. A 408, 409, 429 or 5xx is sent again after the
- * Retry-After hint or a backoff, since Anthropic bills no tokens for a request it answers with an
- * error. A request lost in transit may have been billed: without a spend cap it is sent again and
- * the session's usage is marked incomplete; with one it is not sent again, because its cost is
- * unknown and the cap could not bound it.
+ * POST `payload`, a request body as JSON, and return the parsed reply. A 408, 409, 429 or 5xx is
+ * sent again after the Retry-After hint or a backoff, since Anthropic bills no tokens for a
+ * request it answers with an error. A request lost in transit may have been billed: without a
+ * spend cap it is sent again and the session's usage is marked incomplete; with one it is not
+ * sent again, because its cost is unknown and the cap could not bound it.
  */
 async function postMessages(
   transport: MessagesTransport,
-  body: Record<string, unknown>,
+  payload: string,
   signal: AbortSignal,
   { retries, interaction, spend }: Attempts,
 ): Promise<unknown> {
   // Preflight the next capture file before any network side effect.
   await transport.capture.prepareNext();
-  const payload = JSON.stringify(body);
   const bytes = Buffer.byteLength(payload);
   if (bytes > REQUEST_BYTE_BUDGET) {
     throw new Error(
-      `The participant's conversation reached ${(bytes / 2 ** 20).toFixed(1)} MB with its screenshots, past the Messages API's 32 MB request limit, so no further request was sent. This provider does not compact a long session yet; run shorter sessions for now.`,
+      `The participant's conversation reached ${(bytes / 2 ** 20).toFixed(1)} MB with its screenshots, near the Messages API's 32 MB request limit, before the server compacted it at 60,000 input tokens, so no further request was sent. Large or detailed screenshots carry more bytes per token; use a smaller execution.desktop.resolution.`,
     );
   }
   const headers = {
@@ -240,7 +239,7 @@ export function createAnthropicMessagesProvider(
     spend?: CuaSpendGate,
   ): Promise<CuaTurn> => {
     const request = conversation.request(req);
-    const reply = await postMessages(transport, request.body, signal, {
+    const reply = await postMessages(transport, request.payload, signal, {
       retries,
       interaction: true,
       spend,
@@ -255,8 +254,8 @@ export function createAnthropicMessagesProvider(
     closing: ClosingRequest,
   ): Promise<CuaTurn> => {
     let reply: unknown;
-    const turn = await conversation.close(req, closing, async (body) => {
-      reply = await postMessages(transport, body, signal, { retries: 0, interaction: false });
+    const turn = await conversation.close(req, closing, async (payload) => {
+      reply = await postMessages(transport, payload, signal, { retries: 0, interaction: false });
       return reply;
     });
     return transport.capture.record(turn, forCapture(reply));
