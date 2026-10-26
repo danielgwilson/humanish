@@ -35,3 +35,9 @@ Built from the documented shapes, not captured, because they cannot be produced 
   of the `message` entry, using the counts from the compaction docs' example.
 - `documented-error-429.json`, `documented-error-529.json`: the error body shape from the
   errors page.
+
+Derived from a capture:
+
+- `closing-report.json`: `closing-strict.json` with its text replaced by a closing report in
+  humanish's schema (`outcome`, `summary`, `frictionReports`, `impressions`). The envelope,
+  thinking block and usage are the capture's.

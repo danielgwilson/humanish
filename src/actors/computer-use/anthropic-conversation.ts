@@ -57,6 +57,8 @@ export class AnthropicConversation {
   /** Accepted replies so far, each carried in every later request. */
   private replies = 0;
   private readonly requests: ActorConversation["requests"] = [];
+  /** Why replies' usage could not be priced, each told to the trace once. */
+  private readonly unpricedReasons = new Set<string>();
 
   constructor(private readonly settings: MessagesSettings) {}
 
@@ -75,7 +77,7 @@ export class AnthropicConversation {
         // A reply that ended without a decision (output limit, refusal, an unexpected stop) is
         // set aside, so asking again sends this same request.
         if (parsed.turn.interruption === undefined) this.moveOn(sent, parsed, pointer);
-        return parsed.turn;
+        return this.withPricingNotice(parsed);
       },
     };
   }
@@ -110,10 +112,18 @@ export class AnthropicConversation {
     const account = completed ? closingAccount(parsed.turn.message, closing, strict) : undefined;
     if (completed && account === undefined && !strict) {
       this.openClosing = sent;
-      return { ...parsed.turn, closingRetry: true };
+      return { ...this.withPricingNotice(parsed), closingRetry: true };
     }
     this.moveOn(sent, parsed, pointer);
-    return { ...parsed.turn, ...account };
+    return { ...this.withPricingNotice(parsed), ...account };
+  }
+
+  /**
+   * Whether a reply's usage could not be priced from the rate table. Once one could not, the
+   * session's estimate may be low, which the provider reports as incomplete usage.
+   */
+  get usageUnpriced(): boolean {
+    return this.unpricedReasons.size > 0;
   }
 
   /** The trace's account of how the conversation was carried (ActorConversation). */
@@ -173,6 +183,18 @@ export class AnthropicConversation {
       pointer = status === "completed" ? (pointerAfter(action) ?? pointer) : undefined;
     }
     return pointer;
+  }
+
+  /** The reply's turn, with a notice the first time a reason its usage is unpriced appears. */
+  private withPricingNotice(parsed: ParsedMessage): CuaTurn {
+    const reason = parsed.unpricedUsage;
+    if (reason === undefined || this.unpricedReasons.has(reason)) return parsed.turn;
+    this.unpricedReasons.add(reason);
+    const text = `${reason} Its tokens are counted at the standard rates, so the cost estimate may be low, and a session with a spend cap stops before its next request.`;
+    return {
+      ...parsed.turn,
+      notices: [{ title: "participant usage outside the rate table", text }],
+    };
   }
 
   private moveOn(sent: readonly unknown[], parsed: ParsedMessage, pointer: Point | undefined) {
