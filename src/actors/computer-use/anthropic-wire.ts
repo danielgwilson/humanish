@@ -289,7 +289,10 @@ export interface MemberCall {
 
 export interface ParsedMessage {
   readonly turn: CuaTurn;
-  /** The reply's content blocks verbatim, thinking signatures included, for the next request. */
+  /**
+   * The reply's content blocks verbatim, thinking signatures included, for the next request.
+   * After cut-off compaction notes, the reply without its notes and thinking.
+   */
   readonly content: readonly unknown[];
   readonly calls: readonly MemberCall[];
   readonly stopReason: string | undefined;
@@ -311,9 +314,17 @@ const INTERRUPTIONS: Readonly<Record<string, CuaTurn["interruption"]>> = {
 /**
  * Parse a Messages reply into a CuaTurn and the member calls the next request answers. Calls map
  * in order from the pointer position `pointer`; the first that cannot map becomes the turn's
- * rejected proposal, and every later call runs nothing. Pure.
+ * rejected proposal, and every later call runs nothing. When the reply's compaction wrote
+ * `outputLimit` tokens, the request's max_tokens, its notes stop short, and the model answered
+ * from them: the notes and the thinking built on them leave the content, so the next request
+ * carries the whole conversation again and the server compacts it again. Removing a reply's
+ * thinking before it is ever sent back edits nothing the thinking check covers. Pure.
  */
-export function parseMessage(raw: unknown, pointer: Point | undefined): ParsedMessage {
+export function parseMessage(
+  raw: unknown,
+  pointer: Point | undefined,
+  outputLimit?: number,
+): ParsedMessage {
   const root = isRecord(raw) ? raw : {};
   const content = Array.isArray(root.content) ? (root.content as unknown[]) : [];
   const reasoning: string[] = [];
@@ -348,12 +359,18 @@ export function parseMessage(raw: unknown, pointer: Point | undefined): ParsedMe
     calls.push({ ...call, positions: mapping.actions.map((_, offset) => start + offset) });
   }
   const stopReason = typeof root.stop_reason === "string" ? root.stop_reason : undefined;
-  const interruption =
-    stopReason === undefined || stopReason === "end_turn" || stopReason === "tool_use"
-      ? undefined
-      : (INTERRUPTIONS[stopReason] ?? "unexpected_status");
-  const stopDetails = isRecord(root.stop_details) ? root.stop_details : {};
   const usage = isRecord(root.usage) ? root.usage : undefined;
+  const summarized = content.some(isSummary);
+  const notesWritten = compactionOutput(usage);
+  const cutOff = summarized && outputLimit !== undefined && notesWritten >= outputLimit;
+  const kept = cutOff ? content.filter((block) => !builtOnNotes(block)) : content;
+  const interruption =
+    cutOff && kept.length === 0
+      ? "output_limit"
+      : stopReason === undefined || stopReason === "end_turn" || stopReason === "tool_use"
+        ? undefined
+        : (INTERRUPTIONS[stopReason] ?? "unexpected_status");
+  const stopDetails = isRecord(root.stop_details) ? root.stop_details : {};
   const turnUsage = usage === undefined ? undefined : usageOf(usage);
   const unpriced = usage === undefined ? undefined : unpricedUsage(usage);
   const turn: CuaTurn = {
@@ -369,14 +386,30 @@ export function parseMessage(raw: unknown, pointer: Point | undefined): ParsedMe
     ...(reasoning.length > 0 ? { reasoning: reasoning.join("\n") } : {}),
     ...(message.length > 0 ? { message: message.join("\n") } : {}),
     ...(turnUsage === undefined ? {} : { usage: turnUsage }),
+    ...(cutOff ? { notices: [notesCutOff(notesWritten)] } : {}),
   };
   return {
     turn,
-    content,
+    content: kept,
     calls,
     stopReason,
     ...(unpriced === undefined ? {} : { unpricedUsage: unpriced }),
-    compacted: content.some(isSummary),
+    compacted: summarized && !cutOff,
+  };
+}
+
+/** The blocks of a reply whose compaction notes were cut off that depend on those notes. */
+function builtOnNotes(block: unknown): boolean {
+  return (
+    isRecord(block) &&
+    (block.type === "compaction" || block.type === "thinking" || block.type === "redacted_thinking")
+  );
+}
+
+function notesCutOff(written: number): { title: string; text: string } {
+  return {
+    title: "participant notes cut off",
+    text: `The server's compaction of the participant's session wrote ${written} tokens, the request's output limit, so the notes that replace the session stopped short. This turn answered from them. Its notes and reasoning are left out of the conversation, so the next request carries the whole session and the server compacts it again.`,
   };
 }
 
@@ -391,6 +424,20 @@ function mapMember(
   if (call.toolsetName !== COMPUTER || mapper === undefined)
     return rejected(`There is no computer action named ${JSON.stringify(call.name)}.`);
   return mapper(call.name, input, pointer);
+}
+
+/** The output tokens of the reply's compaction, or 0 when the request ran none. */
+function compactionOutput(usage: Record<string, unknown> | undefined): number {
+  const iterations = Array.isArray(usage?.iterations) ? (usage.iterations as unknown[]) : [];
+  return iterations.reduce<number>(
+    (most, entry) =>
+      isRecord(entry) &&
+      entry.type === "compaction" &&
+      isNonNegativeSafeInteger(entry.output_tokens)
+        ? Math.max(most, entry.output_tokens)
+        : most,
+    0,
+  );
 }
 
 /**
@@ -516,12 +563,13 @@ const CLOSING_OUTPUT_LIMIT = 4096;
 /**
  * What the participant writes when the server compacts its session: its own first-person notes,
  * which stand in for everything before them from then on. A custom prompt replaces the default
- * one, whose summary is a task report addressed to a user. The last sentence keeps the
- * summarization from calling a computer action, which would leave the compaction without a
- * summary.
+ * one, whose summary is a task report addressed to a user. The word limit keeps the notes, and
+ * the reasoning behind them, inside the request's output limit, past which they are cut off. The
+ * last sentence keeps the summarization from calling a computer action, which would leave the
+ * compaction without a summary.
  */
 const COMPACTION_INSTRUCTIONS =
-  "Write down where you are in this session, so you can carry on from here once the conversation above is gone. Write in the first person, as your own notes: what you set out to do here, in your own words; what you have done so far and how each attempt turned out; what you saw on the screen, with the exact names, labels, numbers and messages, and anything you typed or noted down; what surprised you, confused you or did not work the way you expected; and what you still mean to do or find out. Keep exact wording for anything you noted down. Say only what you did, saw and thought, in plain words, and nothing about this conversation, your tools, screen coordinates or how you see the screen. Do not use any tools while writing this; reply with text only, and put the whole note inside <summary></summary> tags.";
+  "Write a note to yourself about where you are in this session, so you can carry on once the conversation above is gone. Write it in the first person and in plain words, in at most 500 words. Say what you set out to do here, in your own words; what you have done so far and how it turned out; where things stand now, as you last saw them; what surprised you, confused you or did not work the way you expected; and what you still mean to do or find out. Copy exactly any text you typed or will need again, any name or number you were given, and anything you were asked to remember. Leave out details you no longer need: you will look at the screen again after this note. Say nothing about this conversation, your tools, screen coordinates or how you see the screen. Do not use any tools while writing this; reply with text only, and put the whole note inside <summary></summary> tags.";
 
 /**
  * Server-side compaction: once a request carries 60,000 input tokens, the server first has the
@@ -533,15 +581,26 @@ const COMPACTION_INSTRUCTIONS =
  * tool-result clearing is not sent: on toolset screenshots it cleared one result per request and
  * left the billed input nearly unchanged, while rewriting the cached prefix each time.
  */
-const CONTEXT_MANAGEMENT = {
-  edits: [
-    {
-      type: "compact_20260112",
-      trigger: { type: "input_tokens", value: 60_000 },
-      instructions: COMPACTION_INSTRUCTIONS,
-    },
-  ],
-} as const;
+const COMPACTION_TRIGGER_TOKENS = 60_000;
+
+/**
+ * A closing request's trigger, which no request reaches: the closing account reads the session
+ * since the last notes whole, and its own output limit would cut a summary short. The strategy
+ * is still sent, since the API accepts compaction blocks already in the history only with it.
+ */
+const CLOSING_TRIGGER_TOKENS = 1_000_000;
+
+function contextManagement(trigger: number): Record<string, unknown> {
+  return {
+    edits: [
+      {
+        type: "compact_20260112",
+        trigger: { type: "input_tokens", value: trigger },
+        instructions: COMPACTION_INSTRUCTIONS,
+      },
+    ],
+  };
+}
 
 /**
  * The schema with every array `maxItems` removed. The Messages API answers an output format
@@ -591,7 +650,9 @@ export function requestBody(
     },
     output_config: { effort: settings.effort, ...format },
     cache_control: { type: "ephemeral" },
-    context_management: CONTEXT_MANAGEMENT,
+    context_management: contextManagement(
+      closing === undefined ? COMPACTION_TRIGGER_TOKENS : CLOSING_TRIGGER_TOKENS,
+    ),
     messages: [...messages],
   };
 }

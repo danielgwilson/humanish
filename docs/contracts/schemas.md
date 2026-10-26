@@ -1248,8 +1248,12 @@ Core-owned fields:
   answers from them. That request's entry has `compacted: true`. Later requests start with the
   reply that holds the notes and carry nothing from before it, so `carriedExchanges`,
   `carriedScreenshots` and `requestBytes` start again from there, and `summarizedTurns`
-  counts the earlier replies that compactions replaced. The compaction is billed as an inference of its own: it has its own
-  row in `tokenUsage.turns`, ahead of the reply's row. Bundles from before compaction may carry
+  counts the earlier replies that compactions replaced. The compaction is billed as an
+  inference of its own: it has its own row in `tokenUsage.turns`, ahead of the reply's row. A
+  compaction that writes as many tokens as the request's `max_tokens` has cut-off notes: the
+  reply's actions run, but its notes and thinking are left out of the conversation, nothing
+  before them is cut, the trace gets a `participant notes cut off` notice, and the next request
+  compacts again. Notes that come back empty replace nothing. Closing requests do not compact. Bundles from before compaction may carry
   `clearedInputTokens`, the input the server's tool-result clearing removed from that request.
   Impressions carry the context the next turn would carry, with the same budget
   and summarization of older turns. The closing report and impressions requests

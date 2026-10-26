@@ -31,9 +31,12 @@ Captured on 2026-10-26 from the provider itself, driven turn by turn with screen
 in a live Taskly session:
 
 - `compaction.json`: request 22 of that session (43 messages), sent with `compact_20260112` at
-  a 60,000-token trigger and the provider's summary instructions. The reply starts with a
+  a 60,000-token trigger and an earlier wording of the provider's summary instructions. The reply starts with a
   `compaction` block holding the participant's notes, and `usage.iterations` has a `compaction`
   entry, with its cache write, ahead of the `message` entry.
+- `compaction-cut-off.json`: a reply from a live 65-minute Taskly session whose compaction wrote
+  16,000 output tokens, the request's `max_tokens`, so its notes stop mid-sentence. The app's
+  address in the notes was replaced with `taskly.example.test`.
 
 Built from the documented shapes, not captured, because they cannot be produced on demand:
 

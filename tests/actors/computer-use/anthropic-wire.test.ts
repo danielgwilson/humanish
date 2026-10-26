@@ -123,6 +123,21 @@ describe("usage per inference", () => {
     expect(parseMessage(empty, undefined).compacted).toBe(false);
   });
 
+  it("leaves out notes cut off at the output limit, and the reasoning built on them", () => {
+    // Captured: the summarization wrote 16,000 tokens, the request's max_tokens, and its notes
+    // stop mid-sentence. Applying them would replace the session with a fragment.
+    const parsed = parseMessage(fixture("compaction-cut-off"), undefined, 16_000);
+    expect(parsed.compacted).toBe(false);
+    expect(parsed.content.map((block) => (block as { type: string }).type)).toEqual(["tool_use"]);
+    expect(parsed.turn).toMatchObject({ actions: [{ kind: "screenshot" }], done: false });
+    expect(parsed.turn.interruption).toBeUndefined();
+    expect(parsed.turn.notices?.map((notice) => notice.title)).toEqual([
+      "participant notes cut off",
+    ]);
+    // Notes that came back whole are applied.
+    expect(parseMessage(fixture("compaction"), undefined, 16_000).compacted).toBe(true);
+  });
+
   it("says why a reply billed outside the global standard rates cannot be priced", () => {
     const batch = fixture("batch");
     const usage = batch.usage as Record<string, unknown>;

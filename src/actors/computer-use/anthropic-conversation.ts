@@ -87,7 +87,7 @@ export class AnthropicConversation {
       body,
       payload,
       accept: (reply) => {
-        const parsed = parseMessage(reply, pointer);
+        const parsed = parseMessage(reply, pointer, outputLimit(body));
         this.recordRequest(sent, parsed, payload);
         // A reply that ended without a decision (output limit, refusal, an unexpected stop) is
         // set aside, so asking again sends this same request.
@@ -114,16 +114,15 @@ export class AnthropicConversation {
     const sent = this.openClosing ?? this.newMessages(req, closing);
     this.openClosing = undefined;
     const pointer = this.pointerAfterBatch(req);
-    const payload = JSON.stringify(
-      requestBody(
-        this.settings,
-        this.fixInstructions(req.instructions),
-        [...this.history, ...sent],
-        strict ? { schema: closingSchema(closing) } : {},
-      ),
+    const body = requestBody(
+      this.settings,
+      this.fixInstructions(req.instructions),
+      [...this.history, ...sent],
+      strict ? { schema: closingSchema(closing) } : {},
     );
+    const payload = JSON.stringify(body);
     const reply = await send(payload);
-    const parsed = parseMessage(reply, pointer);
+    const parsed = parseMessage(reply, pointer, outputLimit(body));
     if (closing === "impressions") this.recordRequest(sent, parsed, payload, "impressions");
     const completed = parsed.stopReason === "end_turn";
     const account = completed ? closingAccount(parsed.turn.message, closing, strict) : undefined;
@@ -217,7 +216,10 @@ export class AnthropicConversation {
     const text = `${reason} Its tokens are counted at the standard rates, so the cost estimate may be low, and a session with a spend cap stops before its next request.`;
     return {
       ...parsed.turn,
-      notices: [{ title: "participant usage outside the rate table", text }],
+      notices: [
+        ...(parsed.turn.notices ?? []),
+        { title: "participant usage outside the rate table", text },
+      ],
     };
   }
 
@@ -248,6 +250,11 @@ export class AnthropicConversation {
       ...(parsed.compacted ? { compacted: true as const } : {}),
     });
   }
+}
+
+/** A request body's max_tokens, which also bounds a compaction it runs. */
+function outputLimit(body: Record<string, unknown>): number | undefined {
+  return typeof body.max_tokens === "number" ? body.max_tokens : undefined;
 }
 
 type Acknowledgements = ReadonlyMap<number, CuaActionAcknowledgement>;
