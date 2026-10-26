@@ -9,11 +9,12 @@
 // second half unsaid.
 //
 // Support is model-dependent. OpenAI documents the vocabulary below as the union across models and
-// states plainly that "supported values are model-dependent"; there is no offline way to know which
-// subset a given model id accepts. So this module refuses to pretend: it validates that a study asked
-// for a real effort level, and a model that does not support the one it was asked for fails on the
-// first turn with the provider's own message rather than being silently downgraded. Silent
-// downgrade is the worse failure: it would record an effort the run did not actually use.
+// lists each model's subset on its model page. OPENAI_MODEL_EFFORTS records the subsets read from
+// those pages, which the analysis models (src/analysis/models.ts) and the participant models
+// (src/actors/computer-use/models.ts) both check against. A model with no recorded subset is
+// checked against the union only, and a level it does not accept fails on the first turn with the
+// provider's own message rather than being silently downgraded. Silent downgrade is the worse
+// failure: it would record an effort the run did not actually use.
 
 /** The documented vocabulary, ordered from least to most reasoning. */
 export const REASONING_EFFORTS = [
@@ -36,3 +37,18 @@ export function isReasoningEffort(value: unknown): value is ReasoningEffort {
 export function reasoningEffortNames(): string {
   return REASONING_EFFORTS.join(", ");
 }
+
+/**
+ * `reasoning.effort` values from each model's page under developers.openai.com/api/docs/models
+ * (read 2026-10-21). None of them lists `minimal`; gpt-6-astra and gpt-6.1-sol also refuse `none`.
+ */
+export const OPENAI_MODEL_EFFORTS = {
+  "gpt-6-astra": ["low", "medium", "high", "xhigh", "max"],
+  "gpt-6.1-sol": ["low", "medium", "high", "xhigh", "max"],
+  "gpt-6-luna": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.5": ["none", "low", "medium", "high", "xhigh"],
+  "gpt-5.6": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.6-sol": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.6-terra": ["none", "low", "medium", "high", "xhigh", "max"],
+  "gpt-5.6-luna": ["none", "low", "medium", "high", "xhigh", "max"],
+} as const satisfies Record<string, readonly ReasoningEffort[]>;

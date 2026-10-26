@@ -74,6 +74,20 @@ const cases: Record<string, Case> = {
     signedInCodex: true,
     signedInClaude: true,
   },
+  "computer use: a missing Anthropic key for a Claude participant": {
+    route: "computer-use",
+    raw: lab("cuAppUrl", live, { type: "computer-use", model: "claude-haiku-5-5" }),
+    env: { ...keys },
+  },
+  "computer use: a cap on a model humanish does not list, on its named vendor": {
+    route: "computer-use",
+    raw: lab("cuAppUrl", unpriced, {
+      type: "computer-use",
+      model: "claude-sonnet-9",
+      provider: "anthropic",
+    }),
+    env: { ...keys, ANTHROPIC_API_KEY: "sk-ant-test" },
+  },
   "shared world: an unpriced cap before keys": {
     route: "shared-world",
     raw: lab("sharedProvisioned", unpriced, unpricedModel),

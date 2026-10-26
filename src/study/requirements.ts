@@ -4,15 +4,16 @@
 // requiredKeys and requiredSubjectEnv which names to report, and `run` asks keyNamesOf which
 // key-source lines to print, so the planner alone decides what a run needs. The terminal runtime
 // key (`key-one-of`) stays with buildRuntimeAuth at run time, which also picks its placement.
+import { PARTICIPANT_VENDORS } from "../actors/computer-use/providers.js";
 import { detectLocalAgents } from "../actors/local-agent/cli.js";
 import { localAgentRefusal, type LocalAgentRefusal } from "../actors/local-agent/readiness.js";
 import { analysisKeyNames, describeMissingKeys } from "../keys/key-resolution.js";
 import { participantRate, unpricedCapMessage } from "../run/pricing.js";
 import type { Brain, StudyPlan, Requirement } from "./plan-types.js";
 
-/** Provider keys in the order the routes name them in a refusal. */
+/** Provider keys in the order the routes name them in a refusal: every participant vendor's first. */
 const KEY_ORDER = [
-  "OPENAI_API_KEY",
+  ...Object.values(PARTICIPANT_VENDORS).map((vendor) => vendor.keyName),
   "E2B_API_KEY",
   "MODAL_TOKEN_ID",
   "MODAL_TOKEN_SECRET",

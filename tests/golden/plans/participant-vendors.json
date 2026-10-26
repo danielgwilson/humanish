@@ -1,0 +1,278 @@
+{
+  "claude-haiku-5-5": {
+    "dry": {
+      "studyId": "plan-lab",
+      "residual": {
+        "execution": {
+          "target": "e2b-desktop"
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6.1-sol",
+          "maxCostUsd": 10,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null,
+          "reasoningEffort": "medium"
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "actor": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "provider": "e2b",
+        "brain": {
+          "kind": "provider-key",
+          "vendor": "anthropic",
+          "model": "claude-haiku-5-5",
+          "declaredModel": "claude-haiku-5-5"
+        },
+        "participants": [
+          {
+            "id": "lane-01",
+            "index": 0,
+            "assignment": {},
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {
+              "reasoningEffort": "medium"
+            },
+            "schedule": {}
+          }
+        ],
+        "subject": {
+          "kind": "app-url",
+          "appUrl": "http://127.0.0.1:3000/",
+          "publicTargets": false
+        }
+      },
+      "concurrency": 1,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 1,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 60000,
+        "sessionMs": 60000
+      },
+      "sessionBudgetMs": 60000,
+      "sandboxMs": 660000,
+      "caps": {
+        "maxUsd": 0.5
+      }
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "ANTHROPIC_API_KEY"
+        }
+      ]
+    }
+  },
+  "unlisted model on anthropic": {
+    "dry": {
+      "studyId": "plan-lab",
+      "residual": {
+        "execution": {
+          "target": "e2b-desktop"
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6.1-sol",
+          "maxCostUsd": 10,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null,
+          "reasoningEffort": "medium"
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "actor": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "provider": "e2b",
+        "brain": {
+          "kind": "provider-key",
+          "vendor": "anthropic",
+          "model": "claude-sonnet-9",
+          "declaredModel": "claude-sonnet-9"
+        },
+        "participants": [
+          {
+            "id": "lane-01",
+            "index": 0,
+            "assignment": {},
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {},
+            "schedule": {}
+          }
+        ],
+        "subject": {
+          "kind": "app-url",
+          "appUrl": "http://127.0.0.1:3000/",
+          "publicTargets": false
+        }
+      },
+      "concurrency": 1,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 1,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 60000,
+        "sessionMs": 60000
+      },
+      "sessionBudgetMs": 60000,
+      "sandboxMs": 660000,
+      "caps": {}
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "ANTHROPIC_API_KEY"
+        }
+      ]
+    }
+  },
+  "computer-use default": {
+    "dry": {
+      "studyId": "plan-lab",
+      "residual": {
+        "execution": {
+          "target": "e2b-desktop"
+        },
+        "subject": {}
+      },
+      "dryRun": true,
+      "analysis": {
+        "config": {
+          "model": "gpt-6.1-sol",
+          "maxCostUsd": 10,
+          "timeoutMs": 600000,
+          "maxOutputTokens": 16384,
+          "question": null,
+          "reasoningEffort": "medium"
+        },
+        "trigger": "default",
+        "preferLargerOutput": true
+      },
+      "requirements": [],
+      "route": "computer-use",
+      "actor": "computer-use",
+      "runner": {
+        "desktop": "e2b-desktop",
+        "provider": "e2b",
+        "brain": {
+          "kind": "provider-key",
+          "vendor": "openai",
+          "model": "gpt-6.1-sol"
+        },
+        "participants": [
+          {
+            "id": "lane-01",
+            "index": 0,
+            "assignment": {},
+            "labels": {},
+            "device": {
+              "name": "desktop",
+              "preset": {
+                "width": 1440,
+                "height": 950,
+                "isMobile": false,
+                "deviceScaleFactor": 1
+              },
+              "resolution": [
+                1440,
+                950
+              ]
+            },
+            "limits": {},
+            "schedule": {}
+          }
+        ],
+        "subject": {
+          "kind": "app-url",
+          "appUrl": "http://127.0.0.1:3000/",
+          "publicTargets": false
+        }
+      },
+      "concurrency": 1,
+      "arrivals": {
+        "declared": false,
+        "firstStartMs": 0,
+        "lastStartMs": 0,
+        "peak": 1,
+        "waiting": 0,
+        "longestWaitMs": 0,
+        "lastEndMs": 60000,
+        "sessionMs": 60000
+      },
+      "sessionBudgetMs": 60000,
+      "sandboxMs": 660000,
+      "caps": {}
+    },
+    "live": {
+      "requirements": [
+        {
+          "kind": "key",
+          "name": "E2B_API_KEY"
+        },
+        {
+          "kind": "key",
+          "name": "OPENAI_API_KEY"
+        }
+      ]
+    }
+  }
+}

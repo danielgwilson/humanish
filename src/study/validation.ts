@@ -1,5 +1,12 @@
 import { isMaxOutputTokens } from "../actors/output-token-limit.js";
-import { DEFAULT_OPENAI_CU_MODEL } from "../actors/computer-use/openai-provider.js";
+import {
+  actorParticipantModel,
+  isApiParticipantActor,
+  participantEffortReason,
+  takesProvider,
+} from "../actors/computer-use/models.js";
+import { PARTICIPANT_VENDORS } from "../actors/computer-use/providers.js";
+import { resolveParticipantDevice } from "./device-presets.js";
 import { MODEL_RATES, participantRate } from "../run/pricing.js";
 import { MAX_RECEIVING_INBOXES } from "../comms/receiving-types.js";
 import { waitFieldsReason } from "../actors/computer-use/wait.js";
@@ -317,36 +324,69 @@ export function cloneTargetValidationReason(config: StudyConfig): string | null 
   return `clone subjects require \`execution.target: e2b-desktop\` (${got}): humanish clones and serves the repo inside a hosted desktop sandbox. \`execution.target: local\` applies to app-url and local-app subjects.`;
 }
 
-/** Refuse a claimed output bound when the route cannot pass it to the first-party provider. */
+/**
+ * Refuse an API participant its vendor cannot run: a model whose vendor humanish cannot tell, an
+ * actor.provider the model table contradicts or an actor type that takes none, a participant's
+ * effective effort (its own reasoningEffort, else the actor's) that the model does not accept, and
+ * a participant desktop whose screenshots the vendor's models cannot read. Every check reads the
+ * config alone, so parse and plan refuse before a run id or a desktop exists.
+ */
+export function participantModelValidationReason(config: StudyConfig): string | null {
+  const actor = config.actor;
+  if (actor?.provider !== undefined && !takesProvider(actor.type))
+    return `actor.provider applies only to actor.type: computer-use, which takes the vendor from the model; actor.type is ${actor.type}. Remove actor.provider, or set actor.type: computer-use.`;
+  const resolved = actorParticipantModel(actor);
+  if (resolved === undefined) return null;
+  if (!resolved.ok) return resolved.reason;
+  const frameReason = PARTICIPANT_VENDORS[resolved.vendor].frameReason;
+  const entries = participantList(config) ?? [undefined];
+  for (const [index, entry] of entries.entries()) {
+    const own = entry?.reasoningEffort !== undefined;
+    const effort = participantEffortReason(
+      resolved,
+      entry?.reasoningEffort ?? actor?.reasoningEffort,
+      own ? `participants[${index}].reasoningEffort` : "actor.reasoningEffort",
+    );
+    if (effort !== undefined) return effort;
+    const [width, height] = resolveParticipantDevice(config, entry?.device).resolution;
+    const frame = frameReason?.(width, height);
+    if (frame !== undefined)
+      return `${entries.length === 1 ? "The participant" : `participants[${index}]`} runs ${resolved.model}. ${frame}`;
+  }
+  return null;
+}
+
+/** Refuse a claimed output bound when the route cannot pass it to the participant's provider. */
 export function outputTokenLimitValidationReason(config: StudyConfig): string | null {
   const actor = config.actor;
   if (actor?.maxOutputTokens === undefined) return null;
   if (!isMaxOutputTokens(actor.maxOutputTokens))
     return "actor.maxOutputTokens must be a positive safe integer.";
   if (
-    actor.type !== "openai-computer-use" ||
+    !isApiParticipantActor(actor.type) ||
     !isComputerUseComposition(config) ||
     config.subject.source === "local-app"
   ) {
-    return "actor.maxOutputTokens is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes cannot enforce it.";
+    return "actor.maxOutputTokens is supported only by API computer-use participants (computer-use and openai-computer-use); terminal, local-agent, scripted and custom in-process routes cannot enforce it.";
   }
   return null;
 }
 
 /**
- * Refuse a Fast mode request humanish cannot send or price: the first-party OpenAI computer-use
- * route sends it, and the spend estimate needs the model's Fast mode rate.
+ * Refuse a Fast mode request humanish cannot send or price: an API participant sends it, and the
+ * spend estimate needs the model's Fast mode rate, which only OpenAI models have.
  */
 export function serviceTierValidationReason(config: StudyConfig): string | null {
   const actor = config.actor;
   if (actor?.serviceTier === undefined) return null;
   if (
-    actor.type !== "openai-computer-use" ||
+    !isApiParticipantActor(actor.type) ||
     !isComputerUseComposition(config) ||
     config.subject.source === "local-app"
   )
-    return "actor.serviceTier is supported only by first-party OpenAI computer-use routes; terminal, local-agent, scripted and custom in-process routes do not send it.";
-  const model = actor.model ?? DEFAULT_OPENAI_CU_MODEL;
+    return "actor.serviceTier is supported only by API computer-use participants (computer-use and openai-computer-use); terminal, local-agent, scripted and custom in-process routes do not send it.";
+  const resolved = actorParticipantModel(actor);
+  const model = resolved?.ok === true ? resolved.model : (actor.model ?? "");
   if (participantRate(model)?.fast === undefined) {
     const priced = Object.keys(MODEL_RATES)
       .filter((id) => participantRate(id)?.fast !== undefined)

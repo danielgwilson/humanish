@@ -72,6 +72,7 @@ import {
   desktopMediaValidationReason,
   networkCaptureValidationReason,
   outputTokenLimitValidationReason,
+  participantModelValidationReason,
   serviceTierValidationReason,
   receivingEmailValidationReason,
   smtpValidationReason,
@@ -291,6 +292,9 @@ function checkStudyConfig(config: StudyConfig): StudyParseResult {
 
   const networkReason = networkCaptureValidationReason(config);
   if (networkReason) return invalid(networkReason);
+
+  const participantModelReason = participantModelValidationReason(config);
+  if (participantModelReason) return invalid(participantModelReason);
 
   const outputLimitReason = outputTokenLimitValidationReason(config);
   if (outputLimitReason) return invalid(outputLimitReason);

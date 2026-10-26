@@ -3,10 +3,15 @@
 
 import { DEFAULT_ANALYSIS_EFFORT, DEFAULT_ANALYSIS_MODEL } from "../../src/analysis/automatic-config.js";
 import { isReasoningEffort, reasoningEffortNames, type ReasoningEffort } from "../../src/actors/reasoning-effort.js";
+import { actorParticipantModel, participantEffortReason } from "../../src/actors/computer-use/models.js";
 import { MODEL_RATES, type ModelRate } from "../../src/run/pricing.js";
 import type { Arm } from "../taskly/answer-key.js";
 
-export type BrainId = "openai-computer-use" | "local-agent-claude" | "local-agent-codex";
+export type BrainId =
+  | "openai-computer-use"
+  | "computer-use"
+  | "local-agent-claude"
+  | "local-agent-codex";
 
 export interface Brain {
   id: BrainId;
@@ -23,6 +28,14 @@ export const BRAINS: Record<BrainId, Brain> = {
   "openai-computer-use": {
     id: "openai-computer-use",
     actor: { type: "openai-computer-use", maxOutputTokens: 8192 },
+    priced: true,
+    typicalParticipantUsd: 0.25,
+  },
+  // Any listed participant model, on the vendor the participant model table names. The typical
+  // spend is gpt-5.6-sol's, the highest recorded, until a benchmark records another.
+  "computer-use": {
+    id: "computer-use",
+    actor: { type: "computer-use", maxOutputTokens: 8192 },
     priced: true,
     typicalParticipantUsd: 0.25,
   },
@@ -67,10 +80,20 @@ export function parseParticipant(spec: string, serviceTier?: string): Participan
   };
 }
 
-/** The brain with the participant settings in its actor block. Only the API brain sends them. */
+/**
+ * The brain with the participant settings in its actor block. Only the API brains send them, and
+ * a model or effort the study would refuse at parse is refused here, before any run.
+ */
 export function withParticipant(brain: Brain, settings: ParticipantSettings): Brain {
-  if (brain.id !== "openai-computer-use")
-    throw new Error(`--participant applies to openai-computer-use only, not ${brain.id}.`);
+  const type = String(brain.actor.type);
+  const resolved = actorParticipantModel({ type, model: settings.model });
+  if (resolved === undefined)
+    throw new Error(
+      `--participant applies to the openai-computer-use and computer-use brains, not ${brain.id}.`,
+    );
+  if (!resolved.ok) throw new Error(resolved.reason);
+  const effort = participantEffortReason(resolved, settings.reasoningEffort, "The --participant effort");
+  if (effort !== undefined) throw new Error(effort);
   return { ...brain, actor: { ...brain.actor, ...settings } };
 }
 

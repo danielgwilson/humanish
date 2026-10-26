@@ -1,9 +1,9 @@
 # Actor Contract
 
 Part of this contract ships and part is still open. Shipped: the evidence schema
-`humanish.actor-trace.v1` (`src/actors/contract.ts`) and a closed first-party registry of five
-descriptors (`src/actors/registry.ts`: `codex-app-server`, `openai-computer-use`, `local-agent`,
-`scripted-browser`, `codex-exec`). `actor.type` is a real dispatch key on the computer-use,
+`humanish.actor-trace.v1` (`src/actors/contract.ts`) and a closed first-party registry of six
+descriptors (`src/actors/registry.ts`: `codex-app-server`, `computer-use`, `openai-computer-use`,
+`local-agent`, `scripted-browser`, `codex-exec`). `actor.type` is a real dispatch key on the computer-use,
 scripted-browser, and terminal-product routes. Product scoring, feedback, and artifact hooks are
 extension seams, but public out-of-tree actor registration and its conformance certification are not
 shipped. Also not shipped: the full `Actor.run(input)` interface, `ApprovalPolicy`,
@@ -100,15 +100,20 @@ API surface.
    flow) will not be dispatched to a code-only actor that would fake success
    via the shell.
 
-6. **Computer-use is one route behind one port.** The shipped computer-use
-   actor is `openai-computer-use`. Two API providers implement
+6. **Computer-use is one route behind one port.** The API computer-use actor
+   is `computer-use`: `resolveParticipantModel` (`src/actors/computer-use/models.ts`)
+   picks the vendor from `actor.model`, or from `actor.provider` for a model the
+   participant model table does not list. `openai-computer-use` is the same
+   actor with the vendor pinned to OpenAI. Two API providers implement
    `ComputerUseProvider`, each a wire, conversation and provider file triple in
    `src/actors/computer-use/` with a row in the vendor registry
-   (`providers.ts`): the OpenAI Responses provider
-   (`createOpenAiResponsesProvider`, the actor's brain) and the Anthropic
-   Messages provider (`createAnthropicMessagesProvider`: Claude's
-   `computer_toolset_20260801` on `claude-haiku-5-5`, a library export that no
-   study reaches yet). A Gemini provider is roadmap. Screenshots are the
+   (`providers.ts`: key name, default model, documented effort levels,
+   screenshot limit and constructor): the OpenAI Responses provider
+   (`createOpenAiResponsesProvider`) and the Anthropic Messages provider
+   (`createAnthropicMessagesProvider`: Claude's `computer_toolset_20260801` on
+   `claude-haiku-5-5`). A third vendor adds its provider files, a vendor row,
+   its model rows, an egress row in `src/substrates/e2b/egress-keys.ts` when
+   its key travels as one header, and its rates. A Gemini provider is roadmap. Screenshots are the
    largest new public-safety surface, and the original stance here
    (field-blurred plus OCR-scrubbed before any public artifact, fail-closed)
    enforced a default at capture-time; 0.6.0 recanted it. Current policy:
@@ -567,12 +572,12 @@ turns as a stop signal.
 
 ## Capability matrix (target adapters)
 
-| Adapter                                                                                       | headless                     | structured trace                          | sandbox                              | BYO model               | license                   | actor fit    |
-| --------------------------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------- | ------------------------------------ | ----------------------- | ------------------------- | ------------ |
-| codex-app-server (reference)                                                                  | yes (stdio JSON-RPC)         | typed item/*                              | OS Seatbelt/seccomp + approvalPolicy | OpenAI-first            | Apache-2.0                | code         |
-| pi-agent-core (removed)                                                                       | yes (SDK + rpc/json)         | event stream + session JSONL + token/cost | BYO container + hook gating          | 15+ providers, local    | MIT                       | code, app    |
-| claude-agent-sdk (removed)                                                                    | yes (SDK + `-p` stream-json) | typed ToolUse/ToolResult + cost           | OS sandbox + dontAsk/allowedTools    | Anthropic-centric       | SDK MIT (CLI proprietary) | code, app    |
-| stagehand-cua (roadmap, not shipped; `openai-computer-use` is the shipped computer-use actor) | yes (SDK, mode:'cua')        | structured results + replay               | Playwright/Browserbase isolation     | OpenAI/Anthropic/Google | MIT                       | computer-use |
+| Adapter                                                                                    | headless                     | structured trace                          | sandbox                              | BYO model               | license                   | actor fit    |
+| ------------------------------------------------------------------------------------------ | ---------------------------- | ----------------------------------------- | ------------------------------------ | ----------------------- | ------------------------- | ------------ |
+| codex-app-server (reference)                                                               | yes (stdio JSON-RPC)         | typed item/*                              | OS Seatbelt/seccomp + approvalPolicy | OpenAI-first            | Apache-2.0                | code         |
+| pi-agent-core (removed)                                                                    | yes (SDK + rpc/json)         | event stream + session JSONL + token/cost | BYO container + hook gating          | 15+ providers, local    | MIT                       | code, app    |
+| claude-agent-sdk (removed)                                                                 | yes (SDK + `-p` stream-json) | typed ToolUse/ToolResult + cost           | OS sandbox + dontAsk/allowedTools    | Anthropic-centric       | SDK MIT (CLI proprietary) | code, app    |
+| stagehand-cua (roadmap, not shipped; `computer-use` is the shipped API computer-use actor) | yes (SDK, mode:'cua')        | structured results + replay               | Playwright/Browserbase isolation     | OpenAI/Anthropic/Google | MIT                       | computer-use |
 
 ## Risks
 

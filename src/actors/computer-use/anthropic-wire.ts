@@ -606,6 +606,17 @@ function pngSize(bytes: Buffer): { width: number; height: number } | undefined {
 }
 
 /**
+ * Why Claude cannot read a width x height screenshot, or undefined when it can. Planning asks it of
+ * each participant's desktop, so an oversized screen is refused before a desktop exists.
+ */
+export function frameSizeReason(width: number, height: number): string | undefined {
+  const tokens = Math.ceil(width / 28) * Math.ceil(height / 28);
+  if (width <= MAX_SIDE_PX && height <= MAX_SIDE_PX && tokens <= MAX_VISUAL_TOKENS)
+    return undefined;
+  return `Claude reads screenshots up to ${MAX_SIDE_PX} px a side and ${MAX_VISUAL_TOKENS} visual tokens, and this desktop's screenshot is ${width}x${height} (${tokens} visual tokens). Use a smaller execution.desktop.resolution, such as 1440x950.`;
+}
+
+/**
  * The image block for one desktop frame, after checking it fits what Claude reads. Throws before
  * any request when it does not, or when there is no frame: this is a vision provider
  * (requiresFrame), so the loop's own guard normally refuses a frameless executor first.
@@ -619,12 +630,8 @@ export function screenImage(screenshot: Buffer | undefined): Record<string, unkn
   const size = pngSize(screenshot);
   if (size === undefined)
     throw new Error("The desktop's screenshot is not a PNG image, the only frame format sent.");
-  const tokens = Math.ceil(size.width / 28) * Math.ceil(size.height / 28);
-  if (size.width > MAX_SIDE_PX || size.height > MAX_SIDE_PX || tokens > MAX_VISUAL_TOKENS) {
-    throw new Error(
-      `Claude reads screenshots up to ${MAX_SIDE_PX} px a side and ${MAX_VISUAL_TOKENS} visual tokens, and this desktop's screenshot is ${size.width}x${size.height} (${tokens} visual tokens). Use a smaller execution.desktop.resolution, such as 1440x950.`,
-    );
-  }
+  const tooLarge = frameSizeReason(size.width, size.height);
+  if (tooLarge !== undefined) throw new Error(tooLarge);
   return {
     type: "image",
     source: { type: "base64", media_type: "image/png", data: screenshot.toString("base64") },

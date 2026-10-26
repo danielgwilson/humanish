@@ -162,7 +162,7 @@ function closingReportWarnings(plan: StudyPlan): string[] {
   const capped = participants.filter(({ schedule }) => schedule.end?.kind === "session_cap");
   const claude = "Claude as a local-agent participant model cannot be asked for a closing report";
   const writers =
-    "A computer-use model (actor.type: openai-computer-use) or Codex (actor.localAgent: codex) writes one.";
+    "An API participant (actor.type: computer-use) or Codex (actor.localAgent: codex) writes one.";
   return [
     ...(scheduled.length === 0
       ? []

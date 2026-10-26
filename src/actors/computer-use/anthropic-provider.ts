@@ -38,7 +38,7 @@ const ANTHROPIC_VERSION = "2023-06-01";
 const ANTHROPIC_BETAS = "context-management-2025-06-27,thinking-binding-controls-2026-08-01";
 
 /** The model an Anthropic participant runs when none is named. */
-const DEFAULT_ANTHROPIC_CU_MODEL = "claude-haiku-5-5";
+export const DEFAULT_ANTHROPIC_CU_MODEL = "claude-haiku-5-5";
 
 /**
  * The output limit every request carries when the caller names none. The API requires one, so

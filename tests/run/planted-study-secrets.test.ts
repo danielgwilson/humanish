@@ -91,6 +91,7 @@ const NOT_FREE_TEXT: Readonly<Record<string, readonly string[]>> = {
   "one of a fixed set of words": [
     "actor.dwell.then",
     "actor.localAgent",
+    "actor.provider",
     "actor.reasoningEffort",
     "actor.serviceTier",
     "comms.email.kind",

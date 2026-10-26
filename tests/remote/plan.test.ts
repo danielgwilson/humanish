@@ -57,6 +57,24 @@ describe("a computer-use study on hosted desktops with a public app", () => {
     expect(result.plan.uploads).toEqual(["humanish/studies/remote.yaml"]);
   });
 
+  it("forwards the key of the vendor its participants run on", () => {
+    const claude = (target: string) =>
+      remote(
+        study("cuAppUrl", {
+          ...PUBLIC_APP,
+          actor: { type: "computer-use", model: "claude-haiku-5-5" },
+          review: { analysis: false },
+          execution: { target, timeoutMs: 600_000 },
+        }),
+      );
+    for (const target of ["e2b-desktop", "modal-desktop"]) {
+      const result = claude(target);
+      if (!result.ok) throw new Error(result.reason);
+      expect(result.plan.envNames).toContain("ANTHROPIC_API_KEY");
+      expect(result.plan.envNames).not.toContain("OPENAI_API_KEY");
+    }
+  });
+
   it("keeps its runner for setup, the last participant's end, analysis and teardown", () => {
     const config = study("cuAppUrl", {
       ...PUBLIC_APP,

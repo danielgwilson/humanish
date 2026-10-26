@@ -260,7 +260,7 @@ describe("study check and the estimates", () => {
         actor: { ...hosted.actor, type: "local-agent", localAgent: "claude" },
       }),
     ).toEqual([
-      "2 participants have a session cap (participants[].maxSessionMs), and Claude as a local-agent participant model cannot be asked for a closing report, so each that reaches its cap ends with the cap as its reason and no closing account. A computer-use model (actor.type: openai-computer-use) or Codex (actor.localAgent: codex) writes one.",
+      "2 participants have a session cap (participants[].maxSessionMs), and Claude as a local-agent participant model cannot be asked for a closing report, so each that reaches its cap ends with the cap as its reason and no closing account. An API participant (actor.type: computer-use) or Codex (actor.localAgent: codex) writes one.",
     ]);
     const codex = {
       ...hosted,

@@ -1933,6 +1933,7 @@ describe("provider-key discovery at the CLI seam", () => {
         "GH_TOKEN",
         "AGENTMAIL_API_KEY",
         "GEMINI_API_KEY",
+        "ANTHROPIC_API_KEY",
       ]);
       const human = await runCli(["keys"]);
       expect(human.exitCode).toBe(0);

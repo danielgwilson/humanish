@@ -131,6 +131,7 @@ export const ACTOR = {
   persona: true,
   mission: true,
   model: true,
+  provider: true,
   maxOutputTokens: true,
   maxWaitMs: true,
   idleWaitMs: true,

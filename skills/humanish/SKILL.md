@@ -587,11 +587,18 @@ npm i -D @e2b/desktop
 Then confirm env var names are documented without values. Which keys a hosted
 study needs depends on its participant and analyst:
 
-| Participant                             | Keys                                                                                                                                                 |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `openai-computer-use`                   | `E2B_API_KEY`, `OPENAI_API_KEY`                                                                                                                      |
-| `local-agent` with `localAgent: codex`  | `E2B_API_KEY` and `codex login`; the findings analysis uses the same Codex account                                                                   |
-| `local-agent` with `localAgent: claude` | `E2B_API_KEY` and `claude auth login`; `OPENAI_API_KEY` for findings; without it, a signed-in Codex can analyze the run (the run prints the command) |
+| Participant                                                 | Keys                                                                                                                                                 |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `openai-computer-use`, or `computer-use` on a `gpt-*` model | `E2B_API_KEY`, `OPENAI_API_KEY`                                                                                                                      |
+| `computer-use` with `model: claude-haiku-5-5`               | `E2B_API_KEY`, `ANTHROPIC_API_KEY` (`humanish keys set anthropic`); `OPENAI_API_KEY` for findings                                                    |
+| `local-agent` with `localAgent: codex`                      | `E2B_API_KEY` and `codex login`; the findings analysis uses the same Codex account                                                                   |
+| `local-agent` with `localAgent: claude`                     | `E2B_API_KEY` and `claude auth login`; `OPENAI_API_KEY` for findings; without it, a signed-in Codex can analyze the run (the run prints the command) |
+
+When the user names a participant model, write `actor.type: computer-use` and
+`actor.model`; humanish picks the vendor from the model and refuses a model it does
+not list unless `actor.provider` names the vendor. Such a model runs unpriced, so a
+spend cap is refused. `openai-computer-use` refuses a Claude model and names
+`computer-use`.
 
 A hosted Codex participant does not need `OPENAI_API_KEY`. Do not report a missing
 `OPENAI_API_KEY` as the reason a Codex study on E2B fails; read the
@@ -624,7 +631,7 @@ Run `npx humanish doctor --study <id>` before the first live run and read every
   `policies.allowPublicTargets: true`, and with more than one participant, a
   `target` on each entry.
 - "Will be skipped: OPENAI_API_KEY is missing" on `post-run analysis` (an
-  `openai-computer-use` or Claude participant): the run works without findings,
+  OpenAI or Claude participant): the run works without findings,
   and when Codex is signed in, its `next:` line gives the command that analyzes it with Codex.
   `review.analysis.provider: codex` makes that the study's default.
 - A local browser study refuses a non-loopback URL, a port below 1024, hosted

@@ -39,6 +39,16 @@ describe("keys held in E2B's egress proxy", () => {
     expect(EGRESS_PLACEHOLDER).toBe("humanish-egress-auth-placeholder");
   });
 
+  it("holds the Anthropic key on api.anthropic.com in the x-api-key header Claude's provider sends", () => {
+    const held = holdKeysInEgress({ ANTHROPIC_API_KEY: "synthetic-anthropic" });
+    const network: InstalledSdkNetwork = held.network;
+    expect(network.rules).toEqual({
+      "api.anthropic.com": [{ transform: { headers: { "x-api-key": "synthetic-anthropic" } } }],
+    });
+    expect(held.env).toEqual({ ANTHROPIC_API_KEY: EGRESS_PLACEHOLDER });
+    expect(held.held).toEqual(["ANTHROPIC_API_KEY"]);
+  });
+
   it("holds GOOGLE_API_KEY on the Gemini host as Gemini's analyst reads it", () => {
     const held = holdKeysInEgress({ GOOGLE_API_KEY: "synthetic-google" });
     expect(held.network.rules).toEqual({

@@ -22,17 +22,27 @@ const GEMINI: HeaderKey = {
 };
 
 /**
- * Where each key name humanish sends as a header goes. Every host is fixed in the code that calls
- * it: src/actors/openai-endpoint.ts, src/analysis/gemini-wire.ts, and the E2B SDK's
- * `https://api.<E2B_DOMAIN>` with its `X-API-KEY` header.
+ * Where each key name humanish sends as a header goes, beside the E2B key. Every host is fixed in
+ * the code that calls it: src/actors/openai-endpoint.ts, the Messages endpoint in
+ * src/actors/computer-use/anthropic-provider.ts and src/analysis/gemini-wire.ts. A participant
+ * vendor whose key travels as one header to one host adds its row here.
  */
+const HEADER_KEYS: Readonly<Record<string, HeaderKey>> = {
+  OPENAI_API_KEY: {
+    host: "api.openai.com",
+    header: "Authorization",
+    value: (key) => `Bearer ${key}`,
+  },
+  ANTHROPIC_API_KEY: { host: "api.anthropic.com", header: "x-api-key", value: (key) => key },
+  GEMINI_API_KEY: GEMINI,
+  GOOGLE_API_KEY: GEMINI,
+};
+
+/** Where `name` goes as a header: its row, or for the E2B key the E2B SDK's `https://api.<domain>`. */
 function headerKey(name: string, domain: string): HeaderKey | undefined {
-  if (name === "OPENAI_API_KEY")
-    return { host: "api.openai.com", header: "Authorization", value: (key) => `Bearer ${key}` };
-  if (name === "GEMINI_API_KEY" || name === "GOOGLE_API_KEY") return GEMINI;
   if (name === "E2B_API_KEY")
     return { host: `api.${domain}`, header: "X-API-Key", value: (key) => key };
-  return undefined;
+  return Object.hasOwn(HEADER_KEYS, name) ? HEADER_KEYS[name] : undefined;
 }
 
 const sameHost = (a: string, b: string): boolean =>

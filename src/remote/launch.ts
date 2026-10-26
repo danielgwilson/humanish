@@ -17,7 +17,11 @@ import {
 import { createRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { reclaimRunSandboxes } from "../run/reclaim.js";
 import { pointLatestRunAt } from "../run/run.js";
-import { appendSandboxOwner, SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
+import {
+  appendSandboxOwner,
+  SANDBOX_RECEIPTS_ARTIFACT,
+  type SandboxProviderId,
+} from "../run/sandbox-receipts.js";
 import { loadE2BBaseModule } from "../substrates/e2b/base-module.js";
 import { e2bConnection } from "../substrates/e2b/connection.js";
 import { E2B_SYSTEM_CA_BUNDLE, holdKeysInEgress } from "../substrates/e2b/egress-keys.js";
@@ -541,11 +545,44 @@ export interface RunnerKeys {
 }
 
 /**
+ * How each sandbox provider's runner receives the keys forwarded to it. E2B holds each key that
+ * travels as a header to a fixed host in an E2B header transform: the run gets a placeholder, and
+ * the system CA bundle that holds E2B's proxy CA, which Node does not read by default. Modal has no
+ * such transform, so a Modal runner receives every key as an environment variable. A new sandbox
+ * provider adds its entry here.
+ */
+const KEY_PLACEMENT: Readonly<
+  Record<
+    SandboxProviderId,
+    (forwarded: Record<string, string>, routing: E2BNetworkOptions) => RunnerKeys
+  >
+> = {
+  e2b: (forwarded, routing) => {
+    const held = holdKeysInEgress(forwarded, { domain: forwarded.E2B_DOMAIN, existing: routing });
+    return {
+      env:
+        held.held.length === 0
+          ? held.env
+          : { ...held.env, NODE_EXTRA_CA_CERTS: E2B_SYSTEM_CA_BUNDLE },
+      network: held.network,
+      held: held.held,
+      sent: Object.keys(forwarded)
+        .filter((name) => !held.held.includes(name))
+        .sort(),
+    };
+  },
+  modal: (forwarded, routing) => ({
+    env: forwarded,
+    network: routing,
+    held: [],
+    sent: Object.keys(forwarded).sort(),
+  }),
+};
+
+/**
  * The keys the runner's run receives: each of the plan's names that is set here, and of names the
- * run reads only the first of, only the first one set. On E2B, each key that travels as a header
- * to a fixed host stays in an E2B header transform, and the run gets a placeholder and the system
- * CA bundle that holds E2B's proxy CA, which Node does not read by default. Modal has no such
- * transform, so a Modal runner receives every key as an environment variable.
+ * run reads only the first of, only the first one set, placed as the runner's provider places
+ * them (KEY_PLACEMENT).
  */
 export function runnerKeys(
   remote: Pick<RemotePlan, "provider" | "envNames" | "alternatives">,
@@ -556,21 +593,7 @@ export function runnerKeys(
   const forwarded: Record<string, string> = Object.fromEntries(
     remote.envNames.flatMap((name) => (set(name) && !unread.has(name) ? [[name, env[name]!]] : [])),
   );
-  const routing: E2BNetworkOptions = { allowPublicTraffic: false };
-  if (remote.provider === "modal")
-    return { env: forwarded, network: routing, held: [], sent: Object.keys(forwarded).sort() };
-  const held = holdKeysInEgress(forwarded, { domain: forwarded.E2B_DOMAIN, existing: routing });
-  return {
-    env:
-      held.held.length === 0
-        ? held.env
-        : { ...held.env, NODE_EXTRA_CA_CERTS: E2B_SYSTEM_CA_BUNDLE },
-    network: held.network,
-    held: held.held,
-    sent: Object.keys(forwarded)
-      .filter((name) => !held.held.includes(name))
-      .sort(),
-  };
+  return KEY_PLACEMENT[remote.provider](forwarded, { allowPublicTraffic: false });
 }
 
 /** Whether this humanish runs from a built package, which a runner can install. */

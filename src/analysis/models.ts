@@ -1,24 +1,12 @@
 // The models each API analyst runs, and the reasoning efforts each model accepts. Config parsing,
 // admission, the CLI help and the wire formats all read this one table.
 
-import type { ReasoningEffort } from "../actors/reasoning-effort.js";
+import { OPENAI_MODEL_EFFORTS, type ReasoningEffort } from "../actors/reasoning-effort.js";
 import type { AnalysisApiVendor } from "./provider.js";
 import type { AnalysisConfig } from "./types.js";
 
-/**
- * `reasoning.effort` values from each model's page under developers.openai.com/api/docs/models
- * (read 2026-10-21). None of them lists `minimal`; gpt-6-astra and gpt-6.1-sol also refuse `none`.
- */
-const OPENAI_MODELS = {
-  "gpt-6-astra": ["low", "medium", "high", "xhigh", "max"],
-  "gpt-6.1-sol": ["low", "medium", "high", "xhigh", "max"],
-  "gpt-6-luna": ["none", "low", "medium", "high", "xhigh", "max"],
-  "gpt-5.5": ["none", "low", "medium", "high", "xhigh"],
-  "gpt-5.6": ["none", "low", "medium", "high", "xhigh", "max"],
-  "gpt-5.6-sol": ["none", "low", "medium", "high", "xhigh", "max"],
-  "gpt-5.6-terra": ["none", "low", "medium", "high", "xhigh", "max"],
-  "gpt-5.6-luna": ["none", "low", "medium", "high", "xhigh", "max"],
-} as const satisfies Record<string, readonly ReasoningEffort[]>;
+/** The OpenAI analysis models: every model with a recorded effort list. */
+const OPENAI_MODELS = OPENAI_MODEL_EFFORTS;
 
 /**
  * The `text.verbosity` the OpenAI wire sends for a model; a model not listed gets the API default,

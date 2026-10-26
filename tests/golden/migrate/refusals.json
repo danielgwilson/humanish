@@ -3,13 +3,13 @@
     "name": "refuses a clone lab whose actor can neither drive nor script the served app",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > refuses a clone lab whose actor can neither drive nor script the served app",
     "v2": {"schema":"humanish.lab.v2","id":"codex-clone","subject":{"source":"clone","repos":["example-org/example-app"]},"actors":[{"type":"codex-app-server","count":1}],"execution":{"target":"e2b-desktop"}},
-    "refused": "it does not parse: clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
+    "refused": "it does not parse: clone subjects need a registered computer-use actor (one of: local-agent, computer-use, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"codex-app-server\"."
   },
   {
     "name": "refuses a clone lab whose actor can neither drive nor script the served app (2)",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > refuses a clone lab whose actor can neither drive nor script the served app",
     "v2": {"schema":"humanish.lab.v2","id":"codex-clone","subject":{"source":"clone","repos":["example-org/example-app"]},"actors":[{"type":"humanish-setup","count":1}],"execution":{"target":"e2b-desktop"}},
-    "refused": "it does not parse: clone subjects need a registered computer-use actor (one of: local-agent, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"humanish-setup\"."
+    "refused": "it does not parse: clone subjects need a registered computer-use actor (one of: local-agent, computer-use, openai-computer-use) or scripted-browser actor (one of: scripted-browser); humanish clones and serves the app for that participant to drive. Got \"humanish-setup\"."
   },
   {
     "name": "refuses a clone lab whose actor can neither drive nor script the served app (3)",
@@ -21,13 +21,13 @@
     "name": "rejects the unregistered actor type pi-agent-core on a route that ignores actors[0].type",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects the unregistered actor type pi-agent-core on a route that ignores actors[0].type",
     "v2": {"schema":"humanish.lab.v2","id":"first-run","subject":{"source":"this-repo"},"actors":[{"type":"pi-agent-core"}],"scenario":{"mode":"dry-run"}},
-    "refused": "it does not parse: actors[0].type \"pi-agent-core\" is no longer a humanish actor. Use an actor a study route runs (one of: local-agent, openai-computer-use, scripted-browser, codex-exec). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude."
+    "refused": "it does not parse: actors[0].type \"pi-agent-core\" is no longer a humanish actor. Use an actor a study route runs (one of: local-agent, computer-use, openai-computer-use, scripted-browser, codex-exec). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude."
   },
   {
     "name": "rejects the unregistered actor type claude-agent-sdk on a route that ignores actors[0].type",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > rejects the unregistered actor type claude-agent-sdk on a route that ignores actors[0].type",
     "v2": {"schema":"humanish.lab.v2","id":"first-run","subject":{"source":"this-repo"},"actors":[{"type":"claude-agent-sdk"}],"scenario":{"mode":"dry-run"}},
-    "refused": "it does not parse: actors[0].type \"claude-agent-sdk\" is no longer a humanish actor. Use an actor a study route runs (one of: local-agent, openai-computer-use, scripted-browser, codex-exec). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude."
+    "refused": "it does not parse: actors[0].type \"claude-agent-sdk\" is no longer a humanish actor. Use an actor a study route runs (one of: local-agent, computer-use, openai-computer-use, scripted-browser, codex-exec). To drive a study with a signed-in Claude Code, use type: local-agent with localAgent: claude."
   },
   {
     "name": "comms recipients fail loud on unknown participants, fill per-participant when omitted, and warn on partial coverage",
@@ -297,13 +297,13 @@
     "name": "fails closed on cua mis-config: unregistered actor type",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > fails closed on cua mis-config: unregistered actor type",
     "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"not-a-real-actor"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
-    "refused": "it does not parse: actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"not-a-real-actor\"."
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, computer-use, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"not-a-real-actor\"."
   },
   {
     "name": "fails closed on cua mis-config: registered but not computer-use",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (computer-use route) > fails closed on cua mis-config: registered but not computer-use",
     "v2": {"schema":"humanish.lab.v2","id":"cua-browser","subject":{"source":"app-url","appUrl":"http://127.0.0.1:3000/"},"actors":[{"type":"codex-app-server"}],"execution":{"target":"e2b-desktop","timeoutMs":120000,"desktop":{"resolution":[1280,800],"sandboxTimeoutMs":600000}},"scenario":{"mode":"dry-run"}},
-    "refused": "it does not parse: actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, computer-use, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
   },
   {
     "name": "rejects an unknown participant field misson before it can disappear",
@@ -591,7 +591,7 @@
     "name": "names the scripted-browser actors in the app-url × e2b-desktop unsupported-actor error",
     "from": "tests/study/config.test.ts > parseStudyDocument (humanish.lab.v2) > app-url (scripted-browser route) > names the scripted-browser actors in the app-url × e2b-desktop unsupported-actor error",
     "v2": {"schema":"humanish.lab.v2","id":"scripted-demo","subject":{"source":"app-url","appUrl":"http://127.0.0.1:5173/"},"actors":[{"type":"codex-app-server"}],"execution":{"target":"e2b-desktop"}},
-    "refused": "it does not parse: actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for app-url × e2b-desktop studies (one of: local-agent, computer-use, openai-computer-use); for local scripted execution use a registered scripted-browser actor (scripted-browser). Got \"codex-app-server\"."
   },
   {
     "name": "fails closed on unsafe provisioned scripted config: missing synthetic exposure",
@@ -861,19 +861,19 @@
     "name": "fails closed on local-app mis-config: non-cua actor (codex-app-server)",
     "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: non-cua actor (codex-app-server)",
     "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/"},"actors":[{"type":"codex-app-server"}],"scenario":{"mode":"live"}},
-    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"codex-app-server\"."
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, computer-use, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"codex-app-server\"."
   },
   {
     "name": "fails closed on local-app mis-config: scripted-browser actor",
     "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: scripted-browser actor",
     "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/"},"actors":[{"type":"scripted-browser"}],"scenario":{"mode":"live"}},
-    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"scripted-browser\"."
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, computer-use, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"scripted-browser\"."
   },
   {
     "name": "fails closed on local-app mis-config: unregistered actor type",
     "from": "tests/study/config.test.ts > parseStudyDocument (local-app subject) > fails closed on local-app mis-config: unregistered actor type",
     "v2": {"schema":"humanish.lab.v2","id":"local-app-state","subject":{"source":"local-app","appUrl":"http://localhost:5173/"},"actors":[{"type":"not-a-real-actor"}],"scenario":{"mode":"live"}},
-    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"not-a-real-actor\"."
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-app subjects (one of: local-agent, computer-use, openai-computer-use); the caller's custom executor runs the computer-use loop. Got \"not-a-real-actor\"."
   },
   {
     "name": "fails closed on local-app mis-config: fan-out count",
@@ -1083,7 +1083,7 @@
     "name": "fails closed on local-tree mis-config: non-computer-use actor (codex-app-server)",
     "from": "tests/study/config.test.ts > parseStudyDocument (local-tree subject) > fails closed on local-tree mis-config: non-computer-use actor (codex-app-server)",
     "v2": {"schema":"humanish.lab.v2","id":"local-tree-lab","subject":{"source":"local-tree","serve":{"start":"pnpm start","url":"http://127.0.0.1:3000/"}},"actors":[{"type":"codex-app-server"}],"execution":{"target":"e2b-desktop"}},
-    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-tree subjects (one of: local-agent, openai-computer-use); the actor drives the hosted desktop that serves the packed working tree. Got \"codex-app-server\"."
+    "refused": "it does not parse: actor.type must be a registered computer-use actor for local-tree subjects (one of: local-agent, computer-use, openai-computer-use); the actor drives the hosted desktop that serves the packed working tree. Got \"codex-app-server\"."
   },
   {
     "name": "fails closed on local-tree mis-config: localTree block on a clone subject",

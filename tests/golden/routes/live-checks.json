@@ -41,6 +41,20 @@
       "message": "Live computer-use studies need OPENAI_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: OPENAI_API_KEY: run `humanish keys set openai`. Codex and Claude Code report authenticated on this machine. Set actor.type: local-agent to use one instead of a key."
     }
   },
+  "computer use: a missing Anthropic key for a Claude participant": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_COMPUTER_USE_KEYS_MISSING",
+      "message": "Live computer-use studies need ANTHROPIC_API_KEY in the environment (values are never persisted). also checked .humanish/local/provider.env, ~/.e2b/config.json, ~/.modal.toml, gh auth token, and ~/.config/humanish/keys.env. Fill: ANTHROPIC_API_KEY: run `humanish keys set anthropic`."
+    }
+  },
+  "computer use: a cap on a model humanish does not list, on its named vendor": {
+    "ok": false,
+    "error": {
+      "code": "HUMANISH_COMPUTER_USE_UNPRICED_CAP",
+      "message": "caps sets a spend cap (maxUsd or maxTotalUsd), but humanish has no rate for model \"claude-sonnet-9\", so it cannot enforce the cap and refuses to start. Priced models: claude-haiku-5-5, computer-use-preview, daybreak-blue-latest, daybreak-red-latest, gpt-5.5, gpt-5.6, gpt-5.6-cyber, gpt-5.6-luna, gpt-5.6-sol, gpt-5.6-terra, gpt-6-astra, gpt-6-luna, gpt-6.1-sol. Use one of them, or remove maxUsd and maxTotalUsd to run without a cap."
+    }
+  },
   "shared world: an unpriced cap before keys": {
     "ok": false,
     "error": {

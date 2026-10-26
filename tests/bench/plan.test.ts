@@ -82,6 +82,33 @@ describe("the generated benchmark studies", () => {
     });
   });
 
+  it("runs any listed participant model on its vendor through the computer-use brain", () => {
+    const brain = withParticipant(
+      BRAINS["computer-use"],
+      parseParticipant("claude-haiku-5-5@medium"),
+    );
+    const study = parse(studyYaml(brain, "planted", MISSIONS.neutral, 0.6)) as {
+      actor: Record<string, unknown>;
+    };
+    expect(study.actor).toMatchObject({
+      type: "computer-use",
+      model: "claude-haiku-5-5",
+      reasoningEffort: "medium",
+    });
+  });
+
+  it("refuses a model or effort the study would refuse", () => {
+    expect(() =>
+      withParticipant(BRAINS["openai-computer-use"], parseParticipant("claude-haiku-5-5")),
+    ).toThrow(/Set actor\.type: computer-use/);
+    expect(() =>
+      withParticipant(BRAINS["computer-use"], parseParticipant("claude-haiku-5-5@none")),
+    ).toThrow(/not a level claude-haiku-5-5 accepts/);
+    expect(() =>
+      withParticipant(BRAINS["computer-use"], parseParticipant("claude-sonnet-9")),
+    ).toThrow(/not a participant model humanish lists/);
+  });
+
   it("names the persona file the project copies", () => {
     const study = parse(
       studyYaml(BRAINS["openai-computer-use"], "clean", MISSIONS.neutral, 0.6, "keyboard-tester"),
@@ -92,7 +119,7 @@ describe("the generated benchmark studies", () => {
   it("refuses a participant setting the brain cannot send", () => {
     expect(() =>
       withParticipant(BRAINS["local-agent-codex"], parseParticipant("gpt-6.1-sol")),
-    ).toThrow(/openai-computer-use/);
+    ).toThrow(/computer-use brains/);
     expect(() => parseParticipant("gpt-6.1-sol@quick")).toThrow(/effort/);
     expect(() => parseParticipant("gpt-6.1-sol", "turbo")).toThrow(/fast/);
   });

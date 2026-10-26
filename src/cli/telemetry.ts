@@ -270,6 +270,7 @@ const OUTCOMES = new Set([
 
 const BRAINS_BY_ACTOR: Record<string, NonNullable<TelemetryProperties["brain"]>> = {
   "local-agent": "local-agent",
+  "computer-use": "provider-key",
   "openai-computer-use": "provider-key",
   "codex-exec": "provider-key",
   "codex-tui": "provider-key",

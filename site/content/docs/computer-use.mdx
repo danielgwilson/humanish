@@ -3,7 +3,7 @@ title: Computer-use reference
 description: Configure hosted browser participants, device fidelity, screenshots, stop rules, dwell windows, and reruns.
 ---
 
-A computer-use study puts a participant (`actor.type`, for example `openai-computer-use`) in a browser on a hosted E2B desktop and writes an evidence bundle under gitignored `.humanish/`: full-fidelity screenshots by default, typed text recorded as lengths only, and provider-neutral `humanish.actor-trace.v1` traces. Start with the complete [own-app example](/docs/your-app); the blocks below are reference fragments.
+A computer-use study puts a participant (`actor.type`, for example `computer-use`) in a browser on a hosted E2B desktop and writes an evidence bundle under gitignored `.humanish/`: full-fidelity screenshots by default, typed text recorded as lengths only, and provider-neutral `humanish.actor-trace.v1` traces. Start with the complete [own-app example](/docs/your-app); the blocks below are reference fragments.
 
 ## Choose a subject
 
@@ -356,6 +356,35 @@ report. When an OpenAI participant ends the session itself, the loop makes one
 request that asks only for its impressions; the participant's own summary,
 reason and outcome stay as it gave them, and the request's usage counts toward
 the study's cost. See [reading outcomes](/docs/read-results#separate-a-finding-from-a-broken-run).
+
+## Pick the participant model
+
+`actor.type: computer-use` runs the model `actor.model` names, on that model's vendor, with the vendor's API key:
+
+```yaml
+actor:
+  type: computer-use
+  model: claude-haiku-5-5 # runs on Anthropic with ANTHROPIC_API_KEY
+  reasoningEffort: medium
+  mission: Add this week's errands and decide whether you would keep using the app.
+```
+
+| `actor.model`                                                                          | Vendor    | Key                 | `reasoningEffort`                                        |
+| -------------------------------------------------------------------------------------- | --------- | ------------------- | -------------------------------------------------------- |
+| `claude-haiku-5-5`                                                                     | Anthropic | `ANTHROPIC_API_KEY` | `low` to `max`; `medium` when unset                      |
+| `gpt-6.1-sol` (the default), `gpt-6-astra`                                             | OpenAI    | `OPENAI_API_KEY`    | `low` to `max`                                           |
+| `gpt-6-luna`, `gpt-5.6`, `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna`                | OpenAI    | `OPENAI_API_KEY`    | `none` to `max`, without `minimal`                       |
+| `gpt-5.5`                                                                              | OpenAI    | `OPENAI_API_KEY`    | `none` to `xhigh`, without `minimal`                     |
+| `computer-use-preview`, `gpt-5.6-cyber`, `daybreak-blue-latest`, `daybreak-red-latest` | OpenAI    | `OPENAI_API_KEY`    | any level; one the model refuses fails on the first turn |
+
+- A level the model does not take is refused when the study is read, for `actor.reasoningEffort` and for each `participants[].reasoningEffort`.
+- With no `actor.model`, the participant runs `gpt-6.1-sol` on OpenAI, as `openai-computer-use` does.
+- A model humanish does not list yet runs when `actor.provider` names its vendor, `openai` or `anthropic`. humanish has no price for it, so a `caps.maxUsd` or `caps.maxTotalUsd` is refused, and its effort is checked against the levels the vendor documents. Without `actor.provider` the study is refused, since nothing says which vendor serves the model.
+- `openai-computer-use` still sends any model name to OpenAI, and refuses `claude-haiku-5-5` with a pointer to `computer-use`.
+- Each vendor's participant uses that vendor's own action set. Claude acts with Anthropic's computer toolset, which adds zoom, triple click, mouse button down and up, holding a key and reading the pointer position to the clicks, typing, keys, scrolls and waits both vendors have.
+- Claude reads screenshots of at most 2,000 pixels a side and 4,784 visual tokens, one per 28 by 28 pixel tile. The `desktop` and `wide` presets fit; a larger `execution.desktop.resolution` is refused before any desktop exists.
+- `actor.serviceTier: fast` is OpenAI Fast mode and is refused for Claude.
+- A Claude session sends its whole history with every request, screenshots included. Past 60,000 input tokens Anthropic clears the oldest screenshots before the model reads the request, which keeps each request under the 100,000-token price tier. A session whose history reaches 30 MB, after some 60 to 300 turns, ends with an error naming that limit.
 
 ## Model selection and spend
 

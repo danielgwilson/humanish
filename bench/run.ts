@@ -63,7 +63,7 @@ const USAGE = `Usage: pnpm bench [options]
 
 Runs the Taskly planted and clean builds through humanish and scores the reports and analyses.
 
-  --brain <ids>            openai-computer-use (default), local-agent-claude, local-agent-codex; comma-separated
+  --brain <ids>            openai-computer-use (default), computer-use, local-agent-claude, local-agent-codex; comma-separated
   --runs <n>               runs per arm per brain (default 3)
   --max-usd <usd>          hard cap on estimated spend per brain (default 7)
   --mission <id>           neutral (default) or walked
@@ -71,7 +71,8 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
   --dotenv <path>          passed to the humanish CLI, which loads keys without printing them
   --cli <path>             humanish CLI to run (default: this checkout's dist/cli.js)
   --participant-cap <usd>  the study's caps.maxUsd for a priced participant (default 0.6)
-  --participant <model[@effort]> the participant model and reasoning effort (default: the CLI's)
+  --participant <model[@effort]> the participant model and reasoning effort (default: the CLI's); computer-use takes
+                           any listed model on its own vendor, such as claude-haiku-5-5
   --service-tier fast      send participant requests in OpenAI Fast mode
   --persona <file>         persona file the studies use (default: humanish/personas/synthetic-new-user.yaml)
   --storage <where>        memory (default): tasks are lost on reload; local: the builds keep them in localStorage
