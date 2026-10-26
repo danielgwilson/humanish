@@ -10,8 +10,8 @@ import { traceRedaction } from "../../../evidence/trace-page.js";
 import { TaskTracker } from "../../../study/tasks.js";
 import type { DebriefTrigger, Stop } from "./ending.js";
 import { StreakRecord } from "./streak.js";
-import { TraceRecorder } from "./trace.js";
-import type { CuaExecutor, CuaProvider, CuaSafetyCheck, LoopRunOptions } from "./types.js";
+import { notice, TraceRecorder } from "./trace.js";
+import type { CuaExecutor, CuaProvider, CuaSafetyCheck, CuaTurn, LoopRunOptions } from "./types.js";
 import { UsageLedger } from "./usage.js";
 import { resolveWaitSettings, type WaitSettings } from "../wait.js";
 
@@ -204,7 +204,9 @@ export class LoopSession {
     this.writeScreenshot = (name, bytes) => writeScreenshot(name, bytes);
     this.sleep = (ms) => sleep(ms);
     this.capDeclared = maxUsd !== undefined || overRunBudget !== undefined;
-    this.requiresUsage = requireReportedUsageForSpendCap && this.capDeclared;
+    this.requiresUsage =
+      this.capDeclared &&
+      (requireReportedUsageForSpendCap || provider.requireReportedUsageForSpendCap === true);
     this.startedAtMs = now();
     this.turnTimeoutMs = options.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS;
     this.observationTimeoutMs = options.observationTimeoutMs ?? DEFAULT_OBSERVATION_TIMEOUT_MS;
@@ -220,6 +222,13 @@ export class LoopSession {
   /** Model-authored narration and recorded pages, through traceRedaction. */
   redactNarration(text: string): string {
     return this.redactTrace(text);
+  }
+
+  /** Book a reply's usage and record, as warnings, the notices its provider attached to it. */
+  recordReply(turn: CuaTurn, kind: "interaction" | "debrief"): void {
+    this.usage.record(turn, kind);
+    for (const { title, text } of turn.notices ?? [])
+      this.trace.record("notice", () => notice("warn", title, this.redactNarration(text)));
   }
 
   /** Hand a watcher the trace so far with the running usage, without waiting on it. */

@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 import type { CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
-import {
-  createOpenAiResponsesProvider,
-  type FetchLike,
-} from "../../../src/actors/computer-use/openai-provider.js";
+import { createOpenAiResponsesProvider } from "../../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../../src/actors/computer-use/provider-http.js";
 
 // A participant that waits with wait_minutes, carried by the client (explicit_context): every
 // function call travels with its output, the outputs' screenshots count toward the budget, and

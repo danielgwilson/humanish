@@ -505,6 +505,11 @@ export interface ActorConversation {
     carriedExchanges?: number;
     carriedScreenshots?: number;
     estimatedInputTokens?: number;
+    /**
+     * Input tokens the provider's server-side context editing cleared from this request before
+     * the model read it, as its reply reported them. Present only when it cleared some.
+     */
+    clearedInputTokens?: number;
   }>;
 }
 
@@ -525,7 +530,7 @@ export interface ActorTrace {
   executionProfile?: ActorExecutionProfile;
   providerRequests?: ActorProviderRequest[];
   historyTurnsOmitted?: number;
-  /** How the provider carried the conversation; present for the OpenAI computer-use provider. */
+  /** How the provider carried the conversation; present for the OpenAI and Anthropic computer-use providers. */
   conversation?: ActorConversation;
   runtime?: ActorRuntimeProvenance;
   protocol: ActorProtocol;

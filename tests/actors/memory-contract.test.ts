@@ -13,10 +13,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createRestrictedCodexParticipant } from "../../src/actors/codex/restricted-participant.js";
 import type { CuaProvider, CuaTurnRequest } from "../../src/actors/computer-use/loop.js";
-import {
-  createOpenAiResponsesProvider,
-  type FetchLike,
-} from "../../src/actors/computer-use/openai-provider.js";
+import { createOpenAiResponsesProvider } from "../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../src/actors/computer-use/provider-http.js";
 import type { LocalAgentId } from "../../src/actors/local-agent/cli.js";
 import { startClaudeSession } from "../../src/actors/local-agent/claude-session.js";
 import { actorRegistry, type ActorId } from "../../src/actors/registry.js";

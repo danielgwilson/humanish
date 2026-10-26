@@ -290,7 +290,7 @@ async function sendClosing(
 /** Record a closing reply's usage, and say whether it was complete. */
 function recordClosingUsage(session: LoopSession, turn: CuaTurn): boolean {
   const { maxUsd, overRunBudget, estimateTurnCostUsd } = session.settings;
-  session.usage.record(turn, "debrief");
+  session.recordReply(turn, "debrief");
   session.lastResponseId = turn.responseId ?? session.lastResponseId;
   // Refresh a shared budget with all reported usage, without changing the completed task.
   const sharedStop = overRunBudget?.(session.usage.forCap());

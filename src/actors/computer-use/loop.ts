@@ -380,7 +380,7 @@ function recordTurn(
   observer.speechDelivered();
   conversation.previousResponseId = turn.responseId ?? conversation.previousResponseId;
   session.lastResponseId = turn.responseId ?? session.lastResponseId;
-  session.usage.record(turn, "interaction");
+  session.recordReply(turn, "interaction");
 }
 
 /** Stops for a reply that must not be acted on: account billing, interruption, unknown usage. */

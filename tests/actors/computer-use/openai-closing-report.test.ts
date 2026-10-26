@@ -2,10 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 
 import type { CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
-import {
-  createOpenAiResponsesProvider,
-  type FetchLike,
-} from "../../../src/actors/computer-use/openai-provider.js";
+import { createOpenAiResponsesProvider } from "../../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../../src/actors/computer-use/provider-http.js";
 import { ComputerUseAdmissionLimitError } from "../../../src/actors/computer-use/admission-limit.js";
 
 // See the adjacent provenance note. Both positive response shapes are excerpts

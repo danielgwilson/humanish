@@ -103,6 +103,18 @@ node node_modules/humanish/examples/participant/run.mjs
 `defaultRedactionHooks` is the redaction it requires. `createOpenAiResponsesProvider` builds the
 default brain, and `ComputerUseAdmissionLimitError` is how a provider refuses a request before sending it.
 
+`createAnthropicMessagesProvider` builds a brain on Claude: the Anthropic Messages API with Claude's
+own computer-use toolset, on `claude-haiku-5-5` unless `model` names another. It takes
+the key as `apiKey` and reads no environment variable. It sends effort `medium` and a 16,000-token
+output limit unless `reasoningEffort` and `maxOutputTokens` say otherwise, and records both on the
+trace. Screenshots go to the model at full size, so a desktop wider or taller than 2,000 px is
+refused before the first request. Every one of Claude's 17 computer actions runs: `zoom` gets a
+fresh capture of its region and `cursor_position` the pointer's coordinates, and `hold_key`
+holds keys for up to 30 seconds. Under a spend cap (`maxUsd` or a study budget), a
+request that stalls or fails without a reply is never sent again: its cost cannot be bounded, so
+the session stops with `stopCause: "usage_unreported"`.
+Studies run on Claude in a later release.
+
 ## Score a run
 
 An `AdapterScorerModule` exports `score`, `deriveFeedback` and, on browser routes,

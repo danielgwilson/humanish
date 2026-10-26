@@ -42,7 +42,12 @@ type AtLeastTwo<T> = readonly [T, T, ...T[]];
 export type Requirement =
   | {
       readonly kind: "key";
-      readonly name: "OPENAI_API_KEY" | "E2B_API_KEY" | "MODAL_TOKEN_ID" | "MODAL_TOKEN_SECRET";
+      readonly name:
+        | "OPENAI_API_KEY"
+        | "ANTHROPIC_API_KEY"
+        | "E2B_API_KEY"
+        | "MODAL_TOKEN_ID"
+        | "MODAL_TOKEN_SECRET";
     }
   /** The terminal runtime key: CODEX_API_KEY, else OPENAI_API_KEY. */
   | { readonly kind: "key-one-of"; readonly names: readonly ["CODEX_API_KEY", "OPENAI_API_KEY"] }

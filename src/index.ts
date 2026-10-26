@@ -38,6 +38,8 @@ export type {
 export type { ActorCapabilities } from "./actors/contract.js";
 export { createOpenAiResponsesProvider } from "./actors/computer-use/openai-provider.js";
 export type { OpenAiResponsesProviderOptions } from "./actors/computer-use/openai-provider.js";
+export { createAnthropicMessagesProvider } from "./actors/computer-use/anthropic-provider.js";
+export type { AnthropicMessagesProviderOptions } from "./actors/computer-use/anthropic-provider.js";
 export { ComputerUseAdmissionLimitError } from "./actors/computer-use/admission-limit.js";
 export { defaultRedactionHooks } from "./evidence/redaction.js";
 export type { RedactionHooks } from "./evidence/redaction.js";

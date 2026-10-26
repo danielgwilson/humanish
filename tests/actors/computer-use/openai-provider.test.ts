@@ -8,10 +8,12 @@ import {
   createOpenAiResponsesProvider,
   namedProviderErrorCode,
   requestRejectionDetail,
+} from "../../../src/actors/computer-use/openai-provider.js";
+import {
   RETRY_AFTER_CAP_MS,
   retryAfterMs,
   type FetchLike,
-} from "../../../src/actors/computer-use/openai-provider.js";
+} from "../../../src/actors/computer-use/provider-http.js";
 import {
   buildCallOutput,
   buildContinuationRequest,

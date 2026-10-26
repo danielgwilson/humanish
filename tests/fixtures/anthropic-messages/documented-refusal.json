@@ -1,0 +1,33 @@
+{
+  "model": "claude-haiku-5-5",
+  "id": "msg_01DocumentedRefusal",
+  "type": "message",
+  "role": "assistant",
+  "content": [],
+  "container": null,
+  "stop_reason": "refusal",
+  "stop_sequence": null,
+  "stop_details": {
+    "type": "refusal",
+    "category": "cyber",
+    "explanation": "This request was declined under the usage policy."
+  },
+  "usage": {
+    "input_tokens": 12,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 6364,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 3,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+  },
+  "input_transformations": [],
+  "diagnostics": null
+}

@@ -16,10 +16,8 @@ import {
   runComputerUseLoopWithTaps,
   type CuaProvider,
 } from "../../src/actors/computer-use/loop.js";
-import {
-  createOpenAiResponsesProvider,
-  type FetchLike,
-} from "../../src/actors/computer-use/openai-provider.js";
+import { createOpenAiResponsesProvider } from "../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../src/actors/computer-use/provider-http.js";
 import { createLocalAgentProvider, type LocalAgentId } from "../../src/actors/local-agent/cli.js";
 import { startClaudeSession } from "../../src/actors/local-agent/claude-session.js";
 import { actorRegistry, type ActorId } from "../../src/actors/registry.js";

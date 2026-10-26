@@ -3,10 +3,8 @@ import { describe, expect, it } from "vitest";
 
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
 import { runComputerUseLoop, type CuaTurn } from "../../../src/actors/computer-use/loop.js";
-import {
-  OPENAI_RESPONSES_CU_CAPABILITIES,
-  type FetchLike,
-} from "../../../src/actors/computer-use/openai-provider.js";
+import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../../src/actors/computer-use/provider-http.js";
 import { parseOpenAiResponse } from "../../../src/actors/computer-use/openai-wire.js";
 import type { ActorTokenUsage } from "../../../src/actors/contract.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
@@ -49,6 +47,10 @@ interface LoopRun {
   stall?: number[];
   priorUnknown?: boolean;
   serviceTier?: "fast";
+  /** A study budget in place of, or beside, maxUsd; it never runs out. */
+  runBudget?: boolean;
+  /** The provider asks a capped session never to send a request with unknown usage again. */
+  providerRequiresUsage?: boolean;
 }
 
 async function run(reply: (request: number) => CuaTurn, options: LoopRun = {}) {
@@ -71,6 +73,7 @@ async function run(reply: (request: number) => CuaTurn, options: LoopRun = {}) {
             return estimate(usage);
           },
         }),
+    ...(options.runBudget ? { overRunBudget: () => null } : {}),
     provider: {
       id: "spend-cap-fixture",
       version: MODEL,
@@ -87,6 +90,7 @@ async function run(reply: (request: number) => CuaTurn, options: LoopRun = {}) {
             },
           }),
       ...(options.priorUnknown ? { interactionUsageIncomplete: true } : {}),
+      ...(options.providerRequiresUsage ? { requireReportedUsageForSpendCap: true as const } : {}),
       nextTurn: async () => {
         calls.requests++;
         if (options.stall?.includes(calls.requests)) return new Promise<CuaTurn>(() => {});
@@ -383,5 +387,37 @@ describe("a participant in Fast mode", () => {
     });
     const booked = result.priced.find((usage) => (usage.turns?.length ?? 0) === 2);
     expect(booked?.turns?.[1]).toMatchObject({ output: 1000, serviceTier: "fast" });
+  });
+});
+
+describe("a provider whose lost requests a cap cannot bound", () => {
+  // Request 1 replies with actions; request 2 stalls. The booked worst case would fit.
+  const stalledSecond = (cap: LoopRun) =>
+    run((n) => (n < 3 ? structuredClone(captured) : finished(captured)), {
+      ...cap,
+      maxOutputTokens: 1000,
+      stall: [2],
+      providerRequiresUsage: true,
+    });
+
+  it.each([
+    ["a dollar cap", { maxUsd: 10 }],
+    ["a study budget", { runBudget: true }],
+  ] as const)("stops instead of sending a stalled request again under %s", async (_name, cap) => {
+    const result = await stalledSecond(cap);
+    expect(result.calls.requests).toBe(2);
+    expect(result.trace).toMatchObject({
+      completionReason: "harness_error",
+      stopCause: "usage_unreported",
+      interactionUsageIncomplete: true,
+    });
+    expect(notices(result)).not.toContain("worst case booked for a lost request");
+  });
+
+  it("retries a stalled request once in an uncapped session", async () => {
+    const result = await stalledSecond({});
+    // Request 3 is the stalled request sent again; its reply ends the session.
+    expect(result.calls.requests).toBe(3);
+    expect(result.trace.completionReason).toBe("goal_satisfied");
   });
 });

@@ -1,0 +1,50 @@
+{
+  "model": "claude-haiku-5-5",
+  "id": "msg_01ClosingJson",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"summary\": \"Added a task called \\\"Buy milk\\\" to the My tasks list by typing it into the input field and clicking Add. The new item appeared in the list immediately.\", \"impressions\": [\"Very quick and simple: one text box and one Add button, and the new item appeared right away.\", \"I'd like a clearer confirmation that the item was saved.\"]}"
+    }
+  ],
+  "container": null,
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "stop_details": null,
+  "usage": {
+    "input_tokens": 4145,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 3456,
+    "cache_creation": {
+      "ephemeral_5m_input_tokens": 0,
+      "ephemeral_1h_input_tokens": 0
+    },
+    "iterations": [
+      {
+        "input_tokens": 4145,
+        "output_tokens": 115,
+        "cache_read_input_tokens": 3456,
+        "cache_creation_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "type": "message"
+      }
+    ],
+    "output_tokens": 115,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+  },
+  "input_transformations": [],
+  "diagnostics": null,
+  "context_management": {
+    "applied_edits": []
+  }
+}

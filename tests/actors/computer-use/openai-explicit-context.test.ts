@@ -2,10 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PNG } from "pngjs";
 import { runComputerUseLoop, type CuaTurnRequest } from "../../../src/actors/computer-use/loop.js";
-import {
-  createOpenAiResponsesProvider,
-  type FetchLike,
-} from "../../../src/actors/computer-use/openai-provider.js";
+import { createOpenAiResponsesProvider } from "../../../src/actors/computer-use/openai-provider.js";
+import { type FetchLike } from "../../../src/actors/computer-use/provider-http.js";
 import { CONTEXT_TOKEN_BUDGET } from "../../../src/actors/computer-use/openai-context.js";
 import { explicitContextWarning } from "../../../src/routes/computer-use/participant-model.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
