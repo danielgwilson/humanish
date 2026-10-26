@@ -182,6 +182,40 @@ describe("a screenshot within a batch", () => {
     expect(acks[3]).toEqual({ index: 3, status: "completed" });
   });
 
+  it("is followed by a screen observed after it when the turn's waits were watched", async () => {
+    // The watch runs before the batch, so its last look is older than the frame captured within
+    // the batch. The participant must next see a screen observed after that frame.
+    const later = png(320, 200, 23);
+    const wait: CuaAction = { kind: "wait", ms: 2_000 };
+    const { provider, requests } = scripted(
+      [turn({ actions: [screenshot, wait, screenshot] })],
+      shows,
+    );
+    let captured = false;
+    let t = 0;
+    const { result } = run(provider, {
+      executor: {
+        observe: async () => ({
+          screenshot: captured ? later : screen,
+          stateSignature: captured ? "later" : "before",
+        }),
+        execute: async (action: CuaAction) => {
+          if (action.kind !== "screenshot") return undefined;
+          captured = true;
+          return { kind: "frame" as const, screenshot: midBatch };
+        },
+      },
+      now: () => t,
+      sleep: async (ms) => {
+        t += ms;
+      },
+    });
+    await result;
+    const frame = requests[1]?.previousExecution?.actions[0]?.result;
+    expect(frame?.kind === "frame" && Buffer.from(frame.screenshot).equals(midBatch)).toBe(true);
+    expect(Buffer.from(requests[1]!.observation.screenshot!).equals(later)).toBe(true);
+  });
+
   it("is not sent to the desktop for a provider that shows only the screen after the batch", async () => {
     const { provider, requests } = scripted([turn({ actions: [screenshot, click, screenshot] })]);
     const { result, written, sent } = run(provider);

@@ -201,6 +201,12 @@ export interface ActionBatch {
   readonly hint: string | undefined;
   /** An action of the batch other than a wait, screenshot or read may have reached the desktop. */
   readonly sent: boolean;
+  /**
+   * A screenshot within the batch captured the screen. A watch runs before the batch, so its last
+   * look is then older than a frame the participant was shown, and the next screen is observed
+   * afresh.
+   */
+  readonly captured: boolean;
 }
 
 /**
@@ -259,10 +265,12 @@ export async function runActionBatch(
   const notes: string[] = [];
   const hint = (): string | undefined => (notes.length === 0 ? undefined : notes.join(" "));
   const attemptsBefore = trace.counts.materialActions;
+  const framesBefore = session.screenshotFrames;
   const done = (): ActionBatch => ({
     execution,
     hint: hint(),
     sent: trace.counts.materialActions > attemptsBefore,
+    captured: session.screenshotFrames > framesBefore,
   });
   const halting = session.provider.batchFailure === "halt";
   // The provider's model takes the batch to have stopped at the skipped action at `index`.

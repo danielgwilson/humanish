@@ -1196,7 +1196,10 @@ screen at that point of the batch. The participant is given that capture, and th
 the same way as `screenshot-NNN.png`, numbered from 001 in the order the session took them, on
 the screenshot's `ui_action` item through `screenshotRef`, with no `region`. The same rules hold:
 blur, WebP, artifact listing, verify and export. A batch's last screenshot captures nothing of its
-own, since the turn screenshot after the batch is its screen. A provider without
+own, since the turn screenshot after the batch is its screen. A turn of only waits and
+screenshots is watched before its batch runs (the idle watch), so its screenshots capture the
+screen after the watch, and the turn screenshot after such a batch is observed afresh, never
+taken from the watch's last look, so the frames stay in the order they were captured. A provider without
 `batchScreenshots` (the OpenAI provider and the local-agent participants) sends no screenshot to
 the desktop and keeps no such frame.
 

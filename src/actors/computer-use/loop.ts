@@ -227,7 +227,10 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
       if (repeat) session.streak.fold(backstop.consecutiveNoProgress + 1);
       return unknownSpendStop(session) ?? watched.stop;
     }
-    const checkpoint = await observer.checkpoint(turnNumber, watched?.observation);
+    const checkpoint = await observer.checkpoint(
+      turnNumber,
+      batch.captured ? undefined : watched?.observation,
+    );
     if ("stop" in checkpoint) return checkpoint.stop;
     observation = checkpoint.observation;
 
