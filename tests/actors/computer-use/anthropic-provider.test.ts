@@ -212,12 +212,12 @@ describe("wire capture", () => {
 
 describe("a screenshot within a batch", () => {
   it("is captured where it stands and sent back as that call's image", async () => {
-    const batch = fixture("batch");
-    const [text, click, , , , screenshot] = batch.content as Json[];
-    const typed = (batch.content as Json[])[2]!;
-    // The captured batch ends with its screenshot; moved between two calls, it is a mid-batch one.
-    const midBatch = { ...batch, content: [text, click, screenshot, typed] };
-    const { provider, sent } = scripted([reply(midBatch), reply(fixture("end-turn"))]);
+    // Captured: left_click, wait, screenshot, left_click, wait, screenshot.
+    const batch = fixture("mid-batch-screenshot");
+    const ids = (batch.content as Json[])
+      .filter((block) => block.type === "tool_use")
+      .map((block) => block.id);
+    const { provider, sent } = scripted([reply(batch), reply(fixture("end-turn"))]);
     const screen = PNG.sync.write(new PNG({ width: 1440, height: 950 }));
     const captured = new PNG({ width: 1440, height: 950 });
     captured.data.fill(90);
@@ -238,17 +238,14 @@ describe("a screenshot within a batch", () => {
       now: Date.now,
       timeoutMs: 60_000,
     });
-    expect(executed).toEqual(["click", "screenshot", "type"]);
+    // The last screenshot is the observation after the batch, so the desktop captures one.
+    expect(executed).toEqual(["click", "wait", "screenshot", "click", "wait"]);
     const messages = sent[1]!.body.messages as Array<{ role: string; content: Json[] }>;
     const results = messages.findLast((entry) => entry.role === "user")!.content;
     const image = (result: Json | undefined) =>
       ((result?.content as Json[] | undefined)?.[1]?.source as Json | undefined)?.data;
-    expect(results.map((result) => result.tool_use_id)).toEqual([
-      click!.id,
-      screenshot!.id,
-      typed.id,
-    ]);
-    expect(image(results[1])).toBe(frame.toString("base64"));
-    expect(image(results[2])).toBe(screen.toString("base64"));
+    expect(results.map((result) => result.tool_use_id)).toEqual(ids);
+    expect(image(results[2])).toBe(frame.toString("base64"));
+    expect(image(results[5])).toBe(screen.toString("base64"));
   });
 });

@@ -26,6 +26,9 @@ Captured on 2026-10-26:
   uses.
 - `error-400-missing-toolset-name.json`: the 400 body for a `tool_result` without
   `toolset_name`.
+- `mid-batch-screenshot.json`: a reply from a live Taskly run, effort `medium`: a thinking
+  summary, text, then six member calls (`left_click`, `wait`, `screenshot`, `left_click`,
+  `wait`, `screenshot`), so its first `screenshot` comes before the end of the batch.
 
 Built from the documented shapes, not captured, because they cannot be produced on demand:
 
