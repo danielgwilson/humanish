@@ -271,6 +271,8 @@ export function createAnthropicMessagesProvider(
     requiresFrame: true,
     outputLimitRetry: true,
     batchFailure: "halt",
+    // The toolset answers each screenshot call with an image, wherever it stands in the batch.
+    batchScreenshots: "frame",
     // A lost request's worst case is unbounded: the loop books it at the last reported input, and
     // the request it lost may be the one that crossed the 100,000-token tier. A capped session
     // therefore stops rather than send it again.

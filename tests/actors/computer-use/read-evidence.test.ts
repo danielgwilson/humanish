@@ -12,9 +12,9 @@ import {
 } from "../../../src/actors/computer-use/loop.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
 
-// What a participant read from the desktop is evidence: the image a zoom showed it and the
-// position a pointer read returned are recorded on the action's trace item, so a decision made on
-// them can be checked against the bundle.
+// What a participant read from the desktop is evidence: the image a zoom or a screenshot within its
+// batch showed it and the position a pointer read returned are recorded on the action's trace item,
+// so a decision made on them can be checked against the bundle.
 
 const turn = (patch: Partial<CuaTurn>): CuaTurn => ({
   actions: [],
@@ -23,9 +23,10 @@ const turn = (patch: Partial<CuaTurn>): CuaTurn => ({
   ...patch,
 });
 
-function scripted(turns: CuaTurn[]) {
+function scripted(turns: CuaTurn[], patch: Partial<CuaProvider> = {}) {
   const requests: CuaTurnRequest[] = [];
   const provider: CuaProvider = {
+    ...patch,
     id: "fixture",
     version: "1",
     capabilities: {
@@ -61,16 +62,21 @@ function ackedFrame(request: CuaTurnRequest | undefined): Buffer | undefined {
 
 const screen = png(320, 200, 7);
 const crop = png(60, 12, 13);
+const midBatch = png(320, 200, 17);
 const zoom: CuaAction = { kind: "zoom", region: { x: 100, y: 150, width: 60, height: 12 } };
+const click: CuaAction = { kind: "click", x: 10, y: 20 };
+const screenshot: CuaAction = { kind: "screenshot" };
 
-function readingDesktop(): CuaExecutor {
+function readingDesktop(sent: CuaAction["kind"][] = []): CuaExecutor {
   let changes = 0;
   return {
     observe: async () => ({ screenshot: screen, stateSignature: `frame-${changes}` }),
     execute: async (action: CuaAction) => {
       changes += 1;
+      sent.push(action.kind);
       if (action.kind === "read_pointer") return { kind: "pointer" as const, x: 41, y: 77 };
       if (action.kind === "zoom") return { kind: "frame" as const, screenshot: crop };
+      if (action.kind === "screenshot") return { kind: "frame" as const, screenshot: midBatch };
       return undefined;
     },
   };
@@ -78,10 +84,11 @@ function readingDesktop(): CuaExecutor {
 
 function run(provider: CuaProvider, options: Partial<CuaLoopOptions> = {}) {
   const written = new Map<string, Buffer>();
+  const sent: CuaAction["kind"][] = [];
   const result = runComputerUseLoop({
     instructions: "Read the reference in the fine print.",
     provider,
-    executor: readingDesktop(),
+    executor: readingDesktop(sent),
     persona: { id: "fixture", traitsApplied: [], promptDigest: "fixture" },
     redaction: defaultRedactionHooks,
     now: Date.now,
@@ -92,7 +99,7 @@ function run(provider: CuaProvider, options: Partial<CuaLoopOptions> = {}) {
     },
     ...options,
   });
-  return { result, written };
+  return { result, written, sent };
 }
 
 describe("what a participant read from the desktop", () => {
@@ -147,5 +154,79 @@ describe("what a participant read from the desktop", () => {
     const item = trace.items.find((entry) => entry.title === "read pointer");
     expect(item).toMatchObject({ kind: "ui_action", pointer: { x: 41, y: 77 } });
     expect(item).not.toHaveProperty("screenshotRef");
+  });
+});
+
+describe("a screenshot within a batch", () => {
+  const shows = { batchScreenshots: "frame" } as const;
+
+  it("captures the screen where it stands in the batch and keeps that frame", async () => {
+    const { provider, requests } = scripted(
+      [turn({ actions: [click, screenshot, click, screenshot] })],
+      shows,
+    );
+    const { result, written, sent } = run(provider);
+    const { trace } = await result;
+    // The last screenshot is the loop's own observation after the batch, so only one is sent.
+    expect(sent).toEqual(["click", "screenshot", "click"]);
+    const item = trace.items.find((entry) => entry.title === "screenshot");
+    expect(item).toMatchObject({
+      kind: "ui_action",
+      screenshotRef: { path: "screenshots/screenshot-001.png", redaction: "none" },
+    });
+    expect(item).not.toHaveProperty("region");
+    expect(written.get("screenshots/screenshot-001.png")?.equals(midBatch)).toBe(true);
+    const acks = requests[1]?.previousExecution?.actions ?? [];
+    const frame = acks[1]?.result;
+    expect(frame?.kind === "frame" && Buffer.from(frame.screenshot).equals(midBatch)).toBe(true);
+    expect(acks[3]).toEqual({ index: 3, status: "completed" });
+  });
+
+  it("is followed by a screen observed after it when the turn's waits were watched", async () => {
+    // The watch runs before the batch, so its last look is older than the frame captured within
+    // the batch. The participant must next see a screen observed after that frame.
+    const later = png(320, 200, 23);
+    const wait: CuaAction = { kind: "wait", ms: 2_000 };
+    const { provider, requests } = scripted(
+      [turn({ actions: [screenshot, wait, screenshot] })],
+      shows,
+    );
+    let captured = false;
+    let t = 0;
+    const { result } = run(provider, {
+      executor: {
+        observe: async () => ({
+          screenshot: captured ? later : screen,
+          stateSignature: captured ? "later" : "before",
+        }),
+        execute: async (action: CuaAction) => {
+          if (action.kind !== "screenshot") return undefined;
+          captured = true;
+          return { kind: "frame" as const, screenshot: midBatch };
+        },
+      },
+      now: () => t,
+      sleep: async (ms) => {
+        t += ms;
+      },
+    });
+    await result;
+    const frame = requests[1]?.previousExecution?.actions[0]?.result;
+    expect(frame?.kind === "frame" && Buffer.from(frame.screenshot).equals(midBatch)).toBe(true);
+    expect(Buffer.from(requests[1]!.observation.screenshot!).equals(later)).toBe(true);
+  });
+
+  it("is not sent to the desktop for a provider that shows only the screen after the batch", async () => {
+    const { provider, requests } = scripted([turn({ actions: [screenshot, click, screenshot] })]);
+    const { result, written, sent } = run(provider);
+    const { trace } = await result;
+    expect(sent).toEqual(["click"]);
+    expect(requests[1]?.previousExecution?.actions).toEqual([
+      { index: 0, status: "completed" },
+      { index: 1, status: "completed" },
+      { index: 2, status: "completed" },
+    ]);
+    expect(trace.items.filter((entry) => entry.title === "screenshot")).toHaveLength(2);
+    expect([...written.keys()].some((path) => path.includes("screenshot-"))).toBe(false);
   });
 });

@@ -387,7 +387,7 @@ describe("the turn a watch ends", () => {
       screen: () => QUIET,
       turn: (_request, n) => (n <= script.length ? turnOf(script[n - 1]!) : DONE),
     });
-    expect(run.executed).toEqual([{ kind: "screenshot" }, { kind: "wait", ms: 0 }]);
+    expect(run.executed).toEqual([{ kind: "wait", ms: 0 }]);
     expect(watchesOf(run.result).map((watch) => watch.limitMs)).toEqual([5_000]);
     expect(waitItems(run.result).map((item) => item.title)).toEqual([
       "wait 0ms",

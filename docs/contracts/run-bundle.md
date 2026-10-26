@@ -1174,7 +1174,7 @@ appear in text and analysis as well as pixels. Malformed receiving metadata fail
 bundle validation. The projection holds counts, local IDs and lifecycle/coverage
 status; private provider identities and cleanup authority are kept outside the run.
 
-## Zoom frames
+## Zoom and screenshot frames
 
 The image a computer-use participant was given for a `zoom` is a frame of the bundle, so a
 decision the participant made on it can be checked. The loop writes it as it writes a screenshot
@@ -1190,6 +1190,19 @@ region at the desktop's own pixels, as the screen held it. A provider that enlar
 model sends the enlarged copy and keeps nothing else: the Anthropic provider fits it within the
 screenshot size, as Claude's computer-use toolset documents for `zoom`.
 
+A `screenshot` before the last action of its batch, for a provider whose model is shown each
+screenshot it calls (`batchScreenshots: "frame"`; the Anthropic provider), captures the whole
+screen at that point of the batch. The participant is given that capture, and the loop keeps it
+the same way as `screenshot-NNN.png`, numbered from 001 in the order the session took them, on
+the screenshot's `ui_action` item through `screenshotRef`, with no `region`. The same rules hold:
+blur, WebP, artifact listing, verify and export. A batch's last screenshot captures nothing of its
+own, since the turn screenshot after the batch is its screen. A turn of only waits and
+screenshots is watched before its batch runs (the idle watch), so its screenshots capture the
+screen after the watch, and the turn screenshot after such a batch is observed afresh, never
+taken from the watch's last look, so the frames stay in the order they were captured. A provider without
+`batchScreenshots` (the OpenAI provider and the local-agent participants) sends no screenshot to
+the desktop and keeps no such frame.
+
 A pointer read records the position it returned as `pointer` on its `ui_action` item; it writes
 no file.
 
@@ -1197,7 +1210,9 @@ A zoom's item is not a frame of the participant's replay (`isCapture` in `src/ru
 the Observer shows the image on the zoom's activity row and opens a cited zoom at the screen it
 was taken on, and analysis offers it as a capture the analyst can cite. humanish versions before
 this one read the bundle and verify it, since a `ui_action` with a `screenshotRef` is already
-valid evidence, but their Observer shows a zoom frame as a replay frame.
+valid evidence, but their Observer shows a zoom frame as a replay frame. A screenshot frame within
+a batch is the whole screen, so it is a replay frame like a scripted action's own capture, and
+analysis offers it as a full-screen capture.
 
 ## Redacted Derivative Workspace
 

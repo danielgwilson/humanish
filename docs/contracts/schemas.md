@@ -1085,10 +1085,13 @@ Core-owned fields:
   at the desktop's own pixels, as the screen held it; a provider that enlarges it for the model
   (the Anthropic provider does, to fit the screenshot size) sends a copy and the bundle keeps the
   crop. It is persisted, redacted, converted to WebP and verified as a screenshot is
-  ([run bundle](run-bundle.md#zoom-frames)). A pointer read's item carries `pointer` (`x`, `y`
+  ([run bundle](run-bundle.md#zoom-and-screenshot-frames)). A pointer read's item carries `pointer` (`x`, `y`
   in desktop pixels), the position the read returned. An item with `region` is not a replay
   frame: the Observer shows its image on the zoom's activity row, and analysis offers it as a
-  capture. Additive: absent on other items and producers, and in older bundles
+  capture. A `screenshot` item before the last action of its batch, from a provider with
+  `batchScreenshots`, carries a `screenshotRef` to the whole screen captured there,
+  `screenshots/screenshot-NNN.png`, and no `region`: a replay frame. Additive: absent on other
+  items and producers, and in older bundles
 - optional `items[].watch` (`ActorWatch` in `src/actors/contract.ts`), on the
   computer-use `ui_action` of the wait during which a watch ended. A turn whose
   actions are only waits and screenshots, and that asks for wait time, sends no

@@ -1,14 +1,15 @@
-// A hosted participant's zoom frames, on fake hosted desktops ($0). The image a
-// zoom showed the participant is a frame of the run bundle beside its screenshots: written under
-// screenshots/, kept as lossless WebP or as a blurred PNG under the study's redaction, listed in
-// the stream's screenshots, and checked by verify like every other frame.
+// A hosted participant's zoom frames and screenshots within a batch, on fake hosted desktops ($0).
+// The image a zoom or such a screenshot showed the participant is a frame of the run bundle beside
+// its screenshots: written under screenshots/, kept as lossless WebP or as a blurred PNG under the
+// study's redaction, listed in the stream's screenshots, and checked by verify like every other
+// frame.
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { runCuaActorSession } from "../../../src/actors/computer-use/actor.js";
-import type { CuaProvider } from "../../../src/actors/computer-use/loop.js";
+import type { CuaAction, CuaProvider } from "../../../src/actors/computer-use/loop.js";
 import { OPENAI_RESPONSES_CU_CAPABILITIES } from "../../../src/actors/computer-use/openai-provider.js";
 import { decodeWebp } from "../../../src/evidence/webp.js";
 import { runStudyWith } from "../../../src/run-study.js";
@@ -21,27 +22,29 @@ import { makeTestTempDir } from "../../helpers/temp-dir.js";
 
 const ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
-/** A participant that zooms on part of the 16x16 fake screen, then ends. */
-function zoomingProvider(): CuaProvider {
+const ZOOM: CuaAction = { kind: "zoom", region: { x: 2, y: 3, width: 8, height: 4 } };
+
+/** A participant that runs `actions` as one batch on the 16x16 fake screen, then ends. */
+function batchProvider(actions: CuaAction[], patch: Partial<CuaProvider> = {}): CuaProvider {
   let turns = 0;
   return {
+    ...patch,
     id: "synthetic-provider",
     requiresFrame: true,
     capabilities: OPENAI_RESPONSES_CU_CAPABILITIES,
     nextTurn: async () => {
       turns += 1;
       return turns === 1
-        ? {
-            actions: [{ kind: "zoom", region: { x: 2, y: 3, width: 8, height: 4 } }],
-            pendingSafetyChecks: [],
-            done: false,
-          }
+        ? { actions, pendingSafetyChecks: [], done: false }
         : { actions: [], pendingSafetyChecks: [], done: true, message: "Read it." };
     },
   };
 }
 
-async function runZooming(policies: Record<string, unknown> = {}) {
+async function runZooming(
+  policies: Record<string, unknown> = {},
+  provider: () => CuaProvider = () => batchProvider([ZOOM]),
+) {
   const parsed = parseStudy(
     lab("cuAppUrl", {
       mode: "live",
@@ -59,8 +62,7 @@ async function runZooming(policies: Record<string, unknown> = {}) {
     {
       desktopModule: async () => handle.module,
       subjectPhaseSink: () => undefined,
-      runSession: async (session) =>
-        runCuaActorSession({ ...session, provider: zoomingProvider() }),
+      runSession: async (session) => runCuaActorSession({ ...session, provider: provider() }),
     },
   );
   if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
@@ -95,6 +97,41 @@ describe("a hosted participant's zoom frame in the run bundle", () => {
     const { cwd, runId, items } = await runZooming({ redactScreenshots: true });
     const zoom = items.find((item) => item.region !== undefined);
     expect(zoom?.screenshotRef).toEqual({ path: "screenshots/zoom-001.png", redaction: "blurred" });
+    const verified = await verifyRun(cwd, runId);
+    expect(verified.ok).toBe(true);
+    expect(verified.shareSafety.reasons.map((reason) => reason.code)).not.toContain(
+      "RAW_SCREENSHOTS",
+    );
+  });
+});
+
+describe("a hosted participant's screenshot within a batch in the run bundle", () => {
+  const showsScreenshots = () =>
+    batchProvider([{ kind: "screenshot" }, ZOOM], { batchScreenshots: "frame" });
+
+  it("is a lossless WebP of the whole screen, a replay frame, and verify passes", async () => {
+    const { cwd, runId, runDir, stream, items } = await runZooming({}, showsScreenshots);
+    const shot = items.find((item) => item.kind === "ui_action" && item.title === "screenshot");
+    expect(shot).toMatchObject({
+      screenshotRef: { path: "screenshots/screenshot-001.webp", redaction: "none" },
+    });
+    expect(shot).not.toHaveProperty("region");
+    const image = await decodeWebp(await readFile(path.join(runDir, shot!.screenshotRef!.path)));
+    expect([image.width, image.height]).toEqual([16, 16]);
+    expect(stream.artifacts).toContainEqual(
+      expect.objectContaining({ kind: "screenshot", path: "screenshots/screenshot-001.webp" }),
+    );
+    const verified = await verifyRun(cwd, runId);
+    expect(verified.ok).toBe(true);
+  });
+
+  it("is blurred like the screenshots when the study blurs them", async () => {
+    const { cwd, runId, items } = await runZooming({ redactScreenshots: true }, showsScreenshots);
+    const shot = items.find((item) => item.kind === "ui_action" && item.title === "screenshot");
+    expect(shot?.screenshotRef).toEqual({
+      path: "screenshots/screenshot-001.png",
+      redaction: "blurred",
+    });
     const verified = await verifyRun(cwd, runId);
     expect(verified.ok).toBe(true);
     expect(verified.shareSafety.reasons.map((reason) => reason.code)).not.toContain(

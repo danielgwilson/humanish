@@ -32,7 +32,7 @@ interface ComputerUseExecutor {
 
 type ComputerUseActionResult =
   | { kind: "pointer"; x: number; y: number } // read_pointer
-  | { kind: "frame"; screenshot: Buffer }; // zoom
+  | { kind: "frame"; screenshot: Buffer }; // zoom, or a screenshot within a batch
 
 interface ComputerUseObservation {
   screenshot?: Buffer; // OPTIONAL — a state executor omits it
@@ -73,11 +73,15 @@ An action that reads the desktop resolves `execute` with its result, and the loo
 the provider in that action's acknowledgement (`previousExecution.actions[i].result`), so the
 provider can answer its model. Every action that returns data uses this one channel. The loop
 keeps only a result of the kind the action reads (a `pointer` of whole pixels for `read_pointer`,
-a `frame` Buffer for `zoom`) and drops anything else an executor returns. A read whose executor
-returned nothing is acknowledged `completed` with no result. The trace records each read's title
+a `frame` Buffer for `zoom` and `screenshot`) and drops anything else an executor returns. A read
+whose executor returned nothing is acknowledged `completed` with no result. The loop sends a
+`screenshot` to the executor only for a provider with `batchScreenshots: "frame"` and only before
+the last action of its batch; the executor returns the whole screen captured there. Every other
+screenshot is acknowledged `completed` without reaching the executor, since the loop's observation
+after the batch is its screen. The trace records each read's title
 (`read pointer`, `zoom 30x20 at (100, 50)`) and what it read: a zoom's crop as a frame on its
 item with `region`, a pointer read's position as `pointer`
-([run bundle](../contracts/run-bundle.md#zoom-frames)).
+([run bundle](../contracts/run-bundle.md#zoom-and-screenshot-frames)).
 
 - **`screenshot` is optional.** A non-vision (state) executor omits it. The loop
   persists no screenshot that turn; `counts.screenshots` stays 0, so the trace's

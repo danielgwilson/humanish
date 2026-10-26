@@ -190,7 +190,8 @@ export interface ActorTraceItem {
   };
   namedMs?: number; // computer-use wait ui_action: the length the participant named, before any cap
   // computer-use zoom ui_action: the region it looked at, in desktop pixels; its screenshotRef is
-  // the image of that region at the desktop's own pixels
+  // the image of that region at the desktop's own pixels. A screenshot ui_action within a batch has
+  // a screenshotRef to the whole screen and no region
   region?: { x: number; y: number; width: number; height: number };
   pointer?: { x: number; y: number }; // computer-use pointer read ui_action: the position it read
 }

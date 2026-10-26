@@ -42,6 +42,7 @@ describe("the guest dialect", () => {
       { held: "ctrl+a", steps: [{ kind: "wait", ms: 30_000 }] },
     ],
     [{ kind: "read_pointer" }, { held: undefined, steps: [{ kind: "report-pointer" }] }],
+    [{ kind: "screenshot" }, { held: undefined, steps: [{ kind: "report-screen" }] }],
     [
       { kind: "zoom", region: { x: 90, y: 70, width: 10, height: 10 } },
       {
