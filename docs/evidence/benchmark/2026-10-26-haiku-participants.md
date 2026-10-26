@@ -10,6 +10,9 @@ runs per build: 3 and 3 from the pilot, 12 and 12 from the recall phase. A fidel
 4 runs per arm on each of two more personas. Recall is scored with rubric version 4. Full numbers
 and every run id are in [2026-10-26-haiku-participants.json](2026-10-26-haiku-participants.json).
 Definitions of recall, false assurance and invented claims are in the [README](README.md).
+B1 ran a second time on main at 6880bf3e5, after the mid-batch screenshot fix; see
+[the rerun section](#after-the-mid-batch-screenshot-fix-haiku-sees-every-screen-it-asks-for-and-its-recall-is-unchanged).
+Its result leaves the recommendation as it was.
 
 | Arm | Participant | Price per 1M in / cached / out |
 | --- | --- | --- |
@@ -133,7 +136,8 @@ what a view showed. Two B1 planted reports on the in-memory build miss D3 for th
 got a screenshot after the last click in each batch, so I didn't see the filter tabs actually
 filter"). One B1 clean participant clicked where Clear completed had been in a view it never saw
 and deleted an active task instead. This harness behavior lowers Claude recall by an amount these
-runs cannot separate from the model's early stopping. See "Needs a decision" below.
+runs cannot separate from the model's early stopping. See "Needs a decision" below. The B1 rerun
+after the fix separates them: the screenshots came back and recall did not move.
 
 No arm made a false assurance or an invented claim read by hand. Every rubric hit on the clean arms
 is a true sentence: Clear completed working on the clean build ("clear completed removed the
@@ -245,6 +249,139 @@ call and answer the calls after it as not executed. Both change what the partici
 the bundle keeps, so neither is in this change. A rerun of B1 after the change would show how much
 of the recall gap it accounts for.
 
+The first option is on main as 6880bf3e5, and the next section is that rerun.
+
+## After the mid-batch screenshot fix, Haiku sees every screen it asks for, and its recall is unchanged
+
+B1 ran again on main at 6880bf3e5, which is 0.149.0 plus the fix: a screenshot call before the
+last action of a Claude batch now returns a capture taken at that point, and the bundle keeps it as
+`screenshots/screenshot-NNN` on that action. Everything else matched the first B1 arm: 15 planted
+and 15 clean runs per build, `maxOutputTokens: 8192`, `--participant-cap 1.5`, `--mission neutral`,
+the `gpt-6.1-sol` medium analyst, rubric version 4 and the same hand reading. B0 and B2 did not run
+again; their columns below are the first runs. The 60 runs were six `pnpm bench` invocations of
+`--runs 5`, three per build, started 8 s apart at 13:53 UTC and finished by 14:16 UTC, so six
+desktops were in flight, as in the recall phase. The `--cli` wrapper also logged the byte length
+of each Messages API request body (sizes only). That logging started after the first run of each
+invocation had begun, so request bytes cover 54 of the 60 runs. The first B1 arm recorded no
+request bytes. Run ids are under `rerunB1MidBatchFix` in the JSON.
+
+On the in-memory builds:
+
+| | B0 | B1 before | B1 after |
+| --- | --- | --- | --- |
+| Step latency, median / p90 (s) | 5.19 / 9.13 | 6.82 / 10.52 | 7.84 / 10.66 |
+| Model call, median / p90 (s) | 3.32 / 7.39 | 2.76 / 4.01 | 2.96 / 4.80 |
+| Session, median (s) | 81.7 | 48.6 | 45.8 |
+| Turns per session, median | 11 | 6 | 5 |
+| Ended `gave_up` / `goal_satisfied` | 20 / 10 | 23 / 7 | 29 / 1 |
+| Said it would keep using Taskly, clean / planted build | 0/15 / 0/15 | 2/15 / 0/15 | 0/15 / 0/15 |
+| Harness-caused failures | 0 | 0 | 0 |
+| Mid-batch screenshot calls (turns with one) | 0 | 71 (59 of 157) | 55 (44 of 131) |
+| Mid-batch screenshot calls answered with a frame | 0 | 0 | 55 |
+| Reports saying a screenshot did not come back | 0 | 9 | 0 |
+| Report recall, read by hand (95% interval) | 51/75 (0.57 to 0.77) | 29/75 (0.28 to 0.50) | 31/75 (0.31 to 0.53) |
+| Report recall, rubric | 41/75 | 27/75 | 30/75 |
+| Analysis recall, rubric | 45/75 | 27/75 | 28/70 |
+| Analysis recall, read by hand (95% interval) | 51/75 (0.57 to 0.77) | 28/75 (0.27 to 0.49) | 29/70 (0.31 to 0.53) |
+| False assurance in reports, rubric / by hand | 0 / 0 | 1 / 0 | 0 / 0 |
+| Invented on the clean arm, reports, rubric / by hand | 0 / 0 | 0 / 0 | 3 / 1 |
+| Invented on the clean arm, analyses, rubric / by hand | 0 / 0 | 0 / 0 | 0 / 0 |
+| Participant cost per run, median | $0.071 | $0.0049 | $0.0044 |
+| Input tokens per request, median | 13,207 | 13,430 | 15,094 |
+| Largest request, input tokens / bytes | 23,845 / not recorded | 31,281 / not recorded | 28,998 / 1,036,065 |
+| Requests where context clearing fired | 0 of 361 | 0 of 217 | 0 of 192 |
+
+On the localStorage builds:
+
+| | B0 | B1 before | B1 after |
+| --- | --- | --- | --- |
+| Step latency, median / p90 (s) | 5.19 / 8.77 | 6.52 / 9.78 | 7.58 / 10.80 |
+| Model call, median / p90 (s) | 3.21 / 6.44 | 2.62 / 3.74 | 2.83 / 4.21 |
+| Session, median (s) | 82.0 | 42.1 | 42.0 |
+| Turns per session, median | 11 | 6 | 5 |
+| Ended `gave_up` / `goal_satisfied` | 0 / 30 | 7 / 23 | 4 / 26 |
+| Said it would keep using Taskly, clean / planted build | 15/15 / 0/15 | 14/15 / 0/15 | 15/15 / 4/15 |
+| Harness-caused failures | 0 | 0 | 0 |
+| Mid-batch screenshot calls (turns with one) | 0 | 59 (47 of 149) | 60 (45 of 124) |
+| Mid-batch screenshot calls answered with a frame | 0 | 0 | 60 |
+| Reports saying a screenshot did not come back | 0 | 10 | 0 |
+| Report recall, read by hand (95% interval) | 52/75 (0.58 to 0.79) | 31/75 (0.31 to 0.53) | 30/75 (0.30 to 0.51) |
+| Report recall, rubric | 44/75 | 30/75 | 29/75 |
+| Analysis recall, rubric | 53/75 | 30/75 | 30/75 |
+| Analysis recall, read by hand (95% interval) | 54/75 (0.61 to 0.81) | 31/75 (0.31 to 0.53) | 30/75 (0.30 to 0.51) |
+| False assurance in reports, rubric / by hand | 0 / 0 | 0 / 0 | 0 / 0 |
+| Invented on the clean arm, reports, rubric / by hand | 1 / 0 | 1 / 0 | 0 / 0 |
+| Invented on the clean arm, analyses, rubric / by hand | 0 / 0 | 2 / 0 | 0 / 0 |
+| Participant cost per run, median | $0.071 | $0.0044 | $0.0045 |
+| Input tokens per request, median | 11,600 | 13,349 | 15,026 |
+| Largest request, input tokens / bytes | 25,429 / not recorded | 25,746 / not recorded | 28,018 / 1,106,568 |
+| Requests where context clearing fired | 0 of 358 | 0 of 209 | 0 of 186 |
+
+Recall per defect, reports read by hand, then analyses read by hand:
+
+| | B0 | B1 before | B1 after |
+| --- | --- | --- | --- |
+| In-memory D1 Clear completed does nothing | 0/15, 0/15 | 0/15, 0/15 | 1/15, 1/14 |
+| In-memory D2 Text over 30 characters truncated | 6/15, 6/15 | 1/15, 1/15 | 0/15, 0/14 |
+| In-memory D3 Filters swapped | 15/15, 15/15 | 13/15, 12/15 | 15/15, 14/14 |
+| In-memory D4 Empty list shows undefined | 15/15, 15/15 | 15/15, 15/15 | 15/15, 14/14 |
+| In-memory D5 Save in edit mode does nothing | 15/15, 15/15 | 0/15, 0/15 | 0/15, 0/14 |
+| localStorage D1 | 1/15, 1/15 | 0/15, 0/15 | 0/15, 0/15 |
+| localStorage D2 | 6/15, 8/15 | 1/15, 1/15 | 0/15, 0/15 |
+| localStorage D3 | 15/15, 15/15 | 15/15, 15/15 | 15/15, 15/15 |
+| localStorage D4 | 15/15, 15/15 | 15/15, 15/15 | 15/15, 15/15 |
+| localStorage D5 | 15/15, 15/15 | 0/15, 0/15 | 0/15, 0/15 |
+
+The fix works as intended. All 115 mid-batch screenshot calls came back with a frame, a median of 2
+per run, and no report said a screenshot did not come back, against 19 of 60 before. D3 is now
+15/15 in the reports on both builds. Before, two in-memory reports missed it because they never saw
+the filtered views.
+
+Recall did not change. Over both builds the reports found 61 of 150 planted defects by hand,
+against 60 before and B0's 103, and the analyses found 59 of 145, against 59 of 150 and B0's 105.
+The gap is in D5 and D2 as before. Judged by click coordinates, no planted participant clicked an
+Edit button (1 of 30 before), so none could see D5, and none typed a task long enough to show D2.
+The reports give the same reason as before: the swapped filters or the lost list had decided them,
+and 21 of 30 planted reports say they did not try Edit. The early stopping is the model's, and the
+missing screenshots did not cause it.
+
+Sessions are a turn shorter, a median of 5 against 6, and about as long in seconds (45.8 s against
+48.6 s, 42.0 s against 42.1 s). Each step is about 1 s slower. Within a turn, the time from the
+first action to the last rose by a median of 0.7 to 1.0 s: a mid-batch capture takes 0.26 s
+(median, p90 0.37 s), and the turns carry a few more actions (5.6 to 5.7 against 5.2 to 5.3). The
+model call rose by 0.2 s, and the median request carries about 1,650 more input tokens, which are
+the extra frames. Shorter sessions kept the largest request below the first run's on the in-memory
+build. No request came near the 60,000-token clearing threshold or the 100,000-token price tier.
+Participant cost per run did not change.
+
+Four localStorage planted reports now say they would keep using Taskly, against none before. Three
+of them qualify it the same way: "I'd keep a simple list here, but I'd use All and not the
+filters." The fourth says "For a simple errands list, probably yes."
+
+No run had a harness-caused failure. Four analyses failed: two on
+`analysis_provider_http_error`, one on `analysis_provider_connection_reset` and one on
+`analysis_validation_failed_participant_coverage_invalid`. They are left out of analysis recall, as
+in the first run. One was a planted in-memory run, so that analysis recall is out of 70.
+
+One clean in-memory report counts as invented by hand: "'Clear completed' also didn't remove the
+checked dry-cleaning task, though the screen may have been stale." In that turn the participant
+clicked the add box, typed a task and clicked Clear completed. The screen after the turn shows the
+add box empty and the checked task still listed, and the trace records every action as completed.
+Its next turn reloaded the page, which empties the in-memory list, so the bundle cannot tell input
+that did not register from a frame that did not repaint. A typed task that never appeared also
+happened once in the first B1 runs, so it is not new with the fix. The other two rubric hits are
+true: a click on Clear completed with nothing to clear, and "I could not tell whether save had
+worked". The one analysis rubric false assurance on the localStorage build is a negation ("this
+does not establish that clear completed worked").
+
+The rerun's estimated spend was $5.30: participants $0.27, desktops $0.54 and analyses $4.48. All
+60 runs had `reclaim --check` state `clean`, and after the last run E2B listed 0 running or paused
+sandboxes in the account.
+
+What the rerun does not establish: the hand reading is mine alone, as before; 15 planted runs per
+build give intervals about 0.2 wide; the request byte counts are from a preload in the benchmark
+wrapper, not from humanish; and the stale-or-lost case above has no cause.
+
 ## Recommendation
 
 Offer `claude-haiku-5-5` as a documented participant option, which 0.149.0 already lists. Do not
@@ -262,7 +399,11 @@ reports can be trusted as far as it goes. It does not follow a keyboard-first pe
 High effort is not worth offering separately: B2 cost 10% to 20% more per participant and 0.6 s
 more per step, and its reports found 4 more defects in 150.
 
-Revisit large studies after the mid-batch screenshot decision and a rerun of B1.
+The rerun after the mid-batch screenshot fix keeps this recommendation. The fix gave B1 every
+screen it asked for, and its reports still found about 60 of 150 planted defects, because it stops
+after one deciding problem. The fix costs about 1 s per step and 1,650 input tokens per request,
+with no change in participant cost. What would change the call is a participant setting or mission
+wording that gets Haiku to try a second and third feature; none was tested here.
 
 ## What these numbers are not
 
