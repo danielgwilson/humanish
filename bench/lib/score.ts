@@ -5,9 +5,12 @@
 
 import {
   CLAIM_CLASSES,
+  CUT_DAY_NAME,
   D2_MECHANISM,
+  D2_SUBJECT,
   DEFECT_IDS,
   ENGAGEMENT,
+  LOST_EDIT_ON_RELOAD,
   NEGATED_TRUNCATION,
   PLANTED,
   PROBLEM_LANGUAGE,
@@ -16,6 +19,7 @@ import {
   type ClaimClass,
   type DefectId,
   type EvidenceFacts,
+  type Storage,
   type Truth,
 } from "../taskly/answer-key.js";
 import { isHeading, normalize, paragraphs, quote, sentences } from "./text.js";
@@ -112,12 +116,21 @@ export function holds(truth: Truth, facts: EvidenceFacts): boolean {
 
 const NEGATION = /\b(?:not|no|nothing|never)\b|n't\b/;
 
-function claimMatches(classDef: ClaimClass, sentence: string, paragraphText: string): boolean {
+function claimMatches(
+  classDef: ClaimClass,
+  sentence: string,
+  paragraphText: string,
+  storage: Storage,
+): boolean {
+  if (classDef.id === "D5" || classDef.id === "B10") {
+    const lostEdit =
+      storage === "local" && LOST_EDIT_ON_RELOAD.some((pattern) => pattern.test(sentence));
+    if (lostEdit) return classDef.id === "D5";
+  }
   if (classDef.id === "D2") {
     const stripped = sentence.replace(NEGATED_TRUNCATION, " ");
-    const subject =
-      /\b(?:tasks?|text|entr(?:y|ies)|description|labels?|sentences?|title|characters?|words?|notes?|names?)\b/;
-    return classDef.claim.some((pattern) => pattern.test(stripped)) && subject.test(paragraphText);
+    if (CUT_DAY_NAME.test(stripped)) return true;
+    return classDef.claim.some((pattern) => pattern.test(stripped)) && D2_SUBJECT.test(paragraphText);
   }
   return classDef.claim.some((pattern) => pattern.test(sentence));
 }
@@ -135,13 +148,13 @@ interface ParagraphMatches {
 }
 
 /** Every claim class each paragraph of a text carries, one match per class per paragraph. */
-function matchText(text: string): ParagraphMatches[] {
+function matchText(text: string, storage: Storage): ParagraphMatches[] {
   return paragraphs(text).map((paragraph) => {
     const normalized = normalize(paragraph);
     const matches: ClaimMatch[] = [];
     for (const classDef of CLAIM_CLASSES) {
       const sentence = sentences(paragraph).find((candidate) =>
-        claimMatches(classDef, candidate, normalized),
+        claimMatches(classDef, candidate, normalized, storage),
       );
       if (sentence !== undefined) matches.push({ classId: classDef.id, quote: quote(sentence) });
     }
@@ -191,7 +204,7 @@ function engagedWith(defect: DefectId, text: string, facts: EvidenceFacts): bool
 
 /** Score one participant's closing report against the answer key. */
 export function scoreReport(input: ParticipantInput, arm: Arm): ReportScore {
-  const matched = matchText(input.report);
+  const matched = matchText(input.report, input.facts.storage);
   const detected = emptyDefects(false);
   const detectedQuotes: Partial<Record<DefectId, string>> = {};
   const invented: ClaimMatch[] = [];
@@ -255,10 +268,10 @@ export function scoreReport(input: ParticipantInput, arm: Arm): ReportScore {
   };
 }
 
-function classesIn(text: string): ClaimClass[] {
+function classesIn(text: string, storage: Storage): ClaimClass[] {
   const normalized = normalize(text);
   return CLAIM_CLASSES.filter((classDef) =>
-    sentences(text).some((sentence) => claimMatches(classDef, sentence, normalized)),
+    sentences(text).some((sentence) => claimMatches(classDef, sentence, normalized, storage)),
   );
 }
 
@@ -284,8 +297,8 @@ export function scoreAnalysis(
   for (const finding of input.findings) {
     const text = findingText(finding);
     // The title names what the finding is about; its evidence can mention other defects in passing.
-    const titleClasses = classesIn(finding.title);
-    const classes = titleClasses.length > 0 ? titleClasses : classesIn(text);
+    const titleClasses = classesIn(finding.title, facts.storage);
+    const classes = titleClasses.length > 0 ? titleClasses : classesIn(text, facts.storage);
     const dispositions = classes.map((classDef) => ({
       classDef,
       disposition: dispose(classDef, arm, facts),

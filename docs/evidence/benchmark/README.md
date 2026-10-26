@@ -242,6 +242,20 @@ The matching never reads it. The build's storage, from the manifest, settles one
 lost on a page reload, is true on the in-memory builds and invented on the localStorage builds.
 Rubric version 3 added that rule and scores the in-memory builds as version 2 did.
 
+Rubric version 4 uses the storage a second time. On the localStorage builds a reload keeps every
+saved change, so a sentence about an edit the reload took back ("Laundry edit did not persist after
+Save and refresh", "after reloading, the added words were gone") is D5 there and not B10. On the
+in-memory builds the same sentence stays B10. A reload that only reset the selected filter is no
+longer a B10 claim. D5 also matches Save that left the row "in an editing box" or "the edit box
+stayed open", and D2 matches a cut-off errand or reminder and a day name cut short in a sentence
+about where the text ends ("ended at Thursd"). The version 4 cases in `tests/bench/score.test.ts`
+quote 2026-10-24 and 2026-10-25 reports and analyses, each with a near miss that must not match.
+
+Before 2026-10-26 the bench read participant items from run.json only. From run bundle v2 those
+items live in the trace file (`actor.json`), so on every saved v2 to v4 run the D2 engagement flag,
+narration-based engagement and the provider-stall and failed-action facts read an empty list.
+`--rescore` now joins the trace file.
+
 `tests/bench/score.test.ts` checks the rubric against 32 recorded participant reports and 6
 analyses, with labels in `tests/fixtures/bench/taskly/labels.json`:
 

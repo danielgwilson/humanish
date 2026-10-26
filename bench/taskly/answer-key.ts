@@ -8,7 +8,7 @@
 // value is a new rubric version, and results carry the version and a digest of this file.
 
 export const RUBRIC_ID = "taskly-rubric";
-export const RUBRIC_VERSION = 3;
+export const RUBRIC_VERSION = 4;
 
 export type Arm = "planted" | "clean";
 export type DefectId = "D1" | "D2" | "D3" | "D4" | "D5";
@@ -85,9 +85,14 @@ const DONE = String.raw`(?:completed|finished|ticked|checked|crossed[- ]out|stru
 const OPEN = String.raw`(?:unfinished|unticked|unchecked|remaining|incomplete|open|active|not[- ]done|outstanding|uncompleted)`;
 const SHOWED = String.raw`(?:showed|shows|show|displayed|displays|listed|lists|saw|see|contained|had)`;
 const AFTER_SHOWED = String.raw`(?: me)?(?: only)?(?: the)?(?: \w+)?(?: only)?`;
-const SAVE_FAILED = String.raw`(?:did nothing|does nothing|did not (?:appear to )?(?:work|save|close|finish|respond|commit|leave|exit|do anything|register)|didn't (?:appear to )?(?:work|save|close|finish|respond|commit|leave|exit|do anything|register)|does not (?:work|save|respond|do anything)|doesn't (?:work|save|respond|do anything)|had no (?:visible )?effect|no effect|nothing happened|gave no (?:visible )?(?:response|feedback|confirmation)|was unresponsive|(?:left|kept) (?:the |my |its |their )?(?:task|row|edits?|drafts?|field|it|text box|textbox)(?: \w+)? (?:in edit(?:ing)? mode|open|uncommitted|unsaved)|stayed in edit(?:ing)? mode|remained in edit(?:ing)? mode)`;
+// The row's edit state: "in editing mode", "in an editing box", "in the edit field".
+const EDIT_BOX = String.raw`edit(?:ing)? (?:box|field)`;
+const IN_EDITING = String.raw`in (?:an |the )?edit(?:ing)? (?:mode|box|field)`;
+const SAVE_FAILED = String.raw`(?:did nothing|does nothing|did not (?:appear to )?(?:work|save|close|finish|respond|commit|leave|exit|do anything|register)|didn't (?:appear to )?(?:work|save|close|finish|respond|commit|leave|exit|do anything|register)|does not (?:work|save|respond|do anything)|doesn't (?:work|save|respond|do anything)|had no (?:visible )?effect|no effect|nothing happened|gave no (?:visible )?(?:response|feedback|confirmation)|was unresponsive|(?:left|kept) (?:the |my |its |their )?(?:task|row|item|edits?|drafts?|field|it|text box|textbox|${EDIT_BOX})(?: \w+)? (?:${IN_EDITING}|open|uncommitted|unsaved)|(?:stayed|remained) ${IN_EDITING}|(?:the |its )?${EDIT_BOX} (?:stayed|remained) open)`;
 // A sentence about Enter or a page reload describes B1 or B10, so the broader D5 patterns skip it.
 const NOT_ENTER = String.raw`^(?!.*\b(?:enter|refresh\w*|reload\w*)\b)`;
+// A sentence about the selected filter or view coming back after a reload reports no lost task.
+const NOT_VIEW_RESET = String.raw`^(?!.*\b(?:reset|switched|changed)\b(?: \w+){0,2} (?:filter|view)\b)`;
 const STILL_SHOWED = String.raw`still (?:showed|shows|displayed|displays|had|has|read|reads|said|says|contained|contains)`;
 const re = (source: string): RegExp => new RegExp(source);
 
@@ -175,8 +180,8 @@ export const PLANTED: readonly PlantedDefect[] = [
       re(String.raw`\bunresponsive save\b`),
       re(String.raw`\bwhether (?:the )?save had (?:worked|registered)\b`),
       // The row stayed in edit mode after Save: "saving the edit left the row in editing mode".
-      re(String.raw`${NOT_ENTER}.*?\bsav(?:e|es|ed|ing)\b[^.]{0,60}\b(?:remain(?:s|ed)?|stay(?:s|ed)?|stuck|still|kept|keeps|left|leaves)\b(?: \w+){0,3} in edit(?:ing)? mode\b`),
-      re(String.raw`${NOT_ENTER}.*?\b(?:remain(?:s|ed)?|stay(?:s|ed)?|stuck|still|kept|keeps|left|leaves)\b(?: \w+){0,3} in edit(?:ing)? mode\b[^.]{0,30}\bafter\b[^.]{0,30}\bsav(?:e|ed|ing)\b`),
+      re(String.raw`${NOT_ENTER}.*?\bsav(?:e|es|ed|ing)\b[^.]{0,60}\b(?:remain(?:s|ed)?|stay(?:s|ed)?|stuck|still|kept|keeps|left|leaves)\b(?: \w+){0,3} ${IN_EDITING}\b`),
+      re(String.raw`${NOT_ENTER}.*?\b(?:remain(?:s|ed)?|stay(?:s|ed)?|stuck|still|kept|keeps|left|leaves)\b(?: \w+){0,3} ${IN_EDITING}\b[^.]{0,30}\bafter\b[^.]{0,30}\bsav(?:e|ed|ing)\b`),
       re(String.raw`${NOT_ENTER}.*?\bedit(?:ing)? mode remain(?:s|ed)? (?:active|open)\b[^.]{0,30}\bsav(?:e|ed|ing)\b`),
       re(String.raw`${NOT_ENTER}.*?\b${STILL_SHOWED}\b[^.]{0,40}\bsave\b[^.]{0,20}\bafter\b[^.]{0,40}\bsav(?:e|ed|ing)\b`),
       re(String.raw`${NOT_ENTER}.*?\bafter (?:saving|(?:a |the |another )?save (?:click|attempt))\b[^.]{0,60}\b${STILL_SHOWED}\b[^.]{0,40}\bsave\b`),
@@ -309,13 +314,32 @@ export const BASELINE: readonly BaselineClaim[] = [
     source: "bench/taskly-{planted,clean}/app.js: tasks live in memory only; the -local builds store them",
     truth: { planted: "memory-storage", clean: "memory-storage" },
     claim: [
-      re(String.raw`\b(?:refresh\w*|reload\w*)\b[^.]{0,60}\b(?:erased?|lost|cleared|wiped|gone|disappeared|reset|emptied|empty|blank)\b`),
-      re(String.raw`\b(?:losing|lost|loses) (?:the|my|all) (?:list|tasks)\b[^.]{0,20}\b(?:on|after) (?:a )?(?:refresh|reload)\b`),
-      re(String.raw`\b(?:does not|doesn't|did not|didn't) (?:save|keep|persist|retain)\b[^.]{0,40}\b(?:refresh|reload|between visits)\b`),
-      re(String.raw`\b(?:absent|gone|lost|disappeared|erased|missing|wiped|cleared)\b[^.]{0,60}\b(?:after|on|following) (?:a |the )?(?:page )?(?:refresh|reload)`),
-      re(String.raw`\b(?:does not|doesn't|did not|didn't) survive\b[^.]{0,30}\b(?:refresh|reload)`),
+      re(String.raw`${NOT_VIEW_RESET}.*?\b(?:refresh\w*|reload\w*)\b[^.]{0,60}\b(?:erased?|lost|cleared|wiped|gone|disappeared|reset|emptied|empty|blank)\b`),
+      re(String.raw`${NOT_VIEW_RESET}.*?\b(?:losing|lost|loses) (?:the|my|all) (?:list|tasks)\b[^.]{0,20}\b(?:on|after) (?:a )?(?:refresh|reload)\b`),
+      re(String.raw`${NOT_VIEW_RESET}.*?\b(?:does not|doesn't|did not|didn't) (?:save|keep|persist|retain)\b[^.]{0,40}\b(?:refresh|reload|between visits)\b`),
+      re(String.raw`${NOT_VIEW_RESET}.*?\b(?:absent|gone|lost|disappeared|erased|missing|wiped|cleared)\b[^.]{0,60}\b(?:after|on|following) (?:a |the )?(?:page )?(?:refresh|reload)`),
+      re(String.raw`${NOT_VIEW_RESET}.*?\b(?:does not|doesn't|did not|didn't) survive\b[^.]{0,30}\b(?:refresh|reload)`),
     ],
   },
+];
+
+const RELOAD = String.raw`(?:refresh\w*|reload\w*)`;
+const EDIT_SUBJECT = String.raw`(?:edit(?:s|ed)?|revision|rename|change|correction|added words|new wording|(?:shortened|edited|renamed|revised|changed|updated) \w+)`;
+// Every task lost on reload, an edit among them, is B10's claim on any build.
+const NOT_ALL_LOST = String.raw`^(?!.*\b(?:erased|wiped|emptied)\b)(?!.*\b(?:tasks|list|everything)\b(?: \w+){0,3} (?:were|was) (?:gone|lost|erased)\b)`;
+
+/**
+ * An edit that a reload took back: "Laundry edit did not persist after Save and refresh", "after
+ * reloading, the added words were gone". On the -local builds a reload keeps every saved change, so
+ * the scorer reads such a sentence as D5 and not as B10. On the memory builds a reload loses every
+ * task, so the sentence stays with B10.
+ */
+export const LOST_EDIT_ON_RELOAD: readonly RegExp[] = [
+  re(String.raw`${NOT_ALL_LOST}.*?\b${EDIT_SUBJECT}\b[^.]{0,40}\b(?:did not|didn't|does not|doesn't|never) (?:persist|survive|stick)\b[^.]{0,40}\b${RELOAD}\b`),
+  re(String.raw`${NOT_ALL_LOST}.*?\b${EDIT_SUBJECT}\b[^.]{0,40}\b(?:(?:was|were) (?:absent|gone|lost|undone)|disappeared|reverted)\b[^.]{0,30}\b${RELOAD}\b`),
+  re(String.raw`\b(?:after|on|following) (?:a |the )?(?:page )?${RELOAD}\b,? (?:the |my )?(?:change|edit|added words|new wording|correction|rename)s? (?:was|were) (?:gone|lost|undone|missing)\b`),
+  re(String.raw`^(?=.*\b${RELOAD}\b).*\b(?:old|original|earlier|prior|previous) (?:wording|text|name|title|value)\b[^.]{0,20}\b(?:returned|came back|reappeared)\b`),
+  re(String.raw`\b${RELOAD}\b[^.]{0,10}\b(?:it|the (?:task|row|item|edit)) (?:was|went) back to\b(?! (?:an? |its |the )?(?:empty|blank|nothing|zero))`),
 ];
 
 /** Claims that a working control is broken. Each is false on the build it names. */
@@ -426,6 +450,23 @@ export const PROBLEM_LANGUAGE =
 /** Reassurance that reads as problem language: "no issues blocked me", "without errors". */
 export const REASSURANCE =
   /\b(?:no|without|never|nothing|not)\b[^.,;]*?\b(?:issues?|errors?|blockers?|problems?|confus\w*|hesitation)\b[^.,;]*/g;
+
+/**
+ * What a D2 truncation word must be about: the paragraph names the text. Participants call a task
+ * an errand or a reminder when the mission's list is errands and chores.
+ */
+export const D2_SUBJECT =
+  /\b(?:tasks?|text|entr(?:y|ies)|description|labels?|sentences?|title|characters?|words?|notes?|names?|errands?|reminders?)\b/;
+
+/**
+ * A day name cut short, as the 30-character limit leaves it, in a sentence about where the text
+ * ends: "ended at Thursd", "became ... Wednes", "Tuesda rather than the full Tuesday". It names the
+ * shortened text itself, so it needs no D2_SUBJECT. Full names and the usual abbreviations (Wed,
+ * Thu, Thurs, Tues) do not match. Analysis observations quote the row's text ("an edit field
+ * reading ... on Wednes") without reporting the cut, so the day name alone is not enough.
+ */
+export const CUT_DAY_NAME =
+  /^(?=.*\b(?:end(?:s|ed|ing)?|stopped|cut|became|only|missing|(?:rather than|instead of) the full)\b).*\b(?:monda|tuesd|tuesda|wedne|wednes|wednesd|wednesda|thursd|thursda|frida|satur|saturd|saturda|sunda)\b/;
 
 /** Negated truncation: "wrapped without being cut off". Stripped before the D2 pattern runs. */
 export const NEGATED_TRUNCATION =

@@ -4,6 +4,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
+import { isStreamTracePath } from "../../src/run/stream-shape.js";
 import type { EvidenceFacts, Storage } from "../taskly/answer-key.js";
 import type { AnalysisInputForScore, ParticipantInput } from "./score.js";
 
@@ -16,6 +17,8 @@ interface TraceItem {
 
 export interface BundleStream {
   id: string;
+  /** From run bundle v2, the trace file that holds `actor.items`; run.json leaves them out. */
+  trace?: { path: string };
   laneId?: string;
   assignment?: { mission?: string };
   actor?: {
@@ -151,8 +154,20 @@ export function readJson<T>(file: string): T {
   return JSON.parse(readFileSync(file, "utf8")) as T;
 }
 
+/**
+ * run.json of one run, with each participant's items joined from the trace file its stream
+ * indexes (docs/contracts/run-bundle.md, Participant traces). A v1 stream keeps its own items.
+ */
 export function readRunBundle(projectDir: string, runId: string): RunBundle {
-  return readJson<RunBundle>(path.join(projectDir, ".humanish", "runs", runId, "run.json"));
+  const runDir = path.join(projectDir, ".humanish", "runs", runId);
+  const bundle = readJson<RunBundle>(path.join(runDir, "run.json"));
+  for (const stream of bundle.streams) {
+    const tracePath = stream.trace?.path;
+    if (stream.actor === undefined || stream.actor.items !== undefined || tracePath === undefined) continue;
+    if (!isStreamTracePath(tracePath)) throw new Error(`${runId}: ${tracePath} is not a trace file name.`);
+    stream.actor.items = readJson<{ items?: TraceItem[] }>(path.join(runDir, tracePath)).items ?? [];
+  }
+  return bundle;
 }
 
 /** The named analysis version of a run, or its newest complete one when no id is given. */

@@ -154,6 +154,27 @@ refresh in most runs, so it never reaches Clear completed.
 miss more, and its analyses recover most of the gap. Twenty planted runs cannot rule out the
 adversarial false-assurance gap OpenAI reports for it.
 
+## Rubric version 4 rescored these runs on 2026-10-26
+
+`pnpm bench --rescore` with rubric version 4 re-read the saved pilot and recall bundles and
+analyses offline; no run was repeated. The tables above keep the version 3 counts. Counts below are
+rubric version 3, version 4, then by hand.
+
+| | A0 | A1 | A2 | A3 | A4 |
+| --- | --- | --- | --- | --- | --- |
+| Report recall | 61, 61, 62 | 66, 66, 66 | 45, 62, 49 | 47, 63, 53 | 43, 43, 44 |
+| D2 in reports | 0, 0, 0 | 0, 0, 0 | 5, 8, 5 | 4, 11, 4 | 0, 0, 0 |
+| D5 in reports | 13, 13, 14 | 13, 13, 13 | 0, 14, 4 | 3, 12, 9 | 2, 2, 3 |
+| Analysis recall, rubric | 59, 59 | 57, 57 | 57, 57 | 62, 62 | 55, 55 |
+| D2 engagement: typed more than 30 characters, v4 | 0/20 | 5/20 | 9/20 | 18/20 | 3/20 |
+
+Version 4 counts more D2 and D5 on A2 and A3 than the hand counts above. I read each of the 33 new
+report matches: each says Save left the edit open ("clicked Save, but it stayed in the editing
+box") or that a task name was cut off ("My library reminder appeared cut off at Wednes"). The hand
+counts were the rubric's count plus lines I read, so those reports were not read again. Clean-arm
+invented counts and false assurance are unchanged, and no clean-arm report or analysis changed
+verdict.
+
 ## What these numbers are not
 
 - The `gpt-5.6-sol` promotional rate holds at least through November 21, 2026. A0 and A1 costs
