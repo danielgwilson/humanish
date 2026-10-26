@@ -27,6 +27,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   acted, with one acknowledgement per batch position. Before, only providers with
   `requestPolicy: "fail_closed"` received it. The OpenAI provider ignores it, so its requests are
   unchanged.
+- E2B, Modal and local VM desktops translate computer-use actions through one shared X11
+  translator (`src/substrates/x11/`). Each sends the same native commands as before. The exported
+  `E2BDesktopSandbox` type no longer declares the SDK's mouse and keyboard methods (`leftClick`,
+  `moveMouse`, `scroll`, `write`, `press`, `drag` and the other clicks), since humanish sends input
+  as xdotool commands; code that called them through this type should call the `@e2b/desktop`
+  Sandbox directly.
 
 ## 0.148.0: Participants run gpt-6.1-sol (2026-10-26)
 
