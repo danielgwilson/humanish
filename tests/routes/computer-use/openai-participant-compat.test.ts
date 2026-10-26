@@ -85,7 +85,7 @@ async function sessionRequests(
     brain: plan.runner.brain,
     caps: plan.caps,
     participantCount: runs.length,
-    openaiApiKey: KEY,
+    participantApiKey: KEY,
   });
   const out: Record<string, unknown> = {};
   for (const spec of runs) {

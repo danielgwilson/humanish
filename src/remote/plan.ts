@@ -69,7 +69,7 @@ export function planRemoteRun(args: {
   const runner = plan.runner;
   if (runner.desktop !== "e2b-desktop")
     return refuse("its participants use this machine's browser, so the study runs here.");
-  if (runner.brain.kind !== "openai")
+  if (runner.brain.kind !== "provider-key")
     return refuse(
       "its participants are driven by an agent on this machine, which a remote run cannot reach.",
     );

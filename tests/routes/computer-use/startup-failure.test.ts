@@ -22,7 +22,7 @@ import type { E2BDesktopCreateOptions, E2BDesktopModule } from "../../../src/sub
 import { lab, type BaseName } from "../../admission/fixtures.js";
 import {
   makeFanoutModule,
-  scriptedFetch,
+  scriptedParticipant,
   TWO_TURN_SESSION,
   type FanoutModuleHandle,
   type FanoutModuleOptions,
@@ -89,7 +89,7 @@ function seams(module: E2BDesktopModule, log: string[] = []) {
       await new Promise((resolve) => setTimeout(resolve, 20));
       return runCuaActorSession({
         ...options,
-        openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+        participant: scriptedParticipant(TWO_TURN_SESSION),
       });
     },
     subjectPhaseSink: () => undefined,

@@ -83,7 +83,7 @@ async function fixture() {
   const deps = await participantRunDeps(cwd, {
     residual: config,
     studyId: config.id,
-    brain: { kind: "openai", model: DEFAULT_OPENAI_CU_MODEL },
+    brain: { kind: "provider-key", vendor: "openai", model: DEFAULT_OPENAI_CU_MODEL },
     scrubKnownValues: (value) => value.replaceAll("synthetic-secret-canary", "[scrubbed]"),
     runSession: vi.fn(async () => {
       throw new Error("Unexpected participant dispatch");

@@ -17,7 +17,7 @@ import { parseStudy } from "../../../src/study/config.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import {
   makeFanoutModule,
-  scriptedFetch,
+  scriptedParticipant,
   TWO_TURN_SESSION,
   type FanoutModuleHandle,
 } from "../../helpers/fanout-desktop.js";
@@ -49,7 +49,7 @@ function seams(handle: FanoutModuleHandle) {
       await new Promise((resolve) => setTimeout(resolve, 50));
       return runCuaActorSession({
         ...options,
-        openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+        participant: scriptedParticipant(TWO_TURN_SESSION),
       });
     },
   };

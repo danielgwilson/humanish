@@ -65,7 +65,10 @@ interface AdmittedStudy {
   subjectRepo: string;
   subjectEnvNames: string[];
   checkpoints: StudySubjectStateCheckpoint[];
+  /** The lobby-code reader's OpenAI key. */
   openaiApiKey: string;
+  /** The key of a provider-key brain's vendor; empty for a local-agent brain. */
+  participantApiKey: string;
   e2bApiKey: string;
   secrets: RunSecrets;
   publicRepo: string;
@@ -147,7 +150,7 @@ export async function prepareConcurrentRun(
 > {
   const { plan, input, config, requestedCwd, deps, env, descriptor, planeClass, fail } = study;
   const { runSession, localTreeRoute, subjectEnvNames, publicRepo } = study;
-  const { openaiApiKey, e2bApiKey, secrets } = study;
+  const { openaiApiKey, participantApiKey, e2bApiKey, secrets } = study;
   const { dryRun, concurrency } = plan;
   const cwd = await bindPhysicalProject(requestedCwd);
   const warnings: string[] = [];
@@ -234,6 +237,7 @@ export async function prepareConcurrentRun(
     concurrency,
     runSession,
     openaiApiKey,
+    participantApiKey,
     e2bApiKey,
     scrubKnownValues: run.secrets.scrub,
     cwd,

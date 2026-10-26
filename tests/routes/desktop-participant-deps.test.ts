@@ -303,7 +303,7 @@ const SHARED_KEYS = [
   "now",
   "onStream",
   "onTrace",
-  "openaiApiKey",
+  "participantApiKey",
   "participantCount",
   "prepareDesktop",
   "redactScreenshots",
@@ -340,8 +340,12 @@ describe("computer use hands each participant the run's deps", () => {
     expect(keysOf(shared)).toEqual(
       [...SHARED_KEYS, "appUrl", "runBudget", "sandboxProvider", "signalReady"].sort(),
     );
-    expect(shared.brain).toEqual({ kind: "openai", model: expect.any(String) });
-    expect(shared.openaiApiKey).toBe(ENV.OPENAI_API_KEY);
+    expect(shared.brain).toEqual({
+      kind: "provider-key",
+      vendor: "openai",
+      model: expect.any(String),
+    });
+    expect(shared.participantApiKey).toBe(ENV.OPENAI_API_KEY);
     expect(shared.e2bApiKey).toBe(ENV.E2B_API_KEY);
     expect(shared.caps).toEqual({ maxUsd: 1, maxTotalUsd: 2 });
     expect(shared.runBudget?.maxTotalUsd).toBe(2);
@@ -367,7 +371,7 @@ describe("computer use hands each participant the run's deps", () => {
     expect(sessions).toHaveLength(2);
     for (const session of sessions) {
       expect(session.provider).toBeUndefined();
-      expect(session.openai?.apiKey).toBe(ENV.OPENAI_API_KEY);
+      expect(session.participant?.options.apiKey).toBe(ENV.OPENAI_API_KEY);
       expect(session.maxUsd).toBe(1);
       expect(session.estimateTurnCostUsd).toBeDefined();
       expect(session.overRunBudget).toBeDefined();
@@ -409,7 +413,7 @@ describe("computer use hands each participant the run's deps", () => {
     expect(result.ok).toBe(true);
     const shared = onlyDeps(participantDeps());
     expect(shared.brain).toEqual({ kind: "local-agent", agent });
-    expect(shared.openaiApiKey).toBe("");
+    expect(shared.participantApiKey).toBe("");
     expect(sessions.map((session) => session.provider?.id)).toEqual([provider, provider]);
   });
 });
@@ -569,8 +573,12 @@ describe("shared world hands each participant the run's deps", () => {
     expect(keysOf(shared)).toEqual(
       [...SHARED_KEYS, "appUrl", "runBudget", "screenMismatchPolicy"].sort(),
     );
-    expect(shared.brain).toEqual({ kind: "openai", model: expect.any(String) });
-    expect(shared.openaiApiKey).toBe(ENV.OPENAI_API_KEY);
+    expect(shared.brain).toEqual({
+      kind: "provider-key",
+      vendor: "openai",
+      model: expect.any(String),
+    });
+    expect(shared.participantApiKey).toBe(ENV.OPENAI_API_KEY);
     expect(shared.e2bApiKey).toBe(ENV.E2B_API_KEY);
     expect(shared.caps).toEqual({ maxUsd: 1, maxTotalUsd: 2 });
     expect(shared.runBudget?.maxTotalUsd).toBe(2);
@@ -597,7 +605,7 @@ describe("shared world hands each participant the run's deps", () => {
     expect(sessions).toHaveLength(2);
     for (const session of sessions) {
       expect(session.provider).toBeUndefined();
-      expect(session.openai?.apiKey).toBe(ENV.OPENAI_API_KEY);
+      expect(session.participant?.options.apiKey).toBe(ENV.OPENAI_API_KEY);
       expect(session.maxUsd).toBe(1);
       expect(session.overRunBudget).toBeDefined();
     }
@@ -639,7 +647,7 @@ describe("shared world hands each participant the run's deps", () => {
       expect(result.ok).toBe(true);
       const shared = onlyDeps(participantDeps());
       expect(shared.brain).toEqual({ kind: "local-agent", agent });
-      expect(shared.openaiApiKey).toBe("");
+      expect(shared.participantApiKey).toBe("");
       expect(sessions.map((session) => session.provider?.id)).toEqual([provider, provider]);
     },
   );

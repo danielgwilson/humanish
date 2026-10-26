@@ -1,4 +1,4 @@
-// The registry-facing wrapper for the OpenAI Computer Use (CUA) actor. runComputerUseLoop needs
+// The registry-facing wrapper for the API-keyed computer-use actor. runComputerUseLoop needs
 // fully-constructed provider/executor instances; exposing that raw through the actor registry
 // would leak adapter construction to every call site. So runCuaActorSession takes intent-level
 // fields and constructs the provider/executor internally, with DI seams (provider/executor/now)
@@ -24,9 +24,10 @@ import {
   type E2BDesktopLike,
 } from "../../substrates/e2b/desktop-executor.js";
 import {
-  createOpenAiResponsesProvider,
-  type OpenAiResponsesProviderOptions,
-} from "./openai-provider.js";
+  PARTICIPANT_VENDORS,
+  type ParticipantProviderOptions,
+  type ParticipantVendor,
+} from "./providers.js";
 import { defaultRedactionHooks, type RedactionHooks } from "../../evidence/redaction.js";
 import type { DwellWindow, StopWhen } from "../stop-conditions.js";
 import { estimateActorCostForExecution } from "../../run/pricing.js";
@@ -41,8 +42,8 @@ export interface CuaActorSessionOptions {
   timeoutMs: number;
   signal?: AbortSignal;
 
-  /** Live provider construction (used when `provider` is not injected). */
-  openai?: OpenAiResponsesProviderOptions;
+  /** The API participant the session builds when `provider` is not injected. */
+  participant?: { vendor: ParticipantVendor; options: ParticipantProviderOptions };
   /** Live executor construction (used when `executor` is not injected). */
   desktop?: E2BDesktopLike;
   executorOptions?: E2BDesktopExecutorOptions;
@@ -51,7 +52,7 @@ export interface CuaActorSessionOptions {
    * DI seams: inject to bypass live construction (CI uses these for zero-spend tests; library
    * callers use them to drive a state-driven, non-vision flow). NOTE: a state executor (one
    * whose observe() returns no screenshot; see CuaObservation.screenshot optional) must be
-   * paired with a non-vision provider (requiresFrame falsey). The default OpenAI provider is
+   * paired with a non-vision provider (requiresFrame falsey). A `participant` provider is
    * vision-based and would fail closed against a screenshot-less observation. See
    * docs/architecture/state-driven-executor.md.
    */
@@ -97,7 +98,7 @@ export interface CuaActorSessionOptions {
   /** Run-level spend guard threaded to the loop. See CuaLoopOptions.overRunBudget. */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
   /** Stricter unknown-usage policy for capped sessions (see CuaLoopOptions); it also makes the
-   *  OpenAI provider send one HTTP dispatch per turn. Library-only. */
+   *  `participant` provider send one HTTP dispatch per turn. Library-only. */
   requireReportedUsageForSpendCap?: boolean;
   /** Runtime-only observed-URL callback threaded to the loop; see LoopTaps.onObservedUrl. Used by
    *  the concurrent shared-world handoff barrier to latch a host's live /lobby/CODE URL. */
@@ -119,13 +120,15 @@ export interface CuaActorSessionOptions {
 }
 
 export async function runCuaActorSession(options: CuaActorSessionOptions): Promise<CuaLoopResult> {
-  if (options.provider && options.openai?.maxOutputTokens !== undefined) {
-    throw new Error("openai.maxOutputTokens cannot be enforced by an injected provider.");
+  if (options.provider && options.participant?.options.maxOutputTokens !== undefined) {
+    throw new Error(
+      "participant.options.maxOutputTokens cannot be enforced by an injected provider.",
+    );
   }
   const strictSpend =
     options.requireReportedUsageForSpendCap === true &&
     (options.maxUsd !== undefined || options.overRunBudget !== undefined);
-  const provider = options.provider ?? defaultProvider(options.openai, strictSpend);
+  const provider = options.provider ?? defaultProvider(options.participant, strictSpend);
   const executor = options.executor ?? defaultExecutor(options.desktop, options.executorOptions);
 
   const loopOptions: LoopRunOptions = {
@@ -181,16 +184,16 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
 }
 
 function defaultProvider(
-  openai: OpenAiResponsesProviderOptions | undefined,
-  strictSpend = false,
+  participant: CuaActorSessionOptions["participant"],
+  strictSpend: boolean,
 ): CuaProvider {
-  if (!openai) {
+  if (!participant) {
     throw new Error(
-      "A computer-use session requires either `provider` (injected) or `openai` provider options.",
+      "A computer-use session requires either `provider` (injected) or `participant` provider options.",
     );
   }
-  return createOpenAiResponsesProvider({
-    ...openai,
+  return PARTICIPANT_VENDORS[participant.vendor].create({
+    ...participant.options,
     ...(strictSpend ? { singleDispatch: true } : {}),
   });
 }

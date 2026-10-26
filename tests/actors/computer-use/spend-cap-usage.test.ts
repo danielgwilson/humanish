@@ -278,12 +278,15 @@ describe("a capped OpenAI session whose transport fails", () => {
       persona: { id: "synthetic", traitsApplied: [], promptDigest: "fixture" },
       timeoutMs: 5000,
       ...(caps.maxUsd === undefined ? {} : { maxUsd: caps.maxUsd, estimateTurnCostUsd: estimate }),
-      openai: {
-        apiKey: "synthetic-key",
-        model: MODEL,
-        fetchFn,
-        delayFn: async () => {},
-        ...(caps.maxOutputTokens === undefined ? {} : { maxOutputTokens: caps.maxOutputTokens }),
+      participant: {
+        vendor: "openai",
+        options: {
+          apiKey: "synthetic-key",
+          model: MODEL,
+          fetchFn,
+          delayFn: async () => {},
+          ...(caps.maxOutputTokens === undefined ? {} : { maxOutputTokens: caps.maxOutputTokens }),
+        },
       },
       executor: {
         observe: async () => ({ screenshot: frame, stateSignature: `frame-${screen++}` }),

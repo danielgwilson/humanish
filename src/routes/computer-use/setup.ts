@@ -9,6 +9,7 @@ import type { RefusedStudy } from "../../run/route-shell.js";
 import { externalInboxUrl } from "../../comms/sandbox-catch.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { RunSecrets } from "../../run/secrets.js";
+import { participantKeys } from "../../actors/computer-use/providers.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { StudyCommsEmail, StudyCommsExternal, StudyConfig } from "../../study/types.js";
 import { type RunRerunLineage, type RunSubjectProvenance } from "../../run/bundle.js";
@@ -229,11 +230,12 @@ export async function admitCuaRun(
   await assertPreparedSelectedOutputDirectory(projectRoot);
 
   // Read keys once into locals (names only; values never logged or persisted).
-  const openaiApiKey = env.OPENAI_API_KEY?.trim() ?? "";
+  const { brain } = plan.runner;
+  const participantApiKey = brain.kind === "provider-key" ? participantKeys(env)[brain.vendor] : "";
   const e2bApiKey = env.E2B_API_KEY?.trim() ?? "";
 
   // Every known key and subject value, scrubbed literally, in dry and in-process runs too.
-  const secrets = new RunSecrets([openaiApiKey, e2bApiKey, ...otherValues(env, subjectEnvNames)]);
+  const secrets = new RunSecrets([e2bApiKey, ...otherValues(env, subjectEnvNames)]);
   sanitizeParticipantRuns(participantRuns, secrets.scrub);
   const desktopFiles = await readStudyDesktopFiles(input.cwd, plan, participantRuns, secrets.scrub);
   if (!desktopFiles.ok)
@@ -310,7 +312,7 @@ export async function admitCuaRun(
       participantPlan,
       rerunLineage,
       participantCount,
-      openaiApiKey,
+      participantApiKey,
       e2bApiKey,
       secrets,
       publicRepo,
@@ -479,7 +481,7 @@ function cuaParticipantDeps(
       brain: plan.runner.brain,
       subject: plan.runner.subject,
       env,
-      openaiApiKey: admitted.openaiApiKey,
+      participantApiKey: admitted.participantApiKey,
       e2bApiKey: admitted.e2bApiKey,
       timeoutMs: plan.sessionBudgetMs,
       sandboxMs: plan.sandboxMs,
@@ -546,6 +548,8 @@ function subjectPhaseReporter(
  */
 function otherValues(env: Readonly<Record<string, string | undefined>>, subjectEnv: string[]) {
   return [
+    // Every vendor's key, whichever vendor this run's participants use.
+    ...Object.values(participantKeys(env)),
     env.MODAL_TOKEN_ID?.trim() ?? "",
     env.MODAL_TOKEN_SECRET?.trim() ?? "",
     ...subjectEnv.map((name) => env[name] ?? ""),

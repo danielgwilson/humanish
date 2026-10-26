@@ -14,7 +14,7 @@ import { parseStudy } from "../../../src/study/config.js";
 import { lab } from "../../admission/fixtures.js";
 import {
   makeFanoutModule,
-  scriptedFetch,
+  scriptedParticipant,
   TWO_TURN_SESSION,
   type FanoutModuleOptions,
 } from "../../helpers/fanout-desktop.js";
@@ -53,7 +53,7 @@ async function runOne(patch: Record<string, unknown>, fakes: FanoutModuleOptions
       runSession: async (session) =>
         runCuaActorSession({
           ...session,
-          openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+          participant: scriptedParticipant(TWO_TURN_SESSION),
         }),
     },
   );

@@ -7,9 +7,9 @@ import { pricedModel } from "../../src/study/plan-base.js";
 
 describe("the model a participant's spend is priced at when its provider reports none", () => {
   it("is the model an OpenAI computer-use participant runs", () => {
-    expect(pricedModel({ kind: "openai", model: DEFAULT_OPENAI_CU_MODEL })).toBe(
-      DEFAULT_OPENAI_CU_MODEL,
-    );
+    expect(
+      pricedModel({ kind: "provider-key", vendor: "openai", model: DEFAULT_OPENAI_CU_MODEL }),
+    ).toBe(DEFAULT_OPENAI_CU_MODEL);
   });
 
   it("is the declared model when the study names one", () => {

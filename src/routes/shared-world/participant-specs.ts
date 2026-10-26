@@ -168,7 +168,7 @@ export function participantRunDeps(
         ...(config.subject.serve?.url === undefined ? {} : { serveUrl: config.subject.serve.url }),
       },
       env: ctx.env,
-      openaiApiKey: ctx.openaiApiKey,
+      participantApiKey: ctx.participantApiKey,
       e2bApiKey: ctx.e2bApiKey,
       timeoutMs: ctx.timeoutMs,
       sandboxMs: ctx.timeoutMs + sandboxHeadroomMs(),

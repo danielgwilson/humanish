@@ -40,7 +40,8 @@
           "desktop": "e2b-desktop",
           "provider": "e2b",
           "brain": {
-            "kind": "openai",
+            "kind": "provider-key",
+            "vendor": "openai",
             "model": "gpt-6.1-sol"
           },
           "participants": [
@@ -297,7 +298,8 @@
           "desktop": "e2b-desktop",
           "provider": "e2b",
           "brain": {
-            "kind": "openai",
+            "kind": "provider-key",
+            "vendor": "openai",
             "model": "gpt-6.1-sol"
           },
           "participants": [
@@ -412,7 +414,8 @@
           "desktop": "e2b-desktop",
           "provider": "e2b",
           "brain": {
-            "kind": "openai",
+            "kind": "provider-key",
+            "vendor": "openai",
             "model": "gpt-6.1-sol"
           },
           "participants": [
@@ -790,7 +793,8 @@
           "desktop": "e2b-desktop",
           "provider": "e2b",
           "brain": {
-            "kind": "openai",
+            "kind": "provider-key",
+            "vendor": "openai",
             "model": "gpt-6.1-sol"
           },
           "participants": [

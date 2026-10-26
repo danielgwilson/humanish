@@ -147,7 +147,10 @@ describe("the OpenAI provider after a cut-off reply", () => {
       instructions: "Synthetic output-limit session.",
       persona: { id: "synthetic", traitsApplied: [], promptDigest: "fixture" },
       timeoutMs: 5000,
-      openai: { apiKey: "synthetic-key", model: "gpt-5.6-sol", fetchFn, maxOutputTokens: 8192 },
+      participant: {
+        vendor: "openai",
+        options: { apiKey: "synthetic-key", model: "gpt-5.6-sol", fetchFn, maxOutputTokens: 8192 },
+      },
       executor: {
         // The same frame each time, so a resent request carries the same screenshot.
         observe: async () => ({ screenshot: frame, stateSignature: `frame-${screen++}` }),

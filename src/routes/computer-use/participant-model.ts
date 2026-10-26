@@ -10,6 +10,7 @@ import type {
 } from "../../actors/computer-use/loop.js";
 import type { ActorConversation, ActorTokenUsage, ActorTraceItem } from "../../actors/contract.js";
 import type { CuaActorSessionOptions } from "../../actors/computer-use/actor.js";
+import type { ParticipantProviderOptions } from "../../actors/computer-use/providers.js";
 import { startClaudeSession } from "../../actors/local-agent/claude-session.js";
 import { createLocalAgentProvider } from "../../actors/local-agent/cli.js";
 import { pricedModel } from "../../study/plan-base.js";
@@ -136,7 +137,7 @@ export function participantSessionOptions(
   // The fail-closed spend cap (caps.maxUsd) is wired into the loop as maxUsd + an
   // injected pure per-turn estimator keyed on the resolved model. Preflight already refused a
   // cap on an unpriced model, so the estimate is measurable whenever a cap is in force. The
-  // model id here matches provider.version (openai-responses-cu resolves the default when unset).
+  // model id here matches provider.version (the provider resolves the default when unset).
   const capModelId = pricedModel(deps.brain);
   const maxUsd = deps.caps.maxUsd;
   return {
@@ -150,21 +151,14 @@ export function participantSessionOptions(
     // Everything below this line (loop, executor, trace, affordances) is identical either
     // way, which is what makes a local-agent run comparable to an API one.
     ...(provider === undefined ? {} : { provider: provider }),
-    openai: {
-      apiKey: deps.openaiApiKey,
-      ...(deps.brain.declaredModel ? { model: deps.brain.declaredModel } : {}),
-      // Per-participant, not per-actor: two participants at different efforts is the control this
-      // exists for.
-      ...(spec.planned.limits.reasoningEffort === undefined
-        ? {}
-        : { reasoningEffort: spec.planned.limits.reasoningEffort }),
-      ...(spec.planned.limits.maxOutputTokens === undefined
-        ? {}
-        : { maxOutputTokens: spec.planned.limits.maxOutputTokens }),
-      ...(spec.planned.limits.serviceTier === undefined
-        ? {}
-        : { serviceTier: spec.planned.limits.serviceTier }),
-    },
+    ...(deps.brain.kind === "provider-key"
+      ? {
+          participant: {
+            vendor: deps.brain.vendor,
+            options: participantProviderOptions(spec, deps),
+          },
+        }
+      : {}),
     ...(maxUsd === undefined
       ? {}
       : {
@@ -229,6 +223,26 @@ export function participantSessionOptions(
             metadata?: CuaLiveMetadata,
           ): void => deps.onTrace?.(spec.planned.id, items, usage, metadata),
         }),
+  };
+}
+
+/**
+ * What a provider-key participant's provider is built with. A model declared empty is left out, so
+ * the provider runs its default while the spend is priced at the declared "" (pricedModel).
+ */
+function participantProviderOptions(
+  spec: DesktopParticipantRun,
+  deps: ParticipantModelDeps,
+): ParticipantProviderOptions {
+  const { limits } = spec.planned;
+  return {
+    apiKey: deps.participantApiKey,
+    ...(deps.brain.declaredModel ? { model: deps.brain.declaredModel } : {}),
+    // Per-participant, not per-actor: two participants at different efforts is the control this
+    // exists for.
+    ...(limits.reasoningEffort === undefined ? {} : { reasoningEffort: limits.reasoningEffort }),
+    ...(limits.maxOutputTokens === undefined ? {} : { maxOutputTokens: limits.maxOutputTokens }),
+    ...(limits.serviceTier === undefined ? {} : { serviceTier: limits.serviceTier }),
   };
 }
 

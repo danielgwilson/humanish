@@ -4,6 +4,7 @@
 // host" stay checks in planStudy.
 
 import type { AnalysisConfig } from "../analysis/types.js";
+import type { ParticipantVendor } from "../actors/computer-use/providers.js";
 import type { LocalAgentId } from "../actors/local-agent/cli.js";
 import type { ReasoningEffort } from "../actors/reasoning-effort.js";
 import type { BrowserSurface } from "../actors/scripted-browser/types.js";
@@ -103,13 +104,19 @@ interface PreviewPlan extends PlanBase {
 }
 
 /**
- * The model driving a desktop participant. `caller` is the library caller's createProvider.
- * `declaredModel` is actor.model as the study wrote it, absent when undeclared: the providers
- * take it as written, and spend is priced at it, else the default (pricedModel). An openai
- * brain's `model` is the one its provider runs, with that default applied.
+ * The model driving a desktop participant. `provider-key` is an API participant on `vendor`, read
+ * with that vendor's key; `caller` is the library caller's createProvider. `declaredModel` is
+ * actor.model as the study wrote it, absent when undeclared: the providers take it as written, and
+ * spend is priced at it, else the default (pricedModel). A provider-key brain's `model` is the one
+ * its provider runs, with that default applied.
  */
 export type Brain =
-  | { readonly kind: "openai"; readonly model: string; readonly declaredModel?: string }
+  | {
+      readonly kind: "provider-key";
+      readonly vendor: ParticipantVendor;
+      readonly model: string;
+      readonly declaredModel?: string;
+    }
   | { readonly kind: "local-agent"; readonly agent: LocalAgentId; readonly declaredModel?: string }
   | { readonly kind: "caller"; readonly declaredModel?: string };
 
@@ -226,7 +233,7 @@ export interface SharedWorldPlan extends PlanBase {
   readonly arrivals: ArrivalPlan;
   /** Each participant's session budget: execution.timeoutMs, else the plane's derived default. */
   readonly sessionTimeoutMs: number;
-  readonly brain: Extract<Brain, { kind: "openai" | "local-agent" }>;
+  readonly brain: Extract<Brain, { kind: "provider-key" | "local-agent" }>;
   readonly caps: { readonly maxUsd?: number; readonly maxTotalUsd?: number };
 }
 

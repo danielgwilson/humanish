@@ -1,6 +1,7 @@
 import { ReadableStream } from "node:stream/web";
 import { PNG } from "pngjs";
 
+import type { CuaActorSessionOptions } from "../../src/actors/computer-use/actor.js";
 import type { FetchLike } from "../../src/actors/computer-use/openai-provider.js";
 import type {
   E2BCommandRunOptions,
@@ -42,6 +43,14 @@ export function scriptedFetch(responses: unknown[]): FetchLike {
       json: async () => value,
     };
   };
+}
+
+/** A session's OpenAI participant whose requests get `responses` in order, and no network. */
+export function scriptedParticipant(
+  responses: unknown[],
+  apiKey = "test-openai-key",
+): NonNullable<CuaActorSessionOptions["participant"]> {
+  return { vendor: "openai", options: { apiKey, fetchFn: scriptedFetch(responses) } };
 }
 
 export const TWO_TURN_SESSION = [

@@ -20,7 +20,11 @@ import {
   type CuaActorSessionOptions,
 } from "../../../src/actors/computer-use/actor.js";
 import type { E2BDesktopCreateOptions, E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
-import { makeFanoutModule, scriptedFetch, TWO_TURN_SESSION } from "../../helpers/fanout-desktop.js";
+import {
+  makeFanoutModule,
+  scriptedParticipant,
+  TWO_TURN_SESSION,
+} from "../../helpers/fanout-desktop.js";
 import { fakeHostClock } from "../../helpers/host-clock.js";
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
@@ -275,7 +279,7 @@ describe("a run whose participants come through a host suspension", () => {
           await host.sleepThrough();
           return runCuaActorSession({
             ...options,
-            openai: { apiKey: "test-openai-key", fetchFn: scriptedFetch(TWO_TURN_SESSION) },
+            participant: scriptedParticipant(TWO_TURN_SESSION),
           });
         },
       },

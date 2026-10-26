@@ -24,7 +24,7 @@ interface DesktopRunFacts {
   subject: CuaParticipantDeps["subject"];
   /** The run's env. The E2B request timeout is read from it. */
   env: CuaParticipantDeps["env"];
-  openaiApiKey: string;
+  participantApiKey: string;
   e2bApiKey: string;
   /** Each participant's session budget. */
   timeoutMs: number;
@@ -89,7 +89,7 @@ export function desktopParticipantDeps(
     brain: run.brain,
     subject: run.subject,
     env: run.env,
-    openaiApiKey: run.openaiApiKey,
+    participantApiKey: run.participantApiKey,
     e2bApiKey: run.e2bApiKey,
     requestTimeoutMs: e2bRequestTimeoutMs(run.env),
     sandboxMs: run.sandboxMs,
