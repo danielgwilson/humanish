@@ -118,7 +118,7 @@ try {
   const html = `<!doctype html><meta charset="utf-8"><title>NoteShelf native input proof</title>
 <style>body{font:20px system-ui;margin:28px;background:#f7f8fb}textarea{width:780px;height:100px;font:20px monospace}button{font-size:20px;padding:10px}#pad{width:400px;height:130px;background:#dbeafe;margin-top:24px}#spacer{height:1600px}</style>
 <h1>NoteShelf</h1><label for="note">Draft</label><br><textarea id="note" autofocus></textarea><br><button id="save">Save note</button><p id="count">Saved 0</p><div id="pad">Pointer test area</div><p id="para">Alpha bravo charlie delta echo.</p><div id="spacer"></div><p>End of page</p>
-<script>window.proof={saves:0,downs:0,ups:0,moves:0,double:0,savedText:null,clicks:[],buttons:[],keys:[],details:[]};save.onclick=()=>{proof.saves++;proof.savedText=note.value;count.textContent='Saved '+proof.saves};pad.onmousedown=(e)=>{proof.downs++;proof.buttons.push(['down',e.button,e.screenX,e.screenY])};pad.onmouseup=(e)=>{proof.ups++;proof.buttons.push(['up',e.button,e.screenX,e.screenY])};pad.onmousemove=()=>proof.moves++;pad.ondblclick=()=>proof.double++;pad.onclick=(e)=>proof.clicks.push({shift:e.shiftKey,ctrl:e.ctrlKey,alt:e.altKey});para.onclick=(e)=>proof.details.push(e.detail);pad.oncontextmenu=(e)=>e.preventDefault();addEventListener('keydown',(e)=>proof.keys.push(['down',e.key,performance.now()]));addEventListener('keyup',(e)=>proof.keys.push(['up',e.key,performance.now()]));</script>`;
+<script>window.proof={saves:0,downs:0,ups:0,moves:0,double:0,savedText:null,clicks:[],buttons:[],keys:[],details:[]};save.onclick=()=>{proof.saves++;proof.savedText=note.value;count.textContent='Saved '+proof.saves};pad.onmousedown=(e)=>{proof.downs++;proof.buttons.push(['down',e.button,e.screenX,e.screenY])};pad.onmouseup=(e)=>{proof.ups++;proof.buttons.push(['up',e.button,e.screenX,e.screenY])};pad.onmousemove=()=>proof.moves++;pad.ondblclick=()=>proof.double++;pad.onclick=(e)=>proof.clicks.push({shift:e.shiftKey,ctrl:e.ctrlKey,alt:e.altKey});para.onclick=(e)=>proof.details.push(e.detail);pad.oncontextmenu=(e)=>e.preventDefault();addEventListener('keydown',(e)=>proof.keys.push(['down',e.key,performance.now(),e.code]));addEventListener('keyup',(e)=>proof.keys.push(['up',e.key,performance.now()]));</script>`;
   server = createServer((req, res) => {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     res.end(html);
@@ -576,6 +576,39 @@ try {
     const heldMs = Math.round(up[2] - down[2]);
     assert.ok(heldMs >= 700, "shift came up after " + heldMs + " ms");
     return { heldMs };
+  });
+  await test("X keysym names reach the page as their keys", async () => {
+    const expected = {
+      Prior: "PageUp",
+      Next: "PageDown",
+      KP_Enter: "NumpadEnter",
+      KP_7: "Numpad7",
+      KP_Home: "Home",
+      ISO_Left_Tab: "Tab",
+      minus: "Minus",
+    };
+    const codes = {};
+    for (const [name, code] of Object.entries(expected)) {
+      await action({ kind: "click", ...(await target("#pad")) });
+      const before = await page.evaluate(() => proof.keys.length);
+      await key(name);
+      await page.waitForFunction(
+        (count) =>
+          proof.keys
+            .slice(count)
+            .some(
+              ([type, , , code]) =>
+                type === "down" && code && !/^(Shift|Control|Alt|Meta)|^NumLock$/.test(code),
+            ),
+        before,
+      );
+      codes[name] = (await page.evaluate(() => proof.keys))
+        .slice(before)
+        .filter(([type]) => type === "down")
+        .map(([, , , code]) => code);
+      assert.ok(codes[name].includes(code), name + " arrived as " + codes[name].join(","));
+    }
+    return { codes };
   });
   await test("pointer read returns the pointer position", async () => {
     await action({ kind: "move", x: 321, y: 432 });

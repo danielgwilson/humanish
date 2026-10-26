@@ -19,8 +19,12 @@ The actor receives the existing finite action union. Native tool paths, display,
 Xauthority and guest temporary directory come from the owner. Key names map to a
 closed list before reaching xdotool, whose own command syntax must never receive
 arbitrary participant strings. The list is `src/substrates/x11/keys.ts`. It holds OpenAI's
-computer-use key names, the names `@e2b/desktop`'s `press()` mapped, and every printable ASCII
-punctuation character as its keysym (`?` is `question`). A refused name reaches the participant
+computer-use key names, the names `@e2b/desktop`'s `press()` mapped, every printable ASCII
+punctuation character as its keysym (`?` is `question`) and by that name, and the X keysym names a
+model writing xdotool syntax sends (`Prior`, `Next`, `KP_Enter`, the keypad digits and operators,
+`ISO_Left_Tab`, `Control_L` and the other sided modifiers). The keypad's navigation names
+(`KP_Home`, `KP_Page_Down`) map to the main keys, since xdotool reaches the keypad through Num Lock
+and a sent `KP_Home` arrived as `7`. A refused name reaches the participant
 as a rejected action. The guest and the hosted E2B and Modal desktops translate every action
 through one module, `src/substrates/x11/translator.ts`, so a key name works on every desktop or
 is refused on all of them. The guest's own choices there (frame checks, wheel steps, the drag

@@ -373,6 +373,31 @@ const ADDED_ROWS: readonly Row[] = [
     guest: REFUSED,
   },
   {
+    name: "a keypress may name X keysyms, as a model writing xdotool syntax does",
+    action: { kind: "keypress", keys: ["ctrl+Prior"] },
+    hosted: [key("key --clearmodifiers ctrl+Prior")],
+    guest: ["input key --clearmodifiers ctrl+Prior"],
+  },
+  {
+    name: "a keypad Enter is its own key",
+    action: { kind: "keypress", keys: ["KP_Enter"] },
+    hosted: [key("key --clearmodifiers KP_Enter")],
+    guest: ["input key --clearmodifiers KP_Enter"],
+  },
+  {
+    name: "a keysym alias reaches xdotool as the table's name",
+    action: { kind: "keypress", keys: ["Page_Down"] },
+    hosted: [key("key --clearmodifiers Next")],
+    guest: ["input key --clearmodifiers Next"],
+  },
+  {
+    name: "a held keypad key goes down and up by its keysym",
+    action: { kind: "hold_keys", keys: ["KP_Add"], ms: 0 },
+    hosted: [key("keydown KP_Add"), key("keyup KP_Add")],
+    e2b: [key("keydown KP_Add"), "sleep 0", key("keyup KP_Add")],
+    guest: ["input keydown KP_Add", "input keyup KP_Add"],
+  },
+  {
     name: "a pointer read reads the pointer and sends no input",
     action: { kind: "read_pointer" },
     pointer: { x: 321, y: 123 },

@@ -22,6 +22,7 @@ export const GUEST_PROOF_CASES = Object.freeze({
     "triple click selects a paragraph",
     "button presses and releases at a point and in place",
     "held keys stay down for the hold and come up",
+    "X keysym names reach the page as their keys",
     "pointer read returns the pointer position",
     "zoom returns a fresh crop of the frame",
   ],

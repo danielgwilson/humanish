@@ -29,6 +29,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   `read_pointer` or `{ kind: "frame", screenshot }` for `zoom`. The loop passes it to the provider
   in that action's acknowledgement (`previousExecution.actions[i].result`). An executor that
   returns nothing is unchanged.
+- Keypresses and held keys accept the X keysym names a model writing xdotool syntax sends:
+  `Prior`, `Next`, `KP_Enter`, `KP_0` to `KP_9`, the keypad operators, `ISO_Left_Tab`, the sided
+  modifiers (`Control_L`, `Shift_R` and the rest) and punctuation keysym names such as `minus`. The
+  keypad's navigation names (`KP_Home`, `KP_Page_Down` and the rest) press the main keys. Before,
+  each of these was rejected before dispatch.
 
 ### Changed
 
