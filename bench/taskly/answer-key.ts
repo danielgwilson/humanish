@@ -1,13 +1,14 @@
 // The answer key for the Taskly fixture: every claim class the scorer knows, what makes a sentence
 // carry that claim, and whether the claim is true of each build. bench/taskly-planted and
-// bench/taskly-clean differ only in app.js; bench/DEFECTS.md describes the five mutations.
+// bench/taskly-clean differ only in app.js; bench/DEFECTS.md describes the five mutations. The
+// -local builds add localStorage to each, which only B10's truth depends on.
 //
 // Patterns run on normalized text (lower case, straight quotes, no Markdown emphasis; see
 // bench/lib/text.ts). They are deliberately specific to this app. A change to any pattern or truth
 // value is a new rubric version, and results carry the version and a digest of this file.
 
 export const RUBRIC_ID = "taskly-rubric";
-export const RUBRIC_VERSION = 2;
+export const RUBRIC_VERSION = 3;
 
 export type Arm = "planted" | "clean";
 export type DefectId = "D1" | "D2" | "D3" | "D4" | "D5";
@@ -16,12 +17,17 @@ export const DEFECT_IDS: readonly DefectId[] = ["D1", "D2", "D3", "D4", "D5"];
 /**
  * Whether a claim holds on a build. `typed-over-120` holds only when the participant typed more
  * than 120 characters in one action: the add box's `maxlength="120"` (index.html) is the one way
- * a clean build shortens text.
+ * a clean build shortens text. `memory-storage` holds only on the builds that keep tasks in memory.
  */
-export type Truth = "true" | "false" | "typed-over-120";
+export type Truth = "true" | "false" | "typed-over-120" | "memory-storage";
 
-/** Facts from the retained evidence that a claim's truth or a harness attribution can depend on. */
+/** Where the served build keeps its tasks: in memory, lost on reload, or in localStorage. */
+export type Storage = "memory" | "local";
+
+/** Facts that a claim's truth or a harness attribution can depend on. */
 export interface EvidenceFacts {
+  /** The served build's storage. The trace does not show it, so it comes from the bench manifest. */
+  storage: Storage;
   /** The longest single typing action in the participant's trace, in characters. */
   maxTypedChars: number | null;
   /** The trace carries a provider stall or retry notice. */
@@ -300,8 +306,8 @@ export const BASELINE: readonly BaselineClaim[] = [
     kind: "baseline",
     id: "B10",
     label: "Tasks do not survive a page reload",
-    source: "bench/taskly-*/app.js: tasks live in memory only",
-    truth: { planted: "true", clean: "true" },
+    source: "bench/taskly-{planted,clean}/app.js: tasks live in memory only; the -local builds store them",
+    truth: { planted: "memory-storage", clean: "memory-storage" },
     claim: [
       re(String.raw`\b(?:refresh\w*|reload\w*)\b[^.]{0,60}\b(?:erased?|lost|cleared|wiped|gone|disappeared|reset|emptied|empty|blank)\b`),
       re(String.raw`\b(?:losing|lost|loses) (?:the|my|all) (?:list|tasks)\b[^.]{0,20}\b(?:on|after) (?:a )?(?:refresh|reload)\b`),

@@ -2,7 +2,7 @@
 // its order and with its codes, then the plan the run uses. The route checks nothing here again;
 // what stays in the route reads external state (keys, the runtime env, the sandbox).
 
-import { DEFAULT_OPENAI_CU_MODEL } from "../../actors/computer-use/openai-provider.js";
+import { DEFAULT_CODEX_MODEL } from "../../actors/computer-use/openai-provider.js";
 import { resolveAutomaticAnalysis } from "../../analysis/automatic-config.js";
 import { isReasoningEffort } from "../../actors/reasoning-effort.js";
 import { actorRegistry, isTerminalActorDescriptor } from "../../actors/registry.js";
@@ -145,7 +145,7 @@ export function planTerminalStudy(
       // Codex's own default can change with any release and its JSON stream does not name it, so
       // the route always passes a model: the declared one, else humanish's participant default.
       ...(actor?.model === undefined
-        ? { model: DEFAULT_OPENAI_CU_MODEL, modelSource: "humanish_default" as const }
+        ? { model: DEFAULT_CODEX_MODEL, modelSource: "humanish_default" as const }
         : { model: actor.model, modelSource: "declared" as const }),
       ...(actor?.reasoningEffort === undefined ? {} : { reasoningEffort: actor.reasoningEffort }),
       ...(config.execution?.runtimeAuth === undefined

@@ -33,6 +33,14 @@ Both arms get the same personas, the same mission, and the same number of runs.
 [the benchmark README](../docs/evidence/benchmark/README.md) defines each score and lists the
 dated results.
 
+## localStorage builds, 2026-10-25
+
+`bench/taskly-planted-local/app.js` and `bench/taskly-clean-local/app.js` are the two builds' `app.js`
+with a load from localStorage at start and a save on every render. Edit mode is not saved, so a
+reload closes an open edit. Nothing else changed: D1 to D5 and the baseline behaviors are the same,
+and both serve the in-memory builds' `index.html`. On these builds a page reload keeps the list, so
+the rubric counts a lost-on-reload claim (B10) as invented. `pnpm bench --storage local` serves them.
+
 ## Baseline retained — 2026-09-06
 
 [#652](https://github.com/danielgwilson/humanish/issues/652) is resolved by retaining the fixture

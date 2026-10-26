@@ -35,6 +35,7 @@ cost projection. It needs no keys and spends nothing. The live command writes
 | `--participant <model[@effort]>` | the CLI's default | The `openai-computer-use` participant's `actor.model` and `actor.reasoningEffort` |
 | `--service-tier fast`      | none                  | The participant's `actor.serviceTier`: OpenAI Fast mode on every request      |
 | `--persona <file>`         | `humanish/personas/synthetic-new-user.yaml` | The persona file the generated studies copy and name                |
+| `--storage <where>`        | `memory`              | `memory`: tasks are lost on a page reload. `local`: both builds keep tasks in localStorage (below) |
 | `--analysis-max-usd <usd>` | the admitted cost     | Override the automatic per-run cap with a fixed `humanish analyze --max-cost` |
 | `--analysis-max-output-tokens <n>` | 16384 | Each analysis's output limit, 256 to 32768, passed to `humanish analyze --max-output-tokens` |
 | `--no-analysis`            | off                   | Score participant reports only                                                |
@@ -73,6 +74,13 @@ Every child process gets `DO_NOT_TRACK=1`.
 5. With `--analysis-models` or `--analysis-repeats`, step 4 skips the analysis, and once every
    participant has run, each run is analyzed by every model (see "Compare analysis models").
 6. Scores every recorded run and writes the results file and summary.
+
+With `--storage local`, each build serves the `app.js` of `bench/taskly-planted-local` or
+`bench/taskly-clean-local` with the same `index.html`. Those files add a load from and a save to
+localStorage and change nothing else, so a page reload keeps the list and the five planted defects
+behave as on the in-memory builds. Each run gets a fresh desktop, so every run opens on an empty
+list. The manifest and results record the storage, the results' fixture id is `taskly-local`, and
+the results file name ends in `-local-storage`.
 
 ## Compare analysis models
 
@@ -230,7 +238,9 @@ applies it. Results carry the rubric id, version and the SHA-256 of the answer-k
 change is a new version, and `--rescore` reapplies the current rubric to old bundles.
 
 The arm label reaches the scorer only to look up whether a matched claim is true on that build.
-The matching never reads it.
+The matching never reads it. The build's storage, from the manifest, settles one claim: B10, tasks
+lost on a page reload, is true on the in-memory builds and invented on the localStorage builds.
+Rubric version 3 added that rule and scores the in-memory builds as version 2 did.
 
 `tests/bench/score.test.ts` checks the rubric against 32 recorded participant reports and 6
 analyses, with labels in `tests/fixtures/bench/taskly/labels.json`:
@@ -294,6 +304,9 @@ effort with low text verbosity, and at low effort on the same Taskly and movie-g
 settings over 40 runs each: `gpt-5.6-sol` at medium effort with and without Fast mode,
 `gpt-6.1-sol` at low and medium effort, and `gpt-6-luna` at medium effort, with latency, recall,
 false assurance, persona fidelity and cost per participant.
+[2026-10-25-participant-default.md](2026-10-25-participant-default.md) reruns `gpt-5.6-sol` and
+`gpt-6.1-sol` at medium effort, 30 runs each, on the localStorage builds (`--storage local`), and is
+the basis for the `gpt-6.1-sol` participant default.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where

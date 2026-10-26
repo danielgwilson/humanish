@@ -8,6 +8,25 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- `pnpm bench --storage local` runs the Taskly benchmark on builds that keep their tasks in
+  localStorage, so a page reload keeps the list. The five planted defects are unchanged. Rubric
+  version 3 counts a lost-on-reload claim as invented on those builds and scores the in-memory
+  builds as version 2 did.
+
+### Changed
+
+- A computer-use participant that names no `actor.model` now runs `gpt-6.1-sol` at medium effort,
+  in place of `gpt-5.6-sol`. On the Taskly builds that keep tasks across a reload, 15 planted and
+  15 clean runs each, analysis recall read by hand was 52/75 (95% interval 0.58 to 0.79) against
+  53/70 (0.65 to 0.84) for `gpt-5.6-sol`, and 42/75 against 48/70 by the rubric. It made no false
+  assurance and no invented claim on the clean build read by hand, against one false assurance
+  for `gpt-5.6-sol`. Its median participant cost was $0.071 against $0.216. It never reached
+  Clear completed on the planted build, there or in the 2026-10-24 runs. Studies that set
+  `actor.model` are unaffected, and the terminal route's Codex participant keeps `gpt-5.6-sol`.
+  The evidence is `docs/evidence/benchmark/2026-10-25-participant-default.md`.
+
 ## 0.147.0: Screenshots take half the space (2026-10-25)
 
 humanish 0.147.0 keeps a computer-use participant's screenshots as lossless WebP, 0.47 to 0.55 of

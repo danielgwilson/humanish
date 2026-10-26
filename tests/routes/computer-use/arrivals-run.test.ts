@@ -222,9 +222,9 @@ describe("a computer-use study with a declared schedule", () => {
 
   it("ends a budget-skipped participant's run line on its reason and counts it apart", async () => {
     const { result, subject } = await runPastBudget();
-    // 1M input tokens in one gpt-5.6-sol request: $4 per 1M, doubled past 272K input tokens.
+    // 1M input tokens in one gpt-6.1-sol request: $2 per 1M, doubled past 272K input tokens.
     const reason =
-      "skipped: study budget reached before this participant started: the run's estimated model spend $8 crossed caps.maxTotalUsd=$0.01; no desktop was created";
+      "skipped: study budget reached before this participant started: the run's estimated model spend $4 crossed caps.maxTotalUsd=$0.01; no desktop was created";
     const output = formatCuaStudyHuman(result, subject);
     const lines = (typeof output === "string" ? output : (output.stdout ?? "")).split("\n");
     expect(lines.filter((line) => line.startsWith("participant customer:"))).toEqual([

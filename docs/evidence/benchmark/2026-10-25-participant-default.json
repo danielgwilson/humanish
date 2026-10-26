@@ -1,0 +1,3919 @@
+{
+ "schema": "humanish.bench.participant-models.v1",
+ "date": "2026-10-25",
+ "humanish": "0.146.0, bench as of commit 62aa4b151 (adds --storage local)",
+ "analyst": "gpt-6.1-sol@medium (CLI default)",
+ "mission": "neutral",
+ "storage": "local (bench/taskly-*-local/app.js)",
+ "rubric": "taskly-rubric v3 (bench/taskly/answer-key.ts)",
+ "concurrency": "one bench invocation per arm, both at once, started about 8 s apart; each runs one participant at a time, starts at least 40 s apart; A0's last 3 runs ran alone",
+ "arms": {
+  "A0": {
+   "participant": "gpt-5.6-sol@medium",
+   "metrics": {
+    "arm": "A0",
+    "runs": 30,
+    "traced": 30,
+    "step_median": 4.490499973297119,
+    "step_p90": 6.957499980926514,
+    "steps_n": 356,
+    "model_median": 3.10099995136261,
+    "model_p90": 4.329499840736389,
+    "model_est_median": 3.091000199317932,
+    "model_est_p90": 4.329500198364258,
+    "model_est_n": 356,
+    "model_exact_median": 3.41949999332428,
+    "model_exact_n": 194,
+    "turns_median": 13.0,
+    "turns": [
+     15,
+     11,
+     12,
+     12,
+     15,
+     9,
+     15,
+     13,
+     16,
+     11,
+     17,
+     13,
+     14,
+     12,
+     14,
+     10,
+     14,
+     11,
+     16,
+     12,
+     14,
+     13,
+     14,
+     10,
+     14,
+     11,
+     16,
+     12,
+     10,
+     11
+    ],
+    "session_median_s": 69.011,
+    "outcomes": {
+     "passed/goal_satisfied": 30
+    },
+    "cost_median": 0.215505,
+    "cost_mean": 0.21590783333333333,
+    "cost_total": 6.477235,
+    "cost_unpriced": 0,
+    "acts_per_turn_mean": 2.452247191011236,
+    "acts_per_turn_median": 2.0,
+    "acts_per_turn_multi_share": 0.5561797752808989,
+    "acts_per_turn_max": 15,
+    "out_tokens_median": 76,
+    "exec_median": {
+     "screenshot": 0.001,
+     "click": 0.337,
+     "type": 1.001,
+     "keypress": 0.094,
+     "wait": 0.577
+    },
+    "stall_notices": 0,
+    "failed_actions": 0,
+    "run_errors": []
+   },
+   "recall": {
+    "report": {
+     "plantedUnits": 15,
+     "recall": {
+      "D1": "14/15",
+      "D2": "0/15",
+      "D3": "15/15",
+      "D4": "15/15",
+      "D5": "9/15"
+     },
+     "total": "53/75",
+     "total_rate": 0.707,
+     "wilson": [
+      0.596,
+      0.798
+     ],
+     "falseAssurance": {
+      "claims": 2,
+      "unitsWith": 2
+     },
+     "invented": {
+      "planted": 1,
+      "clean": 3
+     },
+     "inventedUnits": {
+      "planted": 1,
+      "clean": 3
+     },
+     "harness": 30,
+     "unresolved": 5,
+     "engaged": {
+      "D1": "15/15",
+      "D2": "0/15",
+      "D3": "15/15",
+      "D4": "15/15",
+      "D5": "15/15"
+     }
+    },
+    "analysis": {
+     "plantedUnits": 14,
+     "recall": {
+      "D1": "13/14",
+      "D2": "0/14",
+      "D3": "14/14",
+      "D4": "13/14",
+      "D5": "8/14"
+     },
+     "total": "48/70",
+     "total_rate": 0.686,
+     "wilson": [
+      0.57,
+      0.782
+     ],
+     "falseAssurance": {
+      "claims": 0,
+      "unitsWith": 0
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 0
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 0
+     },
+     "harness": 0,
+     "unresolved": 0
+    }
+   },
+   "rubricAnalysisInventedClean": 1,
+   "hand": {
+    "report": {
+     "recall": {
+      "D1": "14/15",
+      "D2": "0/15",
+      "D3": "15/15",
+      "D4": "15/15",
+      "D5": "12/15"
+     },
+     "total": "56/75",
+     "wilson": [
+      0.638,
+      0.831
+     ],
+     "plantedIndexes": {
+      "D1": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       12,
+       13,
+       14,
+       15
+      ],
+      "D2": [],
+      "D3": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13,
+       14,
+       15
+      ],
+      "D4": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13,
+       14,
+       15
+      ],
+      "D5": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       8,
+       9,
+       10,
+       12,
+       14,
+       15
+      ]
+     }
+    },
+    "analysis": {
+     "recall": {
+      "D1": "14/14",
+      "D2": "0/14",
+      "D3": "14/14",
+      "D4": "13/14",
+      "D5": "12/14"
+     },
+     "total": "53/70",
+     "wilson": [
+      0.645,
+      0.842
+     ],
+     "plantedIndexes": {
+      "D1": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       12,
+       13,
+       14,
+       15
+      ],
+      "D2": [],
+      "D3": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       12,
+       13,
+       14,
+       15
+      ],
+      "D4": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       9,
+       10,
+       12,
+       13,
+       14,
+       15
+      ],
+      "D5": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       8,
+       9,
+       10,
+       12,
+       14,
+       15
+      ]
+     }
+    },
+    "falseAssurancePlantedIndexes": [
+     11
+    ],
+    "inventedClean": {
+     "report": 0,
+     "analysis": 0
+    }
+   },
+   "spend": {
+    "participantUsd": 6.4772,
+    "desktopUsd": 0.3875,
+    "analysisUsd": 3.2912,
+    "totalUsd": 10.156
+   },
+   "analysisStates": {
+    "failed": 1,
+    "complete": 29
+   },
+   "rubricLines": [
+    {
+     "stage": "report",
+     "kind": "false_assurance",
+     "runId": "cua-2026-10-25T22-08-25-554Z-a5e6aab5",
+     "classId": "D5",
+     "quote": "editing opened a text field, but clicking save appeared to do nothing."
+    },
+    {
+     "stage": "report",
+     "kind": "invented_planted",
+     "runId": "cua-2026-10-25T22-44-36-909Z-42e9c1e8",
+     "classId": "B10",
+     "quote": "after reloading, the change was gone."
+    },
+    {
+     "stage": "report",
+     "kind": "invented_clean",
+     "runId": "cua-2026-10-25T22-58-30-006Z-7ed160f1",
+     "classId": "B10",
+     "quote": "refreshing reset the filter to all, though the tasks themselves remained."
+    },
+    {
+     "stage": "report",
+     "kind": "false_assurance",
+     "runId": "cua-2026-10-25T23-00-56-873Z-2c323c89",
+     "classId": "D1",
+     "quote": "clear completed removed finished tasks at first, but they returned after i reloaded the page."
+    },
+    {
+     "stage": "report",
+     "kind": "invented_clean",
+     "runId": "cua-2026-10-25T23-08-08-055Z-a7fc21be",
+     "classId": "B10",
+     "quote": "refreshing also reset the selected filter from completed to all, which differed from what i expected, though the tasks themselves were saved."
+    },
+    {
+     "stage": "report",
+     "kind": "invented_clean",
+     "runId": "cua-2026-10-25T23-18-06-051Z-40e7029c",
+     "classId": "B10",
+     "quote": "i edited pick up dry cleaning to pick up laundry from dry cleaner, completed two tasks, checked the active and completed filters, refreshed the page to confirm the list persisted, and cleared the completed items."
+    }
+   ]
+  },
+  "A3": {
+   "participant": "gpt-6.1-sol@medium",
+   "metrics": {
+    "arm": "A3",
+    "runs": 30,
+    "traced": 30,
+    "step_median": 3.746999979019165,
+    "step_p90": 6.4400001049041755,
+    "steps_n": 297,
+    "model_median": 2.3289999961853027,
+    "model_p90": 3.4227998733520515,
+    "model_est_median": 2.3510000705718994,
+    "model_est_p90": 3.4386000156402594,
+    "model_est_n": 297,
+    "model_exact_median": 3.569499969482422,
+    "model_exact_n": 30,
+    "turns_median": 11.0,
+    "turns": [
+     12,
+     11,
+     11,
+     11,
+     11,
+     11,
+     11,
+     10,
+     12,
+     11,
+     11,
+     12,
+     11,
+     10,
+     11,
+     11,
+     12,
+     11,
+     10,
+     11,
+     10,
+     9,
+     11,
+     11,
+     11,
+     10,
+     12,
+     11,
+     11,
+     11
+    ],
+    "session_median_s": 53.377,
+    "outcomes": {
+     "passed/goal_satisfied": 30
+    },
+    "cost_median": 0.07069,
+    "cost_mean": 0.07097966666666666,
+    "cost_total": 2.12939,
+    "cost_unpriced": 0,
+    "acts_per_turn_mean": 2.4242424242424243,
+    "acts_per_turn_median": 2,
+    "acts_per_turn_multi_share": 0.5420875420875421,
+    "acts_per_turn_max": 7,
+    "out_tokens_median": 53.0,
+    "exec_median": {
+     "click": 0.338,
+     "type": 1.2,
+     "keypress": 0.095,
+     "wait": 0.575,
+     "screenshot": 2.542
+    },
+    "stall_notices": 0,
+    "failed_actions": 0,
+    "run_errors": []
+   },
+   "recall": {
+    "report": {
+     "plantedUnits": 15,
+     "recall": {
+      "D1": "0/15",
+      "D2": "4/15",
+      "D3": "15/15",
+      "D4": "15/15",
+      "D5": "1/15"
+     },
+     "total": "35/75",
+     "total_rate": 0.467,
+     "wilson": [
+      0.358,
+      0.578
+     ],
+     "falseAssurance": {
+      "claims": 0,
+      "unitsWith": 0
+     },
+     "invented": {
+      "planted": 1,
+      "clean": 1
+     },
+     "inventedUnits": {
+      "planted": 1,
+      "clean": 1
+     },
+     "harness": 17,
+     "unresolved": 37,
+     "engaged": {
+      "D1": "0/15",
+      "D2": "0/15",
+      "D3": "13/15",
+      "D4": "15/15",
+      "D5": "14/15"
+     }
+    },
+    "analysis": {
+     "plantedUnits": 15,
+     "recall": {
+      "D1": "0/15",
+      "D2": "7/15",
+      "D3": "15/15",
+      "D4": "15/15",
+      "D5": "5/15"
+     },
+     "total": "42/75",
+     "total_rate": 0.56,
+     "wilson": [
+      0.447,
+      0.667
+     ],
+     "falseAssurance": {
+      "claims": 0,
+      "unitsWith": 0
+     },
+     "invented": {
+      "planted": 0,
+      "clean": 0
+     },
+     "inventedUnits": {
+      "planted": 0,
+      "clean": 0
+     },
+     "harness": 0,
+     "unresolved": 0
+    }
+   },
+   "rubricAnalysisInventedClean": 0,
+   "hand": {
+    "report": {
+     "recall": {
+      "D1": "0/15",
+      "D2": "7/15",
+      "D3": "15/15",
+      "D4": "15/15",
+      "D5": "15/15"
+     },
+     "total": "52/75",
+     "wilson": [
+      0.582,
+      0.786
+     ],
+     "plantedIndexes": {
+      "D1": [],
+      "D2": [
+       5,
+       6,
+       7,
+       8,
+       9,
+       11,
+       13
+      ],
+      "D3": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13,
+       14,
+       15
+      ],
+      "D4": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13,
+       14,
+       15
+      ],
+      "D5": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13,
+       14,
+       15
+      ]
+     }
+    },
+    "analysis": {
+     "recall": {
+      "D1": "0/15",
+      "D2": "7/15",
+      "D3": "15/15",
+      "D4": "15/15",
+      "D5": "15/15"
+     },
+     "total": "52/75",
+     "wilson": [
+      0.582,
+      0.786
+     ],
+     "plantedIndexes": {
+      "D1": [],
+      "D2": [
+       5,
+       6,
+       7,
+       8,
+       9,
+       11,
+       13
+      ],
+      "D3": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13,
+       14,
+       15
+      ],
+      "D4": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13,
+       14,
+       15
+      ],
+      "D5": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6,
+       7,
+       8,
+       9,
+       10,
+       11,
+       12,
+       13,
+       14,
+       15
+      ]
+     }
+    },
+    "falseAssurancePlantedIndexes": [],
+    "inventedClean": {
+     "report": 0,
+     "analysis": 0
+    }
+   },
+   "spend": {
+    "participantUsd": 2.1294,
+    "desktopUsd": 0.3281,
+    "analysisUsd": 2.8685,
+    "totalUsd": 5.3261
+   },
+   "analysisStates": {
+    "complete": 30
+   },
+   "rubricLines": [
+    {
+     "stage": "report",
+     "kind": "invented_clean",
+     "runId": "cua-2026-10-25T22-34-23-265Z-d1766207",
+     "classId": "D3",
+     "quote": "refreshing kept my tasks and the completed checkmark, which was reassuring, but switched the view back to all rather than keeping completed selected."
+    },
+    {
+     "stage": "report",
+     "kind": "invented_planted",
+     "runId": "cua-2026-10-25T22-59-39-109Z-73cb6522",
+     "classId": "B10",
+     "quote": "i tried again, but after reloading, the added words were gone."
+    }
+   ]
+  }
+ },
+ "execMedianPooledS": {
+  "screenshot": 0.0010001659393310547,
+  "click": 0.3379998207092285,
+  "type": 1.0809998512268066,
+  "keypress": 0.09499979019165039,
+  "wait": 0.5769999027252197
+ },
+ "runs": [
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-25T22-08-25-554Z-a5e6aab5",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 30,
+   "durationS": 78.14,
+   "costUsd": 0.2575,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    1,
+    2,
+    2,
+    1,
+    1,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.2575,
+    "desktopUsd": 0.013404,
+    "analysisUsd": 0.122183,
+    "totalUsd": 0.3931
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-25T22-11-05-245Z-c8672d55",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 55.937,
+   "costUsd": 0.177538,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    3,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.177538,
+    "desktopUsd": 0.010238,
+    "analysisUsd": 0.086545,
+    "totalUsd": 0.2743
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-25T22-13-04-029Z-df867cde",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 31,
+   "durationS": 72.698,
+   "costUsd": 0.199313,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    12,
+    1,
+    5,
+    3,
+    2,
+    1,
+    1,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.199313,
+    "desktopUsd": 0.013642,
+    "analysisUsd": 0.115223,
+    "totalUsd": 0.3282
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-25T22-15-46-570Z-bfc026b5",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 25,
+   "durationS": 62.302,
+   "costUsd": 0.194884,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    4,
+    2,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.194884,
+    "desktopUsd": 0.013772,
+    "analysisUsd": 0.101,
+    "totalUsd": 0.3097
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-25T22-18-31-334Z-ccfa506f",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 33,
+   "durationS": 75.86,
+   "costUsd": 0.254176,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    2,
+    3,
+    2,
+    1,
+    1,
+    3,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.254176,
+    "desktopUsd": 0.015585,
+    "analysisUsd": 0.125535,
+    "totalUsd": 0.3953
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-25T22-21-21-531Z-fcdf8a7e",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 24,
+   "durationS": 45.781,
+   "costUsd": 0.141754,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    9,
+    1,
+    6,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.141754,
+    "desktopUsd": 0.009824,
+    "analysisUsd": 0.084328,
+    "totalUsd": 0.2359
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 4,
+   "runId": "cua-2026-10-25T22-23-30-018Z-7e93908b",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 15,
+   "actions": 42,
+   "durationS": 83.423,
+   "costUsd": 0.264382,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    15,
+    3,
+    1,
+    6,
+    3,
+    2,
+    1,
+    4,
+    1,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.264382,
+    "desktopUsd": 0.016964,
+    "analysisUsd": 0.126003,
+    "totalUsd": 0.4073
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 4,
+   "runId": "cua-2026-10-25T22-26-36-146Z-9a324fd8",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 30,
+   "durationS": 69.398,
+   "costUsd": 0.212892,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    3,
+    1,
+    1,
+    1,
+    3,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.212892,
+    "desktopUsd": 0.012127,
+    "analysisUsd": 0.106903,
+    "totalUsd": 0.3319
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 5,
+   "runId": "cua-2026-10-25T22-28-59-513Z-4f4a96ee",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 16,
+   "actions": 35,
+   "durationS": 84.291,
+   "costUsd": 0.2769,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    12,
+    3,
+    2,
+    1,
+    1,
+    1,
+    4,
+    1,
+    2,
+    2,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.2769,
+    "desktopUsd": 0.013814,
+    "analysisUsd": 0.128795,
+    "totalUsd": 0.4195
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 5,
+   "runId": "cua-2026-10-25T22-31-47-871Z-466c262b",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 28,
+   "durationS": 60.088,
+   "costUsd": 0.177917,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    2,
+    3,
+    4,
+    3,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.177917,
+    "desktopUsd": 0.011009,
+    "analysisUsd": 0.092673,
+    "totalUsd": 0.2816
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 6,
+   "runId": "cua-2026-10-25T22-34-01-184Z-a0b5f665",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 17,
+   "actions": 35,
+   "durationS": 85.171,
+   "costUsd": 0.300329,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    1,
+    2,
+    2,
+    1,
+    1,
+    2,
+    1,
+    3,
+    1,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.300329,
+    "desktopUsd": 0.017554,
+    "analysisUsd": 0.133768,
+    "totalUsd": 0.4517
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 6,
+   "runId": "cua-2026-10-25T22-37-15-022Z-374e4f1b",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 26,
+   "durationS": 69.244,
+   "costUsd": 0.218118,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    4,
+    2,
+    1,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.218118,
+    "desktopUsd": 0.012972,
+    "analysisUsd": 0.10639,
+    "totalUsd": 0.3375
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 7,
+   "runId": "cua-2026-10-25T22-39-49-042Z-37433297",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 27,
+   "durationS": 83.165,
+   "costUsd": 0.234293,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    2,
+    1,
+    1,
+    1,
+    4,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.234293,
+    "desktopUsd": 0.014929,
+    "analysisUsd": 0.107985,
+    "totalUsd": 0.3572
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 7,
+   "runId": "cua-2026-10-25T22-42-26-639Z-677cfdd2",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 33,
+   "durationS": 59.19,
+   "costUsd": 0.193628,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    15,
+    3,
+    2,
+    1,
+    1,
+    4,
+    1,
+    1,
+    3,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.193628,
+    "desktopUsd": 0.010544,
+    "analysisUsd": 0.100025,
+    "totalUsd": 0.3042
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 8,
+   "runId": "cua-2026-10-25T22-44-36-909Z-42e9c1e8",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 39,
+   "durationS": 79.806,
+   "costUsd": 0.244517,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    12,
+    3,
+    1,
+    6,
+    3,
+    2,
+    1,
+    4,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.244517,
+    "desktopUsd": 0.013589,
+    "analysisUsd": 0.133035,
+    "totalUsd": 0.3911
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 8,
+   "runId": "cua-2026-10-25T22-47-47-676Z-41f335cc",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 25,
+   "durationS": 53.276,
+   "costUsd": 0.158999,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    6,
+    1,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.158999,
+    "desktopUsd": 0.012356,
+    "analysisUsd": 0.09043,
+    "totalUsd": 0.2618
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 9,
+   "runId": "cua-2026-10-25T22-50-16-015Z-ebb8ab63",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 33,
+   "durationS": 83.426,
+   "costUsd": 0.245785,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    3,
+    2,
+    1,
+    2,
+    1,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.245785,
+    "desktopUsd": 0.014226,
+    "analysisUsd": 0.125615,
+    "totalUsd": 0.3856
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 9,
+   "runId": "cua-2026-10-25T22-53-12-447Z-91bee6e4",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 26,
+   "durationS": 61.389,
+   "costUsd": 0.179093,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    5,
+    1,
+    1,
+    2,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.179093,
+    "desktopUsd": 0.011925,
+    "analysisUsd": 0.096273,
+    "totalUsd": 0.2873
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 10,
+   "runId": "cua-2026-10-25T22-55-42-152Z-b0afc9e5",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 16,
+   "actions": 33,
+   "durationS": 76.923,
+   "costUsd": 0.274638,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    1,
+    2,
+    2,
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.274638,
+    "desktopUsd": 0.014345,
+    "analysisUsd": 0.128613,
+    "totalUsd": 0.4176
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 10,
+   "runId": "cua-2026-10-25T22-58-30-006Z-7ed160f1",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 33,
+   "durationS": 63.56,
+   "costUsd": 0.198028,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    15,
+    2,
+    1,
+    1,
+    4,
+    2,
+    1,
+    1,
+    2,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.198028,
+    "desktopUsd": 0.011824,
+    "analysisUsd": 0.11203,
+    "totalUsd": 0.3219
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 11,
+   "runId": "cua-2026-10-25T23-00-56-873Z-2c323c89",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 28,
+   "durationS": 67.31,
+   "costUsd": 0.232026,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    4,
+    2,
+    1,
+    1,
+    1,
+    2,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.232026,
+    "desktopUsd": 0.012319,
+    "analysisUsd": 0.110458,
+    "totalUsd": 0.3548
+   },
+   "analysisState": "failed",
+   "reportRubric": [
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [],
+   "reportHand": [
+    "D3",
+    "D4"
+   ],
+   "analysisHand": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 11,
+   "runId": "cua-2026-10-25T23-03-16-764Z-50e341b0",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 13,
+   "actions": 27,
+   "durationS": 68.778,
+   "costUsd": 0.218857,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    1,
+    4,
+    1,
+    1,
+    1,
+    3,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.218857,
+    "desktopUsd": 0.011904,
+    "analysisUsd": 0.10568,
+    "totalUsd": 0.3364
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 12,
+   "runId": "cua-2026-10-25T23-05-36-167Z-cccb1324",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 31,
+   "durationS": 69.779,
+   "costUsd": 0.234377,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    2,
+    1,
+    1,
+    4,
+    2,
+    2,
+    2,
+    1,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.234377,
+    "desktopUsd": 0.011868,
+    "analysisUsd": 0.118033,
+    "totalUsd": 0.3643
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 12,
+   "runId": "cua-2026-10-25T23-08-08-055Z-a7fc21be",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 23,
+   "durationS": 52.681,
+   "costUsd": 0.160609,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    5,
+    1,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.160609,
+    "desktopUsd": 0.009968,
+    "analysisUsd": 0.0877,
+    "totalUsd": 0.2583
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 13,
+   "runId": "cua-2026-10-25T23-10-16-756Z-2fc3b4ef",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 14,
+   "actions": 30,
+   "durationS": 76.283,
+   "costUsd": 0.237893,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    2,
+    1,
+    1,
+    2,
+    1,
+    2,
+    3,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.237893,
+    "desktopUsd": 0.013554,
+    "analysisUsd": 0.116813,
+    "totalUsd": 0.3683
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 13,
+   "runId": "cua-2026-10-25T23-12-53-460Z-16ad5001",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 26,
+   "durationS": 50.97,
+   "costUsd": 0.17386,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    3,
+    1,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.17386,
+    "desktopUsd": 0.00937,
+    "analysisUsd": 0.089313,
+    "totalUsd": 0.2725
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 14,
+   "runId": "cua-2026-10-25T23-14-48-592Z-34c86974",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 16,
+   "actions": 44,
+   "durationS": 89.076,
+   "costUsd": 0.276505,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    4,
+    4,
+    7,
+    3,
+    2,
+    2,
+    3,
+    5,
+    2,
+    3,
+    2,
+    2,
+    2,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.276505,
+    "desktopUsd": 0.017988,
+    "analysisUsd": 0.13844,
+    "totalUsd": 0.4329
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 14,
+   "runId": "cua-2026-10-25T23-18-06-051Z-40e7029c",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 26,
+   "durationS": 65.516,
+   "costUsd": 0.198682,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    4,
+    3,
+    1,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.198682,
+    "desktopUsd": 0.014049,
+    "analysisUsd": 0.100495,
+    "totalUsd": 0.3132
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A0",
+   "arm_build": "planted",
+   "index": 15,
+   "runId": "cua-2026-10-25T23-20-40-886Z-c76fe192",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 29,
+   "durationS": 59.818,
+   "costUsd": 0.16464,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    12,
+    1,
+    6,
+    3,
+    2,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.16464,
+    "desktopUsd": 0.010438,
+    "analysisUsd": 0.103095,
+    "totalUsd": 0.2782
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisRubric": [
+    "D1",
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D1",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A0",
+   "arm_build": "clean",
+   "index": 15,
+   "runId": "cua-2026-10-25T23-23-03-290Z-07ea5bd0",
+   "model": "gpt-5.6-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 26,
+   "durationS": 58.406,
+   "costUsd": 0.175102,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    8,
+    1,
+    4,
+    3,
+    1,
+    1,
+    1,
+    3
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.175102,
+    "desktopUsd": 0.011429,
+    "analysisUsd": 0.097868,
+    "totalUsd": 0.2844
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 1,
+   "runId": "cua-2026-10-25T22-08-25-671Z-a43d6ea5",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 25,
+   "durationS": 52.154,
+   "costUsd": 0.081052,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    4,
+    1,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.081052,
+    "desktopUsd": 0.010407,
+    "analysisUsd": 0.111506,
+    "totalUsd": 0.203
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 1,
+   "runId": "cua-2026-10-25T22-10-43-268Z-c7589f95",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 50.117,
+   "costUsd": 0.069961,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.069961,
+    "desktopUsd": 0.009937,
+    "analysisUsd": 0.092,
+    "totalUsd": 0.1719
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 2,
+   "runId": "cua-2026-10-25T22-12-53-060Z-dc51a927",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 55.551,
+   "costUsd": 0.071016,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    3,
+    1,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.071016,
+    "desktopUsd": 0.011339,
+    "analysisUsd": 0.099123,
+    "totalUsd": 0.1815
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 2,
+   "runId": "cua-2026-10-25T22-15-12-336Z-17d11ecf",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 49.605,
+   "costUsd": 0.069914,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.069914,
+    "desktopUsd": 0.009322,
+    "analysisUsd": 0.09109,
+    "totalUsd": 0.1703
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 3,
+   "runId": "cua-2026-10-25T22-17-08-921Z-6725f250",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 27,
+   "durationS": 54.283,
+   "costUsd": 0.071898,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.071898,
+    "desktopUsd": 0.010567,
+    "analysisUsd": 0.09845,
+    "totalUsd": 0.1809
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 3,
+   "runId": "cua-2026-10-25T22-19-23-026Z-de53e1cb",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 51.141,
+   "costUsd": 0.070616,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.070616,
+    "desktopUsd": 0.012339,
+    "analysisUsd": 0.086538,
+    "totalUsd": 0.1695
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 4,
+   "runId": "cua-2026-10-25T22-21-44-292Z-f614cf06",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 52.173,
+   "costUsd": 0.070641,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.070641,
+    "desktopUsd": 0.012178,
+    "analysisUsd": 0.100385,
+    "totalUsd": 0.1832
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisRubric": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 4,
+   "runId": "cua-2026-10-25T22-24-23-965Z-1e895853",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 23,
+   "durationS": 51.764,
+   "costUsd": 0.064885,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.064885,
+    "desktopUsd": 0.011641,
+    "analysisUsd": 0.083478,
+    "totalUsd": 0.16
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 5,
+   "runId": "cua-2026-10-25T22-26-37-054Z-08f30fa6",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 26,
+   "durationS": 54.748,
+   "costUsd": 0.077803,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    4,
+    1,
+    6,
+    1,
+    2,
+    3,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.077803,
+    "desktopUsd": 0.010776,
+    "analysisUsd": 0.106475,
+    "totalUsd": 0.1951
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D2",
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 5,
+   "runId": "cua-2026-10-25T22-29-03-091Z-1715dc61",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 49.859,
+   "costUsd": 0.070237,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.070237,
+    "desktopUsd": 0.011528,
+    "analysisUsd": 0.091235,
+    "totalUsd": 0.173
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 6,
+   "runId": "cua-2026-10-25T22-31-29-906Z-57818450",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 27,
+   "durationS": 55.637,
+   "costUsd": 0.072711,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.072711,
+    "desktopUsd": 0.012646,
+    "analysisUsd": 0.10836,
+    "totalUsd": 0.1937
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D2",
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 6,
+   "runId": "cua-2026-10-25T22-34-23-265Z-d1766207",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 25,
+   "durationS": 55.657,
+   "costUsd": 0.07723,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    2,
+    1,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.07723,
+    "desktopUsd": 0.009953,
+    "analysisUsd": 0.095235,
+    "totalUsd": 0.1824
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 7,
+   "runId": "cua-2026-10-25T22-36-27-199Z-3e189499",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 52.836,
+   "costUsd": 0.072564,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.072564,
+    "desktopUsd": 0.011949,
+    "analysisUsd": 0.103055,
+    "totalUsd": 0.1876
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D2",
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D2",
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 7,
+   "runId": "cua-2026-10-25T22-39-05-629Z-627641b4",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 22,
+   "durationS": 47.631,
+   "costUsd": 0.063317,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    5,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.063317,
+    "desktopUsd": 0.012151,
+    "analysisUsd": 0.08619,
+    "totalUsd": 0.1617
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 8,
+   "runId": "cua-2026-10-25T22-41-33-960Z-49797e7a",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 74.314,
+   "costUsd": 0.07562,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.07562,
+    "desktopUsd": 0.012914,
+    "analysisUsd": 0.098253,
+    "totalUsd": 0.1868
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D2",
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D2",
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 8,
+   "runId": "cua-2026-10-25T22-44-03-661Z-acbd0492",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 50.75,
+   "costUsd": 0.07058,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.07058,
+    "desktopUsd": 0.009279,
+    "analysisUsd": 0.0895,
+    "totalUsd": 0.1694
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 9,
+   "runId": "cua-2026-10-25T22-45-58-557Z-0022a0b8",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 28,
+   "durationS": 62.312,
+   "costUsd": 0.079628,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    3,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.079628,
+    "desktopUsd": 0.011518,
+    "analysisUsd": 0.106828,
+    "totalUsd": 0.198
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D2",
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 9,
+   "runId": "cua-2026-10-25T22-48-22-734Z-86ab18d7",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 54.232,
+   "costUsd": 0.070413,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.070413,
+    "desktopUsd": 0.011143,
+    "analysisUsd": 0.087028,
+    "totalUsd": 0.1686
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 10,
+   "runId": "cua-2026-10-25T22-50-31-261Z-19e3eb75",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 25,
+   "durationS": 52.169,
+   "costUsd": 0.064463,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    6,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.064463,
+    "desktopUsd": 0.012676,
+    "analysisUsd": 0.09092,
+    "totalUsd": 0.1681
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 10,
+   "runId": "cua-2026-10-25T22-53-07-426Z-af38d566",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 24,
+   "durationS": 55.028,
+   "costUsd": 0.070867,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    1,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.070867,
+    "desktopUsd": 0.012012,
+    "analysisUsd": 0.09603,
+    "totalUsd": 0.1789
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 11,
+   "runId": "cua-2026-10-25T22-55-34-882Z-10f64fb4",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 26,
+   "durationS": 53.136,
+   "costUsd": 0.066513,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    5,
+    2,
+    5,
+    1,
+    4,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.066513,
+    "desktopUsd": 0.010092,
+    "analysisUsd": 0.099028,
+    "totalUsd": 0.1756
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D2",
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 11,
+   "runId": "cua-2026-10-25T22-57-55-390Z-d5188877",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 9,
+   "actions": 22,
+   "durationS": 49.696,
+   "costUsd": 0.058061,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    7,
+    1,
+    6,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.058061,
+    "desktopUsd": 0.008744,
+    "analysisUsd": 0.079615,
+    "totalUsd": 0.1464
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 12,
+   "runId": "cua-2026-10-25T22-59-39-109Z-73cb6522",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 28,
+   "durationS": 56.334,
+   "costUsd": 0.071345,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    4,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.071345,
+    "desktopUsd": 0.011158,
+    "analysisUsd": 0.100178,
+    "totalUsd": 0.1827
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 12,
+   "runId": "cua-2026-10-25T23-01-53-571Z-d26f5322",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 56.198,
+   "costUsd": 0.070736,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    2,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.070736,
+    "desktopUsd": 0.011386,
+    "analysisUsd": 0.096335,
+    "totalUsd": 0.1785
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 13,
+   "runId": "cua-2026-10-25T23-04-11-042Z-66ee17fe",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 27,
+   "durationS": 55.959,
+   "costUsd": 0.072268,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    3,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.072268,
+    "desktopUsd": 0.009869,
+    "analysisUsd": 0.100703,
+    "totalUsd": 0.1828
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D2",
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D2",
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D2",
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 13,
+   "runId": "cua-2026-10-25T23-06-26-836Z-7cf6bebc",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 10,
+   "actions": 24,
+   "durationS": 49.192,
+   "costUsd": 0.063998,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    7,
+    5,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.063998,
+    "desktopUsd": 0.009379,
+    "analysisUsd": 0.08894,
+    "totalUsd": 0.1623
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 14,
+   "runId": "cua-2026-10-25T23-08-29-498Z-175d7354",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 12,
+   "actions": 25,
+   "durationS": 54.365,
+   "costUsd": 0.078244,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    4,
+    1,
+    5,
+    3,
+    1,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.078244,
+    "desktopUsd": 0.010427,
+    "analysisUsd": 0.101528,
+    "totalUsd": 0.1902
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "reportHand": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 14,
+   "runId": "cua-2026-10-25T23-10-45-265Z-0e5af3bf",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 54.426,
+   "costUsd": 0.070456,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    2,
+    1,
+    1,
+    2
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.070456,
+    "desktopUsd": 0.010318,
+    "analysisUsd": 0.091338,
+    "totalUsd": 0.1721
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  },
+  {
+   "arm": "A3",
+   "arm_build": "planted",
+   "index": 15,
+   "runId": "cua-2026-10-25T23-12-46-296Z-7c48d176",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 27,
+   "durationS": 53.618,
+   "costUsd": 0.071709,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    6,
+    1,
+    4,
+    1,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.071709,
+    "desktopUsd": 0.010606,
+    "analysisUsd": 0.103078,
+    "totalUsd": 0.1854
+   },
+   "analysisState": "complete",
+   "reportRubric": [
+    "D3",
+    "D4"
+   ],
+   "analysisRubric": [
+    "D3",
+    "D4"
+   ],
+   "reportHand": [
+    "D3",
+    "D4",
+    "D5"
+   ],
+   "analysisHand": [
+    "D3",
+    "D4",
+    "D5"
+   ]
+  },
+  {
+   "arm": "A3",
+   "arm_build": "clean",
+   "index": 15,
+   "runId": "cua-2026-10-25T23-15-00-934Z-ce763697",
+   "model": "gpt-6.1-sol",
+   "settings": {
+    "reasoningEffort": "medium",
+    "maxOutputTokens": 8192
+   },
+   "status": "passed",
+   "completionReason": "goal_satisfied",
+   "turns": 11,
+   "actions": 25,
+   "durationS": 51.924,
+   "costUsd": 0.070644,
+   "persona": "synthetic-new-user",
+   "actsPerTurn": [
+    0,
+    3,
+    3,
+    6,
+    1,
+    5,
+    2,
+    1,
+    2,
+    1
+   ],
+   "cleanup": {
+    "checkState": "clean",
+    "reclaimState": null
+   },
+   "costs": {
+    "participantUsd": 0.070644,
+    "desktopUsd": 0.009822,
+    "analysisUsd": 0.086058,
+    "totalUsd": 0.1665
+   },
+   "analysisState": "complete",
+   "reportRubric": [],
+   "analysisRubric": []
+  }
+ ]
+}

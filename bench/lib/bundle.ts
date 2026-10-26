@@ -4,7 +4,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 
-import type { EvidenceFacts } from "../taskly/answer-key.js";
+import type { EvidenceFacts, Storage } from "../taskly/answer-key.js";
 import type { AnalysisInputForScore, ParticipantInput } from "./score.js";
 
 interface TraceItem {
@@ -70,7 +70,7 @@ export interface AnalysisArtifact {
 const TYPED = /^type \[(\d+) chars?\]/;
 const STALL = /stall|retr(?:y|ied)|timed? ?out/i;
 
-export function factsOf(stream: BundleStream, mission: string): EvidenceFacts {
+export function factsOf(stream: BundleStream, mission: string, storage: Storage): EvidenceFacts {
   const items = stream.actor?.items ?? [];
   const typed = items
     .filter((item) => item.kind === "ui_action")
@@ -78,6 +78,7 @@ export function factsOf(stream: BundleStream, mission: string): EvidenceFacts {
     .filter((value): value is string => value !== undefined)
     .map(Number);
   return {
+    storage,
     maxTypedChars: typed.length === 0 ? null : Math.max(...typed),
     providerStall: items.some((item) => item.kind === "notice" && STALL.test(item.title ?? "")),
     failedAction: items.some(
@@ -89,7 +90,7 @@ export function factsOf(stream: BundleStream, mission: string): EvidenceFacts {
 }
 
 /** Each participant of a run, with the evidence facts the answer key can check. */
-export function participantsOf(bundle: RunBundle, mission: string): ParticipantInput[] {
+export function participantsOf(bundle: RunBundle, mission: string, storage: Storage): ParticipantInput[] {
   return bundle.streams
     .filter((stream) => stream.actor !== undefined)
     .map((stream) => ({
@@ -98,7 +99,7 @@ export function participantsOf(bundle: RunBundle, mission: string): ParticipantI
       narration: (stream.actor?.items ?? [])
         .filter((item) => item.kind === "message" || item.kind === "reasoning")
         .map((item) => item.text ?? ""),
-      facts: factsOf(stream, mission),
+      facts: factsOf(stream, mission, storage),
     }));
 }
 

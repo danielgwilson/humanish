@@ -18,6 +18,7 @@ import {
   type AutomaticAnalysisBudget,
 } from "../analysis/automatic-config.js";
 import {
+  DEFAULT_CODEX_MODEL,
   DEFAULT_OPENAI_CU_MODEL,
   DEFAULT_OPENAI_CU_REASONING_EFFORT,
 } from "../actors/computer-use/openai-provider.js";
@@ -255,7 +256,9 @@ export async function readStudySummary(
     ...(typeof config.description === "string" ? { description: config.description.trim() } : {}),
     ...(subject === undefined ? {} : { subject }),
     ...(participants === undefined ? {} : { participants }),
-    model: inspected.config.actor?.model ?? DEFAULT_OPENAI_CU_MODEL,
+    model:
+      inspected.config.actor?.model ??
+      (route === "terminal" ? DEFAULT_CODEX_MODEL : DEFAULT_OPENAI_CU_MODEL),
     reasoningEffort: reasoningEffortOf(inspected.config),
     ...(caps === undefined ? {} : { caps }),
     mode,

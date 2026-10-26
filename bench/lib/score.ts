@@ -106,6 +106,7 @@ const emptyDefects = <T>(value: T): Record<DefectId, T> => ({
 /** Whether a truth value holds for this evidence. */
 export function holds(truth: Truth, facts: EvidenceFacts): boolean {
   if (truth === "typed-over-120") return (facts.maxTypedChars ?? 0) > 120;
+  if (truth === "memory-storage") return facts.storage === "memory";
   return truth === "true";
 }
 
@@ -339,6 +340,7 @@ export function scoreAnalysis(
 export function combineFacts(all: readonly EvidenceFacts[], mission: string): EvidenceFacts {
   const typed = all.map((facts) => facts.maxTypedChars).filter((value): value is number => value !== null);
   return {
+    storage: all.some((facts) => facts.storage === "local") ? "local" : "memory",
     maxTypedChars: typed.length === 0 ? null : Math.max(...typed),
     providerStall: all.some((facts) => facts.providerStall),
     failedAction: all.some((facts) => facts.failedAction),

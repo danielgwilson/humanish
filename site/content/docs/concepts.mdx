@@ -110,7 +110,7 @@ After live runs: explicit analysis · gpt-6.1-sol at medium effort · expected $
 
 | `actor.type`          | What drives each participant                                                                                                       | What it needs                                                 |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `openai-computer-use` | An OpenAI model, `gpt-5.6-sol` unless `actor.model` names another, called with your API key.                                       | `OPENAI_API_KEY`                                              |
+| `openai-computer-use` | An OpenAI model, `gpt-6.1-sol` unless `actor.model` names another, called with your API key.                                       | `OPENAI_API_KEY`                                              |
 | `local-agent`         | Your signed-in Codex (`actor.localAgent: codex`, the default) or Claude Code (`actor.localAgent: claude`), on that account's plan. | The agent's own login. No dollar cap applies to plan usage.   |
 | `scripted-browser`    | No model. A browser replays the steps of a scenario file.                                                                          | A local Chrome or Chromium, or a hosted desktop for a `clone` |
 | `codex-exec`          | Codex in a terminal sandbox, studying a CLI from its public pages.                                                                 | `E2B_API_KEY`, and `OPENAI_API_KEY` or `CODEX_API_KEY`        |

@@ -1,5 +1,6 @@
 // Builds the throwaway project a benchmark runs in: the two Taskly builds, the persona and one
-// generated study per brain and arm. The builds are served from `build-a` and `build-b`, and study
+// generated study per brain and arm. With local storage, each build's app.js comes from its
+// `-local` directory, which keeps tasks in localStorage across a page reload; index.html is shared. The builds are served from `build-a` and `build-b`, and study
 // ids use the same letters, so no file or id the participant's desktop or the analyst receives says
 // which arm it is. The manifest beside the project keeps the mapping.
 
@@ -7,7 +8,7 @@ import { createHash } from "node:crypto";
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import type { Arm } from "../taskly/answer-key.js";
+import type { Arm, Storage } from "../taskly/answer-key.js";
 import type { Mission } from "../taskly/missions.js";
 import type { Brain } from "./plan.js";
 
@@ -16,6 +17,11 @@ export const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 /** The benchmark's persona, which every published result before 2026-10-24 used. */
 export const DEFAULT_PERSONA_FILE = path.join(REPO_ROOT, "humanish", "personas", "synthetic-new-user.yaml");
 const BUILD_DIR: Record<Arm, string> = { planted: "build-a", clean: "build-b" };
+
+/** The bench directory whose app.js a build serves. */
+function appDir(arm: Arm, storage: Storage): string {
+  return `bench/taskly-${arm}${storage === "local" ? "-local" : ""}`;
+}
 /** The participant's session limit, matching humanish/studies/detect-taskly-*.yaml. */
 export const SESSION_TIMEOUT_MS = 600_000;
 
@@ -37,11 +43,14 @@ export function personaId(personaFile: string): string {
   return id;
 }
 
-export function fixtureDigests(personaFile: string = DEFAULT_PERSONA_FILE): FixtureDigests {
+export function fixtureDigests(
+  personaFile: string = DEFAULT_PERSONA_FILE,
+  storage: Storage = "memory",
+): FixtureDigests {
   const read = (relative: string): Buffer => readFileSync(path.join(REPO_ROOT, relative));
   return {
-    plantedAppJs: sha256(read("bench/taskly-planted/app.js")),
-    cleanAppJs: sha256(read("bench/taskly-clean/app.js")),
+    plantedAppJs: sha256(read(`${appDir("planted", storage)}/app.js`)),
+    cleanAppJs: sha256(read(`${appDir("clean", storage)}/app.js`)),
     indexHtml: sha256(read("bench/taskly-planted/index.html")),
     persona: sha256(readFileSync(personaFile)),
   };
@@ -92,23 +101,23 @@ policies:
 `;
 }
 
-/** Write the project: both builds, the persona and a study per brain and arm. */
+/** Write the project: both builds with the chosen storage, the persona and a study per brain and arm. */
 export function writeProject(
   projectDir: string,
   brains: readonly Brain[],
   mission: Mission,
   participantCapUsd: number,
   personaFile: string = DEFAULT_PERSONA_FILE,
+  storage: Storage = "memory",
 ): void {
   const persona = personaId(personaFile);
   mkdirSync(path.join(projectDir, "humanish", "studies"), { recursive: true });
   mkdirSync(path.join(projectDir, "humanish", "personas"), { recursive: true });
-  cpSync(path.join(REPO_ROOT, "bench", "taskly-planted"), path.join(projectDir, BUILD_DIR.planted), {
-    recursive: true,
-  });
-  cpSync(path.join(REPO_ROOT, "bench", "taskly-clean"), path.join(projectDir, BUILD_DIR.clean), {
-    recursive: true,
-  });
+  for (const arm of ["planted", "clean"] as const) {
+    const served = path.join(projectDir, BUILD_DIR[arm]);
+    cpSync(path.join(REPO_ROOT, appDir(arm, "memory")), served, { recursive: true });
+    cpSync(path.join(REPO_ROOT, appDir(arm, storage), "app.js"), path.join(served, "app.js"));
+  }
   cpSync(personaFile, path.join(projectDir, "humanish", "personas", `${persona}.yaml`));
   for (const brain of brains) {
     for (const arm of ["planted", "clean"] as const) {

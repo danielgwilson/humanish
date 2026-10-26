@@ -18,7 +18,7 @@
         "studyId": "comms-email-demo",
         "subject": "clone example-org/user-app",
         "participants": "first-time-visitor · impatient-skimmer",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {},
         "mode": "dry-run"
@@ -52,7 +52,7 @@
         "studyId": "detect-taskly-clean",
         "subject": "local-tree",
         "participants": "1 × synthetic-new-user",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 3
@@ -84,7 +84,7 @@
         "studyId": "detect-taskly-planted",
         "subject": "local-tree",
         "participants": "1 × synthetic-new-user",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 3
@@ -116,7 +116,7 @@
         "studyId": "detect-todomvc",
         "subject": "clone tastejs/todomvc",
         "participants": "1 × synthetic-new-user",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 3
@@ -148,7 +148,7 @@
         "studyId": "dwell-window-todomvc",
         "subject": "clone tastejs/todomvc",
         "participants": "1 × synthetic-new-user",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 2,
@@ -181,7 +181,7 @@
         "studyId": "effort-contrast-demo",
         "subject": "clone drawdb-io/drawdb",
         "participants": "2 × synthetic-new-user",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "per-lane",
         "caps": {
           "laneUsd": 15
@@ -213,7 +213,7 @@
         "studyId": "fanout-demo",
         "subject": "app-url http://127.0.0.1:3000/",
         "participants": "first-time-visitor · impatient-skimmer · power-user · comparison-shopper",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {},
         "mode": "dry-run"
@@ -260,7 +260,7 @@
         "studyId": "first-run",
         "subject": "this-repo",
         "participants": "4 participants",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "mode": "dry-run"
       },
@@ -330,7 +330,7 @@
         "studyId": "later-tab-emulation",
         "subject": "local-tree",
         "participants": "1 × synthetic-new-user",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 1,
@@ -363,7 +363,7 @@
         "studyId": "lobby-trivia-3player",
         "subject": "app-url https://lobby-trivia.example.test/",
         "participants": "party-host · competitive-friend · casual-friend",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {},
         "mode": "dry-run"
@@ -401,7 +401,7 @@
         "studyId": "participant-camera",
         "subject": "local-tree",
         "participants": "1 × synthetic-new-user",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 1,
@@ -434,7 +434,7 @@
         "studyId": "persona-contrast-demo",
         "subject": "clone drawdb-io/drawdb",
         "participants": "skeptical-power-user · synthetic-new-user",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 15
@@ -458,7 +458,7 @@
         "studyId": "scripted-demo",
         "subject": "app-url http://127.0.0.1:5173",
         "participants": "2 × synthetic-new-user",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "mode": "dry-run"
       },
@@ -487,7 +487,7 @@
         "studyId": "shared-world-concurrent-demo",
         "subject": "clone example-org/collab-notes-app",
         "participants": "contributor · reviewer · impatient-skimmer",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {},
         "mode": "dry-run"
@@ -525,7 +525,7 @@
         "studyId": "shared-world-concurrent-live",
         "subject": "clone danielgwilson/humanish",
         "participants": "weekly-planner · ops-coordinator · on-the-go-contributor",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {},
         "mode": "dry-run"
@@ -563,7 +563,7 @@
         "studyId": "signup-email-verify",
         "subject": "clone documenso/documenso",
         "participants": "synthetic-new-user · skeptical-power-user",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 15,
@@ -629,7 +629,7 @@
         "studyId": "tui-self-study",
         "subject": "desktop-cli",
         "participants": "1 × synthetic-new-user",
-        "model": "gpt-5.6-sol",
+        "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {
           "laneUsd": 5
@@ -664,7 +664,7 @@
           "studyId": "cua-browser",
           "subject": "clone your-org/your-app",
           "participants": "1 × synthetic-new-user",
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6.1-sol",
           "reasoningEffort": "medium",
           "caps": {},
           "mode": "dry-run"
@@ -682,7 +682,7 @@
           "studyId": "first-run",
           "subject": "this-repo",
           "participants": "4 participants",
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6.1-sol",
           "reasoningEffort": "medium",
           "mode": "dry-run"
         },
@@ -733,7 +733,7 @@
           "studyId": "try-live",
           "subject": "clone drawdb-io/drawdb",
           "participants": "1 × synthetic-new-user",
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6.1-sol",
           "reasoningEffort": "medium",
           "caps": {
             "laneUsd": 2
@@ -767,7 +767,7 @@
           "studyId": "cua-browser",
           "subject": "clone your-org/your-app",
           "participants": "1 × synthetic-new-user",
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6.1-sol",
           "reasoningEffort": "medium",
           "caps": {},
           "mode": "dry-run"
@@ -785,7 +785,7 @@
           "studyId": "first-run",
           "subject": "this-repo",
           "participants": "4 participants",
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6.1-sol",
           "reasoningEffort": "medium",
           "mode": "dry-run"
         },
@@ -833,7 +833,7 @@
           "studyId": "try-live",
           "subject": "clone drawdb-io/drawdb",
           "participants": "1 × synthetic-new-user",
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6.1-sol",
           "reasoningEffort": "medium",
           "caps": {},
           "mode": "live"
@@ -865,7 +865,7 @@
           "studyId": "cua-browser",
           "subject": "clone your-org/your-app",
           "participants": "1 × synthetic-new-user",
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6.1-sol",
           "reasoningEffort": "medium",
           "caps": {},
           "mode": "dry-run"
@@ -883,7 +883,7 @@
           "studyId": "first-run",
           "subject": "this-repo",
           "participants": "4 participants",
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6.1-sol",
           "reasoningEffort": "medium",
           "mode": "dry-run"
         },
@@ -934,7 +934,7 @@
           "studyId": "try-live",
           "subject": "clone drawdb-io/drawdb",
           "participants": "1 × synthetic-new-user",
-          "model": "gpt-5.6-sol",
+          "model": "gpt-6.1-sol",
           "reasoningEffort": "medium",
           "caps": {},
           "mode": "live"

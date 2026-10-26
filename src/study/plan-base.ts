@@ -143,10 +143,17 @@ function declaredModelOf(config: StudyConfig): { declaredModel?: string } {
   return model === undefined ? {} : { declaredModel: model };
 }
 
-/** The model a participant's spend is priced at when its provider reports none. */
+/**
+ * The model a participant's spend is priced at when its provider reports none. A local agent or
+ * a library caller runs a model humanish does not choose, so it keeps the gpt-5.6-sol rates it
+ * was priced at before the computer-use default moved to a cheaper model.
+ */
 export function pricedModel(brain: Brain): string {
-  return brain.declaredModel ?? DEFAULT_OPENAI_CU_MODEL;
+  if (brain.declaredModel !== undefined) return brain.declaredModel;
+  return brain.kind === "openai" ? brain.model : UNREPORTED_MODEL_RATE;
 }
+
+const UNREPORTED_MODEL_RATE = "gpt-5.6-sol";
 
 /** The fields every plan shares, from a config whose analysis already resolved. */
 export function planBase(

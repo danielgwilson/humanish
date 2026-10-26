@@ -18,7 +18,7 @@ import {
   buildNoSpendProof,
   evaluateCapsAgainstLedger,
 } from "../../../src/routes/terminal/ledger.js";
-import { DEFAULT_OPENAI_CU_MODEL } from "../../../src/actors/computer-use/openai-provider.js";
+import { DEFAULT_CODEX_MODEL } from "../../../src/actors/computer-use/openai-provider.js";
 import { runTerminal } from "../../helpers/route-run.js";
 
 // Slice 3 deterministic proof ($0, no live E2B): the cost/spend ledger + the null-vs-zero-vs-absent
@@ -607,7 +607,7 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
     expect(desktop.estimatedCostUsd).toBeGreaterThan(0);
     const tokens = cost.breakdown.find((line: { kind: string }) => line.kind === "model-tokens");
     expect(tokens).toMatchObject({
-      modelId: DEFAULT_OPENAI_CU_MODEL,
+      modelId: DEFAULT_CODEX_MODEL,
       basis: "aggregated_turns_base_rate",
       ratesAsOf: expect.any(String),
       source: expect.any(String),
@@ -671,7 +671,7 @@ describe("a provider charge the trace measured", () => {
     const tokenUsage = { input: 20, output: 0, costUsd: 1 };
     const trace = {
       tokenUsage,
-      estimatedCost: estimateAggregatedTurnCost(tokenUsage, DEFAULT_OPENAI_CU_MODEL),
+      estimatedCost: estimateAggregatedTurnCost(tokenUsage, DEFAULT_CODEX_MODEL),
     };
     const ledger = buildCostLedger({ trace });
     expect(ledger.lines.provider).toMatchObject({ usd: 1, source: "provider-token-usage" });

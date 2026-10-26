@@ -48,6 +48,7 @@ const readFixture = <T>(folder: string, runId: string): T =>
   JSON.parse(readFileSync(path.join(FIXTURES, folder, `${runId}.json`), "utf8")) as T;
 
 const facts = (overrides: Partial<EvidenceFacts> = {}): EvidenceFacts => ({
+  storage: "memory",
   maxTypedChars: 90,
   providerStall: false,
   failedAction: false,
@@ -75,7 +76,9 @@ describe("the Taskly scorer on recorded bundles", () => {
     it(`agrees with the hand labels for ${runId} (${label.arm})`, () => {
       const bundle = readFixture<RunBundle>("runs", runId);
       const mission = MISSIONS[label.mission].text;
-      const scored = participantsOf(bundle, mission).map((input) => scoreReport(input, label.arm));
+      const scored = participantsOf(bundle, mission, "memory").map((input) =>
+        scoreReport(input, label.arm),
+      );
       expect(scored.map((score) => score.streamId).sort()).toEqual(
         Object.keys(label.participants).sort(),
       );
@@ -104,7 +107,7 @@ describe("the Taskly scorer on recorded bundles", () => {
       expect(input).not.toBeNull();
       const mission = MISSIONS[labels.runs[runId]!.mission].text;
       const runFacts = combineFacts(
-        participantsOf(bundle, mission).map((entry) => entry.facts),
+        participantsOf(bundle, mission, "memory").map((entry) => entry.facts),
         mission,
       );
       const score = scoreAnalysis(input!, label.arm, runFacts);
@@ -253,6 +256,43 @@ describe("the Taskly scorer on claims the recorded runs never made", () => {
     );
     expect(loss.d2Mechanism).toBe("data_loss");
     expect(display.d2Mechanism).toBe("display");
+  });
+});
+
+describe("the Taskly scorer on the localStorage builds", () => {
+  it("counts a lost-on-reload claim as invented on the builds that keep tasks in localStorage", () => {
+    for (const arm of ["planted", "clean"] as const) {
+      const score = scoreReport(
+        participant("Refreshing the page erased the entire list.", { storage: "local" }),
+        arm,
+      );
+      expect(score.invented.map((match) => match.classId)).toEqual(["B10"]);
+    }
+  });
+
+  it("counts a lost-on-reload analysis finding as invented when any participant's build kept tasks", () => {
+    const local = combineFacts([facts({ storage: "local" })], MISSIONS.neutral.text);
+    const score = scoreAnalysis(
+      {
+        analysisId: "analysis-001",
+        model: null,
+        promptVersion: null,
+        summaryText: "",
+        findings: [
+          {
+            id: "f1",
+            title: "Refreshing the page erased the entire list",
+            summary: "",
+            impact: "high",
+            confidence: "high",
+            observations: [],
+          },
+        ],
+      },
+      "clean",
+      local,
+    );
+    expect(score.findings.map((finding) => finding.verdict)).toEqual(["invented"]);
   });
 });
 
