@@ -528,6 +528,21 @@ const CONTEXT_MANAGEMENT = {
 } as const;
 
 /**
+ * The schema with every array `maxItems` removed. The Messages API answers an output format
+ * whose schema has one with a 400, so the strict closing retry could never get a reply. The
+ * limits still hold: the request text states the full schema, and the reply is parsed against it.
+ */
+function withoutItemLimits(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutItemLimits);
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => key !== "maxItems")
+      .map(([key, entry]) => [key, withoutItemLimits(entry)]),
+  );
+}
+
+/**
  * A request body. Every request carries the same system prompt, toolset, thinking, effort, cache
  * and clearing settings, so each one's prefix is the one before it. Thinking is adaptive with
  * readable summaries, and `prefix_mismatch_behavior: "error"` makes any edit of earlier history
@@ -543,7 +558,7 @@ export function requestBody(
   const format =
     closing?.schema === undefined
       ? {}
-      : { format: { type: "json_schema", schema: closing.schema } };
+      : { format: { type: "json_schema", schema: withoutItemLimits(closing.schema) } };
   return {
     model: settings.model,
     max_tokens:
