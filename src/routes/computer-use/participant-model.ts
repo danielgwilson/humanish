@@ -320,8 +320,8 @@ export async function recordParticipantTrace(
     "utf8",
   );
   const conversation = session.trace.conversation;
-  if (conversation?.mode === "explicit_context")
-    warnings.push(explicitContextWarning(conversation));
+  const carried = conversation === undefined ? undefined : explicitContextWarning(conversation);
+  if (carried !== undefined) warnings.push(carried);
   if (session.trace.redaction.screenshots === "raw") {
     warnings.push(
       "Screenshots are unblurred for local use: the bundle stays in the gitignored .humanish/ folder and nothing scans these pixels, so review them before sharing. Set policies.redactScreenshots: true to blur screenshots in a bundle you plan to share.",
@@ -330,10 +330,14 @@ export async function recordParticipantTrace(
 }
 
 /**
- * The run warning for a participant whose provider kept no conversation server-side, so humanish
- * carried it on every request. It says why, and how many early turns became a text summary.
+ * The run warning for a participant whose provider kept no conversation server-side although it
+ * can, so humanish carried it on every request. It says why, and how many early turns became a
+ * text summary. Undefined for a threaded session and for an API that never keeps a conversation:
+ * there, carrying it is how every request works, and nothing was set or refused.
  */
-export function explicitContextWarning(conversation: ActorConversation): string {
+export function explicitContextWarning(conversation: ActorConversation): string | undefined {
+  if (conversation.mode !== "explicit_context" || conversation.explicitReason === "stateless_api")
+    return undefined;
   const answer =
     conversation.rejection === "stored_item"
       ? " (a stored item the request referenced was not found)"

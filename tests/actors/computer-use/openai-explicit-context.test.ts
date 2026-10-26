@@ -635,4 +635,15 @@ describe("the explicit-context run warning", () => {
       }),
     ).toMatch(/^zeroDataRetention is set/);
   });
+
+  it("is not given for a provider whose API keeps no conversation", () => {
+    expect(
+      explicitContextWarning({
+        mode: "explicit_context",
+        explicitReason: "stateless_api",
+        summarizedTurns: 0,
+        requests: [],
+      }),
+    ).toBeUndefined();
+  });
 });
