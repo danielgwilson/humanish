@@ -194,7 +194,7 @@
     ["onScreenshot",15],
     ["writeScreenshot","turn-01.png",15],
     ["onTrace",4,{"input":100,"output":20,"cachedInput":10,"cacheWriteInput":0,"turns":[{"input":100,"output":20,"cachedInput":10}]},{}],
-    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"},"previousResponseId":"r1"}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s1"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]},"previousResponseId":"r1"}],
     ["onMessage","Typing the email."],
     ["executor.execute",{"kind":"type","text":"hello@example.test"}],
     ["executor.execute",{"kind":"wait","ms":50}],
@@ -203,7 +203,7 @@
     ["onScreenshot",15],
     ["writeScreenshot","turn-02.png",15],
     ["onTrace",8,{"input":220,"output":50,"cachedInput":10,"cacheWriteInput":0,"turns":[{"input":100,"output":20,"cachedInput":10},{"input":120,"output":30}]},{}],
-    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s2"},"previousResponseId":"r2"}],
+    ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"s2"},"previousExecution":{"actions":[{"index":0,"status":"completed"},{"index":1,"status":"completed"}]},"previousResponseId":"r2"}],
     ["onMessage","Placed the order."]
   ]
 }

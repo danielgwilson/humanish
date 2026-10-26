@@ -176,14 +176,14 @@
       ["onScreenshot",15],
       ["writeScreenshot","turn-01.png",15],
       ["onTrace",5,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
-      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"same","heardSpeech":[{"id":"u1","source":"speaker_audio","text":"My code is PRIVATE","durationMs":700}]},"contextHint":"Your wait lasted 6 seconds and ended when you heard speech."}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"same","heardSpeech":[{"id":"u1","source":"speaker_audio","text":"My code is PRIVATE","durationMs":700}]},"previousExecution":{"actions":[{"index":0,"status":"completed"}]},"contextHint":"Your wait lasted 6 seconds and ended when you heard speech."}],
       ["executor.execute",{"kind":"speak","text":"Hello PRIVATE"}],
       ["executor.observe",2],
       ["onObservedUrl",null],
       ["onScreenshot",15],
       ["writeScreenshot","turn-02.png",15],
       ["onTrace",8,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
-      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"same"}}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 15 bytes]","stateSignature":"same"},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
       ["onMessage","Done after replying."]
     ]
   },
@@ -343,22 +343,22 @@
       ["executor.observe",1],
       ["onObservedUrl",null],
       ["onTrace",1,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
-      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"c","appState":{"a":{"route":"/two"},"b":1}}}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"c","appState":{"a":{"route":"/two"},"b":1}},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
       ["executor.execute",{"kind":"click","x":1,"y":1}],
       ["executor.observe",2],
       ["onObservedUrl",null],
       ["onTrace",2,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
-      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"c","appState":{"b":1,"a":{"route":"/two"}}},"contextHint":"No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe."}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"c","appState":{"b":1,"a":{"route":"/two"}}},"previousExecution":{"actions":[{"index":0,"status":"completed"}]},"contextHint":"No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe."}],
       ["executor.execute",{"kind":"click","x":1,"y":1}],
       ["executor.observe",3],
       ["onObservedUrl",null],
       ["onTrace",4,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
-      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"c","appState":{"b":1,"a":{"route":"/two"}},"scrollY":450}}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"c","appState":{"b":1,"a":{"route":"/two"}},"scrollY":450},"previousExecution":{"actions":[{"index":0,"status":"completed"}]}}],
       ["executor.execute",{"kind":"click","x":1,"y":1}],
       ["executor.observe",4],
       ["onObservedUrl",null],
       ["onTrace",5,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
-      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"c","appState":{"b":1,"a":{"route":"/two"}},"scrollY":460},"contextHint":"No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe."}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"stateSignature":"c","appState":{"b":1,"a":{"route":"/two"}},"scrollY":460},"previousExecution":{"actions":[{"index":0,"status":"completed"}]},"contextHint":"No visible progress for 1 step(s). If your task calls for waiting for another participant or a pending transition, you may continue waiting. Choose whether to continue or stop based on your situation and what you observe."}],
       ["onMessage","done (exhausted)"]
     ]
   },
@@ -618,7 +618,7 @@
       ["onScreenshot",155],
       ["writeScreenshot","turn-01.png",178],
       ["onTrace",5,{"input":0,"output":0,"cachedInput":0,"cacheWriteInput":0},{}],
-      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 155 bytes]","stateSignature":"b"}}],
+      ["provider.nextTurn",{"instructions":"Act as the synthetic persona and finish the task.","observation":{"screenshot":"[buffer 155 bytes]","stateSignature":"b"},"previousExecution":{"actions":[{"index":0,"status":"completed"},{"index":1,"status":"completed"}]}}],
       ["onMessage","Finished with PROVISIONED-VALUE-123."]
     ]
   }

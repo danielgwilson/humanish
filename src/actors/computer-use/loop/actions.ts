@@ -16,7 +16,7 @@ import {
 } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
-import type { CuaAction, CuaTurnRequest } from "./types.js";
+import type { CuaAction, CuaActionAcknowledgement, CuaTurn, CuaTurnRequest } from "./types.js";
 import { planWait } from "../wait.js";
 
 // The participant's actions: their public labels, what counts as a material action, and how one
@@ -116,9 +116,7 @@ export function isIdleTurn(actions: readonly CuaAction[]): boolean {
   return actions.every(isIdleAction);
 }
 
-type ExecutionStatus = NonNullable<
-  CuaTurnRequest["previousExecution"]
->["actions"][number]["status"];
+type ExecutionStatus = CuaActionAcknowledgement["status"];
 
 /**
  * The material-action rule: a non-idle action counts once the desktop may have received it. An
@@ -162,9 +160,8 @@ const REJECTION_REMEDIES: Readonly<Record<CuaRejectionReason, string>> = Object.
     "It was rejected because more than one browser tab is open: typing works only while the study's original tab is the only tab. Switch to the other tab and close it, keep the study's original tab open, then type again.",
 });
 
-function rejectedActionHint(title: string, reason: CuaRejectionReason | undefined): string {
-  const remedy = reason === undefined ? "" : ` ${REJECTION_REMEDIES[reason]}`;
-  return `Your action (${title}) was rejected before dispatch. No input from that action or the rest of its batch was sent.${remedy} Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`;
+function rejectedActionHint(title: string, remedy: string | undefined): string {
+  return `Your action (${title}) was rejected before dispatch. No input from that action or the rest of its batch was sent.${remedy === undefined ? "" : ` ${remedy}`} Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`;
 }
 
 /** Record a wait the loop shortened, and return the participant's note about it. */
@@ -181,17 +178,20 @@ function recordShortenedWait(session: LoopSession, title: string, requestedMs: n
 }
 
 /**
- * Dispatch one turn's actions in order. A declared pre-dispatch rejection stops the batch and
- * leaves the desktop usable; a failed desktop command skips its action; any other failure ends
- * the session. The waits of a watched turn (`watched`) already ran: each is recorded with the part
- * of the watch it covered and nothing is sent for it. When that watch ended the session, the
+ * Dispatch one turn's actions in order, then acknowledge its rejected proposal, which the
+ * provider could not map, at the position after them. A declared pre-dispatch rejection stops the
+ * batch and leaves the desktop usable; a failed desktop command skips its action, and also stops
+ * the batch for a provider with `batchFailure: "halt"`; any other failure ends the session. The
+ * waits of a watched turn (`watched`) already ran: each is recorded with the part of the watch it
+ * covered and nothing is sent for it. When that watch ended the session, the
  * turn's screenshots are acknowledged as not dispatched and not recorded.
  */
 export async function runActionBatch(
   session: LoopSession,
-  actions: readonly CuaAction[],
+  turn: Pick<CuaTurn, "actions" | "rejectedProposal">,
   watched?: WatchedWaits,
 ): Promise<ActionBatch> {
+  const { actions, rejectedProposal } = turn;
   const execution: ActionBatch["execution"] = { actions: [] };
   const { actionHistory, trace } = session;
   const notes: string[] = [];
@@ -202,6 +202,23 @@ export async function runActionBatch(
     hint: hint(),
     sent: trace.counts.materialActions > attemptsBefore,
   });
+  const halting = session.provider.batchFailure === "halt";
+  // The provider's model takes the batch to have stopped at the skipped action at `index`.
+  const haltAfter = (index: number, title: string): ActionBatch => {
+    const remaining = actions.length - index - 1;
+    leaveUndispatched(execution, index + 1, actions.length);
+    if (remaining > 0)
+      trace.record("notice", () =>
+        notice(
+          "warn",
+          "batch halted after a skipped action",
+          session.redactNarration(
+            `action: ${title}; remaining batch actions not dispatched: ${remaining}`,
+          ),
+        ),
+      );
+    return done();
+  };
   const idleTurn = isIdleTurn(actions);
   let waits = 0;
   for (const [index, requested] of actions.entries()) {
@@ -256,9 +273,7 @@ export async function runActionBatch(
       ) {
         // Later actions may depend on this one (type, then submit). Return
         // their full acknowledgement list and let a fresh observation decide.
-        for (let later = index + 1; later < actions.length; later++) {
-          execution.actions.push({ index: later, status: "not_dispatched" });
-        }
+        leaveUndispatched(execution, index + 1, actions.length);
         const { reason } = error;
         trace.record("notice", () =>
           notice(
@@ -269,7 +284,9 @@ export async function runActionBatch(
             ),
           ),
         );
-        notes.push(rejectedActionHint(title, reason));
+        notes.push(
+          rejectedActionHint(title, reason === undefined ? undefined : REJECTION_REMEDIES[reason]),
+        );
         return done();
       }
       if (isComputerUseExecutorError(error) || !isCommandExitError(error)) throw error;
@@ -277,6 +294,7 @@ export async function runActionBatch(
       // no progress and ends through the no-progress backstop (gave_up), also when the
       // participant is held to its scheduled end (backstop.ts consecutiveUnsent).
       recordCommandFailure(session, title, error);
+      if (halting) return haltAfter(index, title);
       continue;
     }
     execution.actions.push({ index, status });
@@ -293,8 +311,34 @@ export async function runActionBatch(
       ...(watched !== undefined && waitIndex === watched.endedOn ? { watch: watched.watch } : {}),
       ...(requested.kind === "wait" && requested.ms !== undefined ? { namedMs: requested.ms } : {}),
     }));
+    if (status === "skipped" && halting) return haltAfter(index, title);
+  }
+  if (rejectedProposal !== undefined) {
+    const index = actions.length;
+    const title = `action ${index + 1} of the batch`;
+    execution.actions.push({ index, status: "not_dispatched" });
+    trace.record("notice", () =>
+      notice(
+        "warn",
+        "action rejected before dispatch",
+        session.redactNarration(
+          `action: ${title}; rejected by the participant's provider; reason: ${rejectedProposal.reason}`,
+        ),
+      ),
+    );
+    notes.push(rejectedActionHint(title, rejectedProposal.reason));
   }
   return done();
+}
+
+/** Acknowledge every action of the batch from position `from` on as not dispatched. */
+function leaveUndispatched(
+  execution: ActionBatch["execution"],
+  from: number,
+  length: number,
+): void {
+  for (let index = from; index < length; index++)
+    execution.actions.push({ index, status: "not_dispatched" });
 }
 
 function countAttempt(

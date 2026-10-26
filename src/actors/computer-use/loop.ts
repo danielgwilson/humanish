@@ -185,13 +185,13 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     recordNarration(session, turn, turnNumber, "completed");
     const blocked = reviewSafetyChecks(session, conversation, turn);
     if (blocked !== undefined) return blocked;
-    if ((turn.done || turn.actions.length === 0) && heldToScheduledEnd(session)) {
+    if (stops.endsSession(turn) && heldToScheduledEnd(session)) {
       const held = keepWorking(session, conversation, backstop, observation);
       if ("stop" in held) return held.stop;
       backstop = held.backstop;
       continue;
     }
-    if (turn.done || turn.actions.length === 0) {
+    if (stops.endsSession(turn)) {
       const report = closingReportSchema.safeParse(turn.closingReport).data;
       // The declared outcome is kept even if redacting the participant's summary fails.
       session.declaredOutcome = declaredOutcomeOf(turn, report, turn.message);
@@ -214,7 +214,7 @@ async function runTurns(session: LoopSession, conversation: Conversation): Promi
     const limits = { idleSteps: session.idleSteps, noProgressSteps: session.noProgressSteps };
     const repeat = repeatsPastLimit(backstop, turn.actions, limits) && heldToScheduledEnd(session);
     const waited = repeat ? undefined : await watcher.watch(turnNumber, observation, turn.actions);
-    const batch = await runActionBatch(session, turn.actions, waited?.waits);
+    const batch = await runActionBatch(session, turn, waited?.waits);
     const watched = repeat
       ? await watcher.watchAfterRepeat(turnNumber, observation, batch.sent)
       : waited;
@@ -346,8 +346,7 @@ function nextRequest(
   const request: CuaTurnRequest = {
     instructions: session.settings.instructions,
     observation,
-    ...(session.provider.requestPolicy !== "fail_closed" ||
-    conversation.previousExecution === undefined
+    ...(conversation.previousExecution === undefined
       ? {}
       : { previousExecution: conversation.previousExecution }),
   };
@@ -400,7 +399,9 @@ function stopBeforeActing(
         notice("warn", "study budget reached during an interrupted response", runBudgetStop),
       );
     }
-    return stops.providerInterrupted(turn.interruption);
+    return turn.interruption === "refused"
+      ? stops.providerRefused(turn.refusalCategory, (text) => session.redactNarration(text))
+      : stops.providerInterrupted(turn.interruption);
   }
   if (session.requiresUsage && session.usage.unavailableForCap()) {
     session.usage.markUnreported();

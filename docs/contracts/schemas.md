@@ -1190,9 +1190,10 @@ Core-owned fields:
 - optional `conversation`: how the first-party OpenAI computer-use provider
   carried the conversation between requests. `mode` is `threaded` (the server
   kept it through `previous_response_id`) or `explicit_context` (the server kept
-  none). `explicitReason` says why: `configured` (`zeroDataRetention`) or
+  none). `explicitReason` says why: `configured` (`zeroDataRetention`),
   `zdr_rejection` (the organization rejected server-side state; `switchedAt` and
-  `switchedAtRequest` say when). With `zdr_rejection`, `rejection` names the
+  `switchedAtRequest` say when) or `stateless_api` (the provider's API keeps no
+  conversation, so every request carries it; no run warning is given for it). With `zdr_rejection`, `rejection` names the
   answer that made the switch: `zero_data_retention` (the error named it),
   `previous_response` (a 400 that refused or could not find the
   `previous_response_id`) or `stored_item` (a 404 for an item the server never
