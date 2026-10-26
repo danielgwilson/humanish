@@ -8,24 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.148.0: Participants run gpt-6.1-sol (2026-10-26)
 
-- `pnpm bench --storage local` runs the Taskly benchmark on builds that keep their tasks in
-  localStorage, so a page reload keeps the list. The five planted defects are unchanged. Rubric
-  version 3 counts a lost-on-reload claim as invented on those builds and scores the in-memory
-  builds as version 2 did.
+humanish 0.148.0 runs a computer-use participant on `gpt-6.1-sol` at medium effort when its study
+names no `actor.model`, in place of `gpt-5.6-sol`. On the Taskly benchmark its analyses found as
+many planted defects, its participants cost about a third as much ($0.071 against $0.216 median),
+and its steps were no slower. Studies that set `actor.model` are unchanged, and the terminal
+route's Codex participant keeps `gpt-5.6-sol`.
 
-### Changed
-
-- A computer-use participant that names no `actor.model` now runs `gpt-6.1-sol` at medium effort,
-  in place of `gpt-5.6-sol`. On the Taskly builds that keep tasks across a reload, 15 planted and
-  15 clean runs each, analysis recall read by hand was 52/75 (95% interval 0.58 to 0.79) against
-  53/70 (0.65 to 0.84) for `gpt-5.6-sol`, and 42/75 against 48/70 by the rubric. It made no false
-  assurance and no invented claim on the clean build read by hand, against one false assurance
-  for `gpt-5.6-sol`. Its median participant cost was $0.071 against $0.216. It never reached
-  Clear completed on the planted build, there or in the 2026-10-24 runs. Studies that set
-  `actor.model` are unaffected, and the terminal route's Codex participant keeps `gpt-5.6-sol`.
-  The evidence is `docs/evidence/benchmark/2026-10-25-participant-default.md`.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.148.0)
 
 ## 0.147.0: Screenshots take half the space (2026-10-25)
 
