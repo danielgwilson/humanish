@@ -340,6 +340,14 @@ export interface CuaProvider {
    * then asks once more instead of ending the session. Absent means the session ends there.
    */
   readonly outputLimitRetry?: boolean;
+  /**
+   * Set by a provider whose lost request the loop's worst-case booking cannot bound, such as one
+   * billed by prompt-size tiers. Every session with a declared cap (maxUsd or overRunBudget) then
+   * runs as with CuaLoopOptions.requireReportedUsageForSpendCap: a stalled or failed request stops
+   * the session with usage_unreported instead of being booked and sent again, and a reply
+   * without usage is not acted on. An uncapped session is unaffected.
+   */
+  readonly requireReportedUsageForSpendCap?: true;
   /** Latched uncertainty from hidden interactive attempts (for example, a transport retry).
    *  A later success or pre-dispatch refusal cannot make earlier unreported usage complete.
    *  Attempts reported through a CuaSpendGate, and attempts aborted while one was given, are
@@ -535,7 +543,7 @@ export interface CuaLoopOptions {
    * before its next request once a request's usage is unknown and unbounded, and resends a lost
    * request only when its worst case fits under the cap. With this option a reply with missing
    * usage is not acted on, and any failed request stops the session. A library option: no
-   * built-in route sets it.
+   * built-in route sets it, and a provider can ask for it (CuaProvider.requireReportedUsageForSpendCap).
    */
   requireReportedUsageForSpendCap?: boolean;
   /**

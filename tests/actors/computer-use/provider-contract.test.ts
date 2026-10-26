@@ -267,6 +267,39 @@ describe("a request lost in transit under a spend cap", () => {
     );
   });
 
+  it("stalled is not sent again by the Anthropic provider; the session stops", async () => {
+    let requests = 0;
+    const result = await runComputerUseLoop({
+      instructions: "You are a busy parent. Add a task called Buy milk.",
+      provider: anthropic.create(async (_url, init) => {
+        requests += 1;
+        if (requests === 2) {
+          // The second request never answers, so the turn bound reads it as stalled.
+          return new Promise((_resolve, reject) =>
+            init.signal?.addEventListener("abort", () => reject(new Error("aborted"))),
+          );
+        }
+        const answer = anthropic.batch as { body: Json };
+        return { ok: true, status: 200, text: async () => "", json: async () => answer.body };
+      }),
+      executor: {
+        observe: async () => ({ screenshot: SCREEN, stateSignature: `frame-${requests}` }),
+        execute: async () => undefined,
+      },
+      persona: { id: "fixture", traitsApplied: [], promptDigest: "fixture" },
+      redaction: defaultRedactionHooks,
+      now: Date.now,
+      timeoutMs: 60_000,
+      turnTimeoutMs: 50,
+      ...capped(anthropic),
+    });
+    expect(requests).toBe(2);
+    expect(result.trace).toMatchObject({
+      stopCause: "usage_unreported",
+      interactionUsageIncomplete: true,
+    });
+  });
+
   it("is not sent again by the Anthropic provider, whose worst case the cap cannot bound", async () => {
     const { result, bodies } = await run(anthropic, {
       answers: ["lost", anthropic.batch, anthropic.ending],

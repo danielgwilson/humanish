@@ -110,8 +110,9 @@ output limit unless `reasoningEffort` and `maxOutputTokens` say otherwise, and r
 trace. Screenshots go to the model at full size, so a desktop wider or taller than 2,000 px is
 refused before the first request. Six of Claude's actions (`triple_click`, `left_mouse_down`,
 `left_mouse_up`, `hold_key`, `cursor_position`, `zoom`) have no desktop action yet; the
-participant is told so and the session goes on. Under a spend cap, pass `singleDispatch: true`
-with `requireReportedUsageForSpendCap`, so a request whose usage is lost is never sent twice.
+participant is told so and the session goes on. Under a spend cap (`maxUsd` or a study budget), a
+request that stalls or fails without a reply is never sent again: its cost cannot be bounded, so
+the session stops with `stopCause: "usage_unreported"`.
 Studies run on Claude in a later release.
 
 ## Score a run

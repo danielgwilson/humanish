@@ -204,7 +204,9 @@ export class LoopSession {
     this.writeScreenshot = (name, bytes) => writeScreenshot(name, bytes);
     this.sleep = (ms) => sleep(ms);
     this.capDeclared = maxUsd !== undefined || overRunBudget !== undefined;
-    this.requiresUsage = requireReportedUsageForSpendCap && this.capDeclared;
+    this.requiresUsage =
+      this.capDeclared &&
+      (requireReportedUsageForSpendCap || provider.requireReportedUsageForSpendCap === true);
     this.startedAtMs = now();
     this.turnTimeoutMs = options.turnTimeoutMs ?? DEFAULT_TURN_TIMEOUT_MS;
     this.observationTimeoutMs = options.observationTimeoutMs ?? DEFAULT_OBSERVATION_TIMEOUT_MS;

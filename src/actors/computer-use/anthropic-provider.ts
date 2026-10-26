@@ -64,9 +64,9 @@ export interface AnthropicMessagesProviderOptions {
   /** `max_tokens` per request, thinking included. Absent sends 16,000. Not a spend cap. */
   maxOutputTokens?: number;
   /**
-   * One HTTP dispatch per turn and no retries, so a request whose usage is lost is never sent
-   * twice. Pass it for a session with a spend cap whose loop sets
-   * requireReportedUsageForSpendCap.
+   * One HTTP dispatch per turn and no retries, not even of a 429 or 5xx. A capped session never
+   * sends a request with unknown usage twice without it: the provider asks the loop to stop
+   * instead (CuaProvider.requireReportedUsageForSpendCap).
    */
   singleDispatch?: boolean;
   /** Retries of a request answered 408, 409, 429 or 5xx, which bill nothing. Default 3. */
@@ -261,6 +261,10 @@ export function createAnthropicMessagesProvider(
     requiresFrame: true,
     outputLimitRetry: true,
     batchFailure: "halt",
+    // A lost request's worst case is unbounded: the loop books it at the last reported input, and
+    // the request it lost may be the one that crossed the 100,000-token tier. A capped session
+    // therefore stops rather than send it again.
+    requireReportedUsageForSpendCap: true,
     get interactionUsageIncomplete() {
       return lostUsage || conversation.usageUnpriced;
     },
