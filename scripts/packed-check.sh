@@ -1902,7 +1902,7 @@ ksj_exit=$?
 hx keys set </dev/null >"$work/logs/keys-set.out" 2>"$work/logs/keys-set.err"
 kset_exit=$?
 ks_shape=$(json_field "$work/logs/keys-status.json" '[d.schema, d.action, (d.keys || []).map((k) => k.name + ":" + (k.source === null ? (typeof k.hint === "string" && /humanish(@[0-9.]+)? keys set /.test(k.hint) ? "hint" : "nohint") : "source")).join(",")].join(" ")')
-ks_want='humanish.keys-result.v1 status E2B_API_KEY:hint,OPENAI_API_KEY:hint,GH_TOKEN:hint,AGENTMAIL_API_KEY:hint,GEMINI_API_KEY:hint'
+ks_want='humanish.keys-result.v1 status E2B_API_KEY:hint,OPENAI_API_KEY:hint,GH_TOKEN:hint,AGENTMAIL_API_KEY:hint,GEMINI_API_KEY:hint,ANTHROPIC_API_KEY:hint'
 if [ "$ks_exit" = 0 ] && [ "$ksj_exit" = 0 ] && [ "$ks_shape" = "$ks_want" ] &&
   grep -qE '^E2B_API_KEY \(hosted desktops\): missing; run `e2b auth login`, or `npx humanish(@[0-9.]+)? keys set e2b`$' "$work/logs/keys-status.out" &&
   grep -q '^Values are never printed.' "$work/logs/keys-status.out" &&
@@ -3203,8 +3203,8 @@ cj17_exit=$?
 cj17=$(json_field "$work/logs/crowd-17-json.json" 'd.analysis && [d.analysis.participants, d.analysis.expectedCostUsd.low.toFixed(2), d.analysis.expectedCostUsd.high.toFixed(2), d.analysis.refusedFromUsd === undefined].join(" ")')
 rm -f "$project/humanish/studies/crowd-17-cap.yaml" "$project/humanish/studies/crowd-17-json.yaml"
 if [ "$cc17_exit" = 0 ] && grep -qF 'After live runs: explicit analysis · gpt-6.1-sol at medium effort · refused before it starts for 17 participants in 2 cohort requests of at most 16 participants and one merge request even with no evidence (expected $0.63)' "$work/logs/crowd-17-cap.out" &&
-  [ "$ccj17" = "17 0.630695 true" ] && [ "$cj17_exit" = 0 ] && [ "$cj17" = "17 0.92 2.14 true" ]; then
-  record "study check: 17 participants analysed in 2 cohort requests and a merge request" PASS "default cap: expected \$0.92 to \$2.14 for 2 cohort requests and one merge request; cap 0.50: refusedFromUsd 0.630695" "#1742"
+  [ "$ccj17" = "17 0.631421 true" ] && [ "$cj17_exit" = 0 ] && [ "$cj17" = "17 0.92 2.14 true" ]; then
+  record "study check: 17 participants analysed in 2 cohort requests and a merge request" PASS "default cap: expected \$0.92 to \$2.14 for 2 cohort requests and one merge request; cap 0.50: refusedFromUsd 0.631421" "#1742"
 else
   record "study check: 17 participants analysed in 2 cohort requests and a merge request" FAIL "cap 3 exit $cc17_exit '$(grep -ho 'After live runs[^·]*·[^·]*·[^·]*' "$work/logs/crowd-17-cap.out" | head -n 1 | cut -c1-160)'; json exit $cj17_exit '${cj17}'; see logs/crowd-17-*" "#1742"
 fi
