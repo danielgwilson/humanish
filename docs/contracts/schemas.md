@@ -76,17 +76,17 @@ map each one to its v3 key.
 A study declares its route and composes code primitives; it is not a hardcoded kind. The
 top-level keys:
 
-| Key                                                               | Meaning                                                                                                                                                                                      |
-| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`, `id`, `title`, `description`                            | the document's identity                                                                                                                                                                      |
-| `route`                                                           | required: `preview`, `computer-use`, `shared-world`, `terminal` or `scripted`                                                                                                                |
-| `mode`                                                            | `dry-run` (the default) or `live`                                                                                                                                                            |
-| `actor`                                                           | who drives it, one object: `type`, `model`, `localAgent`, `persona`, `mission`, `tasks`, `maxOutputTokens`, `maxWaitMs`, `idleWaitMs`, `reasoningEffort`, `serviceTier`, `stopWhen`, `dwell` |
-| `participants`                                                    | a count, a homogeneous `{ count, instruction }`, or a list of entries (below)                                                                                                                |
-| `surfaces`                                                        | scripted only: `[desktop]` or `[desktop, mobile]`                                                                                                                                            |
-| `caps`                                                            | the route's budget (below)                                                                                                                                                                   |
-| `scenario`                                                        | scripted only: a committed scenario id or path                                                                                                                                               |
-| `subject`, `execution`, `policies`, `review`, `defaults`, `comms` | as below                                                                                                                                                                                     |
+| Key                                                               | Meaning                                                                                                                                                                                                  |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema`, `id`, `title`, `description`                            | the document's identity                                                                                                                                                                                  |
+| `route`                                                           | required: `preview`, `computer-use`, `shared-world`, `terminal` or `scripted`                                                                                                                            |
+| `mode`                                                            | `dry-run` (the default) or `live`                                                                                                                                                                        |
+| `actor`                                                           | who drives it, one object: `type`, `model`, `provider`, `localAgent`, `persona`, `mission`, `tasks`, `maxOutputTokens`, `maxWaitMs`, `idleWaitMs`, `reasoningEffort`, `serviceTier`, `stopWhen`, `dwell` |
+| `participants`                                                    | a count, a homogeneous `{ count, instruction }`, or a list of entries (below)                                                                                                                            |
+| `surfaces`                                                        | scripted only: `[desktop]` or `[desktop, mobile]`                                                                                                                                                        |
+| `caps`                                                            | the route's budget (below)                                                                                                                                                                               |
+| `scenario`                                                        | scripted only: a committed scenario id or path                                                                                                                                                           |
+| `subject`, `execution`, `policies`, `review`, `defaults`, `comms` | as below                                                                                                                                                                                                 |
 
 The parser reads only the declared route's keys. A key that route never reads is an error that
 names the route, such as "route: computer-use does not read scenario. Remove it.", and an
@@ -1023,7 +1023,7 @@ Actors execute or simulate the trial. Actor evidence is the provider-neutral
 `humanish.actor-trace.v1` (`src/actors/contract.ts`): Codex app-server items,
 computer-use cycles, scripted browser steps, and in-sandbox terminal-agent exec
 output all map onto one `ActorTrace`. Registered actors live in
-`src/actors/registry.ts` (`codex-app-server`, `openai-computer-use`,
+`src/actors/registry.ts` (`codex-app-server`, `computer-use`, `openai-computer-use`,
 `local-agent`, `scripted-browser`, `codex-exec`). A study that names
 `pi-agent-core` or `claude-agent-sdk` fails to parse. There is no
 `humanish.actor.v1`; that name never shipped.

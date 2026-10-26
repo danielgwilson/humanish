@@ -86,8 +86,9 @@ shell, checkout mount or credential files. Account dollar cost and output-token
 ceilings are unknown; numeric dollar/token caps are rejected. Set
 `review.analysis: false` to skip analysis.
 
-For API billing and its supported caps, use `type: openai-computer-use`, remove
-`localAgent`, and provide `OPENAI_API_KEY`. Its analysis retains the existing API
+For API billing and its supported caps, use `type: computer-use` (or
+`openai-computer-use`), remove `localAgent`, and provide the model vendor's key:
+`OPENAI_API_KEY`, or `ANTHROPIC_API_KEY` for `model: claude-haiku-5-5`. Its analysis retains the existing API
 default. Neither path silently falls back to another provider or hosted desktop.
 Existing studies without `execution.target: local` retain their previous behavior.
 

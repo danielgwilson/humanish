@@ -17,7 +17,7 @@ that cannot carry both halves refuses the declaration before execution. Removing
 | Preview (`this-repo`)                                 | Rejected     | Study dispatch does not pass task declarations to the dry-run engine            |
 
 A study has one `actor`, and its participants go in `participants`, so every participant
-gets the same tasks. Both registered CUA actors (`openai-computer-use` and `local-agent`) share
+gets the same tasks. The registered CUA actors (`computer-use`, `openai-computer-use` and `local-agent`) share
 the CUA session loop. Their task support does not depend on which provider chooses actions.
 Custom session hooks remain caller-owned implementations of that same contract;
 this preflight does not certify arbitrary hook behavior.

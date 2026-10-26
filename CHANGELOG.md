@@ -37,7 +37,7 @@ The Unreleased section holds the full notes for the next version until it is tag
 - `createAnthropicMessagesProvider` builds a computer-use participant on Claude through the
   Anthropic Messages API and Claude's `computer_toolset_20260801`, on `claude-haiku-5-5` at effort
   `medium` with a 16,000-token output limit by default. A library caller passes it to
-  `runComputerUseLoop`; studies do not reach it yet. All 17 of Claude's computer actions run,
+  `runComputerUseLoop`, and a study reaches it with `actor.type: computer-use` (below). All 17 of Claude's computer actions run,
   `zoom` and `cursor_position` answered from what the desktop read, and a desktop over 2,000 px a
   side is refused.
 - `claude-haiku-5-5` has a rate: $0.10 input, $0.01 cache read, $0.125 cache write and $0.50
@@ -63,6 +63,19 @@ The Unreleased section holds the full notes for the next version until it is tag
   the stream's screenshots and checked by `humanish verify`. A pointer read's `ui_action` records
   `pointer`, the position it read. The Observer shows a zoom's image on its activity row, and
   analysis offers it as a capture the analyst can cite.
+- `actor.type: computer-use` runs each participant on the vendor of its `actor.model`:
+  `claude-haiku-5-5` on Anthropic with `ANTHROPIC_API_KEY`, the `gpt-*` models on OpenAI with
+  `OPENAI_API_KEY`, and `gpt-6.1-sol` when the study names no model. It runs on E2B and Modal
+  desktops, in local and remote runs, and in a local browser. `actor.provider` names the vendor of
+  a model humanish does not list yet; that model runs unpriced, so a spend cap is refused.
+- A `computer-use` study is refused when it is read, before a run id exists, for a model
+  humanish does not list and no `actor.provider`, an `actor.provider` that disagrees with the
+  listed model, and a Claude participant's desktop over 2,000 px a side or 4,784 visual tokens.
+- `humanish keys` lists `ANTHROPIC_API_KEY`, `doctor --study` reports it for a study whose
+  participants run on Anthropic, and a live run without it is refused before it starts with
+  `humanish keys set anthropic`. A remote run on E2B keeps it in E2B's egress proxy, added to
+  requests for `api.anthropic.com` as `x-api-key`; a Modal runner receives it as an environment
+  variable.
 
 ### Changed
 
@@ -92,6 +105,17 @@ The Unreleased section holds the full notes for the next version until it is tag
   agents enlarged the page with Ctrl+= instead. The run bundle keeps the crop at desktop pixels.
 - Analysis instructions say a zoom capture is the participant's closer look at a region and not a
   full screen. The added paragraph raises each analysis request's input by about 145 tokens.
+- `openai-computer-use` refuses a model the participant model table puts on another vendor, such
+  as `claude-haiku-5-5`, and names `actor.type: computer-use`. Before, a capped study naming it
+  passed every check, since the model has a rate, and failed on its first request. Any other model
+  id still goes to OpenAI.
+- An effort level a listed participant model does not accept is refused when the study is read,
+  for `actor.reasoningEffort` and for each `participants[].reasoningEffort`, on
+  `openai-computer-use` too: `none` on the default `gpt-6.1-sol` no longer starts a run that fails
+  on its first turn. A model humanish does not list is checked against its vendor's levels only.
+- `actor.maxOutputTokens` and `actor.serviceTier` apply to `computer-use` as to
+  `openai-computer-use`. `serviceTier: fast` still needs a Fast mode rate, which only OpenAI
+  models have.
 
 ### Fixed
 

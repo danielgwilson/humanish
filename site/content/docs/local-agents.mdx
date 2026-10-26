@@ -36,6 +36,16 @@ separate optional model selection passed to that CLI. When it is omitted, a
 Codex participant on a hosted desktop keeps the operator's configured model selection. Having Codex
 installed does not change an `openai-computer-use` study.
 
+Claude can drive a participant in two ways. `actor.type: local-agent` with
+`localAgent: claude` runs your signed-in Claude Code, which acts through
+humanish's JSON action reply and bills your plan with no dollar cap.
+`actor.type: computer-use` with `model: claude-haiku-5-5` calls the Anthropic
+Messages API with `ANTHROPIC_API_KEY`: Claude acts with Anthropic's own computer
+toolset, each request is priced, and `caps.maxUsd` applies. See
+[pick the participant model](/docs/computer-use#pick-the-participant-model). An
+exported `ANTHROPIC_API_KEY` for API participants never reaches a Claude Code
+participant, as the next section says.
+
 Check the CLI's sign-in state, then the study's setup:
 
 ```bash

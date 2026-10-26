@@ -148,7 +148,7 @@ export function parseActorFields(
   if (entry.reasoningEffort !== undefined) {
     if (!isReasoningEffort(entry.reasoningEffort)) {
       return invalid(
-        `${path}.reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent: a level a listed participant model does not accept is refused, and any other model refuses it on the first turn rather than silently downgrading it.`,
+        `${path}.reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent: a level a listed participant model does not accept is refused here, and any other model refuses it on its first turn; humanish never downgrades a level.`,
       );
     }
     actor.reasoningEffort = entry.reasoningEffort;
@@ -254,7 +254,7 @@ export function parseParticipantEntries(
     if (entry.reasoningEffort !== undefined) {
       if (!isReasoningEffort(entry.reasoningEffort)) {
         return invalid(
-          `${paths.entry(entryIndex)}.reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent: a level a listed participant model does not accept is refused, and any other model refuses it on the first turn rather than silently downgrading it.`,
+          `${paths.entry(entryIndex)}.reasoningEffort must be one of: ${reasoningEffortNames()}. Support is model-dependent: a level a listed participant model does not accept is refused here, and any other model refuses it on its first turn; humanish never downgrades a level.`,
         );
       }
       parsedEntry.reasoningEffort = entry.reasoningEffort;
