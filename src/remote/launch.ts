@@ -149,13 +149,16 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
     await writeRemoteRecord(paths, {
       runId,
       provider: remote.provider,
+      route: remote.route,
       deadline: new Date(Date.now() + remote.runnerMs).toISOString(),
     });
-    // Bound before the run starts, so a taken --port fails before any participant exists.
-    proxy = await serveObserverProxy(
-      await runner.sandbox.portAccess!(RUNNER_OBSERVER_PORT),
-      launch.port,
-    );
+    // Bound before the run starts, so a taken --port fails before any participant exists. A
+    // terminal run has no live Observer, here or locally: it renders one when it ends.
+    if (remote.route === "computer-use")
+      proxy = await serveObserverProxy(
+        await runner.sandbox.portAccess!(RUNNER_OBSERVER_PORT),
+        launch.port,
+      );
     const version = await Promise.race([setup, signals.received.then(() => "")]);
     if (signals.requested !== undefined)
       return await endRun(launch, runId, {
@@ -169,7 +172,7 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
       ownerKey,
       env: keys.env,
     });
-    return await followRemoteRun({ launch, runner, paths, runId, signals, proxyUrl: proxy.url });
+    return await followRemoteRun({ launch, runner, paths, runId, signals, proxyUrl: proxy?.url });
   } catch (error) {
     const reclaimed = await reclaimRunSandboxes(cwd, runId, { env: launch.env }).then(
       (result) => result.ok,
@@ -219,7 +222,8 @@ export async function followRemoteRun(args: {
   paths: PreparedRunArtifactPaths;
   runId: string;
   signals: Signals;
-  proxyUrl: string;
+  /** The local Observer address, for a run that has a live Observer. */
+  proxyUrl: string | undefined;
 }): Promise<RemoteOutcome> {
   const { launch, runner, paths, runId, signals } = args;
   const { say } = launch;
@@ -252,7 +256,11 @@ export async function followRemoteRun(args: {
       alive = run.alive;
     }
     if (run?.state !== undefined && state === undefined) {
-      say(`Run ${runId} is running. Watch it live at ${args.proxyUrl}`);
+      say(
+        args.proxyUrl === undefined
+          ? `Run ${runId} is running. Its Observer is ready once the run ends and is copied back: humanish observe --run ${runId}`
+          : `Run ${runId} is running. Watch it live at ${args.proxyUrl}`,
+      );
       say("Closing this terminal leaves the study running; Ctrl-C stops it.");
     }
     if (run?.state !== undefined && run.state !== state) {
@@ -470,7 +478,7 @@ function message(error: unknown): string {
  */
 async function writeRemoteRecord(
   paths: PreparedRunArtifactPaths,
-  record: { runId: string; provider: string; deadline: string },
+  record: { runId: string; provider: string; route: string; deadline: string },
 ): Promise<void> {
   await writeContainedOutputFile(
     paths,
@@ -550,9 +558,9 @@ export interface RunnerKeys {
  * How each sandbox provider's runner receives the keys forwarded to it. E2B holds each key that
  * travels as a header to a fixed host in an E2B header transform: the run gets a placeholder, and
  * the system CA bundle that holds E2B's proxy CA, which Node does not read by default. Modal has no
- * such transform, so a Modal runner receives every key as an environment variable. A key the plan
- * names in `plainKeys` reaches the run as its value on E2B too. A new sandbox provider adds its
- * entry here.
+ * such transform, so a Modal runner receives every key as an environment variable. The first key
+ * set of the plan's `plainKeys` reaches the run as its value on E2B too. A new sandbox provider
+ * adds its entry here.
  */
 const KEY_PLACEMENT: Readonly<
   Record<
@@ -604,7 +612,12 @@ export function runnerKeys(
   const forwarded: Record<string, string> = Object.fromEntries(
     remote.envNames.flatMap((name) => (set(name) && !unread.has(name) ? [[name, env[name]!]] : [])),
   );
-  return KEY_PLACEMENT[remote.provider](forwarded, { allowPublicTraffic: false }, remote.plainKeys);
+  const plain = remote.plainKeys.find(set);
+  return KEY_PLACEMENT[remote.provider](
+    forwarded,
+    { allowPublicTraffic: false },
+    plain === undefined ? [] : [plain],
+  );
 }
 
 /** Whether this humanish runs from a built package, which a runner can install. */

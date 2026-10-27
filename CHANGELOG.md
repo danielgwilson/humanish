@@ -12,9 +12,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 - A live terminal study on `e2b-terminal` or `modal-terminal` now runs remotely by default, as a
   hosted computer-use study does: its own process runs in a runner sandbox on that provider, so it
-  keeps going when this machine sleeps, and `observe --run <id>` follows it from anywhere. The
-  runner receives the study file, persona files and `subject.product.upload`. The runtime key
-  (`CODEX_API_KEY` or `OPENAI_API_KEY`) enters the runner's environment on E2B as well as Modal,
+  keeps going when this machine sleeps, and `observe --run <id>` reconnects to it. It has no live
+  Observer, as a local terminal run has none; its Observer is rendered when it ends. The runner
+  receives the study file, persona files and `subject.product.upload`. The runtime key Codex reads
+  (`CODEX_API_KEY`, else `OPENAI_API_KEY`) enters the runner's environment on E2B as well as Modal,
   because the run places it in the shell sandbox; the participant gets it as before. `--local` or
   `execution.remote: false` keeps the run and its key on this machine.
 

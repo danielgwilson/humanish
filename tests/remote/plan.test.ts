@@ -159,6 +159,15 @@ describe("a live terminal study", () => {
     expect(modal).toMatchObject({ ok: true, plan: { provider: "modal", route: "terminal" } });
   });
 
+  it("forwards the second runtime key name only when its analysis reads it", () => {
+    const runtime = ["CODEX_API_KEY", "OPENAI_API_KEY"];
+    const analysed = remote(terminal());
+    const plain = remote(terminal({ review: { analysis: false } }));
+    if (!analysed.ok || !plain.ok) throw new Error("expected both to plan");
+    expect(analysed.plan.alternatives).not.toContainEqual(runtime);
+    expect(plain.plan.alternatives).toContainEqual(runtime);
+  });
+
   it("uploads its product file, resolved against the project", () => {
     const result = remote(
       terminal({

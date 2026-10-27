@@ -448,6 +448,29 @@ describe("the keys a runner receives", () => {
     expect(keys.sent).toEqual(["OPENAI_API_KEY"]);
   });
 
+  it("on E2B, sends only the runtime key Codex reads as its value, and holds the analyst's", () => {
+    const both = { ...env, CODEX_API_KEY: "synthetic-codex" };
+    const terminal = {
+      provider: "e2b" as const,
+      envNames: ["CODEX_API_KEY", "OPENAI_API_KEY"],
+      plainKeys: ["CODEX_API_KEY", "OPENAI_API_KEY"],
+    };
+    // The analysis reads OPENAI_API_KEY, so it goes to the runner, held in the proxy.
+    const analysed = runnerKeys({ ...terminal, alternatives: [] }, both);
+    expect(analysed.env).toMatchObject({
+      CODEX_API_KEY: "synthetic-codex",
+      OPENAI_API_KEY: EGRESS_PLACEHOLDER,
+    });
+    expect(analysed.held).toEqual(["OPENAI_API_KEY"]);
+    // Nothing else reads it, so it stays here.
+    const alone = runnerKeys(
+      { ...terminal, alternatives: [["CODEX_API_KEY", "OPENAI_API_KEY"]] },
+      both,
+    );
+    expect(alone.env).toEqual({ CODEX_API_KEY: "synthetic-codex" });
+    expect(alone.network.rules).toBeUndefined();
+  });
+
   it("on Modal, which has no header transform, sends each planned key that is set as an environment variable", () => {
     const keys = runnerKeys(
       {

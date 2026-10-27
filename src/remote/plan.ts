@@ -44,7 +44,10 @@ export interface RemotePlan {
   readonly envNames: readonly string[];
   /** Names of which only the first one set is sent, as the run reads only that one. */
   readonly alternatives: readonly (readonly string[])[];
-  /** Names the runner's run receives as environment variables on every provider, never held. */
+  /**
+   * Names of which the first one set reaches the runner's run as its value on every provider,
+   * never held in an egress proxy.
+   */
   readonly plainKeys: readonly string[];
   /** The study's route, which names its run. */
   readonly route: "computer-use" | "terminal";
@@ -112,7 +115,7 @@ export function planRemoteRun(args: {
       envNames: [
         ...new Set([...keyNamesOf(plan), ...PROVIDER_KEYS[route.provider], ...PLAN_SETTINGS]),
       ].sort(),
-      alternatives: analystKeyNames(plan),
+      alternatives: [...analystKeyNames(plan), ...route.alternatives],
       plainKeys: route.plainKeys,
     },
   };
@@ -128,6 +131,8 @@ interface RemoteRoute {
   studyMs: number;
   /** Project-relative files the study reads, beyond the study file and participant files. */
   uploads: string[];
+  /** Key names of which the run reads only the first one set. */
+  alternatives: (readonly string[])[];
   plainKeys: string[];
 }
 
@@ -150,6 +155,7 @@ function computerUseRoute(config: StudyConfig, plan: ComputerUsePlan): RemoteRou
     sandboxes: plan.concurrency,
     studyMs: plan.arrivals.lastEndMs,
     uploads: [],
+    alternatives: [],
     plainKeys: [],
   };
 }
@@ -157,7 +163,7 @@ function computerUseRoute(config: StudyConfig, plan: ComputerUsePlan): RemoteRou
 /**
  * A terminal study's one shell sandbox. The run in the runner puts the runtime key into that
  * sandbox's own egress rule, or into the codex command, so the runner needs the key's value: a
- * placeholder there would reach OpenAI and be refused.
+ * placeholder there would reach OpenAI and be refused. Only the key Codex reads goes as its value.
  */
 function terminalRoute(
   plan: Extract<TerminalPlan, { dryRun: false }>,
@@ -181,6 +187,9 @@ function terminalRoute(
       productInstall: plan.product.install !== undefined,
     }),
     uploads,
+    // Codex reads the first runtime key set. A second one goes to the runner only when the
+    // analysis reads it, and is then held as usual.
+    alternatives: analysisReads(plan, "OPENAI_API_KEY") ? [] : [TERMINAL_RUNTIME_KEY_NAMES],
     plainKeys: [...TERMINAL_RUNTIME_KEY_NAMES],
   };
 }
@@ -215,6 +224,16 @@ function servedHere(appUrl: string): boolean {
     (a === 172 && b >= 16 && b <= 31) ||
     (a === 192 && b === 168) ||
     (a === 169 && b === 254)
+  );
+}
+
+/** Whether the plan's analysis reads `name`. */
+function analysisReads(plan: StudyPlan, name: string): boolean {
+  const analyst = plan.analysis?.config.provider;
+  return (
+    plan.analysis !== undefined &&
+    analyst !== "codex" &&
+    analysisKeyNames(analyst ?? "openai").includes(name)
   );
 }
 

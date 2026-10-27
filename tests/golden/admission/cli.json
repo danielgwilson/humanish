@@ -169,7 +169,7 @@
       },
       "runOk": false
     },
-    "stderr": "",
+    "stderr": "Not running remotely: --scorer does not run remotely yet. A run on this machine stops if it sleeps.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
@@ -291,7 +291,7 @@
       },
       "runOk": false
     },
-    "stderr": "",
+    "stderr": "Not running remotely: --scorer does not run remotely yet. A run on this machine stops if it sleeps.\n",
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
