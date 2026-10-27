@@ -2562,7 +2562,7 @@
           {
             "id": "lane-01",
             "index": 0,
-            "personaId": "synthetic-new-user",
+            "personaId": "cli-newcomer",
             "assignment": {
               "mission": "You are evaluating a command-line tool called humanish that your team is considering. It is already installed on this machine. Using its interactive terminal interface, find out what studies this project already contains, pick the one that looks most interesting, and find out what it would cost to run it for real. Then stop and say what you found, what confused you, and whether you could tell how to start a real run. Do not start one."
             },

@@ -2107,7 +2107,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:b530af8c0eea99b5",
+              "instructions": "sha256:1b41f655ad24e1ec",
               "tools": [
                 {
                   "type": "computer"
@@ -2143,7 +2143,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:b530af8c0eea99b5"
+                      "text": "sha256:1b41f655ad24e1ec"
                     },
                     {
                       "type": "input_image",

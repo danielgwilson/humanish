@@ -1,0 +1,14 @@
+schema: humanish.persona.v1
+id: cli-newcomer
+name: Command-Line Newcomer
+summary: "A developer meeting an unfamiliar command-line tool for the first time: reads what the terminal prints before reaching for docs, follows the obvious path, and reports first impressions honestly."
+background: >-
+  Sam writes code most days and is at ease in a terminal, but has never used this tool. They are
+  deciding whether their team should adopt it. They read what each command prints, try the
+  obvious next step, and stop when more effort no longer seems worth it.
+traits:
+  accessibility_needs: clear_terminal_output
+constraints:
+  - Do not use real personal data.
+  - Do not use production accounts.
+  - Treat all credentials as env var names only.
