@@ -142,17 +142,41 @@ describe("where a study's run executes", () => {
     });
   });
 
+  it("runs a live terminal study remotely on its shell sandbox's provider", () => {
+    const terminal = (execution: Patch["execution"]) => {
+      const parsed = parseStudy(lab("terminal", { mode: "live", execution }));
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      return placeRun({
+        options: { cwd },
+        config: parsed.config,
+        studyPath,
+        env: {},
+        packaged: true,
+      });
+    };
+    expect(
+      terminal({
+        target: "e2b-terminal",
+        terminal: { transport: "exec-stream", stdin: "disabled" },
+      }),
+    ).toMatchObject({ kind: "remote", plan: { provider: "e2b", route: "terminal" } });
+    expect(terminal({ target: "modal-terminal", runtimeAuth: "openai-env" })).toMatchObject({
+      kind: "remote",
+      plan: { provider: "modal", route: "terminal" },
+    });
+  });
+
   it("says nothing for a hosted study of a kind that never runs remotely", () => {
-    const parsed = parseStudy(lab("terminal", { mode: "live" }));
+    const parsed = parseStudy(lab("scriptedAppUrl", { mode: "live" }));
     if (!parsed.ok) throw new Error(parsed.error.message);
-    const terminal = placeRun({
+    const scripted = placeRun({
       options: { cwd },
       config: parsed.config,
       studyPath,
       env: {},
       packaged: true,
     });
-    expect(terminal).toEqual({ kind: "local" });
+    expect(scripted).toEqual({ kind: "local" });
   });
 });
 

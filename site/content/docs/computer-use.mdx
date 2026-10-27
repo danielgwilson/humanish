@@ -446,7 +446,10 @@ your own E2B or Modal account. Its run uses only the keys its plan reads. On E2B
 Gemini and E2B keys stay in E2B's egress proxy, which adds each one to the runner's requests to
 its provider, and the run's environment holds placeholders; code in the runner can still read them
 back through the E2B API, as [trust boundaries](/docs/trust-boundaries) describes. On Modal, the
-keys are in the run's environment. It costs
+keys are in the run's environment. A terminal study's runtime key (`CODEX_API_KEY` or
+`OPENAI_API_KEY`) enters the runner's environment on both providers, because the run in the runner
+places it in the shell sandbox's own egress rule or Codex command; the participant gets it as a
+local run would give it. It costs
 one more sandbox for the length of the study, and on E2B it counts against your concurrent
 sandboxes. On E2B the runner is made from E2B's stock desktop template, as a participant's desktop
 is, for its 8 GB of memory, so it costs about what one more participant does; no desktop starts on
@@ -454,8 +457,10 @@ it. On Modal it has 2 CPU and 4 GiB.
 
 A study runs remotely when it is a computer-use study whose participants use `e2b-desktop` or
 `modal-desktop`, with a model API key (not a local agent) and an `app-url` subject on the public
-internet, and the run uses none of `--scorer`, `--count`, `--rerun-failed-from`, `--participants`
-or `--expose`. Any other hosted study runs on this machine, and the command says why. To choose:
+internet, or a live terminal study on `e2b-terminal` or `modal-terminal`. The run must use none of
+`--scorer`, `--count`, `--rerun-failed-from`, `--participants` or `--expose`, and a terminal
+study's `subject.product.upload` must be inside the project, which the runner receives. Any other
+hosted study runs on this machine, and the command says why. To choose:
 
 - `--local` runs this one run on this machine; `execution.remote: false` in the study does it for
   every run.

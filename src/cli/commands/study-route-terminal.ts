@@ -3,7 +3,7 @@ import { Command } from "commander";
 import type { StudyConfig } from "../../study/types.js";
 import { cliRunEventOptions } from "./analysis-signals.js";
 import { type CliIo, type StudyCommandOptions, wantsJson } from "../io.js";
-import { writeRunResult } from "../run-findings.js";
+import { writeResultFile, writeRunResult } from "../run-findings.js";
 import { showObserver } from "../observer-follow.js";
 import { formatTerminalStudyHuman } from "./study-format.js";
 import { observerOpen, resolveRouteShouldOpen, watchFinishedPlan } from "./study-route-open.js";
@@ -53,7 +53,11 @@ export function terminalRouteRun(args: TerminalRouteArgs): RouteRun | undefined 
         result,
         formatTerminalStudyHuman,
       );
-      args.io.setExitCode(result.ok && automaticAnalysisSucceeded(result) ? 0 : 2);
+      const exitCode = result.ok && automaticAnalysisSucceeded(result) ? 0 : 2;
+      args.io.setExitCode(exitCode);
+      // A remote run's launcher waits for this file, while this process may go on serving.
+      if (args.options.resultFile !== undefined)
+        await writeResultFile(args.options.resultFile, { exitCode, result });
 
       if (finishedPlan !== undefined && result.ok && result.observer !== undefined) {
         await showObserver({

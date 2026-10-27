@@ -553,15 +553,17 @@ has finished. A participant with `endAfterMs` can keep a study running for up to
 analysis usually adds 1 to 4 minutes after the last participant ends. A shell timeout that sends
 SIGTERM stops the run: humanish marks it interrupted and stops its sandboxes.
 
-- A computer-use study on `e2b-desktop` or `modal-desktop` with a public `app-url` runs remotely
-  by default: its own process runs in a sandbox on that provider, so a sleeping machine does not
+- A computer-use study on `e2b-desktop` or `modal-desktop` with a public `app-url`, or a live
+  terminal study on `e2b-terminal` or `modal-terminal`, runs remotely by default: its own process runs in a sandbox on that provider, so a sleeping machine does not
   stop it. `run` still blocks and exits with the run's code; SIGTERM still stops the run. Until its
   bundle is copied back it is not in `runs --json`; `npx humanish observe --run <id>` follows it.
   If its terminal closes, the command exits 129 with `HUMANISH_REMOTE_DETACHED` and the run goes
   on; `observe --run <id>` copies it back. `--local` keeps one run on this machine,
   `execution.remote: false` every run of a study. The JSON result's `remote.keys` names the keys
   the run used. On E2B the OpenAI, Gemini and E2B keys stay in E2B's egress proxy and the runner
-  holds placeholders; a Modal runner receives them as environment variables.
+  holds placeholders; a Modal runner receives them as environment variables. A terminal study's
+  runtime key enters the runner's environment on both, since the run places it in the shell
+  sandbox.
 - Start a study that can outlive your shell call in tmux, for example
   `tmux new -d -s study 'npx humanish run <study> --json --no-open > run-result.json 2> run.log'`.
   `--detach` only skips the Observer server at the end; it does not move the run to the background.

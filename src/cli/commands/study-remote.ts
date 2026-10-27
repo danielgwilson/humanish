@@ -17,7 +17,8 @@ import type { RunResult } from "../../run/results.js";
 import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
 import type { StudyConfig } from "../../study/types.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../substrates/e2b/lifetime.js";
-import { MODAL_MAX_SANDBOX_MS } from "../../substrates/modal/sdk.js";
+import { importE2BDesktop } from "../../substrates/e2b/sdk.js";
+import { loadModalModule, MODAL_MAX_SANDBOX_MS } from "../../substrates/modal/sdk.js";
 import {
   type CliIo,
   formatRunHuman,
@@ -87,7 +88,9 @@ export function placeRun(args: {
   const provider =
     plan.route === "computer-use" && plan.runner.desktop === "e2b-desktop"
       ? plan.runner.provider
-      : "e2b";
+      : plan.route === "terminal"
+        ? plan.sandboxProvider
+        : "e2b";
   const e2bCeiling = sandboxCeiling(process.env);
   const sandboxes = concurrentSandboxes(process.env);
   const remote = planRemoteRun({
@@ -109,12 +112,14 @@ export function placeRun(args: {
 
 /**
  * Whether the study is of a kind that runs remotely, so a reason it does not this time is worth
- * saying: a computer-use study on hosted desktops. Other routes never run remotely yet.
+ * saying: a computer-use study on hosted desktops, or a terminal study. Other routes never run
+ * remotely yet.
  */
 function movable(config: StudyConfig): boolean {
   const target = config.execution?.target;
   return (
-    config.route === "computer-use" && (target === "e2b-desktop" || target === "modal-desktop")
+    (config.route === "computer-use" && (target === "e2b-desktop" || target === "modal-desktop")) ||
+    config.route === "terminal"
   );
 }
 
@@ -152,6 +157,18 @@ export async function runRemoteStudy(args: {
   const port = parseObserverPort(options.port ?? "0");
   if (port === null) {
     refuseRemote(args.command, io, cwd, "--port must be an integer between 0 and 65535.");
+    return;
+  }
+  // The launch names the run and records its owner before it first loads the provider's SDK, so
+  // a missing optional peer is refused here, before anything is written.
+  const sdk = await (
+    args.remote.provider === "modal" ? loadModalModule() : importE2BDesktop()
+  ).then(
+    () => undefined,
+    (error: unknown) => (error instanceof Error ? error.message : String(error)),
+  );
+  if (sdk !== undefined) {
+    refuseRemote(args.command, io, cwd, sdk);
     return;
   }
   const keys = runnerKeys(args.remote, process.env);

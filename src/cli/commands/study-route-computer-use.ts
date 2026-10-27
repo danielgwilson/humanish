@@ -1,4 +1,3 @@
-import { rename, writeFile } from "node:fs/promises";
 import { automaticAnalysisSucceeded } from "../../analysis/automatic-completion.js";
 import { Command } from "commander";
 import { type InternalRunStudyOptions } from "../../run-study.js";
@@ -35,7 +34,7 @@ import {
   staticObserverOpen,
   withObserverServer,
 } from "../observer-follow.js";
-import { writeRunResult } from "../run-findings.js";
+import { writeResultFile, writeRunResult } from "../run-findings.js";
 import { formatCuaStudyHuman } from "./study-format.js";
 import { resolveRouteShouldOpen } from "./study-route-open.js";
 import type { RouteRun } from "./study-route-run.js";
@@ -400,14 +399,4 @@ async function reportCuaRun(
       rendered: result.observer,
     });
   }
-}
-
-/**
- * Write `value` to `file` as JSON in one rename, so a reader polling for it never sees it half
- * written. A remote run's launcher reads it while this process keeps serving the Observer.
- */
-async function writeResultFile(file: string, value: unknown): Promise<void> {
-  const partial = `${file}.partial`;
-  await writeFile(partial, `${JSON.stringify(value)}\n`, { mode: 0o600 });
-  await rename(partial, file);
 }

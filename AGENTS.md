@@ -112,13 +112,14 @@ anyone.
   `share_ready` evidence is shared. Feedback drafts do not mutate GitHub by default. Live spend,
   publishing, external mutation and broader credential access each need an explicit choice.
 - Credential placement depends on the route. The computer-use model key stays on the host for a
-  local run. A remote run, the default for a hosted computer-use study with a public app URL,
-  runs in a runner sandbox in the operator's own E2B or Modal account and names its keys first.
-  On E2B, the OpenAI, Anthropic, Gemini and E2B keys stay in E2B's egress proxy and the runner holds
-  placeholders. A process in the runner can still read them back through the E2B API. A Modal
-  runner receives its keys as environment variables. `--local` or `execution.remote: false` keeps
-  them here. The default terminal runtime keeps its key in E2B's egress proxy, and `openai-env`
-  passes it command-scoped.
+  local run. A remote run, the default for a hosted computer-use study with a public app URL and
+  for a live terminal study, runs in a runner sandbox in the operator's own E2B or Modal account
+  and names its keys first. On E2B, the OpenAI, Anthropic, Gemini and E2B keys stay in E2B's
+  egress proxy and the runner holds placeholders. A process in the runner can still read them back
+  through the E2B API. A Modal runner receives its keys as environment variables, and so does an
+  E2B runner for a terminal study's runtime key, which the run places in the shell sandbox.
+  `--local` or `execution.remote: false` keeps them here. The default terminal runtime keeps its
+  key in E2B's egress proxy, and `openai-env` passes it command-scoped.
 - Report a cost estimate, an unknown or a failure as it is, never as zero or success. Run more
   than one participant where a claim depends on replication.
 - Issue readiness grants no authority. Its machine-readiness fields gate automated queue pickup,

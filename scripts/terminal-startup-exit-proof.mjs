@@ -32,6 +32,8 @@ for (const phase of ["Xvfb", "startxfce4"]) {
         cwd,
         "--json",
         "--no-open",
+        // The proof is of this process's exit; a live terminal study would otherwise run remotely.
+        "--local",
       ],
       {
         cwd,

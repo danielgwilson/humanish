@@ -23,6 +23,8 @@ export interface RemoteRunHere {
   runId: string;
   provider: SandboxProviderId;
   runnerId: string;
+  /** Whether its run serves a live Observer; a record from before `route` was written does. */
+  liveObserver: boolean;
 }
 
 /**
@@ -42,14 +44,20 @@ export async function remoteRunHere(
   if ((await readText(paths, "run.json")) !== undefined) return undefined;
   const record = await readText(paths, "remote.json");
   if (record === undefined) return undefined;
-  const provider = (JSON.parse(record) as { provider?: unknown }).provider;
+  const { provider, route } = JSON.parse(record) as { provider?: unknown; route?: unknown };
   if (typeof provider !== "string" || !isSandboxProviderId(provider)) return undefined;
   const journal = (await readText(paths, SANDBOX_RECEIPTS_ARTIFACT)) ?? "";
   // Until the run is copied back, this directory's journal holds one receipt: the runner's, the
   // only sandbox this machine creates for a remote run.
   const [runner, ...others] = parseSandboxReceipts(journal);
   if (runner === undefined || others.length > 0) return undefined;
-  return { paths, runId, provider, runnerId: runner.sandboxId };
+  return {
+    paths,
+    runId,
+    provider,
+    runnerId: runner.sandboxId,
+    liveObserver: route !== "terminal",
+  };
 }
 
 async function readText(root: PreparedOutputRoot, file: string): Promise<string | undefined> {
@@ -57,7 +65,10 @@ async function readText(root: PreparedOutputRoot, file: string): Promise<string 
   return read.status === "read" ? Buffer.from(read.bytes).toString("utf8") : undefined;
 }
 
-/** Reconnect to `run`'s runner, serve its Observer on 127.0.0.1:`port` and follow it to the end. */
+/**
+ * Reconnect to `run`'s runner, serve its live Observer on 127.0.0.1:`port` when it has one, and
+ * follow it to the end.
+ */
 export async function reattachRemoteRun(
   context: RemoteContext,
   run: RemoteRunHere,
@@ -79,10 +90,9 @@ export async function reattachRemoteRun(
   }
   const runner = runnerOf(sandbox);
   const signals = watchSignals();
-  const proxy = await serveObserverProxy(
-    await runner.sandbox.portAccess!(RUNNER_OBSERVER_PORT),
-    port,
-  );
+  const proxy = run.liveObserver
+    ? await serveObserverProxy(await runner.sandbox.portAccess!(RUNNER_OBSERVER_PORT), port)
+    : undefined;
   try {
     context.say(`Reconnected to run ${run.runId} on its runner.`);
     return await followRemoteRun({
@@ -91,10 +101,10 @@ export async function reattachRemoteRun(
       paths: run.paths,
       runId: run.runId,
       signals,
-      proxyUrl: proxy.url,
+      proxyUrl: proxy?.url,
     });
   } finally {
     signals.dispose();
-    await proxy.close();
+    await proxy?.close();
   }
 }

@@ -3,6 +3,8 @@
 // that gets them; `--json` gets the same message and command on `automaticAnalysis`, and a bounded
 // `findings` summary when the analysis left findings.
 
+import { rename, writeFile } from "node:fs/promises";
+
 import type { Command } from "commander";
 import type { AutomaticAnalysisOutcome } from "../analysis/job.js";
 import { cwdFlag, readRunFindings, type AnalysisFindings, type FindingsDeps } from "./findings.js";
@@ -174,4 +176,14 @@ export async function writeRunResult<T extends RunResultShape>(
     // JSON output never calls the human formatter.
     () => "",
   );
+}
+
+/**
+ * Write `value` to `file` as JSON in one rename, so a reader polling for it never sees it half
+ * written. A remote run's launcher reads it while this process keeps serving the Observer.
+ */
+export async function writeResultFile(file: string, value: unknown): Promise<void> {
+  const partial = `${file}.partial`;
+  await writeFile(partial, `${JSON.stringify(value)}\n`, { mode: 0o600 });
+  await rename(partial, file);
 }

@@ -170,6 +170,26 @@ request/redaction tests do not establish live wire behavior. The [2026-09-05
 transport receipt](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/terminal-product/2026-09-05-runtime-egress-auth.md)
 records the controlled live header/auth checks and their scope.
 
+## Remote runs
+
+A live terminal study runs remotely by default, as a hosted computer-use study does: its own
+process runs in a runner sandbox on the shell sandbox's provider, so it keeps going when the
+operator's machine sleeps (`src/remote/plan.ts`, `terminalRoute`). The runner receives the study
+file, the persona files and `subject.product.upload`, resolved against the project as the route
+resolves it. Its lifetime covers setup, the shell sandbox's own timeout
+(`terminalSandboxTimeoutMs`), analysis and teardown. The runner's `watch --result-file` writes
+the result the launcher waits for. A terminal run writes no in-progress bundle, so the launcher
+serves no live Observer for it; the Observer is rendered when the run ends.
+
+The runtime key Codex reads (`CODEX_API_KEY`, else `OPENAI_API_KEY`) is the one key a runner on
+E2B receives as its value (`RemotePlan.plainKeys`); every other held key stays a placeholder. The
+other runtime name goes to the runner only when the analysis reads it, and is then held. The run in the runner reads that value to build the shell sandbox's
+`api.openai.com` rule under `openai-egress`, or the Codex command's env under `openai-env`; a
+placeholder in either place reaches OpenAI and is refused. The participant's placement is
+unchanged. The runner's own code could already read a held key back through E2B's sandbox info
+endpoint, so this moves the key from that endpoint into the runner's process environment.
+`--local` or `execution.remote: false` keeps the key on the operator's machine.
+
 ## Runtime prerequisite
 
 The terminal route reuses a working Node >=20 and npm from the calling shell.
