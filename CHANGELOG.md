@@ -19,6 +19,15 @@ The Unreleased section holds the full notes for the next version until it is tag
   because the run places it in the shell sandbox; the participant gets it as before. `--local` or
   `execution.remote: false` keeps the run and its key on this machine.
 
+- The committed `synthetic-new-user` persona no longer declares `accessibility_needs:
+  clear_terminal_output`. A web participant read "You rely on clear terminal output", and in 2 of
+  30 recorded benchmark runs its report discussed a terminal the study never showed it ("No
+  terminal was involved, so there was no terminal output to interpret"). The TUI self-study now
+  uses a new `cli-newcomer` persona, which keeps the need. Every study that uses
+  `synthetic-new-user` gets a new persona digest and participant prompt digest, and Taskly
+  benchmark results before and after this change are separate series. Personas written by
+  `humanish init` never declared the need and are unchanged.
+
 ### Fixed
 
 - A remote run whose provider SDK (`modal` or `@e2b/desktop`) is not installed is now refused with
