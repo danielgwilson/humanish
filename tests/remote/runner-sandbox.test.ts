@@ -14,7 +14,7 @@ const fakeModule = (provider: string) => ({
   Sandbox: {
     create: async (...args: unknown[]) => {
       creates.push({ provider, args });
-      return { sandboxId: `${provider}-runner`, kill: async () => true };
+      return { sandboxId: `fake-${provider}-runner`, kill: async () => true };
     },
   },
 });
