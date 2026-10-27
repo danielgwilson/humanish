@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A remote run on E2B no longer loses its runner a few minutes in. The runner was made from E2B's
+  stock base template, which has 473 MB of memory; the run's own process used about 300 MB within
+  two minutes, and the runner was killed without writing a result. It is now made from E2B's stock
+  desktop template (7.9 GB, 8 vCPU) with no desktop started, so a runner costs about what one more
+  participant desktop costs.
+
 ### Changed
 
 - The committed `synthetic-new-user` persona no longer declares `accessibility_needs:

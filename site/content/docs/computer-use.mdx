@@ -448,7 +448,9 @@ its provider, and the run's environment holds placeholders; code in the runner c
 back through the E2B API, as [trust boundaries](/docs/trust-boundaries) describes. On Modal, the
 keys are in the run's environment. It costs
 one more sandbox for the length of the study, and on E2B it counts against your concurrent
-sandboxes.
+sandboxes. On E2B the runner is made from E2B's stock desktop template, as a participant's desktop
+is, for its 8 GB of memory, so it costs about what one more participant does; no desktop starts on
+it. On Modal it has 2 CPU and 4 GiB.
 
 A study runs remotely when it is a computer-use study whose participants use `e2b-desktop` or
 `modal-desktop`, with a model API key (not a local agent) and an `app-url` subject on the public
