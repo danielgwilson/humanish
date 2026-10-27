@@ -183,7 +183,7 @@ describe("a live run with the run command's handler, signalled mid-session", () 
       ],
     });
     expect(stderr).toContain(
-      `humanish: SIGTERM: run ${runId} marked interrupted; sandboxes clean: 1 killed; E2B lists none still tagged with this run.`,
+      `humanish: SIGTERM: run ${runId} marked interrupted; sandboxes clean: 1 killed; the provider lists none still tagged with this run.`,
     );
   });
 });

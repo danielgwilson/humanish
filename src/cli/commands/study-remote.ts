@@ -207,17 +207,17 @@ export function runnerKeysLine(
   keys: Pick<RunnerKeys, "held" | "sent">,
 ): string {
   const list = (names: readonly string[]) => names.join(", ");
+  const asEnv = (names: readonly string[]) =>
+    names.length === 1 ? "as an environment variable" : "as environment variables";
   const local = "Run with --local to keep the study on this machine.";
   if (provider === "modal")
-    return `The runner runs in your own Modal account and receives ${list(keys.sent) || "no keys"} as environment variables, since Modal has no egress proxy that could hold them. ${local}`;
+    return `The runner runs in your own Modal account and receives ${list(keys.sent) || "no keys"} ${asEnv(keys.sent)}, since Modal has no egress proxy that could hold them. ${local}`;
   const held =
     keys.held.length === 0
       ? ""
-      : ` E2B's egress proxy holds ${list(keys.held)} and adds them to the runner's requests, so the runner's environment holds placeholders.`;
+      : ` E2B's egress proxy holds ${list(keys.held)} and adds ${keys.held.length === 1 ? "it" : "them"} to the runner's requests, so the runner's environment holds ${keys.held.length === 1 ? "a placeholder" : "placeholders"}.`;
   const sent =
-    keys.sent.length === 0
-      ? ""
-      : ` The runner receives ${list(keys.sent)} as environment variables.`;
+    keys.sent.length === 0 ? "" : ` The runner receives ${list(keys.sent)} ${asEnv(keys.sent)}.`;
   return `The runner runs in your own E2B account.${held}${sent} ${local}`;
 }
 

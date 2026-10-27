@@ -179,7 +179,7 @@ describe("the run command's signal handler", () => {
     ]);
     expect(run.stderr().split("\n")).toEqual([
       `humanish: SIGTERM: stopping run ${RUN} and reclaiming its sandboxes (up to 10 s); a second SIGTERM exits without waiting.`,
-      `humanish: SIGTERM: run ${RUN} marked interrupted; sandboxes clean: 1 killed; E2B lists none still tagged with this run.`,
+      `humanish: SIGTERM: run ${RUN} marked interrupted; sandboxes clean: 1 killed; the provider lists none still tagged with this run.`,
       "",
     ]);
   });

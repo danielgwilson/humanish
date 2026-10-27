@@ -8,6 +8,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- `reclaim` and a stopped run's last line no longer say "E2B lists" for a Modal run; they name the
+  provider generically. The line a remote run prints before it starts says "adds it" and "as an
+  environment variable" when there is one key.
+
 ## 0.152.0: Terminal studies run remotely by default (2026-10-27)
 
 humanish 0.152.0 runs a live terminal study remotely by default, as a hosted computer-use study

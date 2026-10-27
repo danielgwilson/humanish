@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createReadStream } from "node:fs";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -260,6 +260,35 @@ describe("waiting on the runner's run", () => {
       expect(run.state).toBe("running");
       expect(run.result).toBeUndefined();
     } finally {
+      await rm(home, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("whether the runner's run is alive", () => {
+  it("sees its own humanish watch process and not another run's", async () => {
+    const { home, runner, runDir } = await localRunner();
+    // Processes named as a runner's watch would be, for this run and for another one.
+    const named = (runId: string) =>
+      spawn("bash", ["-c", `exec -a 'humanish watch s.yaml --run-id ${runId} --local' sleep 30`], {
+        stdio: "ignore",
+      });
+    const other = named("cua-other-run");
+    try {
+      await writeFile(
+        path.join(runDir, "status.json"),
+        `${JSON.stringify({ runId: "cua-remote", state: "running" }, null, 2)}\n`,
+      );
+      const seen = { state: "running", alive: false };
+      expect((await waitForRemoteRun(runner, "cua-remote", seen, 1_000)).alive).toBe(false);
+      const own = named("cua-remote");
+      try {
+        expect((await waitForRemoteRun(runner, "cua-remote", seen, 5_000)).alive).toBe(true);
+      } finally {
+        own.kill();
+      }
+    } finally {
+      other.kill();
       await rm(home, { recursive: true, force: true });
     }
   });

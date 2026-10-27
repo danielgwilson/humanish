@@ -187,7 +187,15 @@ describe("the line that names a runner's keys before the run", () => {
       sent: ["HUMANISH_E2B_MAX_SANDBOX_MINUTES"],
     });
     expect(line).toMatch(/E2B's egress proxy holds E2B_API_KEY, OPENAI_API_KEY\b/);
-    expect(line).toMatch(/HUMANISH_E2B_MAX_SANDBOX_MINUTES as environment variables/);
+    expect(line).toMatch(/adds them to the runner's requests/);
+    expect(line).toMatch(/HUMANISH_E2B_MAX_SANDBOX_MINUTES as an environment variable\./);
+  });
+
+  it("names one held key and one sent key in the singular", () => {
+    const line = runnerKeysLine("e2b", { held: ["E2B_API_KEY"], sent: ["OPENAI_API_KEY"] });
+    expect(line).toMatch(/holds E2B_API_KEY and adds it to the runner's requests/);
+    expect(line).toMatch(/environment holds a placeholder\./);
+    expect(line).toMatch(/receives OPENAI_API_KEY as an environment variable\./);
   });
 
   it("on Modal, says every key enters the runner as an environment variable", () => {
