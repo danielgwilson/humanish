@@ -478,7 +478,7 @@ fi
 # 20e. reclaim reports clean, unconfirmed or unknown and exits 0 only for clean (#1557). A dry run
 # with nothing journaled is clean with reason dry-run, exits 0 and contacts no E2B (#1561); 0.110.1
 # reported it unknown with exit 2.
-dry_line="Reclaim $run_id: clean. It was a dry run, which creates no sandboxes, so E2B was not contacted."
+dry_line="Reclaim $run_id: clean. It was a dry run, which creates no sandboxes, so no provider was contacted."
 hx reclaim --run "$run_id" --json >"$work/logs/reclaim.json" 2>"$work/logs/reclaim.err"
 reclaim_exit=$?
 reclaim_view=$(json_field "$work/logs/reclaim.json" '[d.schema, d.ok, d.state, d.mode, d.reason, d.tagSearch && d.tagSearch.status].join(" ")')
@@ -498,7 +498,7 @@ after_files=$(cd "$run_dir" && find . -type f -printf '%p %s %T@\n' | sort)
 check_view=$(json_field "$work/logs/reclaim-check.json" '[d.schema, d.ok, d.state, d.mode].join(" ")')
 check_human=$(hx reclaim --check --run "$run_id" 2>"$work/logs/reclaim-check-human.err" | head -n 1)
 if [ "$check_exit" = 0 ] && [ "$check_view" = "humanish.reclaim-result.v1 true clean check" ] &&
-  [ "$before_files" = "$after_files" ] && [ "$check_human" = "Reclaim check $run_id: clean. It was a dry run, which creates no sandboxes, so E2B was not contacted." ]; then
+  [ "$before_files" = "$after_files" ] && [ "$check_human" = "Reclaim check $run_id: clean. It was a dry run, which creates no sandboxes, so no provider was contacted." ]; then
   record "reclaim --check: mode check, run dir unchanged" PASS "exit 0, clean (dry run); no file written" "#1557, #1561"
 else
   record "reclaim --check: mode check, run dir unchanged" FAIL "exit $check_exit, '${check_view}', human '${check_human}'; files changed: $([ "$before_files" = "$after_files" ] && echo no || echo yes)" "#1557, #1561"
