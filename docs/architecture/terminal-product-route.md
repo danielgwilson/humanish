@@ -179,7 +179,7 @@ file, the persona files and `subject.product.upload`, resolved against the proje
 resolves it. Its lifetime covers setup, the shell sandbox's own timeout
 (`terminalSandboxTimeoutMs`), analysis and teardown.
 
-The runtime key is the one name a runner on E2B receives as its value rather than a placeholder
+The runtime key is the one name a runner on E2B receives as its value; every other held key stays a placeholder
 (`RemotePlan.plainKeys`). The run in the runner reads that value to build the shell sandbox's
 `api.openai.com` rule under `openai-egress`, or the Codex command's env under `openai-env`; a
 placeholder in either place reaches OpenAI and is refused. The participant's placement is
