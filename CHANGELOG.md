@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- The committed `synthetic-new-user` persona no longer declares `accessibility_needs:
+  clear_terminal_output`. A web participant read "You rely on clear terminal output", and in 2 of
+  30 recorded benchmark runs its report discussed a terminal the study never showed it ("No
+  terminal was involved, so there was no terminal output to interpret"). The TUI self-study now
+  uses a new `cli-newcomer` persona, which keeps the need. Every study that uses
+  `synthetic-new-user` gets a new persona digest and participant prompt digest, and Taskly
+  benchmark results before and after this change are separate series. Personas written by
+  `humanish init` never declared the need and are unchanged.
+
 ## 0.151.0: Claude participants compact long sessions (2026-10-26)
 
 humanish 0.151.0 lets a Claude participant held to a scheduled end, such as an hour or a working

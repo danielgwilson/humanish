@@ -628,7 +628,7 @@
         "schema": "humanish.study-summary.v1",
         "studyId": "tui-self-study",
         "subject": "desktop-cli",
-        "participants": "1 × synthetic-new-user",
+        "participants": "1 × cli-newcomer",
         "model": "gpt-6.1-sol",
         "reasoningEffort": "medium",
         "caps": {
@@ -638,7 +638,7 @@
       },
       "personas": [
         {
-          "id": "synthetic-new-user",
+          "id": "cli-newcomer",
           "resolved": true
         }
       ]

@@ -23,8 +23,15 @@ describe("parseResolvedPersona", () => {
     expect(persona.background).toContain("Alex");
     expect(persona.traits.patience).toBeUndefined();
     expect(persona.traits.skill).toBeUndefined();
-    expect(persona.traits.accessibilityNeeds).toBe("clear_terminal_output");
+    // A web participant told it relies on terminal output went looking for a terminal.
+    expect(persona.traits.accessibilityNeeds).toBeUndefined();
     expect(persona.constraints.length).toBeGreaterThan(0);
+  });
+
+  it("gives the committed cli-newcomer persona the terminal-output need", async () => {
+    const persona = await loadCommittedPersona("cli-newcomer.yaml");
+    expect(persona.id).toBe("cli-newcomer");
+    expect(persona.traits.accessibilityNeeds).toBe("clear_terminal_output");
   });
 
   it("normalizes the committed skeptical-power-user persona", async () => {

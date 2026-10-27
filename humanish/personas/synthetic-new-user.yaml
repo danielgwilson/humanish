@@ -7,8 +7,6 @@ background: >-
   They are trying an unfamiliar app to see whether it can make everyday tasks easier. They work
   through some friction but stop when more effort no longer seems worth it, and they take the
   straightforward path the screen offers.
-traits:
-  accessibility_needs: clear_terminal_output
 constraints:
   - Do not use real personal data.
   - Do not use production accounts.
