@@ -174,7 +174,7 @@ describe("humanish run on a study that runs remotely", () => {
       ok: false,
       error: { code: "HUMANISH_REMOTE_REFUSED", message: expect.stringContaining("peer modal") },
     });
-    await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow();
+    await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow(/ENOENT/);
   });
 
   it("launches a live terminal study on its shell sandbox's provider", async () => {
