@@ -28,6 +28,7 @@ import {
   MODAL_TOKEN_SECRET_ENV,
 } from "../../substrates/modal/sdk.js";
 import { NODE_BOOTSTRAP_TIMEOUT_MS } from "../../subject/node-bootstrap.js";
+import { TERMINAL_RUNTIME_KEY_NAMES } from "./credentials.js";
 import { terminalSandboxTimeoutMs } from "./lifetime.js";
 import { isExactRuntimeVersion, TERMINAL_RUNTIME_VERSION_TIMEOUT_MS } from "./runtime.js";
 import {
@@ -226,7 +227,7 @@ function liveRequirements(provider: SandboxProviderId): Requirement[] {
           { kind: "key", name: MODAL_TOKEN_SECRET_ENV },
         ] as const)
       : ([{ kind: "key", name: "E2B_API_KEY" }] as const)),
-    { kind: "key-one-of", names: ["CODEX_API_KEY", "OPENAI_API_KEY"] },
+    { kind: "key-one-of", names: TERMINAL_RUNTIME_KEY_NAMES },
   ];
 }
 

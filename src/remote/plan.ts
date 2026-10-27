@@ -5,8 +5,10 @@ import path from "node:path";
 
 import type { SandboxProviderId } from "../run/sandbox-receipts.js";
 import type { StudyConfig } from "../study/types.js";
-import type { ComputerUsePlan, StudyPlan } from "../study/plan-types.js";
+import type { ComputerUsePlan, StudyPlan, TerminalPlan } from "../study/plan-types.js";
 import { analysisKeyNames } from "../keys/key-resolution.js";
+import { terminalSandboxTimeoutMs } from "../routes/terminal/lifetime.js";
+import { TERMINAL_RUNTIME_KEY_NAMES } from "../routes/terminal/credentials.js";
 import { keyNamesOf } from "../study/requirements.js";
 import { participantList } from "../study/study-fields.js";
 
@@ -42,6 +44,13 @@ export interface RemotePlan {
   readonly envNames: readonly string[];
   /** Names of which only the first one set is sent, as the run reads only that one. */
   readonly alternatives: readonly (readonly string[])[];
+  /**
+   * Names of which the first one set reaches the runner's run as its value on every provider,
+   * never held in an egress proxy.
+   */
+  readonly plainKeys: readonly string[];
+  /** The study's route, which names its run. */
+  readonly route: "computer-use" | "terminal";
 }
 
 export type RemotePlanResult = { ok: true; plan: RemotePlan } | { ok: false; reason: string };
@@ -62,36 +71,21 @@ export function planRemoteRun(args: {
 }): RemotePlanResult {
   const { config, plan, cwd } = args;
   const refuse = (reason: string): RemotePlanResult => ({ ok: false, reason });
-  if (plan.route !== "computer-use")
-    return refuse(
-      `a ${plan.route} study runs on this machine; only computer-use studies run remotely.`,
-    );
-  const runner = plan.runner;
-  if (runner.desktop !== "e2b-desktop")
-    return refuse("its participants use this machine's browser, so the study runs here.");
-  if (runner.brain.kind !== "provider-key")
-    return refuse(
-      "its participants are driven by an agent on this machine, which a remote run cannot reach.",
-    );
-  if (runner.subject.kind !== "app-url")
-    return refuse(
-      "its subject is built or served from this machine; only app-url subjects run remotely for now.",
-    );
-  if (servedHere(runner.subject.appUrl))
-    return refuse(
-      "its app URL points at this machine or a private network, which the runner cannot reach.",
-    );
+  const route =
+    plan.route === "computer-use"
+      ? computerUseRoute(config, plan)
+      : plan.route === "terminal" && !plan.dryRun
+        ? terminalRoute(plan, cwd)
+        : `a ${plan.route} study runs on this machine; only computer-use and terminal studies run remotely.`;
+  if (typeof route === "string") return refuse(route);
   if (plan.analysis?.config.provider === "codex")
     return refuse("its analysis uses this machine's Codex login.");
   if (config.review?.scorer !== undefined)
     return refuse("it loads a scorer module, which does not run remotely yet.");
-  if (plan.rerun !== undefined) return refuse("a rerun reads a run on this machine.");
-  if (config.comms !== undefined)
-    return refuse("its email setup reads files and connections on this machine.");
 
   const study = inside(cwd, args.studyPath);
   if (study === undefined) return refuse("the study file is outside the project directory.");
-  const files: string[] = [study];
+  const files: string[] = [study, ...route.uploads];
   for (const participant of participantList(config) ?? [])
     for (const file of participant.files ?? []) {
       const from = inside(cwd, path.resolve(path.dirname(args.studyPath), file.from));
@@ -100,34 +94,104 @@ export function planRemoteRun(args: {
       files.push(from);
     }
 
-  if (runner.provider === "e2b" && plan.concurrency + 1 > args.concurrentSandboxes)
+  if (route.provider === "e2b" && route.sandboxes + 1 > args.concurrentSandboxes)
     return refuse(
-      `its ${plan.concurrency} participants at once and the runner need ${plan.concurrency + 1} E2B sandboxes at once, more than the ${args.concurrentSandboxes} your account runs. Lower execution.concurrency to ${args.concurrentSandboxes - 1}.`,
+      `its ${route.sandboxes} participants at once and the runner need ${route.sandboxes + 1} E2B sandboxes at once, more than the ${args.concurrentSandboxes} your account runs. Lower execution.concurrency to ${args.concurrentSandboxes - 1}.`,
     );
-  const runnerMs = runnerLifetimeMs(plan);
+  const runnerMs =
+    RUNNER_SETUP_MS + route.studyMs + (plan.analysis?.config.timeoutMs ?? 0) + RUNNER_TEARDOWN_MS;
   if (runnerMs > args.ceilingMs)
     return refuse(
-      `the study needs its runner for up to ${minutes(runnerMs)} minutes, longer than the ${minutes(args.ceilingMs)} minutes ${runner.provider === "modal" ? "Modal" : "E2B"} keeps a sandbox.`,
+      `the study needs its runner for up to ${minutes(runnerMs)} minutes, longer than the ${minutes(args.ceilingMs)} minutes ${route.provider === "modal" ? "Modal" : "E2B"} keeps a sandbox.`,
     );
   return {
     ok: true,
     plan: {
-      provider: runner.provider,
+      provider: route.provider,
+      route: route.route,
       runnerMs,
       uploads: [...new Set(files)],
       uploadDirectories: ["humanish/personas", ".humanish/local/personas"],
       envNames: [
-        ...new Set([...keyNamesOf(plan), ...PROVIDER_KEYS[runner.provider], ...PLAN_SETTINGS]),
+        ...new Set([...keyNamesOf(plan), ...PROVIDER_KEYS[route.provider], ...PLAN_SETTINGS]),
       ].sort(),
-      alternatives: analystKeyNames(plan),
+      alternatives: [...analystKeyNames(plan), ...route.alternatives],
+      plainKeys: route.plainKeys,
     },
   };
 }
 
-/** Setup, the participants' last possible end, the analysis's own limit and teardown. */
-function runnerLifetimeMs(plan: ComputerUsePlan): number {
-  const analysisMs = plan.analysis?.config.timeoutMs ?? 0;
-  return RUNNER_SETUP_MS + plan.arrivals.lastEndMs + analysisMs + RUNNER_TEARDOWN_MS;
+/** What a route adds to the remote plan, or why its study cannot run remotely. */
+interface RemoteRoute {
+  route: RemotePlan["route"];
+  provider: SandboxProviderId;
+  /** How many sandboxes the study runs at once, beside the runner. */
+  sandboxes: number;
+  /** How long the study itself can run: its participants' last end. */
+  studyMs: number;
+  /** Project-relative files the study reads, beyond the study file and participant files. */
+  uploads: string[];
+  /** Key names of which the run reads only the first one set. */
+  alternatives: (readonly string[])[];
+  plainKeys: string[];
+}
+
+function computerUseRoute(config: StudyConfig, plan: ComputerUsePlan): RemoteRoute | string {
+  const runner = plan.runner;
+  if (runner.desktop !== "e2b-desktop")
+    return "its participants use this machine's browser, so the study runs here.";
+  if (runner.brain.kind !== "provider-key")
+    return "its participants are driven by an agent on this machine, which a remote run cannot reach.";
+  if (runner.subject.kind !== "app-url")
+    return "its subject is built or served from this machine; only app-url subjects run remotely for now.";
+  if (servedHere(runner.subject.appUrl))
+    return "its app URL points at this machine or a private network, which the runner cannot reach.";
+  if (plan.rerun !== undefined) return "a rerun reads a run on this machine.";
+  if (config.comms !== undefined)
+    return "its email setup reads files and connections on this machine.";
+  return {
+    route: "computer-use",
+    provider: runner.provider,
+    sandboxes: plan.concurrency,
+    studyMs: plan.arrivals.lastEndMs,
+    uploads: [],
+    alternatives: [],
+    plainKeys: [],
+  };
+}
+
+/**
+ * A terminal study's one shell sandbox. The run in the runner puts the runtime key into that
+ * sandbox's own egress rule, or into the codex command, so the runner needs the key's value: a
+ * placeholder there would reach OpenAI and be refused. Only the key Codex reads goes as its value.
+ */
+function terminalRoute(
+  plan: Extract<TerminalPlan, { dryRun: false }>,
+  cwd: string,
+): RemoteRoute | string {
+  const uploads: string[] = [];
+  const upload = plan.product.upload;
+  if (upload !== undefined) {
+    // The route resolves the upload against the project, not the study file.
+    const from = inside(cwd, upload);
+    if (from === undefined)
+      return `subject.product.upload ${upload} is outside the project directory.`;
+    uploads.push(from);
+  }
+  return {
+    route: "terminal",
+    provider: plan.sandboxProvider,
+    sandboxes: 1,
+    studyMs: terminalSandboxTimeoutMs({
+      maxMinutes: plan.caps.maxMinutes,
+      productInstall: plan.product.install !== undefined,
+    }),
+    uploads,
+    // Codex reads the first runtime key set. A second one goes to the runner only when the
+    // analysis reads it, and is then held as usual.
+    alternatives: analysisReads(plan, "OPENAI_API_KEY") ? [] : [TERMINAL_RUNTIME_KEY_NAMES],
+    plainKeys: [...TERMINAL_RUNTIME_KEY_NAMES],
+  };
 }
 
 /** `target` relative to `cwd`, or undefined when it is outside it. */
@@ -163,8 +227,18 @@ function servedHere(appUrl: string): boolean {
   );
 }
 
+/** Whether the plan's analysis reads `name`. */
+function analysisReads(plan: StudyPlan, name: string): boolean {
+  const analyst = plan.analysis?.config.provider;
+  return (
+    plan.analysis !== undefined &&
+    analyst !== "codex" &&
+    analysisKeyNames(analyst ?? "openai").includes(name)
+  );
+}
+
 /** The analyst's key names, when it reads the first one set of several. */
-function analystKeyNames(plan: ComputerUsePlan): (readonly string[])[] {
+function analystKeyNames(plan: StudyPlan): (readonly string[])[] {
   const analyst = plan.analysis?.config.provider;
   if (analyst === undefined || analyst === "codex") return [];
   const names = analysisKeyNames(analyst);

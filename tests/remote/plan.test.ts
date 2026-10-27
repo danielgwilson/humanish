@@ -143,3 +143,70 @@ describe("a study that needs this machine", () => {
     expect(result).toMatchObject({ ok: false, reason: expect.stringContaining("outside") });
   });
 });
+
+describe("a live terminal study", () => {
+  const terminal = (patch: Patch = {}) => study("terminal", { mode: "live", ...patch });
+
+  it("runs remotely on its shell sandbox's provider and sends the runtime key as its value", () => {
+    const e2b = remote(terminal());
+    if (!e2b.ok) throw new Error(e2b.reason);
+    expect(e2b.plan).toMatchObject({ provider: "e2b", route: "terminal" });
+    expect(e2b.plan.envNames).toEqual(expect.arrayContaining(["CODEX_API_KEY", "OPENAI_API_KEY"]));
+    expect(e2b.plan.plainKeys).toEqual(["CODEX_API_KEY", "OPENAI_API_KEY"]);
+    const modal = remote(
+      terminal({ execution: { target: "modal-terminal", runtimeAuth: "openai-env" } }),
+    );
+    expect(modal).toMatchObject({ ok: true, plan: { provider: "modal", route: "terminal" } });
+  });
+
+  it("forwards the second runtime key name only when its analysis reads it", () => {
+    const runtime = ["CODEX_API_KEY", "OPENAI_API_KEY"];
+    const analysed = remote(terminal());
+    const plain = remote(terminal({ review: { analysis: false } }));
+    if (!analysed.ok || !plain.ok) throw new Error("expected both to plan");
+    expect(analysed.plan.alternatives).not.toContainEqual(runtime);
+    expect(plain.plan.alternatives).toContainEqual(runtime);
+  });
+
+  it("uploads its product file, resolved against the project", () => {
+    const result = remote(
+      terminal({
+        subject: {
+          source: "terminal-product",
+          product: {
+            name: "widgetsmith-cli",
+            publicSurfaces: ["https://example.com/widgetsmith"],
+            install: 'npm install "$HUMANISH_PRODUCT_UPLOAD"',
+            upload: "dist/widgetsmith-cli.tgz",
+          },
+        },
+      }),
+    );
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.plan.uploads).toEqual([
+      "humanish/studies/remote.yaml",
+      "dist/widgetsmith-cli.tgz",
+    ]);
+  });
+
+  it("keeps its runner for setup, the codex command's limit with its sandbox margins, and teardown", () => {
+    const short = remote(terminal({ caps: { maxUsd: 0, maxMinutes: 5 } }));
+    const long = remote(terminal({ caps: { maxUsd: 0, maxMinutes: 45 } }));
+    if (!short.ok || !long.ok) throw new Error("expected both to plan");
+    expect(long.plan.runnerMs - short.plan.runnerMs).toBe(40 * 60_000);
+    const refused = remote(terminal({ caps: { maxUsd: 0, maxMinutes: 45 } }), {
+      ceilingMs: HOUR / 2,
+    });
+    expect(refused).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining("longer than the 30 minutes"),
+    });
+  });
+
+  it("is refused when the E2B account runs one sandbox at a time", () => {
+    expect(remote(terminal(), { concurrentSandboxes: 1 })).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining("need 2 E2B sandboxes"),
+    });
+  });
+});

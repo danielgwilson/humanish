@@ -121,7 +121,9 @@ console.log(
 );
 let raw = "";
 try {
-  raw = execFileSync("node", ["dist/cli.js", "run", studyRelativePath, "--json"], {
+  // --local: the gate reads the participant's transcript from this machine's run directory, and a
+  // remote run is a separate check.
+  raw = execFileSync("node", ["dist/cli.js", "run", studyRelativePath, "--json", "--local"], {
     cwd,
     encoding: "utf8",
     maxBuffer: 64 * 1024 * 1024,

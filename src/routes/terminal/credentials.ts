@@ -17,6 +17,18 @@ function keyPlacement(runtimeAuth: unknown): string {
   return "";
 }
 
+// The "openai-env" channel accepts CODEX_API_KEY or OPENAI_API_KEY as the runtime key source
+// name, read in this preference order. CODEX_API_KEY is preferred: the official Codex docs
+// (developers.openai.com/codex/noninteractive) document it as the channel for a single codex exec
+// invocation, which is exactly this route's shape (no persisted auth.json/CODEX_HOME, per-command
+// envs only). A dated in-repo receipt
+// (docs/history/goals/humanish-recursive-proof-critical-point/receipts/actor-required-attempt.md) shows a
+// job-wide OPENAI_API_KEY alone failing bearer auth for this same pinned-exec pattern. When the
+// operator only exported OPENAI_API_KEY, its value is also injected under CODEX_API_KEY below, so
+// the documented exec auth channel is always populated regardless of which name the operator
+// used. The allowlist is exactly these two names; everything else is denied by construction.
+export const TERMINAL_RUNTIME_KEY_NAMES = ["CODEX_API_KEY", "OPENAI_API_KEY"] as const;
+
 /**
  * Resolve the runtime key on the host. openai-egress, the default, returns an inert command env
  * while retaining the actual value for the external transform and literal redaction; openai-env
@@ -41,18 +53,7 @@ export function buildRuntimeAuth(args: {
       code: "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING" | "HUMANISH_TERMINAL_CREDENTIAL_DENIED";
       message: string;
     } {
-  // The "openai-env" channel accepts CODEX_API_KEY or OPENAI_API_KEY as the runtime key source
-  // name, read in this preference order. CODEX_API_KEY is preferred: the official Codex docs
-  // (developers.openai.com/codex/noninteractive) document it as the channel for a single codex exec
-  // invocation, which is exactly this route's shape (no persisted auth.json/CODEX_HOME, per-command
-  // envs only). A dated in-repo receipt
-  // (docs/history/goals/humanish-recursive-proof-critical-point/receipts/actor-required-attempt.md) shows a
-  // job-wide OPENAI_API_KEY alone failing bearer auth for this same pinned-exec pattern. When the
-  // operator only exported OPENAI_API_KEY, its value is also injected under CODEX_API_KEY below, so
-  // the documented exec auth channel is always populated regardless of which name the operator
-  // used. The allowlist is exactly these two names; everything else is denied by construction.
-  const ALLOWED_RUNTIME_KEY_NAMES = ["CODEX_API_KEY", "OPENAI_API_KEY"] as const;
-  // Tripwire (deny-by-default credentials): if a future widening of ALLOWED_RUNTIME_KEY_NAMES ever
+  // Tripwire (deny-by-default credentials): if a future widening of TERMINAL_RUNTIME_KEY_NAMES ever
   // added a clearly-non-runtime credential (a GitHub/payment/deploy/db secret), fail closed. The
   // generic `*_KEY` shape is deliberately left out of the tripwire, since a runtime key legitimately
   // ends in _KEY (CODEX_API_KEY/OPENAI_API_KEY), so testing it against the generic shape would
@@ -60,7 +61,7 @@ export function buildRuntimeAuth(args: {
   // the real boundary: the command env is built from exactly these names and nothing else (so
   // GITHUB_TOKEN/payment/db keys present in the operator env are never forwarded, proven by the
   // deterministic test).
-  if (ALLOWED_RUNTIME_KEY_NAMES.some((name) => isNonRuntimeCredentialName(name))) {
+  if (TERMINAL_RUNTIME_KEY_NAMES.some((name) => isNonRuntimeCredentialName(name))) {
     return {
       ok: false,
       code: "HUMANISH_TERMINAL_CREDENTIAL_DENIED",
@@ -68,14 +69,14 @@ export function buildRuntimeAuth(args: {
         "Internal invariant violated: a runtime-key allowlist entry is a non-runtime credential (GitHub/payment/deploy/db).",
     };
   }
-  const keyName = ALLOWED_RUNTIME_KEY_NAMES.find(
+  const keyName = TERMINAL_RUNTIME_KEY_NAMES.find(
     (name) => (args.env[name]?.trim() ?? "").length > 0,
   );
   if (!keyName) {
     return {
       ok: false,
       code: "HUMANISH_TERMINAL_RUNTIME_AUTH_MISSING",
-      message: `Live terminal-product studies need ${ALLOWED_RUNTIME_KEY_NAMES.join(" or ")} in the environment, and neither is set.${keyPlacement(args.runtimeAuth)} Pass one with --dotenv; the value is never persisted.`,
+      message: `Live terminal-product studies need ${TERMINAL_RUNTIME_KEY_NAMES.join(" or ")} in the environment, and neither is set.${keyPlacement(args.runtimeAuth)} Pass one with --dotenv; the value is never persisted.`,
     };
   }
   const keyValue = args.env[keyName] as string;

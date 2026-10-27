@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -12,6 +12,17 @@ const launches = vi.hoisted(() => ({
   calls: [] as { study: string; provider: string }[],
   outcome: undefined as unknown,
 }));
+const modal = vi.hoisted(() => ({ missing: false }));
+vi.mock("../../src/substrates/modal/sdk.js", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../../src/substrates/modal/sdk.js")>();
+  return {
+    ...original,
+    loadModalModule: () =>
+      modal.missing
+        ? Promise.reject(new Error("Running on Modal requires the optional peer modal."))
+        : original.loadModalModule(),
+  };
+});
 vi.mock("../../src/remote/launch.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/remote/launch.js")>()),
   runsFromPackage: () => true,
@@ -29,6 +40,7 @@ let home: string;
 let cwd: string;
 beforeEach(async () => {
   launches.calls.length = 0;
+  modal.missing = false;
   home = await mkdtemp(path.join(tmpdir(), "humanish-remote-wiring-home-"));
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-remote-wiring-"));
   vi.stubEnv("XDG_CONFIG_HOME", path.join(home, ".config"));
@@ -42,6 +54,14 @@ afterEach(async () => {
   await rm(home, { recursive: true, force: true });
   await rm(cwd, { recursive: true, force: true });
 });
+
+/** A live terminal study on E2B, which a run places remotely. */
+async function terminalStudy(): Promise<string> {
+  const raw = lab("terminal", { mode: "live", execution: { runtimeAuth: "openai-egress" } });
+  await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
+  await writeFile(path.join(cwd, "humanish", "studies", `${String(raw.id)}.yaml`), stringify(raw));
+  return String(raw.id);
+}
 
 /** A computer-use study on Modal desktops against a public app: one a run places remotely. */
 async function remoteStudy(): Promise<string> {
@@ -142,6 +162,29 @@ describe("humanish run on a study that runs remotely", () => {
       ok: false,
       error: { code: "HUMANISH_COMPUTER_USE_KEYS_MISSING" },
     });
+  });
+
+  it("refuses a run whose provider SDK is not installed before it names a run", async () => {
+    const id = await remoteStudy();
+    modal.missing = true;
+    const { exitCode, json } = await run([id, "--json"]);
+    expect(launches.calls).toEqual([]);
+    expect(exitCode).toBe(2);
+    expect(json).toMatchObject({
+      ok: false,
+      error: { code: "HUMANISH_REMOTE_REFUSED", message: expect.stringContaining("peer modal") },
+    });
+    await expect(readdir(path.join(cwd, ".humanish", "runs"))).rejects.toThrow(/ENOENT/);
+  });
+
+  it("launches a live terminal study on its shell sandbox's provider", async () => {
+    vi.stubEnv("E2B_API_KEY", "synthetic-e2b-key");
+    const id = await terminalStudy();
+    launches.outcome = { runId: "terminal-remote", exitCode: 0, result: PASSED, files: 9 };
+    const { exitCode, json } = await run([id, "--json"]);
+    expect(launches.calls).toEqual([{ study: `humanish/studies/${id}.yaml`, provider: "e2b" }]);
+    expect(exitCode).toBe(0);
+    expect(json).toMatchObject({ ok: true, remote: { provider: "e2b" } });
   });
 
   it("keeps a dry run here, whatever asked for a remote one", async () => {
