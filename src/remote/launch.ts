@@ -191,8 +191,16 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
   }
 }
 
-async function acquireRunner(
-  launch: RemoteLaunch,
+/**
+ * The E2B template a runner is created from. E2B sizes a sandbox by its template, and the stock
+ * base template's 473 MB is less than a run's own process can use: with one Claude participant it
+ * held 310 MB within two minutes. The stock desktop template has 7.9 GB and 8 vCPU, and a runner
+ * made through the base SDK class starts no desktop on it.
+ */
+export const E2B_RUNNER_TEMPLATE = "desktop";
+
+export async function acquireRunner(
+  launch: Pick<RemoteLaunch, "env" | "remote">,
   paths: PreparedRunArtifactPaths,
   network: E2BNetworkOptions,
 ) {
@@ -204,6 +212,8 @@ async function acquireRunner(
   return acquireE2BShellSandbox({
     module,
     provider,
+    // A Modal runner's size is its shell profile (src/substrates/modal/sandbox.ts).
+    template: provider === "e2b" ? E2B_RUNNER_TEMPLATE : undefined,
     options: {
       apiKey,
       ...account,

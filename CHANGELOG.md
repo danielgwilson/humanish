@@ -34,6 +34,12 @@ The Unreleased section holds the full notes for the next version until it is tag
   the install advice before it names a run. It used to create a run id first and then say its
   sandboxes were not confirmed stopped, though nothing had been created (#1986).
 
+- A remote run on E2B no longer loses its runner about 4 minutes in. The runner was made from
+  E2B's stock base template, which has 473 MB of memory. The run's own process grew past 300 MB
+  within two minutes, and a longer run's runner was killed without writing a result; runs under
+  about 4 minutes finished. The runner is now made from E2B's stock desktop template (7.9 GB,
+  8 vCPU) with no desktop started, so it costs about what one more participant desktop costs.
+
 ## 0.151.0: Claude participants compact long sessions (2026-10-26)
 
 humanish 0.151.0 lets a Claude participant held to a scheduled end, such as an hour or a working

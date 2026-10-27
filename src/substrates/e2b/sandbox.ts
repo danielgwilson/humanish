@@ -76,9 +76,14 @@ export function acquireE2BDesktopSandbox(
   return acquire(request, request.template);
 }
 
-/** The terminal route's shell sandbox. It always runs on the stock template. */
-export function acquireE2BShellSandbox(request: E2BSandboxRequest): Promise<E2BSandbox> {
-  return acquire(request, undefined);
+/**
+ * A shell sandbox, with no desktop started: the terminal route's, on the stock template, or a
+ * remote run's runner, on the template it names.
+ */
+export function acquireE2BShellSandbox(
+  request: E2BSandboxRequest & { template?: string | undefined },
+): Promise<E2BSandbox> {
+  return acquire(request, request.template);
 }
 
 async function acquire(
