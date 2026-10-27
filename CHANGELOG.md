@@ -8,37 +8,18 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.152.0: Terminal studies run remotely by default (2026-10-27)
 
-- A live terminal study on `e2b-terminal` or `modal-terminal` now runs remotely by default, as a
-  hosted computer-use study does: its own process runs in a runner sandbox on that provider, so it
-  keeps going when this machine sleeps, and `observe --run <id>` reconnects to it. It has no live
-  Observer, as a local terminal run has none; its Observer is rendered when it ends. The runner
-  receives the study file, persona files and `subject.product.upload`. The runtime key Codex reads
-  (`CODEX_API_KEY`, else `OPENAI_API_KEY`) enters the runner's environment on E2B as well as Modal,
-  because the run places it in the shell sandbox; the participant gets it as before. `--local` or
-  `execution.remote: false` keeps the run and its key on this machine.
+humanish 0.152.0 runs a live terminal study remotely by default, as a hosted computer-use study
+already ran: its process runs in a runner sandbox on E2B or Modal and keeps going when this
+machine sleeps. A remote run on E2B no longer loses its runner about 4 minutes in. The runner was
+made from E2B's 473 MB base template, and a longer run's process was killed for memory without
+writing a result. It now uses E2B's desktop template, and a 15-minute remote Claude run peaked at
+471 MB with 6.8 GB still free. The committed `synthetic-new-user` persona no longer tells web
+participants they rely on terminal output, so Taskly benchmark results from this release start a
+new series.
 
-- The committed `synthetic-new-user` persona no longer declares `accessibility_needs:
-  clear_terminal_output`. A web participant read "You rely on clear terminal output", and in 2 of
-  30 recorded benchmark runs its report discussed a terminal the study never showed it ("No
-  terminal was involved, so there was no terminal output to interpret"). The TUI self-study now
-  uses a new `cli-newcomer` persona, which keeps the need. Every study that uses
-  `synthetic-new-user` gets a new persona digest and participant prompt digest, and Taskly
-  benchmark results before and after this change are separate series. Personas written by
-  `humanish init` never declared the need and are unchanged.
-
-### Fixed
-
-- A remote run whose provider SDK (`modal` or `@e2b/desktop`) is not installed is now refused with
-  the install advice before it names a run. It used to create a run id first and then say its
-  sandboxes were not confirmed stopped, though nothing had been created (#1986).
-
-- A remote run on E2B no longer loses its runner about 4 minutes in. The runner was made from
-  E2B's stock base template, which has 473 MB of memory. The run's own process grew past 300 MB
-  within two minutes, and a longer run's runner was killed without writing a result; runs under
-  about 4 minutes finished. The runner is now made from E2B's stock desktop template (7.9 GB,
-  8 vCPU) with no desktop started, so it costs about what one more participant desktop costs.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.152.0)
 
 ## 0.151.0: Claude participants compact long sessions (2026-10-26)
 
