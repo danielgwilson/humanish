@@ -290,7 +290,7 @@ export async function waitForRemoteRun(
   const script = [
     `status="${status}" result="${result}"`,
     `state() { grep -m1 -o '"state": *"[^"]*"' "$status" 2>/dev/null | sed 's/.*"\\([^"]*\\)"$/\\1/'; }`,
-    "alive() { if pgrep -f '[h]umanish watch' >/dev/null; then echo 1; else echo 0; fi; }",
+    `alive() { if pgrep -f ${shellQuote(watchPattern(runId))} >/dev/null; then echo 1; else echo 0; fi; }`,
     `i=0; while [ "$i" -lt ${checks} ]; do`,
     '  [ -s "$result" ] && break',
     `  [ "$(state)" != ${shellQuote(seen.state ?? "")} ] && break`,
@@ -507,12 +507,22 @@ function batches(files: readonly RemoteFile[]): RemoteFile[][] {
   return all;
 }
 
+/** Ask the runner's run to stop as a signal would, so it reclaims its participants and ends. */
+export async function stopRemoteRun(runner: Runner, runId: string): Promise<void> {
+  await runner.shell.run(`pkill -TERM -f ${shellQuote(watchPattern(runId))} || true`, {
+    timeoutMs: 30_000,
+  });
+}
+
 /**
- * Ask the runner's run to stop as a signal would, so it reclaims its participants and ends. The
- * `[h]` keeps the pattern from matching the shell that runs it.
+ * The process pattern of the runner's `humanish watch` for `runId`, so a check run anywhere else
+ * never matches another run's process. The `[h]` keeps it from matching the shell that runs it.
  */
-export async function stopRemoteRun(runner: Runner): Promise<void> {
-  await runner.shell.run("pkill -TERM -f '[h]umanish watch' || true", { timeoutMs: 30_000 });
+function watchPattern(runId: string): string {
+  // The launcher mints ids from letters, digits and dashes, none of which a pattern or shell reads.
+  if (!/^[A-Za-z0-9-]+$/.test(runId))
+    throw new Error(`Run id ${runId} is not one a launcher mints.`);
+  return `[h]umanish watch .*--run-id ${runId}( |$)`;
 }
 
 function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {

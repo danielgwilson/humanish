@@ -374,14 +374,14 @@ function formatReclaimHuman(result: ReclaimResult, cwd: string, preflight: boole
   const check = result.mode === "check";
   const search =
     result.tagSearch.status === "done"
-      ? `E2B lists ${plural(result.tagSearch.found, "more sandbox", "more sandboxes")} tagged with it`
-      : `E2B tag search ${result.tagSearch.status}`;
+      ? `the provider lists ${plural(result.tagSearch.found, "more sandbox", "more sandboxes")} tagged with it`
+      : `the provider's tag search ${result.tagSearch.status}`;
   const head = `${check ? "Reclaim check" : "Reclaim"} ${result.runId}: ${result.state}.`;
   lines.push(
     result.reason === "dry-run"
-      ? `${head} It was a dry run, which creates no sandboxes, so E2B was not contacted.`
+      ? `${head} It was a dry run, which creates no sandboxes, so no provider was contacted.`
       : result.reason === "no-sandbox"
-        ? `${head} Its status.json records that its route created no sandbox, so E2B was not contacted.`
+        ? `${head} Its status.json records that its route created no sandbox, so no provider was contacted.`
         : `${head} ${plural(result.receiptCount, "sandbox receipt")}; ${search}.`,
   );
   for (const outcome of result.outcomes) {

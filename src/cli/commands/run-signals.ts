@@ -257,7 +257,7 @@ function reclaimSummary(
   switch (reclaimed.state) {
     case "clean":
       return {
-        text: `sandboxes clean: ${tally}; E2B lists none still tagged with this run.`,
+        text: `sandboxes clean: ${tally}; the provider lists none still tagged with this run.`,
         clean: true,
       };
     case "unconfirmed":

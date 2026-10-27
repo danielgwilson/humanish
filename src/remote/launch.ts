@@ -313,7 +313,7 @@ export async function followRemoteRun(args: {
           exitCode: signals.exitCode,
           error: "stopped before the run started",
         });
-      await stopRemoteRun(runner).catch(() => undefined);
+      await stopRemoteRun(runner, runId).catch(() => undefined);
     }
     const ended =
       Date.now() - answeredAt >= UNANSWERED_LIMIT_MS
