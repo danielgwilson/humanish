@@ -8,6 +8,22 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A live terminal study on `e2b-terminal` or `modal-terminal` now runs remotely by default, as a
+  hosted computer-use study does: its own process runs in a runner sandbox on that provider, so it
+  keeps going when this machine sleeps, and `observe --run <id>` follows it from anywhere. The
+  runner receives the study file, persona files and `subject.product.upload`. The runtime key
+  (`CODEX_API_KEY` or `OPENAI_API_KEY`) enters the runner's environment on E2B as well as Modal,
+  because the run places it in the shell sandbox; the participant gets it as before. `--local` or
+  `execution.remote: false` keeps the run and its key on this machine.
+
+### Fixed
+
+- A remote run whose provider SDK (`modal` or `@e2b/desktop`) is not installed is now refused with
+  the install advice before it names a run. It used to create a run id first and then say its
+  sandboxes were not confirmed stopped, though nothing had been created (#1986).
+
 ## 0.151.0: Claude participants compact long sessions (2026-10-26)
 
 humanish 0.151.0 lets a Claude participant held to a scheduled end, such as an hour or a working

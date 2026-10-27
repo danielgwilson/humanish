@@ -369,6 +369,7 @@ describe("the keys a runner receives", () => {
       "OPENAI_API_KEY",
     ],
     alternatives: [["GEMINI_API_KEY", "GOOGLE_API_KEY"]],
+    plainKeys: [],
   };
   const env = {
     E2B_API_KEY: "synthetic-e2b",
@@ -407,7 +408,7 @@ describe("the keys a runner receives", () => {
   });
 
   it("holds a Claude participant's key in E2B's proxy and sends it to a Modal runner", () => {
-    const claude = { envNames: ["ANTHROPIC_API_KEY"], alternatives: [] };
+    const claude = { envNames: ["ANTHROPIC_API_KEY"], alternatives: [], plainKeys: [] };
     const set = { ANTHROPIC_API_KEY: "synthetic-anthropic" };
     const e2b = runnerKeys({ ...claude, provider: "e2b" }, set);
     expect(e2b.held).toEqual(["ANTHROPIC_API_KEY"]);
@@ -420,11 +421,31 @@ describe("the keys a runner receives", () => {
 
   it("on E2B, holds the E2B key for the API host of the forwarded E2B_DOMAIN", () => {
     const keys = runnerKeys(
-      { provider: "e2b", envNames: ["E2B_API_KEY", "E2B_DOMAIN"], alternatives: [] },
+      { provider: "e2b", envNames: ["E2B_API_KEY", "E2B_DOMAIN"], alternatives: [], plainKeys: [] },
       { E2B_API_KEY: "synthetic-e2b", E2B_DOMAIN: "e2b.example.test" },
     );
     expect(Object.keys(keys.network.rules ?? {})).toEqual(["api.e2b.example.test"]);
     expect(keys.env.E2B_DOMAIN).toBe("e2b.example.test");
+  });
+
+  it("on E2B, sends a terminal study's runtime key as its value and still holds the E2B key", () => {
+    const keys = runnerKeys(
+      {
+        provider: "e2b",
+        envNames: ["CODEX_API_KEY", "E2B_API_KEY", "OPENAI_API_KEY"],
+        alternatives: [],
+        plainKeys: ["CODEX_API_KEY", "OPENAI_API_KEY"],
+      },
+      env,
+    );
+    expect(Object.keys(keys.network.rules ?? {})).toEqual(["api.e2b.app"]);
+    expect(keys.env).toEqual({
+      E2B_API_KEY: EGRESS_PLACEHOLDER,
+      NODE_EXTRA_CA_CERTS: E2B_SYSTEM_CA_BUNDLE,
+      OPENAI_API_KEY: "synthetic-openai",
+    });
+    expect(keys.held).toEqual(["E2B_API_KEY"]);
+    expect(keys.sent).toEqual(["OPENAI_API_KEY"]);
   });
 
   it("on Modal, which has no header transform, sends each planned key that is set as an environment variable", () => {
@@ -433,6 +454,7 @@ describe("the keys a runner receives", () => {
         provider: "modal",
         envNames: ["GEMINI_API_KEY", "GOOGLE_API_KEY", "MODAL_TOKEN_ID", "OPENAI_API_KEY"],
         alternatives: [["GEMINI_API_KEY", "GOOGLE_API_KEY"]],
+        plainKeys: [],
       },
       { ...env, MODAL_TOKEN_ID: "synthetic-modal", OPENAI_API_KEY: " " },
     );
