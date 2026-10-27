@@ -325,6 +325,9 @@ the basis for the `gpt-6.1-sol` participant default.
 medium and high effort with `gpt-6.1-sol` at medium effort, 30 runs per arm on each of the
 in-memory and localStorage builds, with thinking tokens, the Claude-only actions, a mid-batch
 screenshot count and persona fidelity.
+[2026-10-27-persona-rebaseline.md](2026-10-27-persona-rebaseline.md) starts the series for the
+persona without `clear_terminal_output` (0.152.0): `gpt-6.1-sol` with the new persona, with the
+old one, and on the 0.149.0 build, and `claude-haiku-5-5`, 24 runs each on the in-memory builds.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where

@@ -1,0 +1,2582 @@
+{
+  "schema": "humanish.bench-result.v1",
+  "createdAt": "2026-10-27T07:48:10.916Z",
+  "humanish": {
+    "version": "0.151.0",
+    "source": "this checkout at b95802ca9, src/ as of 8dada0148"
+  },
+  "rubric": {
+    "id": "taskly-rubric",
+    "version": 4,
+    "sha256": "91f411fe2c9c423d1b36d76b9ff066bb31a666b984c10489368d5d1a59f32257"
+  },
+  "fixture": {
+    "id": "taskly",
+    "digests": {
+      "plantedAppJs": "81d287dc902f0c27893c6d73f3b7bceceeed7310c18f6667e2b71449e34682e8",
+      "cleanAppJs": "7f9f16923c0fc87224b5d7447e87ce10f5963266b5f28eb909b497a31c7a2733",
+      "indexHtml": "ea196a9b8915c8e9f94dd70eb349111cd3fb072abb21bea4f63bf614479c4a13",
+      "persona": "e99887ad1f46cafec7f3520be2703cf4ce218f4a770483c5997df4f367517a88"
+    },
+    "persona": "synthetic-new-user"
+  },
+  "participant": {
+    "model": "claude-haiku-5-5",
+    "reasoningEffort": "medium"
+  },
+  "mission": {
+    "id": "neutral",
+    "sha256": "989a6bde7cfc3406e32805c67f698c211fdb9731793c09c7adc10da886c7117f",
+    "text": "You are trying Taskly, a small web app for keeping a to-do list, for the first time. You have a handful of errands and chores to keep track of this week. Use Taskly for them the way you would actually use a list app, until you have decided whether you would keep using it. Report what worked, and describe anything that behaved differently from what you expected, in plain terms, saying what you did and what you saw."
+  },
+  "runsPerArm": 12,
+  "budget": {
+    "maxUsdPerBrain": 10,
+    "participantCapUsd": 1.5,
+    "analysisMaxUsd": 10,
+    "analysisAutoCap": true,
+    "worstCaseDesktopMinutes": 50,
+    "analysis": true
+  },
+  "brains": [
+    {
+      "brain": "computer-use",
+      "participantModels": [
+        "claude-haiku-5-5"
+      ],
+      "analysis": {
+        "provider": "openai",
+        "model": "gpt-6.1-sol",
+        "promptVersion": "study-evidence-8",
+        "maxCostUsd": 0.211803,
+        "maxOutputTokens": 16384
+      },
+      "stopped": null,
+      "spentUsd": {
+        "participant": 0.1746,
+        "desktop": 0.2365,
+        "analysis": 1.9356,
+        "total": 2.3466,
+        "unpricedRuns": 0
+      },
+      "runs": [
+        {
+          "arm": "planted",
+          "index": 1,
+          "runId": "cua-2026-10-27T06-53-23-388Z-e381d0e0",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.006449,
+            "desktopUsd": 0.007744,
+            "analysisUsd": 0.07417,
+            "totalUsd": 0.0884
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "it appeared in the list, and the undefined placeholder that was there when i first opened the page disappeared.",
+                "D3": "filters looked inverted."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "i stopped after a page reload showed the list had been wiped, because that means i can't rely on it for my week."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "the reload wiping everything was the point where i stopped. i didn't look for a save button or account, since the app didn't mention one, and i didn't go to any docs."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-a0aa48d9-b95c-4728-a119-97b8860ae60c",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D4": "friction",
+              "D3": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The entered list was empty after one page reload",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "The empty list displayed “undefined” and prompted uncertainty",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 1,
+          "runId": "cua-2026-10-27T06-55-29-954Z-5474876e",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.007538,
+            "desktopUsd": 0.008619,
+            "analysisUsd": 0.076633,
+            "totalUsd": 0.0928
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "i couldn't keep this week's errands in taskly, because the list was gone after a page reload."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "what confused me: nothing on the screen said the list wasn't saved, and i didn't see any sign of an account or a save step. i didn't check whether a different browser tab or a longer wait would bring the tasks back. i stopped there becau...",
+                "my decision: i wouldn't keep using taskly in its current state. the interface is simple and the basic actions are clear, but i can't rely on it to remember anything."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-ec91fc97-913d-4a4f-bf20-61335c76667b",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Tasks were absent after reload, prompting rejection of continued use",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 2,
+          "runId": "cua-2026-10-27T06-57-22-485Z-6a46d3c1",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.00634,
+            "desktopUsd": 0.008468,
+            "analysisUsd": 0.075358,
+            "totalUsd": 0.0902
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the empty list shows the word undefined where i'd expect a message such as no tasks yet."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "i tried taskly for my errands, but it doesn't keep a list across a page reload, so i wouldn't use it for this."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal.",
+                "the active and completed filters seemed to show the wrong items, so i'd have to double-check them before relying on them.",
+                "losing everything on reload is the main problem. i'd expect a to-do list to remember what i put in it. i didn't look for a sign-in or a save button, since the screen didn't suggest either.",
+                "i stopped here because a list that forgets its contents on reload can't do the job, and more testing wouldn't change that. i didn't use any real personal data or accounts, and i didn't see any login, terms, or verification screens."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-f6f1f107-8b6c-441e-88fa-c38ec73d7f03",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Previously entered errands were absent after reload",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Active displayed the completed errand rather than unfinished errands",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "The empty list displayed “undefined”",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 2,
+          "runId": "cua-2026-10-27T06-59-25-918Z-fafc9675",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.006791,
+            "desktopUsd": 0.011856,
+            "analysisUsd": 0.070653,
+            "totalUsd": 0.0893
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "the basics work, but the list does not survive a page reload, so i would not use it for everyday tasks as it is."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal.",
+                "what surprised me:",
+                "i did not open edit, delete, or clear completed, since the reload problem already answered my question. i also did not look for a sign-in, a save button, or settings, and the screen had none.",
+                "where i hesitated:",
+                "the main hesitation was whether i had done something wrong. i checked that the page was really reloaded and that the second test did not depend on the first. both times, the list was cleared.",
+                "i would have expected a to-do app to keep my list across a refresh, so i stopped there rather than spend more effort on a tool that does not hold onto its data."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-e6ed5eef-ed72-48d9-925a-feb6ed0d7623",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The list became empty after refresh, undermining confidence in keeping errands",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 3,
+          "runId": "cua-2026-10-27T07-01-52-368Z-af25e8be",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.006955,
+            "desktopUsd": 0.008765,
+            "analysisUsd": 0.084923,
+            "totalUsd": 0.1006
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "it appeared right away, and the undefined placeholder on the empty list went away.",
+                "D3": "it showed only the checked-off dry cleaning item, which is the opposite of what the filter should do."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i tried taskly as a weekly errands list, and i would not keep using it. everything i added disappears when the page reloads, so it can't hold a list from one session to the next."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-f61aa753-44c0-4afd-862d-559865a3b63f",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D4": "blocked_task",
+              "D3": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The populated list was empty after reload",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4",
+                  "B10"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "The empty list displayed \"undefined\"",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 3,
+          "runId": "cua-2026-10-27T07-04-00-674Z-47155a83",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.007272,
+            "desktopUsd": 0.012215,
+            "analysisUsd": 0.075888,
+            "totalUsd": 0.0954
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "taskly is usable for adding and checking off tasks, but it lost the whole list on reload, so i would not keep using it as my list."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "what confused or bothered me",
+                "nothing i added survived a reload. everything else worked, so i assumed the list would be saved, and that assumption was wrong. the page gives no warning that tasks are temporary, and nothing on screen says where they are stored.",
+                "i did not try edit, delete, or clear completed. given the data loss, i didn't think it was worth spending more effort on the rest of the app.",
+                "i stopped here because a to-do list that forgets its tasks when the page reloads does not do the basic job."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-81eef271-bd51-4399-a534-45f0f3001ea9",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Tasks disappeared after two reloads in the supplied session",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 4,
+          "runId": "cua-2026-10-27T07-06-35-535Z-186efa62",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.008237,
+            "desktopUsd": 0.011288,
+            "analysisUsd": 0.090418,
+            "totalUsd": 0.1099
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the list was now empty: all, active, and completed all show undefined and 0 left.",
+                "D3": "the inverted filters would have made me doubt what was actually done."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "i stopped because taskly lost my list on reload and its filters show the wrong items, so i wouldn't trust it for my weekly errands."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "clicked completed. it showed buy aa batteries and water the plants, both unchecked. again, reversed.",
+                "losing all the items on a plain page reload is the biggest problem. i couldn't tell whether the list is saved anywhere, and i wouldn't put real chores in an app that might forget them."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-54d94af6-d3b7-461d-9b8f-33d7e70a9368",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The three entered errands were absent from every view after reload",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Active and Completed displayed items with the opposite completion state",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "Empty list states displayed “undefined”",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 4,
+          "runId": "cua-2026-10-27T07-09-00-350Z-236864b5",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.007966,
+            "desktopUsd": 0.008588,
+            "analysisUsd": 0.082485,
+            "totalUsd": 0.099
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "adding, completing, and filtering tasks all worked, but the list doesn't survive a page reload, so i can't rely on it to keep my week's to-dos."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "nothing on screen says the list is only kept in the current page session. i expected a to-do app to remember what i entered, so the wipe on reload was the surprise.",
+                "i did not try to find out whether a different browser tab or a later visit would behave differently. given the reload result, i stopped there rather than spend more effort on it.",
+                "i did not test edit, delete, or clear completed, because the data disappeared before i could."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-8fcd644a-c7ef-4038-b2d8-d5b4c6685bea",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Previously entered errands were absent after reload",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 5,
+          "runId": "cua-2026-10-27T07-10-55-648Z-fd133f51",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.006675,
+            "desktopUsd": 0.011358,
+            "analysisUsd": 0.078313,
+            "totalUsd": 0.0963
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the empty undefined text in the list disappeared once i added a task.",
+                "D3": "the active and completed filters seem swapped."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "i left fix the kitchen tap in edit mode and didn't click save, so that edit may not have been saved. i didn't test whether it persists.",
+                "i didn't try clear completed, so i can't say whether it works."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-a0c2788f-4dc9-4a9b-99fa-30c9087b7907",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Active and Completed showed task states opposite to their labels",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "The initial list displayed “undefined” before the first task was added",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 5,
+          "runId": "cua-2026-10-27T07-13-34-029Z-4788a309",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.007718,
+            "desktopUsd": 0.008231,
+            "analysisUsd": 0.09206,
+            "totalUsd": 0.108
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "invented": [
+                {
+                  "classId": "D3",
+                  "quote": "the clear completed button moved up when i switched to the completed filter, so my first click missed it."
+                }
+              ],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "the biggest problem: after i reloaded the page (f5), the two remaining tasks were gone and the screen said nothing here yet."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "i did not create an account, sign in, or look at any settings, so i cannot say whether a sign-in would keep the list. i also did not check the other tabs or any help text, because the screen did not point me to any."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-cdc07382-dd5d-408f-9959-f7267b9aecc9",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Two unfinished tasks were absent after reload",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "A filter change moved Clear completed and preceded a missed click",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              },
+              {
+                "id": "F3",
+                "title": "Typing after Add did not create the next task until the input was reselected",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 6,
+          "runId": "cua-2026-10-27T07-15-50-568Z-7180df35",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.008541,
+            "desktopUsd": 0.012393,
+            "analysisUsd": 0.091428,
+            "totalUsd": 0.1124
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D3": "the filters seem swapped.",
+                "D4": "after f5, the list read undefined with 0 left, and the all view was empty too."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "then i reloaded the page, and the whole list was gone."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "edit and delete buttons on each row, which i did not get to test.",
+                "what confused me or didn't work:"
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-3940989d-655c-4fcc-a75b-9275fdf67400",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Previously entered errands were absent after reload",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Status filters displayed the opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "Empty lists displayed “undefined” instead of useful guidance",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 6,
+          "runId": "cua-2026-10-27T07-18-32-401Z-1814d4c2",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.00754,
+            "desktopUsd": 0.009706,
+            "analysisUsd": 0.0747,
+            "totalUsd": 0.0919
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "taskly handles adding, checking off, and filtering tasks well, but it doesn't keep my list after a page reload, so i wouldn't use it for this week's errands."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal.",
+                "the layout is simple and easy to read. i didn't need any help or documentation.",
+                "what confused me",
+                "nothing on screen says the list is temporary or that it isn't saved. i expected a to-do list to remember its tasks across a reload, so losing everything was a surprise. a hint like tasks are only kept in this session would have helped.",
+                "i didn't find any sign-in, sync, or save option, so i couldn't tell whether the data was supposed to persist some other way.",
+                "where i stopped i stopped after the second reload. the first reload showed the problem, and the second confirmed it wasn't a one-time glitch. a list app that forgets everything on reload doesn't meet my goal of tracking errands for the w..."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-1e0f5105-4178-4404-b402-1fc3893364cd",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The list returned empty after both reload checks in this session",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 7,
+          "runId": "cua-2026-10-27T07-20-34-701Z-c44f6de8",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.005679,
+            "desktopUsd": 0.006789,
+            "analysisUsd": 0.064868,
+            "totalUsd": 0.0773
+          },
+          "analysisState": "failed",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "it appeared in the list, and the undefined placeholder that was there at first disappeared.",
+                "D3": "the filters appear to be swapped."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "reached the goal. i added three errands to taskly, checked one off, and tried the filter tabs. adding and checking off tasks worked, but the active and completed filters show the wrong tasks, so i would not keep using it for my week yet.",
+                "i hesitated at this point. the core add-and-check cycle works, but i can't trust the filters to show what's still open, which is the main thing i'd want from a to-do list. i stopped here rather than keep testing."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "clean",
+          "index": 7,
+          "runId": "cua-2026-10-27T07-22-34-554Z-ac89e994",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.008508,
+            "desktopUsd": 0.012391,
+            "analysisUsd": 0.08684,
+            "totalUsd": 0.1077
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "added a test task (renew library book), reloaded again, and it disappeared too."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal.",
+                "clicked all and then tried clear completed. my click landed on empty space because the button had moved up after the filter change, so i never actually cleared anything. i didn't retry it.",
+                "would i keep using it? no. the core job of a list app is to hold my errands between visits, and this one doesn't. adding and checking off tasks feels fine in the moment, but i wouldn't trust it with a week's worth of chores."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-a476cf0f-455d-4434-8b82-156c71fa7166",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Visible unfinished errands were absent after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Completed errands were absent from the later All view for an unresolved reason",
+                "impact": "uncertain",
+                "confidence": "medium",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 8,
+          "runId": "cua-2026-10-27T07-25-18-414Z-25259e77",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.006088,
+            "desktopUsd": 0.009479,
+            "analysisUsd": 0.070215,
+            "totalUsd": 0.0858
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D3": "active showed only the checked-off dry cleaning item, and completed showed the two unchecked items, so the two filters look swapped.",
+                "D4": "the list came back empty, with the text undefined where the list should be, and the three errands were gone."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "that reload result decided it for me. a to-do list that forgets everything on refresh can't hold my errands for the week, so i wouldn't keep using it. i didn't look for a login, a save option, or documentation, because the screen didn't ...",
+                "the lost list, which i can't explain from the screen. i can't tell whether it's a deliberate no-save design or a fault.",
+                "where i hesitated: before the reload, i wondered whether the list might have been saved somewhere i couldn't see. nothing on the screen suggested that, so i treated the lost list as the app's behavior."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-46b7c89f-294e-4271-a75f-5c6f4e91af42",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D4": "blocked_task",
+              "D3": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The entered list was absent after one browser reload",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "The empty list displayed “undefined” on first load and after reload",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 8,
+          "runId": "cua-2026-10-27T07-27-32-790Z-458593ae",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.006768,
+            "desktopUsd": 0.010809,
+            "analysisUsd": 0.07072,
+            "totalUsd": 0.0883
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "then i reloaded the page (f5), and the list was empty: nothing here yet."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "i didn't test edit, delete, or clear completed. once the list vanished on reload, more effort didn't seem worth it.",
+                "i hesitated over whether the reload would wipe everything, so i tested it deliberately. i didn't see any login or sign-up prompt, so i'm not sure whether an account or sync feature exists that would have saved the list."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-48262d81-9082-4bc1-98c1-f4633af113eb",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The list was empty after reload, prompting a decision not to continue",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 9,
+          "runId": "cua-2026-10-27T07-29-50-294Z-bc3b87ec",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.010207,
+            "desktopUsd": 0.011856,
+            "analysisUsd": 0.103838,
+            "totalUsd": 0.1259
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": true,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "detectedQuotes": {
+                "D2": "i opened edit and the saved text was also cut off at that point, so the text was lost when it was added.",
+                "D5": "clicking save did nothing, twice.",
+                "D3": "the completed tab showed the two unchecked items instead.",
+                "D4": "the list was empty, showing the placeholder text undefined and 0 left."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": "data_loss",
+              "engaged": {
+                "D1": true,
+                "D2": true,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "i added three errands (fake ones, no personal data), but the list didn't keep them after a page reload, so i wouldn't use taskly for real errands."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "save in edit mode needs enter, and the button doesn't respond.",
+                "the biggest problem: the list doesn't persist. a to-do app that loses everything on reload isn't usable for keeping track of a week's errands. i stopped here rather than testing further, since this one failure rules out using it."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-03a0da64-d0fb-4beb-b56e-68d5a469084d",
+            "listed": {
+              "D1": false,
+              "D2": true,
+              "D3": true,
+              "D4": true,
+              "D5": true
+            },
+            "impactByDefect": {
+              "D4": "friction",
+              "D3": "friction",
+              "D5": "friction",
+              "D2": "friction"
+            },
+            "d2Mechanism": "unspecified",
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Three errands were no longer visible after reload",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "Active and Completed displayed items contrary to their labels",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "Two Save clicks left editing open; Enter saved the change",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The first errand appeared shortened and required re-entry",
+                "impact": "friction",
+                "confidence": "medium",
+                "verdict": "planted",
+                "classes": [
+                  "D2"
+                ],
+                "defects": [
+                  "D2"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 9,
+          "runId": "cua-2026-10-27T07-32-32-417Z-c0830b3d",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.008246,
+            "desktopUsd": 0.00993,
+            "analysisUsd": 0.089278,
+            "totalUsd": 0.1075
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "invented": [
+                {
+                  "classId": "D1",
+                  "quote": "the 2 left counter stayed the same after clear completed, which suggests the active items were still there until the reload."
+                }
+              ],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "every task i added disappeared on reload, including a brand-new one."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal.",
+                "clicked clear completed while on the completed filter. the completed item disappeared from that view, and the counter still said 2 left. i did not check the all view at that point.",
+                "i didn't look for a save or sync option, since none was visible and i didn't want to go looking through hidden menus.",
+                "decision: i wouldn't keep using taskly for my weekly errands. a to-do list that forgets everything when the tab is refreshed or reopened can't hold a week's worth of chores. i'd only consider it again if the app says clearly that it save..."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-88aaf533-96cb-4f9e-961d-32043ddef526",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "A newly added task disappeared from the list after refresh",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "The participant reported uncertainty about the scope of Clear completed",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 10,
+          "runId": "cua-2026-10-27T07-34-49-851Z-40368d5b",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.007494,
+            "desktopUsd": 0.008992,
+            "analysisUsd": 0.09272,
+            "totalUsd": 0.1092
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "on first load the list showed a grey item reading undefined before i'd added anything.",
+                "D3": "the active and completed filters seem swapped.",
+                "D1": "clear completed did nothing."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added three errands (dry cleaning, birthday card, library books), used enter to submit one of them, and ticked off the dry cleaning. adding, ticking, and the n left counter all worked. i stopped there because tw...",
+                "i didn't test edit. my click meant for edit landed on clear completed because the list had changed under me, so i never saw how editing works."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-b40e2bdf-6fbc-478d-aaaf-cc6652e45055",
+            "listed": {
+              "D1": true,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D1": "blocked_task",
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Clear completed left the finished task visible after two attempts",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D1"
+                ],
+                "defects": [
+                  "D1"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "Active and Completed displayed the opposite task states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "The initial “undefined” row prompted uncertainty about loading",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "A reported Edit click hit Clear completed after filtering",
+                "impact": "friction",
+                "confidence": "medium",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 10,
+          "runId": "cua-2026-10-27T07-37-19-198Z-c717ac16",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.0072,
+            "desktopUsd": 0.0097,
+            "analysisUsd": 0.07914,
+            "totalUsd": 0.096
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "then i reloaded, and it was gone again."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i tried taskly for this week's errands, and it works well for the in-session basics, but it does not keep my list. i would not keep using it in its current state.",
+                "nothing on screen says the list is temporary or session-only. there is no sign-in, no save indicator, and no warning, so i assumed my tasks were saved. losing them on refresh was the surprise.",
+                "i did not try edit or delete, or clear completed, since the main problem blocked the rest of the evaluation. i also did not look for a settings page or docs, because the screen gave no hint that one existed."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-58bd6970-db6b-42d3-b055-4bf91fc1920b",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Tasks disappeared from the displayed list after two reloads",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "The participant could not tell whether tasks were meant to be saved",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 11,
+          "runId": "cua-2026-10-27T07-39-21-854Z-f6988018",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.006939,
+            "desktopUsd": 0.011062,
+            "analysisUsd": 0.085358,
+            "totalUsd": 0.1034
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the list showed one item reading undefined and 0 left.",
+                "D3": "the active and completed filters seem to be swapped."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "after a page refresh, the list was empty again, so i wouldn't keep using it."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "the biggest problem is that the list didn't save. either the app keeps tasks only in the current page session, or the save failed. either way, a to-do list that forgets everything on refresh isn't useful for weekly errands.",
+                "i stopped there. i didn't dig into the cause or try other browsers, since a list that loses its contents on reload already rules it out for me."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-0bfb660a-aa38-4723-8e5f-e78fc085bb53",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Entered errands were absent after refresh",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Status filters displayed task states opposite their labels",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "An unexplained “undefined” row appeared in the zero-count list",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 11,
+          "runId": "cua-2026-10-27T07-41-53-483Z-370c9cc0",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.005803,
+            "desktopUsd": 0.010857,
+            "analysisUsd": 0.06644,
+            "totalUsd": 0.0831
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "it's possible the list is held only in memory, or that my reload cleared some saved state, but the screen gives no hint either way."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal.",
+                "the lost water the plants entry was silent. nothing told me the add had failed.",
+                "where i stopped: once the list vanished on reload, i didn't see a reason to keep adding errands. taskly's basic add, complete, and filter actions work, but i wouldn't keep using it until items survive a page reload."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-b68f29ee-3139-46b2-832a-efc6a3f48a9d",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The list appeared empty after reload, prompting a decision not to keep using Taskly",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Typing after Add missed an errand; refocusing the input recovered it",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 12,
+          "runId": "cua-2026-10-27T07-44-19-194Z-d55aada3",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.006156,
+            "desktopUsd": 0.008597,
+            "analysisUsd": 0.07733,
+            "totalUsd": 0.0921
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the undefined placeholder row on the first screen disappeared once i had a real item.",
+                "D3": "the completed and active buttons seem swapped."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "i stopped because the list lost all my items on a page reload, and the filters show the wrong items."
+                }
+              ],
+              "harness": [],
+              "unresolved": [],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-05fbbf65-2989-41d5-a383-853a49ceb2e9",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D4": "friction",
+              "D3": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Four tasks were no longer displayed after reload",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "The empty list displayed “undefined” on entry and after reload",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 12,
+          "runId": "cua-2026-10-27T07-46-27-602Z-08f24534",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.00752,
+            "desktopUsd": 0.00677,
+            "analysisUsd": 0.081775,
+            "totalUsd": 0.0961
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "i stopped because the list did not survive a page reload, so i can't rely on it to hold my errands."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal.",
+                "the biggest problem was the reload. nothing i added was kept, and the app gave no warning that the list was temporary. i didn't check whether it saves anything at all, such as in a browser session or on a server, so i can't tell what the...",
+                "the 2 left counter did not drop when i cleared the completed item. i expected it to stay the same since the item was already done, but the count was about the remaining active items, so it's accurate either way. i mention it only because...",
+                "i hesitated at the reload result. i didn't try to find a settings page, sign-in, or documentation, because nothing on screen pointed to them. a to-do app that forgets everything on reload is not something i'd trust with weekly errands, s..."
+              ],
+              "model": "claude-haiku-5-5",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-9f1ac00b-cde9-44cb-aa6c-4efc5aeb5875",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Two active errands disappeared from All after reload in this session",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "The participant briefly questioned the accurate remaining-task counter",
+                "impact": "friction",
+                "confidence": "medium",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        }
+      ],
+      "summary": {
+        "report": {
+          "plantedUnits": 12,
+          "cleanUnits": 12,
+          "recall": {
+            "D1": {
+              "hits": 1,
+              "of": 12
+            },
+            "D2": {
+              "hits": 1,
+              "of": 12
+            },
+            "D3": {
+              "hits": 11,
+              "of": 12
+            },
+            "D4": {
+              "hits": 12,
+              "of": 12
+            },
+            "D5": {
+              "hits": 1,
+              "of": 12
+            },
+            "total": {
+              "hits": 26,
+              "of": 60,
+              "wilson95": [
+                0.3157,
+                0.559
+              ]
+            }
+          },
+          "d2Mechanism": {
+            "data_loss": 1,
+            "display": 0,
+            "ambiguous": 0,
+            "unspecified": 0
+          },
+          "falseAssurance": {
+            "claims": 0,
+            "unitsWith": 0
+          },
+          "invented": {
+            "planted": 0,
+            "clean": 2,
+            "unitsWith": 2
+          },
+          "harness": 0,
+          "unresolved": 64,
+          "supported": 19,
+          "engaged": {
+            "D1": {
+              "hits": 6,
+              "of": 12
+            },
+            "D2": {
+              "hits": 1,
+              "of": 12
+            },
+            "D3": {
+              "hits": 12,
+              "of": 12
+            },
+            "D4": {
+              "hits": 12,
+              "of": 12
+            },
+            "D5": {
+              "hits": 7,
+              "of": 12
+            }
+          }
+        },
+        "analysis": {
+          "plantedUnits": 11,
+          "cleanUnits": 12,
+          "recall": {
+            "D1": {
+              "hits": 1,
+              "of": 11
+            },
+            "D2": {
+              "hits": 1,
+              "of": 11
+            },
+            "D3": {
+              "hits": 11,
+              "of": 11
+            },
+            "D4": {
+              "hits": 11,
+              "of": 11
+            },
+            "D5": {
+              "hits": 1,
+              "of": 11
+            },
+            "total": {
+              "hits": 25,
+              "of": 55,
+              "wilson95": [
+                0.3303,
+                0.5848
+              ]
+            }
+          },
+          "d2Mechanism": {
+            "data_loss": 0,
+            "display": 0,
+            "ambiguous": 0,
+            "unspecified": 1
+          },
+          "falseAssurance": {
+            "claims": 0,
+            "unitsWith": 0
+          },
+          "invented": {
+            "planted": 0,
+            "clean": 0,
+            "unitsWith": 0
+          },
+          "harness": 0,
+          "unresolved": 9,
+          "supported": 15
+        }
+      }
+    }
+  ]
+}
