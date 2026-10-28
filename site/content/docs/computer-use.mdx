@@ -451,7 +451,10 @@ keys are in the run's environment. A terminal study's runtime key (`CODEX_API_KE
 places it in the shell sandbox's own egress rule or Codex command; the participant gets it as a
 local run would give it. It costs
 one more sandbox for the length of the study, and on E2B it counts against your concurrent
-sandboxes. On E2B the runner is made from E2B's stock desktop template, as a participant's desktop
+sandboxes: the run in the runner holds its desktops to your limit less one. A study that declares
+no `execution.concurrency` runs remotely while the most participants its schedule runs at once
+fit under that, so 20 participants arriving over a day run remotely on a limit of 20; a declared
+`execution.concurrency` must fit under it as declared. On E2B the runner is made from E2B's stock desktop template, as a participant's desktop
 is, for its 8 GB of memory, so it costs about what one more participant does; no desktop starts on
 it. On Modal it has 2 CPU and 4 GiB.
 

@@ -399,6 +399,7 @@ describe("the keys a runner receives", () => {
     ],
     alternatives: [["GEMINI_API_KEY", "GOOGLE_API_KEY"]],
     plainKeys: [],
+    settings: {},
   };
   const env = {
     E2B_API_KEY: "synthetic-e2b",
@@ -436,8 +437,27 @@ describe("the keys a runner receives", () => {
     expect(keys.sent).toEqual(["HUMANISH_E2B_MAX_SANDBOX_MINUTES"]);
   });
 
+  it("sends the plan's settings in place of this machine's values of the same names", () => {
+    const keys = runnerKeys(
+      {
+        ...plan,
+        envNames: [...plan.envNames, "HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES"],
+        provider: "e2b",
+        settings: { HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: "99" },
+      },
+      { ...env, HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: "100" },
+    );
+    expect(keys.env.HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES).toBe("99");
+    expect(keys.sent).toContain("HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES");
+  });
+
   it("holds a Claude participant's key in E2B's proxy and sends it to a Modal runner", () => {
-    const claude = { envNames: ["ANTHROPIC_API_KEY"], alternatives: [], plainKeys: [] };
+    const claude = {
+      envNames: ["ANTHROPIC_API_KEY"],
+      alternatives: [],
+      plainKeys: [],
+      settings: {},
+    };
     const set = { ANTHROPIC_API_KEY: "synthetic-anthropic" };
     const e2b = runnerKeys({ ...claude, provider: "e2b" }, set);
     expect(e2b.held).toEqual(["ANTHROPIC_API_KEY"]);
@@ -450,7 +470,13 @@ describe("the keys a runner receives", () => {
 
   it("on E2B, holds the E2B key for the API host of the forwarded E2B_DOMAIN", () => {
     const keys = runnerKeys(
-      { provider: "e2b", envNames: ["E2B_API_KEY", "E2B_DOMAIN"], alternatives: [], plainKeys: [] },
+      {
+        provider: "e2b",
+        envNames: ["E2B_API_KEY", "E2B_DOMAIN"],
+        alternatives: [],
+        plainKeys: [],
+        settings: {},
+      },
       { E2B_API_KEY: "synthetic-e2b", E2B_DOMAIN: "e2b.example.test" },
     );
     expect(Object.keys(keys.network.rules ?? {})).toEqual(["api.e2b.example.test"]);
@@ -464,6 +490,7 @@ describe("the keys a runner receives", () => {
         envNames: ["CODEX_API_KEY", "E2B_API_KEY", "OPENAI_API_KEY"],
         alternatives: [],
         plainKeys: ["CODEX_API_KEY", "OPENAI_API_KEY"],
+        settings: {},
       },
       env,
     );
@@ -483,6 +510,7 @@ describe("the keys a runner receives", () => {
       provider: "e2b" as const,
       envNames: ["CODEX_API_KEY", "OPENAI_API_KEY"],
       plainKeys: ["CODEX_API_KEY", "OPENAI_API_KEY"],
+      settings: {},
     };
     // The analysis reads OPENAI_API_KEY, so it goes to the runner, held in the proxy.
     const analysed = runnerKeys({ ...terminal, alternatives: [] }, both);
@@ -507,6 +535,7 @@ describe("the keys a runner receives", () => {
         envNames: ["GEMINI_API_KEY", "GOOGLE_API_KEY", "MODAL_TOKEN_ID", "OPENAI_API_KEY"],
         alternatives: [["GEMINI_API_KEY", "GOOGLE_API_KEY"]],
         plainKeys: [],
+        settings: {},
       },
       { ...env, MODAL_TOKEN_ID: "synthetic-modal", OPENAI_API_KEY: " " },
     );
