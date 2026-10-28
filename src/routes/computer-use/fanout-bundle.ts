@@ -62,6 +62,13 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
   return events;
 }
 
+/** The outcomes of the participants that ended, in roster order: every one in a final bundle. */
+function endedOutcomes(outcomes: CuaFanoutBundleArgs["outcomes"]): ParticipantRunOutcome[] {
+  return (outcomes ?? []).filter(
+    (outcome): outcome is ParticipantRunOutcome => outcome !== undefined,
+  );
+}
+
 /**
  * The run's summary in plain sentences: who took part, what happened to them with the denominator
  * attached, and that the gaps list the participants who did not pass. A participant the run
@@ -143,19 +150,21 @@ function fanoutReview(
   const passedParticipants = judgment.participants.filter(
     (participant) => participant.judgedStatus === "passed",
   ).length;
-  const skippedParticipants = (outcomes ?? []).filter(
+  const skippedParticipants = endedOutcomes(outcomes).filter(
     (outcome) => outcome?.skippedReason !== undefined,
   ).length;
   // What happened to the participants, with the denominator attached. The verdict above has to
   // collapse the run to one word; this does not (docs/principles/three-roles.md).
-  const terminalOutcomes = (outcomes ?? []).filter(
+  const terminalOutcomes = endedOutcomes(outcomes).filter(
     (outcome): outcome is NonNullable<typeof outcome> & { session: { status: ActorStatus } } =>
       outcome?.session?.status !== undefined,
   );
-  const participants = judgment.tally.total > 0 ? judgment.tally : undefined;
+  // In progress the tally would count only the participants that ended so far.
+  const participants =
+    args.inProgress !== true && judgment.tally.total > 0 ? judgment.tally : undefined;
   // The study funnel: per-task completion rates across every session that measured one. This is
   // "where did people get stuck" as data, next to who got stuck (participants) above.
-  const participantFunnels = (outcomes ?? [])
+  const participantFunnels = endedOutcomes(outcomes)
     .map((outcome) => outcome?.session?.trace.taskFunnel)
     .filter((funnel): funnel is TaskFunnel => funnel !== undefined);
   const runTasks = args.inProgress === true ? undefined : aggregateTaskFunnels(participantFunnels);
@@ -200,7 +209,7 @@ function fanoutReview(
 function fanoutDesktopBrowser(args: CuaFanoutBundleArgs) {
   const { outcomes, plan } = args;
   const configuredBrowser = plan.residual.execution?.desktop?.browser;
-  const resolvedBrowsers = (outcomes ?? [])
+  const resolvedBrowsers = endedOutcomes(outcomes)
     .map((outcome) => outcome.desktopBrowser?.resolved)
     .filter((value): value is string => value !== undefined);
   const unanimousResolvedBrowser =
@@ -227,7 +236,7 @@ function fanoutCost(args: CuaFanoutBundleArgs) {
         entry.outcome?.session !== undefined,
     )
     .map((entry) => ({ participantId: entry.participantId, trace: entry.outcome.session!.trace }));
-  const desktops = (outcomes ?? [])
+  const desktops = endedOutcomes(outcomes)
     .filter((outcome) => outcome.sandboxId !== undefined)
     .map((outcome) => ({
       participantId: outcome.spec.planned.id,
@@ -325,15 +334,15 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
 
   const review = fanoutReview(args, streams, judgment);
 
-  const anyRaw = (outcomes ?? []).some(
+  const anyRaw = endedOutcomes(outcomes).some(
     (outcome) => outcome.session?.trace.redaction.screenshots === "raw",
   );
-  const ranLive = (outcomes ?? []).some(
+  const ranLive = endedOutcomes(outcomes).some(
     (outcome) => outcome.session !== undefined || outcome.sessionError !== undefined,
   );
   const desktopTemplate = e2bDesktopTemplate(plan.residual);
   const desktopBrowser = fanoutDesktopBrowser(args);
-  const providerResources = (outcomes ?? []).flatMap((outcome) =>
+  const providerResources = endedOutcomes(outcomes).flatMap((outcome) =>
     providerResourcesForOutcome({
       provider:
         plan.residual.execution?.target === "modal-desktop" ? "modal-desktop" : "e2b-desktop",
@@ -344,7 +353,9 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
     }),
   );
 
-  const cost = fanoutCost(args);
+  // In progress a summary of the ended participants would read as the run's total. Each
+  // participant's own trace still prices it.
+  const cost = args.inProgress === true ? undefined : fanoutCost(args);
 
   return {
     ...bundleHead(args.run, {

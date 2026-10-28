@@ -74,7 +74,8 @@ export function judgeComputerUseRun(
 interface CuaRunBundleState {
   judgment: Judgment;
   dryRun: boolean;
-  outcomes: ParticipantRunOutcome[] | undefined;
+  /** By roster place; in progress, undefined for each participant that has not ended. */
+  outcomes: readonly (ParticipantRunOutcome | undefined)[] | undefined;
   subjects: RunSubjectProvenance[];
   aggregateSubject: RunSubjectProvenance;
   /** The final bundle's reading of the run's host suspensions. */

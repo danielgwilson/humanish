@@ -215,7 +215,9 @@ function fanoutParticipantStream(
         ...(session ? { actorStatus: session.status } : {}),
         ...(lastScreenshot ? { screenshotUrl: lastScreenshot } : {}),
       },
-      ...(session ? { actor: session.trace } : {}),
+      // In progress, an ended participant's items stay in its live file (liveActor), so a flush
+      // does not rewrite its whole trace on every write. The final bundle carries the trace.
+      ...(session && args.inProgress !== true ? { actor: session.trace } : {}),
       artifacts: [
         { label: "run bundle", path: "run.json", kind: "bundle" as const },
         { label: "review", path: "review.md", kind: "review" as const },
