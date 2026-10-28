@@ -10,6 +10,7 @@ import { getActor } from "../../../src/actors/registry.js";
 import type { RunBundle } from "../../../src/run/bundle.js";
 import { buildCuaFanoutBundle } from "../../../src/routes/computer-use/fanout-bundle.js";
 import { startLiveTraceFlush } from "../../../src/routes/computer-use/live-flush.js";
+import type { ParticipantRunOutcome } from "../../../src/routes/computer-use/types.js";
 import { participantRunsAndPlan } from "../../../src/routes/computer-use/participant-runs.js";
 import { planComputerUseStudy } from "../../../src/routes/computer-use/plan.js";
 import { judgeParticipants } from "../../../src/run/judge.js";
@@ -43,7 +44,11 @@ function scheduledRoster() {
 }
 
 function inProgressBundle(
-  options: { liveStarts?: ReadonlyMap<string, string>; appUrl?: string } = {},
+  options: {
+    liveStarts?: ReadonlyMap<string, string>;
+    appUrl?: string;
+    outcomes?: readonly (ParticipantRunOutcome | undefined)[];
+  } = {},
 ): RunBundle {
   const { plan, runs, participantPlan } = scheduledRoster();
   const subject = { source: "app-url" as const, state: { provenance: "undeclared" as const } };
@@ -77,6 +82,7 @@ function inProgressBundle(
     participantPlan,
     inProgress: true,
     ...(options.liveStarts === undefined ? {} : { liveStarts: options.liveStarts }),
+    ...(options.outcomes === undefined ? {} : { outcomes: options.outcomes }),
   });
 }
 
@@ -190,6 +196,66 @@ describe("the live flush of a scheduled roster", () => {
       "running",
       "running",
     ]);
+  });
+});
+
+/** The first customer's outcome: its session failed in the harness after it started. */
+function failedCustomer(): ParticipantRunOutcome {
+  return {
+    spec: scheduledRoster().runs[1]!,
+    killed: true,
+    streamUrlPresent: false,
+    screenshots: [],
+    stateStepRecords: [],
+    phaseRecords: [],
+    warnings: [],
+    noEngagement: false,
+    selfReportedBlocker: false,
+    reportedFriction: false,
+    harnessError: true,
+    sessionError: "the desktop stopped answering",
+  };
+}
+
+describe("an ended participant in the in-progress bundle", () => {
+  it("records its outcome while the others run or wait", () => {
+    const bundle = inProgressBundle({ outcomes: [undefined, failedCustomer(), undefined] });
+    expect(participants(bundle).map((participant) => participant.status)).toEqual([
+      "running",
+      "failed",
+      "queued",
+    ]);
+    expect(bundle.simulations[1]!.summary).toContain("did not finish a session");
+    expect(bundle.events.filter((event) => event.type === "cua-lab.session.error")).toEqual([
+      expect.objectContaining({ simId: bundle.simulations[1]!.id }),
+    ]);
+    expect(runningEvents(bundle)).toEqual([{ simId: bundle.simulations[0]!.id, at: CREATED_AT }]);
+    // Neither counts only the participants that ended so far.
+    expect(bundle.review.participants).toBeUndefined();
+    expect(bundle.cost).toBeUndefined();
+  });
+
+  it("is written when the route refreshes the flush, with its live items kept", async () => {
+    const { runs } = scheduledRoster();
+    const writes: RunBundle[] = [];
+    const ended: (ParticipantRunOutcome | undefined)[] = [undefined, undefined, undefined];
+    const flush = startLiveTraceFlush({
+      bundle: inProgressBundle(),
+      participantRuns: runs,
+      model: "gpt-5.5",
+      write: async (bundle) => {
+        writes.push(bundle);
+      },
+      restate: (liveStarts) => inProgressBundle({ liveStarts, outcomes: [...ended] }),
+    });
+    flush.flush(runs[1]!.planned.id, [screenshot()]);
+    ended[1] = failedCustomer();
+    flush.refresh();
+    await new Promise((resolve) => setTimeout(resolve, 2_100));
+    await flush.stop();
+    const written = writes.at(-1)!;
+    expect(written.streams[1]!.status).toBe("failed");
+    expect(written.streams[1]!.liveActor?.items).toHaveLength(1);
   });
 });
 

@@ -353,17 +353,19 @@ describe("the live bundle of a computer-use study with a declared schedule", () 
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it("writes a scheduled participant queued until its session starts, then running", async () => {
+  it("writes a scheduled participant queued, then running, then its outcome while others run", async () => {
     let bundlePath = "";
     const read = async () => {
       const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as RunBundle;
       return {
         statuses: bundle.streams.map((stream) => stream.status),
         running: bundle.events.filter((event) => event.type === "cua-lab.session.running").length,
+        // An ended participant's items stay in its live file until the final bundle.
+        live: bundle.streams.map((stream) => stream.liveActor !== undefined && !stream.actor),
       };
     };
-    let atStart: Awaited<ReturnType<typeof read>> | undefined;
-    let afterStart: Awaited<ReturnType<typeof read>> | undefined;
+    const seen: Awaited<ReturnType<typeof read>>[] = [];
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const base = seams(timedModule().module);
     let sessions = 0;
     const outcome = await runStudyWith(
@@ -375,26 +377,33 @@ describe("the live bundle of a computer-use study with a declared schedule", () 
         env: KEYS,
         onObserverReady: async (observer) => {
           bundlePath = observer.bundlePath ?? "";
-          atStart = await read();
+          seen.push(await read());
         },
       },
       {
         ...base,
         runSession: async (options: CuaActorSessionOptions) => {
           sessions += 1;
-          const result = await base.runSession(options);
-          // The customer's first items were flushed; the trailing write follows within 2 s.
-          if (sessions === 2) {
-            await new Promise((resolve) => setTimeout(resolve, 2_500));
-            afterStart = await read();
+          // The support agent works for 3 s; the customer starts at +300 ms and ends first.
+          if (sessions === 1) {
+            await wait(3_000);
+            seen.push(await read());
+            return base.runSession(options);
           }
+          const result = await base.runSession(options);
+          // The customer's first items were written at once, with no write before them.
+          await wait(200);
+          seen.push(await read());
           return result;
         },
       },
     );
     if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
     expect(outcome.result.ok).toBe(true);
-    expect(atStart).toEqual({ statuses: ["running", "queued"], running: 1 });
-    expect(afterStart).toEqual({ statuses: ["running", "running"], running: 2 });
+    expect(seen).toEqual([
+      { statuses: ["running", "queued"], running: 1, live: [false, false] },
+      { statuses: ["running", "running"], running: 2, live: [false, true] },
+      { statuses: ["running", "passed"], running: 1, live: [false, true] },
+    ]);
   });
 });

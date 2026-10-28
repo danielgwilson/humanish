@@ -647,7 +647,11 @@ export interface CuaFanoutBundleArgs {
   /** The run this bundle belongs to; the bundle head reads its id, mode, start and study. */
   run: BundleRun;
   specs: DesktopParticipantRun[];
-  outcomes?: ParticipantRunOutcome[];
+  /**
+   * Each participant's outcome, by roster place. In progress, undefined for a participant that has
+   * not ended; the final bundle has every one.
+   */
+  outcomes?: readonly (ParticipantRunOutcome | undefined)[];
   subjects: RunSubjectProvenance[];
   aggregateSubject: RunSubjectProvenance;
   descriptor: CuaActorDescriptor;

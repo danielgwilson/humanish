@@ -25,6 +25,12 @@ import type {
 } from "./types.js";
 import type { RunSubjectProvenance } from "../../run/bundle.js";
 
+/**
+ * Told each participant's outcome when it ends, with the participant's place in the roster, while
+ * the others may still run. A participant that runs alone is not reported: its end is the run's.
+ */
+export type ParticipantEnded = (index: number, outcome: ParticipantRunOutcome) => void;
+
 /** A blocked participant outcome: the pipeline gate or the study budget skipped it. */
 function skippedOutcome(
   spec: DesktopParticipantRun,
@@ -224,6 +230,7 @@ export async function runCuaParticipants(
   deps: Omit<CuaParticipantDeps, "signalReady">,
   concurrency: number,
   runParticipant: typeof runCuaParticipant = runCuaParticipant,
+  onEnded?: ParticipantEnded,
 ): Promise<ParticipantRunOutcome[]> {
   const stopping = new AbortController();
   // An app-url subject is only opened, so one participant's start says nothing about another's.
@@ -237,7 +244,7 @@ export async function runCuaParticipants(
       now: deps.now,
       signal: stopping.signal,
     },
-    async (spec, _index, { scheduledAt }): Promise<ParticipantRunOutcome> => {
+    async (spec, index, { scheduledAt }): Promise<ParticipantRunOutcome> => {
       const id = spec.planned.id;
       if ((await gate.enter(id)) === "closed") {
         return skippedOutcome(
@@ -287,10 +294,12 @@ export async function runCuaParticipants(
       // closes the gate.
       if (!ready) gate.failed(id, { handOver: !threw && outcome.sandboxId === undefined });
       // A participant the study budget skipped never requested its desktop.
-      return {
+      const ended = {
         ...outcome,
         arrival: outcome.skippedReason === undefined ? arrival : { scheduledAt },
       };
+      onEnded?.(index, ended);
+      return ended;
     },
   );
 }
@@ -402,6 +411,7 @@ export async function runAllCuaParticipants(
   deps: Omit<CuaParticipantDeps, "signalReady">,
   participantPlan: CuaParticipantPlan,
   inProcess: boolean,
+  onEnded?: ParticipantEnded,
 ): Promise<ParticipantRunOutcome[]> {
   // A participant that runs alone starts with the run.
   const alone = { ...deps, ...scheduledParticipantDeps(runs[0]!.planned, deps, deps.now()) };
@@ -414,5 +424,5 @@ export async function runAllCuaParticipants(
     return [outcome];
   }
   if (runs.length === 1) return [await runCuaParticipant(runs[0]!, alone)];
-  return runCuaParticipants([...runs], deps, participantPlan.concurrency);
+  return runCuaParticipants([...runs], deps, participantPlan.concurrency, undefined, onEnded);
 }

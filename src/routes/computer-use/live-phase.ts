@@ -30,6 +30,9 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
   // nothing at all until it completes, and anything asking "what is this participant doing right
   // now" got silence for the whole run. Who reads the evidence is not the run's business; the
   // callback below stays conditional, the writing does not.
+  // Each participant's outcome once it ended, by roster place; the live flush records them.
+  const ended: (ParticipantRunOutcome | undefined)[] = participantRuns.map(() => undefined);
+  let refreshLive: (() => void) | undefined;
   if (!dryRun) {
     const inProgressState = {
       judgment: judgeComputerUseRun(bundleBase, {
@@ -60,9 +63,12 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
       participantRuns: participantRuns,
       model: pricedModel(plan.runner.brain),
       write: (bundle) => run.writeSnapshot(bundle),
-      // A participant with a start offset is queued in the bundle above until its session starts.
-      restate: (liveStarts) => buildCuaRunBundle(bundleBase, { ...inProgressState, liveStarts }),
+      // A participant with a start offset is queued in the bundle above until its session
+      // starts, and a participant that ended shows its outcome while the others run.
+      restate: (liveStarts) =>
+        buildCuaRunBundle(bundleBase, { ...inProgressState, outcomes: [...ended], liveStarts }),
     });
+    refreshLive = liveFlush.refresh;
     liveTrace.flush = liveFlush.flush;
     liveTrace.stop = liveFlush.stop;
   }
@@ -118,6 +124,10 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
         },
         participantPlan,
         inProcess,
+        (index, outcome) => {
+          ended[index] = outcome;
+          refreshLive?.();
+        },
       );
   } finally {
     try {

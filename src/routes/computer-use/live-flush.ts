@@ -19,6 +19,11 @@ export interface LiveTraceFlush {
     usage?: ActorTokenUsage,
     metadata?: CuaLiveMetadata,
   ) => void;
+  /**
+   * Rebuild the in-progress bundle through `restate` and write it on the flush schedule: the
+   * route calls it when a participant ends, so its outcome shows while others still run.
+   */
+  refresh: () => void;
   /** Stop flushing, clear the timer and wait for an in-flight write. Call it on every exit. */
   stop: () => Promise<void>;
 }
@@ -42,14 +47,15 @@ export function startLiveTraceFlush(args: {
   /**
    * The in-progress bundle again, given when each participant's session began: the time the flush
    * saw its first items, by participant id. Called after each participant's first items, so a
-   * participant queued for a later start reads as running from then on.
+   * participant queued for a later start reads as running from then on, and after `refresh`.
    */
   restate?: (starts: ReadonlyMap<string, string>) => RunBundle;
 }): LiveTraceFlush {
   const { participantRuns, model, write, restate } = args;
   let bundle = args.bundle;
   const starts = new Map<string, string>();
-  let startsChanged = false;
+  // Set when the bundle must be rebuilt through `restate` before the next write.
+  let restateDue = false;
   const streamIdByParticipant = new Map(
     participantRuns.map((spec) => [spec.planned.id, spec.streamId]),
   );
@@ -75,8 +81,8 @@ export function startLiveTraceFlush(args: {
       flushDirty = false;
       lastFlushAtMs = Date.now();
       const updatedAt = new Date(lastFlushAtMs).toISOString();
-      if (startsChanged && restate !== undefined) {
-        startsChanged = false;
+      if (restateDue && restate !== undefined) {
+        restateDue = false;
         try {
           bundle = restate(starts);
         } catch {
@@ -147,12 +153,17 @@ export function startLiveTraceFlush(args: {
     if (streamId === undefined) return;
     if (!starts.has(participantId)) {
       starts.set(participantId, new Date().toISOString());
-      startsChanged = true;
+      restateDue = true;
     }
     for (const item of items) deepFreeze(item);
     liveItemsByStream.set(streamId, items.slice());
     if (metadata !== undefined) liveMetadataByStream.set(streamId, metadata);
     if (usage !== undefined) liveUsageByStream.set(streamId, usage);
+    flushDirty = true;
+    scheduleFlush();
+  };
+  const refresh = (): void => {
+    restateDue = true;
     flushDirty = true;
     scheduleFlush();
   };
@@ -164,7 +175,7 @@ export function startLiveTraceFlush(args: {
     }
     await flushWriting;
   };
-  return { flush, stop };
+  return { flush, refresh, stop };
 }
 
 /** `value` and every object and array it holds, frozen. */

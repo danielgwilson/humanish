@@ -15,6 +15,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   Before, every participant read as running from the first minute, and the Observer said "20 of 20
   participants active" while 2 had started. The subject line in `events.ndjson` no longer calls a
   public app URL loopback.
+- While a run is going, a participant whose session ended shows its outcome: its status, summary
+  and session event in `run.json` and `events.ndjson`, and its Observer card. Before, it read as
+  running until every participant had ended, so one that left at minute 15 of an 8-hour run was
+  counted as active for 7 more hours.
 - A hosted study whose participants arrive over time runs remotely when the most participants its
   schedule runs at once, plus the runner, fit your E2B concurrent sandboxes. Before, a roster of 20
   arriving over 8 hours, at most 4 at once, counted as 20 at once and ran on this machine. The run
