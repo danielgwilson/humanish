@@ -232,7 +232,6 @@ const REJECTION_REMEDIES: Readonly<Record<CuaRejectionReason, string>> = Object.
     "It was rejected because more than one browser tab is open: typing works only while the study's original tab is the only tab. Switch to the other tab and close it, keep the study's original tab open, then type again.",
 });
 
-// prose-check: model prompt
 const FAILED_TYPING_HINT =
   "Your typing did not finish, and the field may hold part of the text. Check the screen before you type again.";
 
