@@ -32,6 +32,17 @@ export function isCommandExitError(error: unknown): boolean {
 }
 
 /**
+ * True when `error` is a hosted desktop's `type` that did not finish (ComputerUseTypeError,
+ * matched by name so this module does not import the executor). Its staging failed before any
+ * key was sent, or xdotool failed or did not answer partway through, so the field may hold part
+ * of the text. The desktop stays usable either way, so the loop skips the action as it skips a
+ * failed command and does not retry it, which could type the text twice.
+ */
+export function isFailedTyping(error: unknown): boolean {
+  return error instanceof Error && error.name === "ComputerUseTypeError";
+}
+
+/**
  * Recover the exit code + a sanitized stderr/stdout tail from a command failure.
  * The real @e2b/desktop CommandExitError exposes exitCode/stderr/stdout/error;
  * these are read structurally so the caller does not depend on the SDK class.

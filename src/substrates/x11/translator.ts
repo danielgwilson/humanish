@@ -91,11 +91,6 @@ export interface X11Dialect {
    */
   readonly skipsRedundantClickMoves: boolean;
   /**
-   * A click whose x or y is 0 does not move first. @e2b/desktop's click methods move only for
-   * truthy coordinates, so a hosted click at x 0 clicks where the pointer is.
-   */
-  readonly clicksInPlaceAtZero: boolean;
-  /**
    * xdotool's `--delay` between the clicks of a double or triple click; undefined keeps its
    * default.
    */
@@ -130,7 +125,6 @@ export const HOSTED_X11_DIALECT: X11Dialect = Object.freeze({
   frame: undefined,
   syncMoves: true,
   skipsRedundantClickMoves: true,
-  clicksInPlaceAtZero: true,
   doubleClickDelayMs: undefined,
   scroll: Object.freeze({ kind: "vertical-repeat", pixelsPerStep: 100 }),
   drag: "endpoints",
@@ -144,7 +138,6 @@ export function guestX11Dialect(frame: X11Frame): X11Dialect {
     frame: { width: frame.width, height: frame.height },
     syncMoves: false,
     skipsRedundantClickMoves: false,
-    clicksInPlaceAtZero: false,
     doubleClickDelayMs: 100,
     scroll: { kind: "wheel-steps", pixelsPerStep: 120, maxSteps: 100 },
     drag: "path",
@@ -300,7 +293,7 @@ function move(dialect: X11Dialect, point: X11Point): X11Command {
   ]);
 }
 
-/** A move to `at` (unless the dialect clicks in place there), then `click`. */
+/** A move to `at`, then `click`. */
 function clickSteps(
   dialect: X11Dialect,
   at: X11Point,
@@ -310,10 +303,8 @@ function clickSteps(
   const steps: X11Step[] = [];
   const guarded = dialect.skipsRedundantClickMoves && button === "left";
   if (guarded) steps.push({ kind: "read-pointer", at: { x: at.x, y: at.y } });
-  if (!(dialect.clicksInPlaceAtZero && !(at.x && at.y))) {
-    const step = move(dialect, at);
-    steps.push(guarded ? { ...step, unlessPointerThere: true } : step);
-  }
+  const step = move(dialect, at);
+  steps.push(guarded ? { ...step, unlessPointerThere: true } : step);
   steps.push(xdotool(click));
   return steps;
 }

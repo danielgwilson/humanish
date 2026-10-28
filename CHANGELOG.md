@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A computer-use participant on an E2B or Modal desktop whose `type` did not finish keeps going.
+  The action is reported to its model as a failed desktop command, with a note that the field may
+  hold part of the text, and is not retried. Before, the participant ended with `actor_error`.
+- A click at x 0 or y 0 on an E2B or Modal desktop moves the pointer there first. Before, it
+  clicked wherever the pointer was, while the trace recorded the edge coordinate.
+
 ## 0.153.0: Claude participants receive JPEG screenshots (2026-10-28)
 
 humanish 0.153.0 sends each screenshot to a Claude participant as JPEG at quality 75, the
