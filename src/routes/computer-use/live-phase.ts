@@ -31,7 +31,7 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
   // now" got silence for the whole run. Who reads the evidence is not the run's business; the
   // callback below stays conditional, the writing does not.
   if (!dryRun) {
-    const inProgressBundle = buildCuaRunBundle(bundleBase, {
+    const inProgressState = {
       judgment: judgeComputerUseRun(bundleBase, {
         dryRun: false,
         outcomes: undefined,
@@ -41,8 +41,9 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
       outcomes: undefined,
       subjects: inProgress.subjects,
       aggregateSubject: inProgress.aggregateSubject,
-      inProgress: true,
-    });
+      inProgress: true as const,
+    };
+    const inProgressBundle = buildCuaRunBundle(bundleBase, inProgressState);
     await run.writeSnapshot(inProgressBundle);
     const liveObserver = liveObserverResult(cwd, runId, runPaths.absoluteRunRoot, [
       "Live CUA Observer is attached before final verification; stream auth URLs are runtime-only and are not persisted.",
@@ -59,6 +60,8 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
       participantRuns: participantRuns,
       model: pricedModel(plan.runner.brain),
       write: (bundle) => run.writeSnapshot(bundle),
+      // A participant with a start offset is queued in the bundle above until its session starts.
+      restate: (liveStarts) => buildCuaRunBundle(bundleBase, { ...inProgressState, liveStarts }),
     });
     liveTrace.flush = liveFlush.flush;
     liveTrace.stop = liveFlush.stop;

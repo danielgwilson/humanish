@@ -99,6 +99,11 @@ export interface ParticipantRecordFacts extends ParticipantFacts {
   skippedReason?: string;
   reportedFriction?: boolean;
   inProgress?: boolean;
+  /**
+   * In progress, its session has not started yet: when it starts, as its reason. The participant
+   * is `queued` until then.
+   */
+  queuedReason?: string;
 }
 
 /** Judge participant evidence for the bundle and the result in the same order. */
@@ -113,7 +118,9 @@ export function judgeParticipantRecords(
 ) {
   const records = participants.map((participant) => {
     const status: RunSimulationStatus = participant.inProgress
-      ? "running"
+      ? participant.queuedReason === undefined
+        ? "running"
+        : "queued"
       : participant.skipped
         ? "blocked"
         : (participant.status ??
@@ -123,7 +130,8 @@ export function judgeParticipantRecords(
       status,
       judgedStatus: judged,
       reason: participant.inProgress
-        ? (wording.runningReason ??
+        ? (participant.queuedReason ??
+          wording.runningReason ??
           "Live computer-use session is running; stream auth URL is available only through the attached Observer server.")
         : (participant.skippedReason ??
           participant.reason ??

@@ -343,3 +343,58 @@ describe("a computer-use study whose participant fails partway through the sched
     expect(events.filter((event) => event.type === "cua-lab.session.blocked")).toEqual([]);
   });
 });
+
+describe("the live bundle of a computer-use study with a declared schedule", () => {
+  let cwd: string;
+  beforeEach(async () => {
+    cwd = await mkdtemp(path.join(tmpdir(), "humanish-arrivals-live-"));
+  });
+  afterEach(async () => {
+    await rm(cwd, { recursive: true, force: true });
+  });
+
+  it("writes a scheduled participant queued until its session starts, then running", async () => {
+    let bundlePath = "";
+    const read = async () => {
+      const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as RunBundle;
+      return {
+        statuses: bundle.streams.map((stream) => stream.status),
+        running: bundle.events.filter((event) => event.type === "cua-lab.session.running").length,
+      };
+    };
+    let atStart: Awaited<ReturnType<typeof read>> | undefined;
+    let afterStart: Awaited<ReturnType<typeof read>> | undefined;
+    const base = seams(timedModule().module);
+    let sessions = 0;
+    const outcome = await runStudyWith(
+      supportDesk({
+        participants: [{ id: "support-agent" }, { id: "customer", startAfterMs: 300 }],
+      }),
+      {
+        cwd,
+        env: KEYS,
+        onObserverReady: async (observer) => {
+          bundlePath = observer.bundlePath ?? "";
+          atStart = await read();
+        },
+      },
+      {
+        ...base,
+        runSession: async (options: CuaActorSessionOptions) => {
+          sessions += 1;
+          const result = await base.runSession(options);
+          // The customer's first items were flushed; the trailing write follows within 2 s.
+          if (sessions === 2) {
+            await new Promise((resolve) => setTimeout(resolve, 2_500));
+            afterStart = await read();
+          }
+          return result;
+        },
+      },
+    );
+    if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
+    expect(outcome.result.ok).toBe(true);
+    expect(atStart).toEqual({ statuses: ["running", "queued"], running: 1 });
+    expect(afterStart).toEqual({ statuses: ["running", "running"], running: 2 });
+  });
+});

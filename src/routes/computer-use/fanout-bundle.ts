@@ -36,7 +36,8 @@ import { judgeParticipantRecords } from "../../run/judge.js";
 import { buildRunCostSummary, desktopSpanToMinutes } from "../../run/cost-summary.js";
 import { formatParticipantPlanEntry } from "./participant-runs.js";
 import type { CuaFanoutBundleArgs, ParticipantRunOutcome } from "./types.js";
-import { fanoutParticipantRecords } from "./fanout-records.js";
+import { fanoutParticipantRecords, queuedStartAfterMs } from "./fanout-records.js";
+import { formatDuration } from "../../run/projection.js";
 import { plural } from "../../run/text.js";
 import { describeArrivals } from "../../study/arrivals.js";
 
@@ -280,11 +281,17 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
   const streams: RunStream[] = [];
   const events = fanoutPlanEvents(args);
   const judgment = judgeParticipantRecords(
-    specs.map((spec, index) => ({
-      ...participantFactsOf(outcomes?.[index]),
-      id: spec.planned.id,
-      inProgress: args.inProgress === true && outcomes?.[index] === undefined,
-    })),
+    specs.map((spec, index) => {
+      const startAfterMs = queuedStartAfterMs(args, spec, index);
+      return {
+        ...participantFactsOf(outcomes?.[index]),
+        id: spec.planned.id,
+        inProgress: args.inProgress === true && outcomes?.[index] === undefined,
+        ...(startAfterMs === undefined
+          ? {}
+          : { queuedReason: `Starts at +${formatDuration(startAfterMs)}.` }),
+      };
+    }),
     {
       runningReason:
         "Live computer-use participant is running; stream auth URL is available only through the attached Observer server.",
