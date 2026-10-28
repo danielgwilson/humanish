@@ -12,9 +12,9 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 - Claude participants receive each screenshot as JPEG at quality 75, the encoding Anthropic's
   computer-use reference uses, in place of PNG. Frames of a movie game's full-screen stills went
-  from about 465 KB to 69 KB, so a request that carries every screenshot since the last
-  compaction stays well under the Messages API's 32 MB limit. Run bundles keep the lossless
-  frames. OpenAI participants still receive PNG.
+  from about 423 KB to 77 KB, and on a 30-minute remote run the largest request fell from 19.55 MB
+  to 2.75 MB, against the Messages API's 32 MB limit. Run bundles keep the lossless frames. OpenAI
+  participants still receive PNG.
 
 ### Fixed
 
