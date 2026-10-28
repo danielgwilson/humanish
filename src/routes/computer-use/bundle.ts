@@ -80,6 +80,8 @@ interface CuaRunBundleState {
   /** The final bundle's reading of the run's host suspensions. */
   hostSuspension?: HostSuspensionReading;
   inProgress?: true;
+  /** In progress: when each participant's session began, by participant id (the live flush's). */
+  liveStarts?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -107,6 +109,7 @@ export function buildCuaRunBundle(base: CuaRunBundleBase, state: CuaRunBundleSta
     ...(base.rerun === undefined ? {} : { rerun: base.rerun }),
     ...(state.hostSuspension === undefined ? {} : { hostSuspension: state.hostSuspension }),
     ...(base.publicRepo === undefined ? {} : { publicRepo: base.publicRepo }),
+    ...(state.liveStarts === undefined ? {} : { liveStarts: state.liveStarts }),
     ...inProgress,
   });
 }

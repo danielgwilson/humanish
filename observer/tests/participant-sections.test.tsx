@@ -11,6 +11,7 @@ import * as fixtures from "../../scripts/observer-browser-fixtures.mjs";
 import { App } from "../app";
 import { ParticipantCard } from "../components/participant-card";
 import { ParticipantStub } from "../components/participant-stub";
+import { RunStatus } from "../components/run-status";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
 
 /** The fixtures' run clock origin: the run starts there and capture n is n × 7 s later. */
@@ -308,6 +309,34 @@ describe("a participant tile's preview", () => {
     const running = fixtures.fixture({ running: true, frames: 0 }).streams[1]!;
     await card(running);
     expect(find(".thumb-ph .ph-state").textContent).toBe("Waiting for the first capture…");
+  });
+
+  it("says when a queued participant starts, and counts only started participants as active", async () => {
+    const data: ObserverData = fixtures.fixture({ running: true, frames: 0 });
+    const queued = (stream: ObserverStream): ObserverStream => ({
+      ...stream,
+      status: "queued",
+      statusLabel: "Queued",
+      sim: { ...stream.sim, status: "queued", currentStep: "Starts at +2h 35m." },
+    });
+    await card(queued(data.streams[1]!), { updating: true });
+    expect(find(".thumb-ph .ph-state").textContent).toBe("Starts at +2h 35m.");
+
+    const connection = { state: "current" as const, lastReceivedAt: START };
+    const status = (streams: ObserverStream[]) =>
+      render(
+        <RunStatus
+          data={{ ...data, streams }}
+          connection={connection}
+          now={START}
+          onRetry={() => undefined}
+        />,
+      );
+    await status([data.streams[0]!, ...data.streams.slice(1).map(queued)]);
+    expect(find(".run-status-main").textContent).toContain("1 of 3 participants active");
+    await status(data.streams.map(queued));
+    expect(find(".run-status-main strong").textContent).toBe("Running");
+    expect(find(".run-status-main").textContent).toContain("0 of 3 participants active");
   });
 });
 

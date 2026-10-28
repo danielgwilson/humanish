@@ -661,4 +661,9 @@ export interface CuaFanoutBundleArgs {
   hostSuspension?: HostSuspensionReading;
   publicRepo?: string;
   inProgress?: boolean;
+  /**
+   * In progress: when each participant's session began, by participant id, as the live flush saw
+   * its first items. A participant with a start offset is queued until it is here.
+   */
+  liveStarts?: ReadonlyMap<string, string>;
 }

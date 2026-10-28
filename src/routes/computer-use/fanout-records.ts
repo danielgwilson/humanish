@@ -3,6 +3,7 @@
 
 import { participantAssignment } from "../../study/participant-assignment.js";
 import { arrivalRecord } from "../../study/arrivals.js";
+import { isLoopbackUrl } from "../../study/parse/subject.js";
 import type { RunEvent, RunSimulation } from "../../run/bundle.js";
 import {
   participantEvent,
@@ -28,6 +29,34 @@ export interface FanoutParticipantContext {
   participants: ReturnType<typeof judgeParticipantRecords>["participants"];
   /** Numbers events in the order they are pushed. */
   nextEventId: (suffix: string) => string;
+}
+
+/**
+ * The start offset of a participant whose session has not started in an in-progress bundle, or
+ * undefined. A participant with no offset starts with the run and is running from the first bundle.
+ */
+export function queuedStartAfterMs(
+  args: CuaFanoutBundleArgs,
+  spec: DesktopParticipantRun,
+  index: number,
+): number | undefined {
+  const startAfterMs = spec.planned.schedule.startAfterMs ?? 0;
+  const waiting =
+    args.inProgress === true &&
+    args.outcomes?.[index] === undefined &&
+    startAfterMs > 0 &&
+    args.liveStarts?.has(spec.planned.id) !== true;
+  return waiting ? startAfterMs : undefined;
+}
+
+/**
+ * When the participant's session began, as a bundle records it: the run's start, or in progress,
+ * for a participant with a start offset, when the live flush saw its first items. A queued
+ * participant keeps the run's start until then.
+ */
+function liveStartedAt(args: CuaFanoutBundleArgs, spec: DesktopParticipantRun): string {
+  const scheduled = (spec.planned.schedule.startAfterMs ?? 0) > 0;
+  return (scheduled ? args.liveStarts?.get(spec.planned.id) : undefined) ?? args.run.createdAt;
 }
 
 function fanoutParticipantView(
@@ -101,17 +130,20 @@ function fanoutParticipantRecord(
     mode: "browser-sim",
     progress: args.inProgress === true && outcome === undefined ? 20 : 100,
     currentStep: reason,
-    summary: participantSummary(
-      name,
-      { name: "the app", target: subjectName(publicTargetUrl, view.subject) },
-      {
-        trace: session?.trace,
-        skippedReason: outcome?.skippedReason,
-        sessionError: outcome?.sessionError,
-        inProgress: args.inProgress === true && outcome === undefined,
-      },
-    ),
-    startedAt: args.run.createdAt,
+    summary:
+      status === "queued"
+        ? `${name} has not started yet. ${reason}`
+        : participantSummary(
+            name,
+            { name: "the app", target: subjectName(publicTargetUrl, view.subject) },
+            {
+              trace: session?.trace,
+              skippedReason: outcome?.skippedReason,
+              sessionError: outcome?.sessionError,
+              inProgress: args.inProgress === true && outcome === undefined,
+            },
+          ),
+    startedAt: liveStartedAt(args, spec),
     updatedAt: args.run.createdAt,
     ...(args.participantPlan.schedule === undefined
       ? {}
@@ -287,7 +319,11 @@ function fanoutSubjectEvents(
       message:
         subject.source === "desktop-cli"
           ? `Participant ${spec.planned.id}: subject product declared: ${subject.product}, used from a terminal window inside the participant's own desktop sandbox.`
-          : `Participant ${spec.planned.id}: subject app declared at ${publicTargetUrl} (loopback inside the participant's own desktop sandbox).`,
+          : `Participant ${spec.planned.id}: subject app declared at ${publicTargetUrl} (${
+              isLoopbackUrl(spec.planned.targetUrl ?? args.appUrl)
+                ? "loopback inside the participant's own desktop sandbox"
+                : "opened from a browser in the participant's own desktop sandbox"
+            }).`,
     });
   }
   return events;
@@ -313,13 +349,15 @@ function fanoutOutcomeEvents(
       message: `Participant ${spec.planned.id} ${session.status}: ${session.reason}`,
     });
   } else if (args.inProgress === true && outcome === undefined) {
-    record({
-      id: nextEventId(`running-${spec.planned.id}`),
-      at: args.run.createdAt,
-      level: "info",
-      type: "cua-lab.session.running",
-      message: `Participant ${spec.planned.id}: live computer-use session is running; terminal evidence has not been written yet.`,
-    });
+    // A queued participant gets its session.running event when its session starts.
+    if (view.status !== "queued")
+      record({
+        id: nextEventId(`running-${spec.planned.id}`),
+        at: liveStartedAt(args, spec),
+        level: "info",
+        type: "cua-lab.session.running",
+        message: `Participant ${spec.planned.id}: live computer-use session is running; terminal evidence has not been written yet.`,
+      });
   } else if (outcome?.skippedReason !== undefined) {
     record({
       id: nextEventId(`blocked-${spec.planned.id}`),

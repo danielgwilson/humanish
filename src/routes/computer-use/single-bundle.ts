@@ -5,6 +5,7 @@ import type { DesktopBrowserEvidence } from "../../substrates/e2b/desktop-browse
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { participantAssignment } from "../../study/participant-assignment.js";
+import { isLoopbackUrl } from "../../study/parse/subject.js";
 import { redactEncodedText } from "../../evidence/encoded-text.js";
 import {
   REVIEW_SCHEMA,
@@ -279,16 +280,19 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
           // Declare what the subject was, including the absence of a pin. A desktop-cli product
           // is named, since it has no URL. A local-app / in-process subject is an already-running
           // local dev server the caller provisioned; it cannot be commit-pinned, so its provenance
-          // is unpinned and no E2B desktop was created. A plain app-url entry runs inside the
-          // desktop sandbox, or, on the local VM, reaches the host's loopback from the VM's browser.
+          // is unpinned and no E2B desktop was created. A loopback app-url entry runs inside the
+          // desktop sandbox, or, on the local VM, reaches the host's loopback from the VM's
+          // browser. A public one is opened from the browser there.
           message:
             subject.source === "desktop-cli"
               ? `Subject product declared: ${subject.product}, used from a terminal window inside the desktop sandbox.`
               : args.entryKind === "local-app"
                 ? `Subject app declared at ${publicAppUrl}: a running local dev server driven in this process, with no clone and no E2B desktop. Provenance: provided by the caller and unpinned, because a running dev server has no commit to pin.`
-                : runnerSubstrate(args) === "local-desktop"
-                  ? `Subject app declared at ${publicAppUrl} (the host's loopback, opened from a browser on a local VM).`
-                  : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
+                : !isLoopbackUrl(args.appUrl)
+                  ? `Subject app declared at ${publicAppUrl} (opened from a browser in the ${runnerSubstrate(args) === "local-desktop" ? "local VM" : "desktop sandbox"}).`
+                  : runnerSubstrate(args) === "local-desktop"
+                    ? `Subject app declared at ${publicAppUrl} (the host's loopback, opened from a browser on a local VM).`
+                    : `Subject app declared at ${publicAppUrl} (loopback inside the desktop sandbox).`,
         }),
     args.session
       ? participantEvent(SINGLE, {

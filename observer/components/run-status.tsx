@@ -20,6 +20,8 @@ export function RunStatus({
 }) {
   const runtime = data.runtime;
   const active = data.streams.filter(isActiveStream).length;
+  // A participant queued for a later start keeps the run going without counting as active.
+  const going = active > 0 || data.streams.some((stream) => stream.status === "queued");
   const interrupted = runtime?.state === "interrupted";
   const staleProcess = runtime?.state === "unknown" || interrupted;
   const ended = runtime?.state === "finished";
@@ -35,7 +37,7 @@ export function RunStatus({
     : "date unavailable";
   const status = offline
     ? "Saved recording"
-    : failed && active > 0
+    : failed && going
       ? "Last seen running"
       : interrupted
         ? "Run interrupted"
@@ -45,7 +47,7 @@ export function RunStatus({
             ? "Writing findings"
             : ended
               ? "Run ended"
-              : active > 0
+              : going
                 ? "Running"
                 : "Finished";
   return (
@@ -55,8 +57,7 @@ export function RunStatus({
       <div className="run-status-main">
         <span
           className={
-            (active > 0 && !offline && !staleProcess && !ended && !failed) ||
-            analysisStarted !== null
+            (going && !offline && !staleProcess && !ended && !failed) || analysisStarted !== null
               ? "status-dot active"
               : "status-dot"
           }
@@ -66,7 +67,7 @@ export function RunStatus({
         <span>
           {analysisStarted !== null
             ? `Participants finished · analysis started ${ageLabel(analysisStarted, now)}`
-            : active > 0 && !offline && !ended && !staleProcess && !failed
+            : going && !offline && !ended && !staleProcess && !failed
               ? `${active} of ${data.streams.length} participants active`
               : `Recorded ${recordedDate}${offline ? " · no updates" : ""}`}
         </span>

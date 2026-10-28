@@ -39,8 +39,17 @@ export function startLiveTraceFlush(args: {
   model: string;
   /** Publishes one in-progress bundle: the run's `writeSnapshot`. */
   write: (bundle: RunBundle) => Promise<void>;
+  /**
+   * The in-progress bundle again, given when each participant's session began: the time the flush
+   * saw its first items, by participant id. Called after each participant's first items, so a
+   * participant queued for a later start reads as running from then on.
+   */
+  restate?: (starts: ReadonlyMap<string, string>) => RunBundle;
 }): LiveTraceFlush {
-  const { bundle, participantRuns, model, write } = args;
+  const { participantRuns, model, write, restate } = args;
+  let bundle = args.bundle;
+  const starts = new Map<string, string>();
+  let startsChanged = false;
   const streamIdByParticipant = new Map(
     participantRuns.map((spec) => [spec.planned.id, spec.streamId]),
   );
@@ -66,6 +75,14 @@ export function startLiveTraceFlush(args: {
       flushDirty = false;
       lastFlushAtMs = Date.now();
       const updatedAt = new Date(lastFlushAtMs).toISOString();
+      if (startsChanged && restate !== undefined) {
+        startsChanged = false;
+        try {
+          bundle = restate(starts);
+        } catch {
+          // Swallowed like a failed write: the flush goes on from the bundle it had.
+        }
+      }
       const patched: RunBundle = {
         ...bundle,
         streams: bundle.streams.map((stream) => {
@@ -128,6 +145,10 @@ export function startLiveTraceFlush(args: {
     if (items.length === 0) return;
     const streamId = streamIdByParticipant.get(participantId);
     if (streamId === undefined) return;
+    if (!starts.has(participantId)) {
+      starts.set(participantId, new Date().toISOString());
+      startsChanged = true;
+    }
     for (const item of items) deepFreeze(item);
     liveItemsByStream.set(streamId, items.slice());
     if (metadata !== undefined) liveMetadataByStream.set(streamId, metadata);

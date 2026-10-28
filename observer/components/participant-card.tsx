@@ -285,9 +285,11 @@ function CardPreview({
                 ? "Frame unavailable"
                 : replay
                   ? text.captureLabel
-                  : active
-                    ? "Waiting for the first capture…"
-                    : "No captured screen"}
+                  : stream.status === "queued"
+                    ? stream.sim.currentStep
+                    : active
+                      ? "Waiting for the first capture…"
+                      : "No captured screen"}
             </span>
           </div>
         )}
