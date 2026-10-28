@@ -35,7 +35,8 @@ function readyEncoder(): Promise<void> {
 export async function screenJpeg(png: Buffer): Promise<Buffer> {
   await readyEncoder();
   const image = PNG.sync.read(png);
-  const data = new Uint8ClampedArray(image.data.buffer, image.data.byteOffset, image.data.length);
+  // A copy, typed over a plain ArrayBuffer as the DOM ImageData the observer build checks against.
+  const data = new Uint8ClampedArray(image.data);
   const jpeg = await encode(
     { data, width: image.width, height: image.height, colorSpace: "srgb" },
     OPTIONS,
