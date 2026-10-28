@@ -611,17 +611,22 @@ const KEY_PLACEMENT: Readonly<
 /**
  * The keys the runner's run receives: each of the plan's names that is set here, and of names the
  * run reads only the first of, only the first one set, placed as the runner's provider places
- * them (KEY_PLACEMENT).
+ * them (KEY_PLACEMENT). The plan's settings replace this machine's values of the same names.
  */
 export function runnerKeys(
-  remote: Pick<RemotePlan, "provider" | "envNames" | "alternatives" | "plainKeys">,
+  remote: Pick<RemotePlan, "provider" | "envNames" | "alternatives" | "plainKeys" | "settings">,
   env: Readonly<Record<string, string | undefined>>,
 ): RunnerKeys {
   const set = (name: string) => (env[name]?.trim() ?? "") !== "";
   const unread = new Set(remote.alternatives.flatMap((names) => names.filter(set).slice(1)));
-  const forwarded: Record<string, string> = Object.fromEntries(
-    remote.envNames.flatMap((name) => (set(name) && !unread.has(name) ? [[name, env[name]!]] : [])),
-  );
+  const forwarded: Record<string, string> = {
+    ...Object.fromEntries(
+      remote.envNames.flatMap((name) =>
+        set(name) && !unread.has(name) ? [[name, env[name]!]] : [],
+      ),
+    ),
+    ...remote.settings,
+  };
   const plain = remote.plainKeys.find(set);
   return KEY_PLACEMENT[remote.provider](
     forwarded,

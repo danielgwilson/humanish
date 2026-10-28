@@ -51,6 +51,11 @@ export interface RemotePlan {
   readonly plainKeys: readonly string[];
   /** The study's route, which names its run. */
   readonly route: "computer-use" | "terminal";
+  /**
+   * Plan settings the runner's run reads in place of this machine's. An E2B runner takes one of
+   * the account's concurrent sandboxes, so its run has one fewer for its desktops.
+   */
+  readonly settings: Readonly<Record<string, string>>;
 }
 
 export type RemotePlanResult = { ok: true; plan: RemotePlan } | { ok: false; reason: string };
@@ -98,6 +103,10 @@ export function planRemoteRun(args: {
     return refuse(
       `its ${route.sandboxes} participants at once and the runner need ${route.sandboxes + 1} E2B sandboxes at once, more than the ${args.concurrentSandboxes} your account runs. Lower execution.concurrency to ${args.concurrentSandboxes - 1}.`,
     );
+  const settings: Record<string, string> =
+    route.provider === "e2b"
+      ? { HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: String(args.concurrentSandboxes - 1) }
+      : {};
   const runnerMs =
     RUNNER_SETUP_MS + route.studyMs + (plan.analysis?.config.timeoutMs ?? 0) + RUNNER_TEARDOWN_MS;
   if (runnerMs > args.ceilingMs)
@@ -117,6 +126,7 @@ export function planRemoteRun(args: {
       ].sort(),
       alternatives: [...analystKeyNames(plan), ...route.alternatives],
       plainKeys: route.plainKeys,
+      settings,
     },
   };
 }
@@ -152,7 +162,10 @@ function computerUseRoute(config: StudyConfig, plan: ComputerUsePlan): RemoteRou
   return {
     route: "computer-use",
     provider: runner.provider,
-    sandboxes: plan.concurrency,
+    // A declared concurrency is kept as declared, so it must fit beside the runner. Otherwise the
+    // runner's run holds its desktops to the account's limit less the runner (RemotePlan.settings),
+    // which delays no one while the schedule's peak fits under it.
+    sandboxes: config.execution?.concurrency === undefined ? plan.arrivals.peak : plan.concurrency,
     studyMs: plan.arrivals.lastEndMs,
     uploads: [],
     alternatives: [],

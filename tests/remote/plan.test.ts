@@ -115,6 +115,40 @@ describe("a computer-use study on hosted desktops with a public app", () => {
       reason: expect.stringContaining("need 4 E2B sandboxes at once"),
     });
   });
+  it("counts the schedule's peak, not the roster, when the study declares no concurrency", () => {
+    const arriving = (startEveryMs: number | undefined) =>
+      study("cuAppUrl", {
+        ...PUBLIC_APP,
+        participants: [
+          {
+            id: "visitor",
+            count: 4,
+            target: "https://app.example.com/",
+            ...(startEveryMs === undefined ? {} : { startAfterMs: 0, startEveryMs }),
+          },
+        ],
+        execution: { target: "e2b-desktop", timeoutMs: 600_000 },
+      });
+    // One at a time: each session ends before the next visitor arrives.
+    const spread = remote(arriving(HOUR / 4), { concurrentSandboxes: 2 });
+    if (!spread.ok) throw new Error(spread.reason);
+    expect(spread.plan.settings).toEqual({ HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: "1" });
+    expect(remote(arriving(undefined), { concurrentSandboxes: 4 })).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining("need 5 E2B sandboxes at once"),
+    });
+  });
+
+  it("gives a Modal runner's run this machine's settings unchanged", () => {
+    const result = remote(
+      study("cuAppUrl", {
+        ...PUBLIC_APP,
+        execution: { target: "modal-desktop", timeoutMs: 600_000 },
+      }),
+    );
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.plan.settings).toEqual({});
+  });
 });
 
 describe("a study that needs this machine", () => {

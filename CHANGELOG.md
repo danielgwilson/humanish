@@ -10,6 +10,10 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- A hosted study whose participants arrive over time runs remotely when the most participants its
+  schedule runs at once, plus the runner, fit your E2B concurrent sandboxes. Before, a roster of 20
+  arriving over 8 hours, at most 4 at once, counted as 20 at once and ran on this machine. The run
+  in an E2B runner now holds its desktops to your limit less the runner.
 - A computer-use participant on an E2B or Modal desktop whose `type` did not finish keeps going.
   The action is reported to its model as a failed desktop command, with a note that the field may
   hold part of the text, and is not retried. Before, the participant ended with `actor_error`.
