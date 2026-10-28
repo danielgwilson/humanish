@@ -437,20 +437,6 @@ describe("the keys a runner receives", () => {
     expect(keys.sent).toEqual(["HUMANISH_E2B_MAX_SANDBOX_MINUTES"]);
   });
 
-  it("sends the plan's settings in place of this machine's values of the same names", () => {
-    const keys = runnerKeys(
-      {
-        ...plan,
-        envNames: [...plan.envNames, "HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES"],
-        provider: "e2b",
-        settings: { HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: "99" },
-      },
-      { ...env, HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: "100" },
-    );
-    expect(keys.env.HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES).toBe("99");
-    expect(keys.sent).toContain("HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES");
-  });
-
   it("holds a Claude participant's key in E2B's proxy and sends it to a Modal runner", () => {
     const claude = {
       envNames: ["ANTHROPIC_API_KEY"],
@@ -546,6 +532,23 @@ describe("the keys a runner receives", () => {
     });
     expect(keys.held).toEqual([]);
     expect(keys.sent).toEqual(["GEMINI_API_KEY", "MODAL_TOKEN_ID"]);
+  });
+});
+
+describe("the plan's settings", () => {
+  it("replace this machine's values of the same names", () => {
+    const keys = runnerKeys(
+      {
+        provider: "e2b",
+        envNames: ["E2B_API_KEY", "HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES"],
+        alternatives: [],
+        plainKeys: [],
+        settings: { HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: "99" },
+      },
+      { E2B_API_KEY: "synthetic-e2b", HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: "100" },
+    );
+    expect(keys.env.HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES).toBe("99");
+    expect(keys.sent).toEqual(["HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES"]);
   });
 });
 
