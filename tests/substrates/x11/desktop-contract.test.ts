@@ -74,9 +74,9 @@ const ROWS: readonly Row[] = [
     guest: ["input mousemove 11 20", "input click 1"],
   },
   {
-    name: "a click at x 0 clicks in place on hosted desktops",
+    name: "a click at x 0 moves there on every desktop",
     action: { kind: "click", x: 0, y: 20 },
-    hosted: ["xdotool getmouselocation", "xdotool click 1"],
+    hosted: ["xdotool getmouselocation", "xdotool mousemove --sync 0 20", "xdotool click 1"],
     guest: ["input mousemove 0 20", "input click 1"],
   },
   {

@@ -15,6 +15,7 @@ import {
 } from "../../../src/actors/computer-use/loop.js";
 import { declaredOutcomeFromClosingLine } from "../../../src/actors/computer-use/loop/ending.js";
 import { defaultRedactionHooks } from "../../../src/evidence/redaction.js";
+import { ComputerUseTypeError } from "../../../src/substrates/e2b/desktop-executor.js";
 import { participantFeedbackCandidates } from "../../../src/routes/computer-use/participant-feedback.js";
 import { formatParticipantOutcomes, tallyParticipantOutcomes } from "../../../src/run/outcomes.js";
 
@@ -684,6 +685,48 @@ describe("runComputerUseLoop", () => {
     // The failed action did not emit a completed ui_action, and the run did not crash.
     expect(result.trace.items.filter((item) => item.kind === "ui_action")).toHaveLength(1);
     expect(result.trace.items.some((item) => item.title === "computer-use loop error")).toBe(false);
+  });
+
+  it("skips a type that did not finish and tells the participant to check the field", async () => {
+    const provider = new ScriptedProvider([
+      {
+        actions: [{ kind: "type", text: "night trains" }],
+        pendingSafetyChecks: [],
+        done: false,
+        responseId: "r1",
+      },
+      {
+        actions: [{ kind: "click", x: 10, y: 20 }],
+        pendingSafetyChecks: [],
+        done: false,
+        responseId: "r2",
+      },
+      { actions: [], pendingSafetyChecks: [], done: true, message: "done", responseId: "r3" },
+    ]);
+    // The SDK threw with no exit code (a lost answer or a timeout), so xdotool may have typed part.
+    const executor = new FlakyExecutor(["s0", "s1", "s2", "s3"], (action) =>
+      action.kind === "type" ? new ComputerUseTypeError("text-command") : undefined,
+    );
+
+    const result = await runComputerUseLoop({
+      instructions: "go",
+      provider,
+      executor,
+      persona,
+      redaction: defaultRedactionHooks,
+      timeoutMs: 10_000_000,
+      now: monotonicClock(),
+    });
+
+    expect(result.completionReason).toBe("goal_satisfied");
+    expect(executor.executed).toEqual([{ kind: "click", x: 10, y: 20 }]);
+    expect(provider.seen[1]?.previousExecution?.actions).toEqual([{ index: 0, status: "skipped" }]);
+    expect(provider.seen[1]?.contextHint).toMatch(/may hold part of the text/);
+    const skipped = result.trace.items.find(
+      (item) => item.title === "action skipped: desktop command failed",
+    );
+    expect(skipped?.text).toBe("action: type [12 chars]; stderr: type failed at text-command");
+    expect(JSON.stringify(result.trace.items)).not.toContain("night trains");
   });
 
   it("a non-CommandExitError from execute() is still fatal (actor_error path byte-preserved)", async () => {

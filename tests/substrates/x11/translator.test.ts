@@ -97,9 +97,14 @@ describe("the hosted dialect", () => {
     ]);
   });
 
-  it("reads the pointer but never moves for a click at y 0", () => {
+  it("moves to a click at y 0 unless the pointer is already there", () => {
     expect(planX11Action({ kind: "double_click", x: 5, y: 0 }, HOSTED_X11_DIALECT).steps).toEqual([
       { kind: "read-pointer", at: { x: 5, y: 0 } },
+      {
+        kind: "xdotool",
+        args: ["mousemove", "--sync", "5", "0"],
+        unlessPointerThere: true,
+      },
       { kind: "xdotool", args: ["click", "--repeat", "2", "1"] },
     ]);
   });

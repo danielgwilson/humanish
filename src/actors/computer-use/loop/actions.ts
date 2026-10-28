@@ -1,6 +1,10 @@
 import { classifyCuaAction } from "../../affordance.js";
 import type { ActorWatch } from "../../contract.js";
-import { commandFailureInfo, isCommandExitError } from "../../../substrates/command-failure.js";
+import {
+  commandFailureInfo,
+  isCommandExitError,
+  isFailedTyping,
+} from "../../../substrates/command-failure.js";
 import {
   ComputerUseExecutorError,
   isComputerUseExecutorError,
@@ -228,6 +232,9 @@ const REJECTION_REMEDIES: Readonly<Record<CuaRejectionReason, string>> = Object.
     "It was rejected because more than one browser tab is open: typing works only while the study's original tab is the only tab. Switch to the other tab and close it, keep the study's original tab open, then type again.",
 });
 
+const FAILED_TYPING_HINT =
+  "Your typing did not finish, and the field may hold part of the text. Check the screen before you type again.";
+
 function rejectedActionHint(title: string, remedy: string | undefined): string {
   return `Your action (${title}) was rejected before dispatch. No input from that action or the rest of its batch was sent.${remedy === undefined ? "" : ` ${remedy}`} Choose your next action from the fresh screenshot; do not assume the rejected action succeeded.`;
 }
@@ -333,9 +340,10 @@ export async function runActionBatch(
           ? await dispatchAction(session, action, title, wait?.steps)
           : { status: "completed", result: undefined });
     } catch (error) {
+      const failedCommand = isCommandExitError(error) || isFailedTyping(error);
       const declared = isComputerUseExecutorError(error)
         ? error.disposition
-        : isCommandExitError(error)
+        : failedCommand
           ? "skipped"
           : undefined;
       if (declared !== undefined) execution.actions.push({ index, status: declared });
@@ -363,11 +371,13 @@ export async function runActionBatch(
         );
         return done();
       }
-      if (isComputerUseExecutorError(error) || !isCommandExitError(error)) throw error;
-      // A skipped action changes nothing on screen, so a run that repeats a failing action makes
-      // no progress and ends through the no-progress backstop (gave_up), also when the
-      // participant is held to its scheduled end (backstop.ts consecutiveUnsent).
+      if (isComputerUseExecutorError(error) || !failedCommand) throw error;
+      // A skipped action changes nothing on screen (a failed type at most leaves part of its
+      // text), so a run that repeats a failing action makes no progress and ends through the
+      // no-progress backstop (gave_up), also when the participant is held to its scheduled end
+      // (backstop.ts consecutiveUnsent).
       recordCommandFailure(session, title, error);
+      if (isFailedTyping(error)) notes.push(FAILED_TYPING_HINT);
       if (halting) return haltAfter(index, title);
       continue;
     }
