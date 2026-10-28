@@ -10,6 +10,11 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- While a run is going, a participant whose start is still ahead is `queued`, and the Observer
+  card says when it starts ("Starts at +2h 35m."). It turns `running` once its session starts.
+  Before, every participant read as running from the first minute, and the Observer said "20 of 20
+  participants active" while 2 had started. The subject line in `events.ndjson` no longer calls a
+  public app URL loopback.
 - A hosted study whose participants arrive over time runs remotely when the most participants its
   schedule runs at once, plus the runner, fit your E2B concurrent sandboxes. Before, a roster of 20
   arriving over 8 hours, at most 4 at once, counted as 20 at once and ran on this machine. The run
