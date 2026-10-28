@@ -8,19 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.153.0: Claude participants receive JPEG screenshots (2026-10-28)
 
-- Claude participants receive each screenshot as JPEG at quality 75, the encoding Anthropic's
-  computer-use reference uses, in place of PNG. Frames of a movie game's full-screen stills went
-  from about 423 KB to 77 KB, and on a 30-minute remote run the largest request fell from 19.55 MB
-  to 2.75 MB, against the Messages API's 32 MB limit. Run bundles keep the lossless frames. OpenAI
-  participants still receive PNG.
+humanish 0.153.0 sends each screenshot to a Claude participant as JPEG at quality 75, the
+encoding Anthropic's computer-use reference uses, in place of PNG. A Claude request carries every
+screenshot since the last compaction, and on a movie game's full-screen stills PNG requests
+reached 19.55 MB of the API's 32 MB limit. On a 30-minute remote run with JPEG frames the largest
+request was 2.75 MB, and the participant still read room codes, titles and scores from the
+screen. Run bundles keep the lossless frames. Remote and reclaim lines now name the sandbox
+provider for Modal runs as well as E2B.
 
-### Fixed
-
-- `reclaim` and a stopped run's last line no longer say "E2B lists" for a Modal run; they name the
-  provider generically. The line a remote run prints before it starts says "adds it" and "as an
-  environment variable" when there is one key.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.153.0)
 
 ## 0.152.0: Terminal studies run remotely by default (2026-10-27)
 
