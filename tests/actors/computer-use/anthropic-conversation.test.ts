@@ -7,6 +7,7 @@ import {
   type ConversationRequest,
 } from "../../../src/actors/computer-use/anthropic-conversation.js";
 import { HALT_TEXT } from "../../../src/actors/computer-use/anthropic-wire.js";
+import { screenJpeg } from "../../../src/actors/computer-use/screen-jpeg.js";
 import type {
   CuaActionAcknowledgement,
   CuaTurnRequest,
@@ -80,11 +81,11 @@ function added(body: Body): Block[] {
 }
 
 describe("an Anthropic participant's conversation", () => {
-  it("only appends to what earlier requests sent, over a twelve-turn session", () => {
+  it("only appends to what earlier requests sent, over a twelve-turn session", async () => {
     const c = conversation();
     const bodies: string[][] = [];
     for (let turn = 0; turn < 12; turn += 1) {
-      const request = c.request(
+      const request = await c.request(
         req({
           ...(turn === 0
             ? {}
@@ -115,14 +116,16 @@ describe("an Anthropic participant's conversation", () => {
     }
   });
 
-  it("answers every member call of the latest reply once, echoing its toolset", () => {
+  it("answers every member call of the latest reply once, echoing its toolset", async () => {
     const c = conversation();
     const first = reply("batch");
-    c.request(req()).accept(first);
-    const body = c.request(
-      req({
-        previousExecution: acks("completed", "completed", "completed", "completed", "completed"),
-      }),
+    (await c.request(req())).accept(first);
+    const body = (
+      await c.request(
+        req({
+          previousExecution: acks("completed", "completed", "completed", "completed", "completed"),
+        }),
+      )
     ).body as Body;
     const results = added(body);
     const ids = (first.content as Block[])
@@ -137,20 +140,22 @@ describe("an Anthropic participant's conversation", () => {
     ]);
   });
 
-  it("answers a batch that stopped at a failed action with the documented halt text", () => {
+  it("answers a batch that stopped at a failed action with the documented halt text", async () => {
     const c = conversation();
-    c.request(req()).accept(reply("batch"));
+    (await c.request(req())).accept(reply("batch"));
     const results = added(
-      c.request(
-        req({
-          previousExecution: acks(
-            "completed",
-            "skipped",
-            "not_dispatched",
-            "not_dispatched",
-            "not_dispatched",
-          ),
-        }),
+      (
+        await c.request(
+          req({
+            previousExecution: acks(
+              "completed",
+              "skipped",
+              "not_dispatched",
+              "not_dispatched",
+              "not_dispatched",
+            ),
+          }),
+        )
       ).body as Body,
     );
     const toolResults = results.filter((block) => block.type === "tool_result");
@@ -170,13 +175,14 @@ describe("an Anthropic participant's conversation", () => {
     ]);
   });
 
-  it("answers a call it could not map with its reason, and the calls after it with the halt text", () => {
+  it("answers a call it could not map with its reason, and the calls after it with the halt text", async () => {
     const c = conversation();
-    c.request(req()).accept(
+    (await c.request(req())).accept(
       reply("batch", [call("type", { text: "milk" }), call("teleport"), call("screenshot")]),
     );
     const results = added(
-      c.request(req({ previousExecution: acks("completed", "not_dispatched") })).body as Body,
+      (await c.request(req({ previousExecution: acks("completed", "not_dispatched") })))
+        .body as Body,
     );
     const texts = results.map(
       (block) => (block.content as Block[] | undefined)?.[0]?.text ?? block.text,
@@ -190,78 +196,82 @@ describe("an Anthropic participant's conversation", () => {
     ]);
   });
 
-  it("gives harness guidance as a system message after the results", () => {
+  it("gives harness guidance as a system message after the results", async () => {
     const c = conversation();
-    c.request(req()).accept(reply("batch"));
-    const body = c.request(
-      req({
-        previousExecution: acks("completed", "completed", "completed", "completed", "completed"),
-        contextHint: "The local time is 09:14.",
-      }),
+    (await c.request(req())).accept(reply("batch"));
+    const body = (
+      await c.request(
+        req({
+          previousExecution: acks("completed", "completed", "completed", "completed", "completed"),
+          contextHint: "The local time is 09:14.",
+        }),
+      )
     ).body as Body;
     expect(body.messages.slice(-2).map((entry) => entry.role)).toEqual(["user", "system"]);
     expect(body.messages.at(-1)!.content).toBe("The local time is 09:14.");
   });
 
-  it("sends the same request again after a reply cut off at its output limit", () => {
+  it("sends the same request again after a reply cut off at its output limit", async () => {
     const c = conversation();
-    const first = c.request(req());
+    const first = await c.request(req());
     first.accept(reply("max-tokens"));
-    expect(c.request(req()).body).toEqual(first.body);
+    expect((await c.request(req())).body).toEqual(first.body);
   });
 
-  it("keeps the system prompt the first request set", () => {
+  it("keeps the system prompt the first request set", async () => {
     const c = conversation();
-    c.request(req()).accept(reply("end-turn"));
-    expect(() => c.request(req({ instructions: "Something else." }))).toThrow(/one system prompt/);
+    (await c.request(req())).accept(reply("end-turn"));
+    await expect(c.request(req({ instructions: "Something else." }))).rejects.toThrow(
+      /one system prompt/,
+    );
   });
 });
 
 describe("a server-side compaction", () => {
-  it("after a compaction, sends the compacted reply first and nothing from before it", () => {
+  it("after a compaction, sends the compacted reply first and nothing from before it", async () => {
     const c = conversation();
     const done = (count: number) => ({
       previousExecution: acks(...Array.from({ length: count }, () => "completed" as const)),
     });
-    c.request(req()).accept(reply("batch"));
-    c.request(req(done(5))).accept(reply("batch"));
-    const compacting = c.request(req(done(5)));
+    (await c.request(req())).accept(reply("batch"));
+    (await c.request(req(done(5)))).accept(reply("batch"));
+    const compacting = await c.request(req(done(5)));
     const compaction = reply("compaction");
     compacting.accept(compaction);
-    const after = c.request(req(done(1))).body as Body;
+    const after = (await c.request(req(done(1)))).body as Body;
     // The server reads nothing before the compaction block, so the client stops sending it.
     expect(after.messages[0]).toEqual({ role: "assistant", content: compaction.content });
     expect(after.messages.slice(1).map((entry) => entry.role)).toEqual(["user"]);
     expect(JSON.stringify(after).length).toBeLessThan(JSON.stringify(compacting.body).length / 2);
     // From the compaction on, the history is appended to again.
-    const later = c.request(req(done(1)));
+    const later = await c.request(req(done(1)));
     later.accept(reply("batch"));
-    const last = c.request(req(done(5))).body as Body;
+    const last = (await c.request(req(done(5)))).body as Body;
     expect(last.messages.slice(0, after.messages.length)).toEqual(after.messages);
   });
 
-  it("is not recorded when its reply is set aside and asked again", () => {
+  it("is not recorded when its reply is set aside and asked again", async () => {
     const c = conversation();
-    c.request(req()).accept(reply("batch"));
-    const compacting = c.request(req({ previousExecution: acks("completed", "completed") }));
+    (await c.request(req())).accept(reply("batch"));
+    const compacting = await c.request(req({ previousExecution: acks("completed", "completed") }));
     compacting.accept({ ...reply("compaction"), stop_reason: "max_tokens" });
-    expect(c.request(req({ previousExecution: acks("completed", "completed") })).body).toEqual(
-      compacting.body,
-    );
+    expect(
+      (await c.request(req({ previousExecution: acks("completed", "completed") }))).body,
+    ).toEqual(compacting.body);
     const record = c.record();
     expect(record.requests.at(-1)!.compacted).toBeUndefined();
     expect(record.summarizedTurns).toBe(0);
   });
 
-  it("after cut-off notes, carries the whole conversation again and only appends to it", () => {
+  it("after cut-off notes, carries the whole conversation again and only appends to it", async () => {
     const c = conversation();
-    c.request(req()).accept(reply("batch"));
+    (await c.request(req())).accept(reply("batch"));
     const done = {
       previousExecution: acks("completed", "completed", "completed", "completed", "completed"),
     };
-    const cutOff = c.request(req(done));
+    const cutOff = await c.request(req(done));
     cutOff.accept(reply("compaction-cut-off"));
-    const next = c.request(req({ previousExecution: acks("completed") })).body as Body;
+    const next = (await c.request(req({ previousExecution: acks("completed") }))).body as Body;
     const sent = (cutOff.body as Body).messages;
     expect(next.messages.slice(0, sent.length)).toEqual(sent);
     const answered = next.messages[sent.length]!.content as Block[];
@@ -271,19 +281,19 @@ describe("a server-side compaction", () => {
 
 describe("a read's answer", () => {
   const ZOOMED = PNG.sync.write(new PNG({ width: 300, height: 150 }));
-  const readThenType = (
+  const readThenType = async (
     first: Block,
     ack: CuaActionAcknowledgement,
-  ): { results: Block[]; next: ConversationRequest } => {
+  ): Promise<{ results: Block[]; next: ConversationRequest }> => {
     const c = conversation();
-    c.request(req()).accept(reply("batch", [first, call("type", { text: "milk" })]));
+    (await c.request(req())).accept(reply("batch", [first, call("type", { text: "milk" })]));
     const previousExecution = { actions: [ack, { index: 1, status: "completed" as const }] };
-    const next = c.request(req({ previousExecution }));
+    const next = await c.request(req({ previousExecution }));
     return { results: added(next.body as Body), next };
   };
 
-  it("gives cursor_position the pointer's coordinates", () => {
-    const { results } = readThenType(call("cursor_position"), {
+  it("gives cursor_position the pointer's coordinates", async () => {
+    const { results } = await readThenType(call("cursor_position"), {
       index: 0,
       status: "completed",
       result: { kind: "pointer", x: 512, y: 384 },
@@ -292,8 +302,8 @@ describe("a read's answer", () => {
     expect(results[0]!.is_error).toBeUndefined();
   });
 
-  it("gives zoom its image", () => {
-    const { results } = readThenType(call("zoom", { region: [0, 0, 300, 150] }), {
+  it("gives zoom its image", async () => {
+    const { results } = await readThenType(call("zoom", { region: [0, 0, 300, 150] }), {
       index: 0,
       status: "completed",
       result: { kind: "frame", screenshot: ZOOMED },
@@ -304,21 +314,26 @@ describe("a read's answer", () => {
     ]);
   });
 
-  it("enlarges the zoom image to fit the screenshot size, as the toolset documents", () => {
+  it("enlarges the zoom image to fit the screenshot size, as the toolset documents", async () => {
     const strip = PNG.sync.write(new PNG({ width: 220, height: 20 }));
-    const { results } = readThenType(call("zoom", { region: [0, 0, 220, 20] }), {
+    const { results } = await readThenType(call("zoom", { region: [0, 0, 220, 20] }), {
       index: 0,
       status: "completed",
       result: { kind: "frame", screenshot: strip },
     });
     const image = (results[0]!.content as Block[])[1] as { source: { data: string } };
-    const shown = PNG.sync.read(Buffer.from(image.source.data, "base64"));
+    const shown = Buffer.from(image.source.data, "base64");
     // The request's screenshot is 1440x950: the strip fills its width, keeping the aspect ratio.
-    expect([shown.width, shown.height]).toEqual([1440, 131]);
+    // A baseline JPEG's SOF0 segment holds its height, then its width.
+    const frame = shown.indexOf(Buffer.from([0xff, 0xc0]));
+    expect([shown.readUInt16BE(frame + 7), shown.readUInt16BE(frame + 5)]).toEqual([1440, 131]);
   });
 
-  it("is an error that halts nothing when the desktop returned nothing", () => {
-    const { results } = readThenType(call("cursor_position"), { index: 0, status: "completed" });
+  it("is an error that halts nothing when the desktop returned nothing", async () => {
+    const { results } = await readThenType(call("cursor_position"), {
+      index: 0,
+      status: "completed",
+    });
     expect(
       results.map((result) => [result.is_error ?? false, (result.content as Block[])[0]?.text]),
     ).toEqual([
@@ -327,8 +342,8 @@ describe("a read's answer", () => {
     ]);
   });
 
-  it("moves the pointer a later coordinate-free click uses", () => {
-    const { next } = readThenType(call("cursor_position"), {
+  it("moves the pointer a later coordinate-free click uses", async () => {
+    const { next } = await readThenType(call("cursor_position"), {
       index: 0,
       status: "completed",
       result: { kind: "pointer", x: 70, y: 80 },
@@ -337,18 +352,20 @@ describe("a read's answer", () => {
     expect(turn.actions).toEqual([{ kind: "click", x: 70, y: 80, button: "left" }]);
   });
 
-  it("keeps the batch's last zoom image apart from the screen after the batch", () => {
+  it("keeps the batch's last zoom image apart from the screen after the batch", async () => {
     const c = conversation();
-    c.request(req()).accept(reply("batch", [call("zoom", { region: [0, 0, 300, 150] })]));
+    (await c.request(req())).accept(reply("batch", [call("zoom", { region: [0, 0, 300, 150] })]));
     const results = added(
-      c.request(
-        req({
-          previousExecution: {
-            actions: [
-              { index: 0, status: "completed", result: { kind: "frame", screenshot: ZOOMED } },
-            ],
-          },
-        }),
+      (
+        await c.request(
+          req({
+            previousExecution: {
+              actions: [
+                { index: 0, status: "completed", result: { kind: "frame", screenshot: ZOOMED } },
+              ],
+            },
+          }),
+        )
       ).body as Body,
     );
     expect(results.map((block) => block.type)).toEqual(["tool_result", "text", "image"]);
@@ -359,9 +376,9 @@ describe("a screenshot before the end of its batch", () => {
   const midImage = new PNG({ width: 1440, height: 950 });
   midImage.data.fill(200);
   const MID = PNG.sync.write(midImage);
-  const answered = (ack: CuaActionAcknowledgement): Block[] => {
+  const answered = async (ack: CuaActionAcknowledgement): Promise<Block[]> => {
     const c = conversation();
-    c.request(req()).accept(
+    (await c.request(req())).accept(
       reply("batch", [
         call("left_click", { coordinate: [10, 20] }),
         call("screenshot"),
@@ -375,50 +392,50 @@ describe("a screenshot before the end of its batch", () => {
         { index: 2, status: "completed" as const },
       ],
     };
-    return added(c.request(req({ previousExecution })).body as Body);
+    return added((await c.request(req({ previousExecution }))).body as Body);
   };
   const imageData = (result: Block | undefined): string | undefined =>
     ((result?.content as Block[] | undefined)?.[1] as { source?: { data?: string } } | undefined)
       ?.source?.data;
 
-  it("answers with the frame the desktop captured there", () => {
-    const results = answered({
+  it("answers with the frame the desktop captured there", async () => {
+    const results = await answered({
       index: 1,
       status: "completed",
       result: { kind: "frame", screenshot: MID },
     });
     expect(results[1]!.is_error).toBeUndefined();
-    expect(imageData(results[1])).toBe(MID.toString("base64"));
+    expect(imageData(results[1])).toBe((await screenJpeg(MID)).toString("base64"));
     // The screen after the batch still rides the last result.
-    expect(imageData(results[2])).toBe(SCREEN.toString("base64"));
+    expect(imageData(results[2])).toBe((await screenJpeg(SCREEN)).toString("base64"));
   });
 
-  it("points to the screen after the batch when the desktop returned no frame", () => {
-    const results = answered({ index: 1, status: "completed" });
+  it("points to the screen after the batch when the desktop returned no frame", async () => {
+    const results = await answered({ index: 1, status: "completed" });
     expect((results[1]!.content as Block[]).map((block) => block.type)).toEqual(["text"]);
     expect(results[1]!.is_error).toBeUndefined();
   });
 });
 
 describe("the pointer position a coordinate-free click uses", () => {
-  const moveThenClick = (status: CuaActionAcknowledgement["status"]) => {
+  const moveThenClick = async (status: CuaActionAcknowledgement["status"]) => {
     const c = conversation();
-    c.request(req()).accept(reply("batch", [call("mouse_move", { coordinate: [40, 50] })]));
-    return c
-      .request(req({ previousExecution: acks(status) }))
-      .accept(reply("batch", [call("left_click")]));
+    (await c.request(req())).accept(reply("batch", [call("mouse_move", { coordinate: [40, 50] })]));
+    return (await c.request(req({ previousExecution: acks(status) }))).accept(
+      reply("batch", [call("left_click")]),
+    );
   };
 
-  it("is where an acknowledged completed move left it", () => {
-    expect(moveThenClick("completed").actions).toEqual([
+  it("is where an acknowledged completed move left it", async () => {
+    expect((await moveThenClick("completed")).actions).toEqual([
       { kind: "click", x: 40, y: 50, button: "left" },
     ]);
   });
 
   it.each(["not_dispatched", "skipped", "outcome_uncertain"] as const)(
     "is unknown after a move acknowledged %s",
-    (status) => {
-      const turn = moveThenClick(status);
+    async (status) => {
+      const turn = await moveThenClick(status);
       expect(turn.actions).toEqual([]);
       expect(turn.rejectedProposal?.reason).toMatch(/pointer position is not known/);
     },
@@ -432,7 +449,7 @@ describe("the closing request", () => {
     // are only accepted alongside the compaction strategy, so it stays, with a trigger the
     // request cannot reach.
     const c = conversation();
-    c.request(req()).accept(reply("compaction"));
+    (await c.request(req())).accept(reply("compaction"));
     let body: Record<string, unknown> | undefined;
     await c.close(req({ previousExecution: acks("completed") }), "report", async (payload) => {
       body = JSON.parse(payload) as Record<string, unknown>;
@@ -450,7 +467,7 @@ describe("the closing request", () => {
 
   it("answers the open calls, asks in text, turns tools off and keeps its own output limit", async () => {
     const c = conversation(2048);
-    c.request(req()).accept(reply("batch"));
+    (await c.request(req())).accept(reply("batch"));
     const bodies: Body[] = [];
     const turn = await c.close(
       req({ contextHint: "The session is over. Give your closing account." }),
@@ -473,7 +490,7 @@ describe("the closing request", () => {
 
   it("asks once more with the schema as the output format and the same messages", async () => {
     const c = conversation();
-    c.request(req()).accept(reply("end-turn"));
+    (await c.request(req())).accept(reply("end-turn"));
     const bodies: Body[] = [];
     const send = async (payload: string) => {
       bodies.push(JSON.parse(payload) as Body);
@@ -492,7 +509,7 @@ describe("the closing request", () => {
     "sends the %s retry schema with no array item limit",
     async (closing) => {
       const c = conversation();
-      c.request(req()).accept(reply("end-turn"));
+      (await c.request(req())).accept(reply("end-turn"));
       const bodies: Body[] = [];
       const send = async (payload: string) => {
         bodies.push(JSON.parse(payload) as Body);

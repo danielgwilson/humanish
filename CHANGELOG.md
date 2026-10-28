@@ -8,6 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- Claude participants receive each screenshot as JPEG at quality 75, the encoding Anthropic's
+  computer-use reference uses, in place of PNG. Frames of a movie game's full-screen stills went
+  from about 423 KB to 77 KB, and on a 30-minute remote run the largest request fell from 19.55 MB
+  to 2.75 MB, against the Messages API's 32 MB limit. Run bundles keep the lossless frames. OpenAI
+  participants still receive PNG.
+
 ### Fixed
 
 - `reclaim` and a stopped run's last line no longer say "E2B lists" for a Modal run; they name the

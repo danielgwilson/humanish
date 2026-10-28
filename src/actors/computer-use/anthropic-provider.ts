@@ -243,7 +243,7 @@ export function createAnthropicMessagesProvider(
     signal: AbortSignal,
     spend?: CuaSpendGate,
   ): Promise<CuaTurn> => {
-    const request = conversation.request(req);
+    const request = await conversation.request(req);
     const reply = await postMessages(transport, request.payload, signal, {
       retries,
       interaction: true,
