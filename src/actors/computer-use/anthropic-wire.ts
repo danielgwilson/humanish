@@ -1,4 +1,5 @@
 import type { CuaAction, CuaTurn } from "./loop.js";
+import { screenJpeg } from "./screen-jpeg.js";
 import { CUA_WAIT_LIMITS } from "./wait.js";
 import {
   isFiniteNumber,
@@ -709,11 +710,14 @@ export function frameSizeReason(width: number, height: number): string | undefin
 }
 
 /**
- * The image block for one desktop frame, after checking it fits what Claude reads. Throws before
- * any request when it does not, or when there is no frame: this is a vision provider
- * (requiresFrame), so the loop's own guard normally refuses a frameless executor first.
+ * The image block for one desktop frame, as JPEG (screen-jpeg.ts), after checking it fits what
+ * Claude reads. Throws before any request when it does not, or when there is no frame: this is a
+ * vision provider (requiresFrame), so the loop's own guard normally refuses a frameless executor
+ * first.
  */
-export function screenImage(screenshot: Buffer | undefined): Record<string, unknown> {
+export async function screenImage(
+  screenshot: Buffer | undefined,
+): Promise<Record<string, unknown>> {
   if (screenshot === undefined) {
     throw new Error(
       "anthropic-messages-cu requires observation.screenshot (it is a vision provider; pair a state-only executor with a non-vision provider)",
@@ -721,12 +725,18 @@ export function screenImage(screenshot: Buffer | undefined): Record<string, unkn
   }
   const size = pngSize(screenshot);
   if (size === undefined)
-    throw new Error("The desktop's screenshot is not a PNG image, the only frame format sent.");
+    throw new Error(
+      "The desktop's screenshot is not a PNG image, the only frame format this provider reads.",
+    );
   const tooLarge = frameSizeReason(size.width, size.height);
   if (tooLarge !== undefined) throw new Error(tooLarge);
   return {
     type: "image",
-    source: { type: "base64", media_type: "image/png", data: screenshot.toString("base64") },
+    source: {
+      type: "base64",
+      media_type: "image/jpeg",
+      data: (await screenJpeg(screenshot)).toString("base64"),
+    },
   };
 }
 

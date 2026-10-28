@@ -2,12 +2,13 @@ import { chmodSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PNG } from "pngjs";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   createAnthropicMessagesProvider,
   type AnthropicMessagesProviderOptions,
 } from "../../../src/actors/computer-use/anthropic-provider.js";
+import { screenJpeg } from "../../../src/actors/computer-use/screen-jpeg.js";
 import {
   runComputerUseLoop,
   type CuaAction,
@@ -19,6 +20,20 @@ import { estimateActorCost } from "../../../src/run/pricing.js";
 
 // The provider at its transport: headers, retries, errors, settings and what it records. Replies
 // are captured or documented shapes from tests/fixtures/anthropic-messages/.
+
+// The byte-budget test sends the frame as it is: noise is the JPEG encoder's slowest input, and
+// the budget is what that test checks.
+const encoder = vi.hoisted(() => ({ passThrough: false }));
+vi.mock("../../../src/actors/computer-use/screen-jpeg.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../src/actors/computer-use/screen-jpeg.js")>();
+  return {
+    screenJpeg: async (png: Buffer) => (encoder.passThrough ? png : actual.screenJpeg(png)),
+  };
+});
+afterEach(() => {
+  encoder.passThrough = false;
+});
 
 type Json = Record<string, unknown>;
 const fixture = (name: string): Json =>
@@ -191,8 +206,9 @@ describe("the conversation record", () => {
   });
 
   it("stops before a request near the 32 MB limit, as when screenshots outgrow compaction", async () => {
-    // A 1440x950 frame of noise is about 5.5 MB as PNG: six of them pass the byte budget long
-    // before their tokens reach the compaction trigger.
+    // A 1440x950 frame of noise is about 4.7 MB as PNG, sent here as it is: six of them pass the
+    // byte budget long before their tokens reach the compaction trigger.
+    encoder.passThrough = true;
     const noise = new PNG({ width: 1440, height: 950 });
     let seed = 2_463_534_242;
     for (let at = 0; at < noise.data.length; at += 1) {
@@ -303,8 +319,8 @@ describe("a screenshot within a batch", () => {
     const image = (result: Json | undefined) =>
       ((result?.content as Json[] | undefined)?.[1]?.source as Json | undefined)?.data;
     expect(results.map((result) => result.tool_use_id)).toEqual(ids);
-    expect(image(results[2])).toBe(frame.toString("base64"));
-    expect(image(results[5])).toBe(screen.toString("base64"));
+    expect(image(results[2])).toBe((await screenJpeg(frame)).toString("base64"));
+    expect(image(results[5])).toBe((await screenJpeg(screen)).toString("base64"));
   });
 });
 

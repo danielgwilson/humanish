@@ -277,17 +277,20 @@ describe("member calls", () => {
 });
 
 describe("the screenshot sent", () => {
-  it("is a PNG image block at the default desktop size", () => {
-    expect(screenImage(png(1440, 950))).toMatchObject({
+  it("is a JPEG image block at the default desktop size", async () => {
+    const block = await screenImage(png(1440, 950));
+    expect(block).toMatchObject({
       type: "image",
-      source: { type: "base64", media_type: "image/png" },
+      source: { type: "base64", media_type: "image/jpeg" },
     });
+    const data = Buffer.from((block.source as { data: string }).data, "base64");
+    expect(data.subarray(0, 3)).toEqual(Buffer.from([0xff, 0xd8, 0xff]));
   });
 
   it.each([
     [2001, 900],
     [1960, 1960],
-  ])("is refused before any request at %ix%i", (width, height) => {
-    expect(() => screenImage(png(width, height))).toThrow(/execution\.desktop\.resolution/);
+  ])("is refused before any request at %ix%i", async (width, height) => {
+    await expect(screenImage(png(width, height))).rejects.toThrow(/execution\.desktop\.resolution/);
   });
 });

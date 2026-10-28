@@ -75,8 +75,8 @@ export class AnthropicConversation {
   constructor(private readonly settings: MessagesSettings) {}
 
   /** The next participant turn's request, carrying `req`'s screen and acknowledgements. */
-  request(req: CuaTurnRequest): ConversationRequest {
-    const sent = this.newMessages(req);
+  async request(req: CuaTurnRequest): Promise<ConversationRequest> {
+    const sent = await this.newMessages(req);
     const pointer = this.pointerAfterBatch(req);
     const body = requestBody(this.settings, this.fixInstructions(req.instructions), [
       ...this.history,
@@ -111,7 +111,7 @@ export class AnthropicConversation {
     send: (payload: string) => Promise<unknown>,
   ): Promise<CuaTurn> {
     const strict = this.openClosing !== undefined;
-    const sent = this.openClosing ?? this.newMessages(req, closing);
+    const sent = this.openClosing ?? (await this.newMessages(req, closing));
     this.openClosing = undefined;
     const pointer = this.pointerAfterBatch(req);
     const body = requestBody(
@@ -168,14 +168,14 @@ export class AnthropicConversation {
    * screen (or the screen alone), then the turn's harness guidance as a system message. A closing
    * request asks for its account in the user message instead.
    */
-  private newMessages(req: CuaTurnRequest, closing?: ClosingRequest): unknown[] {
+  private async newMessages(req: CuaTurnRequest, closing?: ClosingRequest): Promise<unknown[]> {
     const frame = req.observation.screenshot;
-    const screen = screenImage(frame);
+    const screen = await screenImage(frame);
     const calls = this.latest?.calls ?? [];
     const answered =
       calls.length === 0
         ? [{ type: "text", text: SCREEN_NOW }, screen]
-        : answers(calls, acknowledgements(req), screen, screenSize(frame));
+        : await answers(calls, acknowledgements(req), screen, screenSize(frame));
     const hint = req.contextHint === undefined || req.contextHint === "" ? [] : [req.contextHint];
     if (closing !== undefined) {
       const ask = [...hint, replyFormText(closing)].map((text) => ({ type: "text", text }));
@@ -285,15 +285,15 @@ const NOT_COMPLETED: Readonly<
  * after the batch goes into the last result when that one completed and holds no image of its
  * own; an error result may carry text only, so otherwise the screen follows the results.
  */
-function answers(
+async function answers(
   calls: readonly MemberCall[],
   acks: Acknowledgements,
   screen: Record<string, unknown>,
   fit: { width: number; height: number } | undefined,
-): unknown[] {
+): Promise<unknown[]> {
   let halted = false;
   let screenInLast = false;
-  const results = calls.map((call, index) => {
+  const answer = async (call: MemberCall, index: number): Promise<unknown> => {
     if (halted) return toolResult(call, HALT_TEXT, { isError: true });
     const done = call.positions.map((position) => acks.get(position));
     const unfinished = done.find((ack) => ack?.status !== "completed");
@@ -302,13 +302,15 @@ function answers(
       const reason = call.rejected ?? NOT_COMPLETED[unfinishedStatus(unfinished)];
       return toolResult(call, reason, { isError: true });
     }
-    const read = readAnswer(call, done[0], fit);
+    const read = await readAnswer(call, done[0], fit);
     if (read !== undefined) return read;
     const last = index === calls.length - 1;
     screenInLast = last;
     if (last) return toolResult(call, OK, { screen });
     return call.name === "screenshot" ? screenshotAnswer(call, done[0]) : toolResult(call, OK);
-  });
+  };
+  const results: unknown[] = [];
+  for (const [index, call] of calls.entries()) results.push(await answer(call, index));
   return screenInLast ? results : [...results, { type: "text", text: SCREEN_NOW }, screen];
 }
 
@@ -317,14 +319,14 @@ function answers(
  * through the same size check as every screen sent. An executor that returned no frame leaves the
  * call pointing to the screen after the batch.
  */
-function screenshotAnswer(
+async function screenshotAnswer(
   call: MemberCall,
   ack: CuaActionAcknowledgement | undefined,
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   const result = ack?.result;
   if (result?.kind !== "frame") return toolResult(call, SCREEN_AT_END);
   try {
-    return toolResult(call, OK, { screen: screenImage(result.screenshot) });
+    return toolResult(call, OK, { screen: await screenImage(result.screenshot) });
   } catch (error) {
     const reason = error instanceof Error ? error.message : "The screenshot could not be sent.";
     return toolResult(call, reason, { isError: true });
@@ -344,11 +346,11 @@ function unfinishedStatus(
  * through the same size check as a screenshot, so its larger visual-token count is checked before
  * the request is sent.
  */
-function readAnswer(
+async function readAnswer(
   call: MemberCall,
   ack: CuaActionAcknowledgement | undefined,
   fit: { width: number; height: number } | undefined,
-): Record<string, unknown> | undefined {
+): Promise<Record<string, unknown> | undefined> {
   const result = ack?.result;
   if (call.name === "cursor_position") {
     return result?.kind === "pointer"
@@ -359,7 +361,7 @@ function readAnswer(
   if (result?.kind !== "frame")
     return toolResult(call, "The desktop returned no image for this zoom.", { isError: true });
   try {
-    return toolResult(call, OK, { screen: screenImage(zoomView(result.screenshot, fit)) });
+    return toolResult(call, OK, { screen: await screenImage(zoomView(result.screenshot, fit)) });
   } catch (error) {
     const reason = error instanceof Error ? error.message : "The zoomed image could not be sent.";
     return toolResult(call, reason, { isError: true });
