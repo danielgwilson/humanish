@@ -14,6 +14,7 @@ where a later record differs, the later one holds.
 
 ## Computer use, participants and analysis
 
+- 2026-10-28: [An 8-hour study of 20 participants on a public movie game](computer-use/full-day-study-2026-10-28.md)
 - 2026-10-28: [Claude participants receive JPEG screenshots](computer-use/claude-jpeg-frames-2026-10-28.md)
 - 2026-10-27: [Claude participants compact on remote E2B and Modal runners](computer-use/claude-compaction-remote-2026-10-27.md)
 - 2026-10-26: [The Claude participant against Anthropic's computer-use guidance](computer-use/anthropic-computer-use-guidance-2026-10-26.md)
