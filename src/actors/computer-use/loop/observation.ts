@@ -35,6 +35,23 @@ interface DwellEnd {
   readonly heldMs: number;
 }
 
+/** How long the loop waits before asking the desktop again after an observe's transport failed. */
+const OBSERVE_RETRY_PAUSE_MS = 3_000;
+
+/**
+ * True when `error` says the connection to the desktop dropped, not what the desktop did: Node's
+ * `fetch failed` (an HTTP provider such as E2B), a reset or refused socket, or a gRPC `UNAVAILABLE`
+ * (Modal). The cause is checked too, since fetch puts the socket error there.
+ */
+function isTransportFailure(error: unknown): error is Error {
+  if (!(error instanceof Error) || isComputerUseExecutorError(error)) return false;
+  const cause = error.cause instanceof Error ? ` ${error.cause.name} ${error.cause.message}` : "";
+  const code = (error.cause as { code?: unknown } | undefined)?.code;
+  return /fetch failed|ECONNRESET|ECONNREFUSED|EPIPE|socket hang up|UND_ERR|\bUNAVAILABLE\b/.test(
+    `${error.message}${cause} ${typeof code === "string" ? code : ""}`,
+  );
+}
+
 // One projection feeds both the stop guard and the task tracker, so a criterion that would stop
 // the run and a criterion that completes a task can never see different evidence for one turn.
 function stopObservationOf(observation: CuaObservation): StopConditionObservation {
@@ -244,7 +261,9 @@ export class DesktopObserver {
     }
   }
 
-  // An executor without stallRecovery "fail_closed" gets one retry of a stalled observe.
+  // An executor without stallRecovery "fail_closed" gets one retry of a stalled observe, and one
+  // retry, after a pause, of an observe whose transport failed: observe only reads the desktop, so
+  // asking again is safe, and a dropped connection to a hosted desktop usually clears in seconds.
   // One that cannot safely replay a pending request opts out, so even a shorter outer bound stops
   // without retrying.
   private async observeOrRetry(label: string): Promise<CuaObservation> {
@@ -259,6 +278,9 @@ export class DesktopObserver {
         session.signal,
       );
     } catch (error) {
+      if (isTransportFailure(error) && executor.stallRecovery !== "fail_closed") {
+        return await this.observeAfterFailure(label, error);
+      }
       if (!(error instanceof CuaStallError)) throw error;
       if (executor.stallRecovery === "fail_closed") {
         // The outer bound says nothing about whether the still-pending request completed.
@@ -280,6 +302,26 @@ export class DesktopObserver {
         session.signal,
       );
     }
+  }
+
+  private async observeAfterFailure(label: string, error: Error): Promise<CuaObservation> {
+    const { session } = this;
+    session.trace.record("notice", () =>
+      notice(
+        "warn",
+        "observation failed; retrying once",
+        `observe (${label}) failed with ${error.name}: ${session.redactNarration(error.message)}; asking the desktop again in ${OBSERVE_RETRY_PAUSE_MS}ms`,
+      ),
+    );
+    await session.sleep(Math.min(OBSERVE_RETRY_PAUSE_MS, Math.max(0, session.remaining())));
+    if (session.signal?.aborted) throw new CuaAbortError();
+    return await raceCallBound(
+      `observe (${label}, retry)`,
+      session.executor.observe(),
+      session.remaining(),
+      session.observationTimeoutMs,
+      session.signal,
+    );
   }
 
   /**
