@@ -40,7 +40,7 @@ none waited for a slot.
 
 regular-02 ended at 22:59 with `computer-use loop error: fetch failed`, phase "looking at the
 screen during turn 269". The failure was one screenshot request during a 10-minute watch, about
-8 minutes in. The loop retried a stalled observe once but rethrew a transport error (#2007).
+8 minutes in. The loop retried a stalled observe once but rethrew a transport error.
 
 The three drop-ins came to beat a friend's posted score. Each closing report says the game showed
 no friend's score to compare against, and one adds that title search found no match for a film it
@@ -94,7 +94,7 @@ Both analyses are `partial`. The OpenAI run's analysis covered all 20 participan
 evidence items and 80 captures. It cost $1.06 and returned 15 findings and 4 design findings.
 The Claude run's covered 800 evidence items and 40 captures of 1455 frames. It cost $0.41 and
 returned 6 findings. `coverage.omissions` names the packet size and capture count limits. An
-8-hour participant gets about one capture every 12 minutes (#2010).
+8-hour participant gets about one capture every 12 minutes.
 
 The Observer shows the analysis's outcome for each participant beside the participant's own. For
 the OpenAI run the analysis read 12 completed, 1 interrupted, 1 abandoned and 6 unknown, while
@@ -108,22 +108,21 @@ off reading the result, small secondary text, and a limited image area on phones
 
 Found while setting up or watching these runs, fixed for 0.154.0:
 
-- #2001: a roster of 20 that arrives over 8 hours, at most 4 at once, was counted as 20 at once
-  and fell back to a local run. Fixed in #2003.
-- #2002: every participant read as running from the first minute; the Observer said "20 of 20
-  participants active" while 2 had started. Fixed in #2004.
-- #2005: a participant that ended at minute 4 read as running until the whole run ended. Fixed
-  in #2006.
-- #2007: one dropped connection on a screenshot ended an 8-hour participant. Fixed in #2008.
+- A roster of 20 that arrives over 8 hours, at most 4 at once, was counted as 20 at once
+  and fell back to a local run.
+- Every participant read as running from the first minute; the Observer said "20 of 20
+  participants active" while 2 had started.
+- A participant that ended at minute 4 read as running until the whole run ended.
+- One dropped connection on a screenshot ended an 8-hour participant.
 - The plan line said "when every session uses its 40m budget" for a roster with two 8-hour
-  participants, though its figures counted the 8 hours. Fixed in #2011.
+  participants, though its figures counted the 8 hours.
 
-Filed: #2009 (a Ctrl-C during copy-back of a finished remote run prints the stop line and exits
-130) and #2010 (analysis coverage of long runs).
+Filed: analysis coverage of long runs. A separate check the same day found that a Ctrl-C during
+copy-back of a finished remote run printed the stop line and exited 130; its fix is in review.
 
 ## Not verified
 
-- The #2007 retry has not met a real dropped connection. Its tests fake the error.
+- The screenshot retry has not met a real dropped connection. Its tests fake the error.
 - One transport failure in 21 participants and about 21 participant-hours is one sample. We do not know the rate
   of transport drops on E2B or Modal.
 - Which participants the analysis marked unknown, and whether its sample of frames is the reason.
