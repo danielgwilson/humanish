@@ -298,8 +298,10 @@ export interface ArrivalPlan {
   readonly longestWaitMs: number;
   /** When the last session ends at the latest, in ms after the run starts its participants. */
   readonly lastEndMs: number;
-  /** The session budget every figure above assumes each participant uses. */
+  /** The session budget every figure above assumes each participant without an end uses. */
   readonly sessionMs: number;
+  /** Whether a participant that starts declares its own end or cap, and so its own budget. */
+  readonly ownBudgets: boolean;
 }
 
 /** How the runtime starts participants: how many run at once, and for how long at most. */
@@ -354,6 +356,7 @@ function simulateQueue(
     longestWaitMs,
     lastEndMs: Math.max(...started.map((index) => starts[index]! + session(index))),
     sessionMs: queue.sessionMs,
+    ownBudgets: started.some((index) => schedules[index]!.end !== undefined),
   };
   return { arrivals, skipped };
 }
@@ -367,7 +370,18 @@ export function describeArrivals(arrivals: ArrivalPlan): string {
     arrivals.waiting === 0
       ? ""
       : `; ${plural(arrivals.waiting, "participant")} then start late, waiting for a free slot, the latest by ${formatDuration(arrivals.longestWaitMs)}`;
-  return `the first participant starts at +${formatDuration(arrivals.firstStartMs)} and the last at +${formatDuration(arrivals.lastStartMs)}; at most ${arrivals.peak} run at once when every session uses its ${formatDuration(arrivals.sessionMs)} budget${late}.`;
+  return `the first participant starts at +${formatDuration(arrivals.firstStartMs)} and the last at +${formatDuration(arrivals.lastStartMs)}; at most ${arrivals.peak} run at once ${fullBudgets(arrivals)}${late}.`;
+}
+
+/**
+ * The assumption behind a plan's figures. A participant with an end or a cap holds its slot for
+ * its own window, so naming only the study's budget would misstate a roster that mixes them.
+ */
+function fullBudgets(arrivals: ArrivalPlan): string {
+  const budget = formatDuration(arrivals.sessionMs);
+  return arrivals.ownBudgets
+    ? `when every session uses its full budget: its own end or cap, or else ${budget}`
+    : `when every session uses its ${budget} budget`;
 }
 
 /**
@@ -399,7 +413,7 @@ function startQueueWarnings(
   queue: StartQueue,
   lowered: string | undefined,
 ): string[] {
-  const budget = `when every session uses its ${formatDuration(arrivals.sessionMs)} budget`;
+  const budget = fullBudgets(arrivals);
   const atMost = `the run starts at most ${queue.slots} at once`;
   const late = `${plural(arrivals.waiting, "participant")} would start after their time ${budget}, the latest by ${formatDuration(arrivals.longestWaitMs)}: ${atMost} and holds the next one until a slot frees.`;
   const one = skipped.length === 1;
