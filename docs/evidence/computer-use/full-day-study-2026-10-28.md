@@ -80,8 +80,11 @@ hour before 02:37 UTC as its breaks grew longer. It ended at $21.47 on 75.1 mill
 | `humanish verify` | ok, 16 checks, 3.6 s, 313 MB peak memory | ok, 16 checks, 3.3 s, 322 MB |
 | Share safety | `local_only` (raw screenshots) | `local_only` (raw screenshots) |
 | Reclaim | clean: runner killed, 20 desktops already gone | clean: runner killed, desktop already gone |
+| Observer page load, `humanish observe`, 3 loads in Chromium | 512 to 618 ms, 23 requests, 4.1 MB, 20 cards | not measured |
 
 Live flush had copied all but 34 files back by the time the run ended, so the copy took seconds.
+The Observer load was measured on this machine against the local server, so it leaves out network
+time.
 After both runs, E2B listed 0 running or paused sandboxes and Modal listed 0 in the study's
 environment.
 
@@ -92,6 +95,10 @@ evidence items and 80 captures. It cost $1.06 and returned 15 findings and 4 des
 The Claude run's covered 800 evidence items and 40 captures of 1455 frames. It cost $0.41 and
 returned 6 findings. `coverage.omissions` names the packet size and capture count limits. An
 8-hour participant gets about one capture every 12 minutes (#2010).
+
+The Observer shows the analysis's outcome for each participant beside the participant's own. For
+the OpenAI run the analysis read 12 completed, 1 interrupted, 1 abandoned and 6 unknown, while
+the participants reported 16 complete, 1 failed and 3 gave up.
 
 The OpenAI findings concern the game: answer reveals with mixed outcomes, expected titles that
 search did not find, a title picker that moved as results loaded, automatic progression that cut
@@ -119,5 +126,5 @@ Filed: #2009 (a Ctrl-C during copy-back of a finished remote run prints the stop
 - The #2007 retry has not met a real dropped connection. Its tests fake the error.
 - One transport failure in 21 participants and about 21 participant-hours is one sample. We do not know the rate
   of transport drops on E2B or Modal.
-- Observer page load time on the 20-participant bundle was not measured. The data file is 457 KB.
+- Which participants the analysis marked unknown, and whether its sample of frames is the reason.
 - Whether the commuters would stay longer with the time in their turn text.
