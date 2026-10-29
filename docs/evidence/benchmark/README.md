@@ -328,6 +328,12 @@ screenshot count and persona fidelity.
 [2026-10-27-persona-rebaseline.md](2026-10-27-persona-rebaseline.md) starts the series for the
 persona without `clear_terminal_output` (0.152.0): `gpt-6.1-sol` with the new persona, with the
 old one, and on the 0.149.0 build, and `claude-haiku-5-5`, 24 runs each on the in-memory builds.
+[2026-10-29-0.154.0-candidate-sol.md](2026-10-29-0.154.0-candidate-sol.md)
+reruns that series' `gpt-6.1-sol` arm on the 0.154.0 candidate (src/ at 8747b903a, before the
+version bump). Report recall was 26/60 against 30/60, analysis recall 34/60 against 27/55, and the
+clean arm invented nothing. The report dip is all D5, 2/12 against 6/12; every participant used
+Save in edit mode, the analyses found D5 in 10 of 12 runs, and the 0.151.0 old-persona arm also
+had 2/12.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where

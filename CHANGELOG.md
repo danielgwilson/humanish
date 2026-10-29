@@ -8,38 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Fixed
+## 0.154.0: Day-long studies with arrivals run remotely and show live status (2026-10-29)
 
-- Ctrl-C on a remote run whose participants have finished stops only its analysis, says so, and
-  exits with the run's own result. Before, it printed that it was stopping the run and reclaiming
-  its participants, which had already ended, and exited 130 while the result said `ok: true`.
-- While a run is going, a participant whose start is still ahead is `queued`, and the Observer
-  card says when it starts ("Starts at +2h 35m."). It turns `running` once its session starts.
-  Before, every participant read as running from the first minute, and the Observer said "20 of 20
-  participants active" while 2 had started. The subject line in `events.ndjson` no longer calls a
-  public app URL loopback.
-- While a run is going, a participant whose session ended shows its outcome: its status, summary
-  and session event in `run.json` and `events.ndjson`, and its Observer card. Before, it read as
-  running until every participant had ended, so one that left at minute 15 of an 8-hour run was
-  counted as active for 7 more hours.
-- A hosted study whose participants arrive over time runs remotely when the most participants its
-  schedule runs at once, plus the runner, fit your E2B concurrent sandboxes. Before, a roster of 20
-  arriving over 8 hours, at most 4 at once, counted as 20 at once and ran on this machine. The run
-  in an E2B runner now holds its desktops to your limit less the runner.
-- A computer-use participant on an E2B or Modal desktop whose `type` did not finish keeps going.
-  The action is reported to its model as a failed desktop command, with a note that the field may
-  hold part of the text, and is not retried. Before, the participant ended with `actor_error`.
-- A click at x 0 or y 0 on an E2B or Modal desktop moves the pointer there first. Before, it
-  clicked wherever the pointer was, while the trace recorded the edge coordinate.
-- A computer-use participant whose screenshot fails because the connection to its desktop dropped
-  (`fetch failed`, a reset socket, or gRPC UNAVAILABLE) is given a second look 3 seconds later, with
-  a warning in its trace. A second failure still ends it. Before, one dropped connection ended an
-  8-hour participant with `actor_error` 3 hours 42 minutes in.
-- A plan whose participants include some with their own end or cap says so: "at most 4 run at once
-  when every session uses its full budget: its own end or cap, or else 40m", and the fan-out line
-  gives the study budget "per participant without its own end or cap". Before, a roster with two
-  8-hour participants read as if every session used the 40-minute budget, though the figures
-  already counted the 8 hours.
+humanish 0.154.0 fixes what an 8-hour study of 20 participants on a public movie game turned up.
+A roster whose participants arrive over the day runs remotely when the most it runs at once fits
+your E2B limit, and while it runs each participant reads as queued, running or ended with its
+outcome, in `run.json` and the Observer. A participant on an E2B or Modal desktop keeps going after
+one dropped connection on a screenshot or a `type` that did not finish. Ctrl-C after a remote run
+has finished keeps its result. The study is recorded in
+`docs/evidence/computer-use/full-day-study-2026-10-28.md`.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.154.0)
 
 ## 0.153.0: Claude participants receive JPEG screenshots (2026-10-28)
 
