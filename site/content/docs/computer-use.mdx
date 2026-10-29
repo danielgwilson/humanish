@@ -431,7 +431,8 @@ and says which ones E2B's egress proxy holds. While it runs:
   the provider's own port authentication guards the runner, and the credential stays in this
   process;
 - Ctrl-C stops the run as it stops a local one: the runner's run reclaims its participants, its
-  evidence is copied here and the runner is stopped;
+  evidence is copied here and the runner is stopped. After the participants finish, Ctrl-C stops
+  only the run's analysis, and the command exits with the run's own result;
 - closing the terminal leaves the run going. `npx humanish observe --run YOUR_RUN_ID` reconnects:
   it serves the live Observer again, follows the run to its end and copies it back, as the first
   command would have. `npx humanish reclaim --run YOUR_RUN_ID` stops it instead, with every
