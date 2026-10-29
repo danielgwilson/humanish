@@ -247,6 +247,9 @@ export async function followRemoteRun(args: {
   let syncAt = Date.now() + SYNC_EVERY_MS;
   let state: string | undefined;
   let stopAt: number | undefined;
+  // A stop that came while participants still ran. One that comes after only ends what follows
+  // them, such as the analysis, as Ctrl-C does in a local run, so the run's own result stands.
+  let stoppedRunning = false;
   let answeredAt = Date.now();
   // The run was started just before, so it is taken as alive until a read says otherwise.
   let alive = true;
@@ -287,7 +290,7 @@ export async function followRemoteRun(args: {
       // only whole copy of the evidence until a copy succeeds. It is kept only then: a run that
       // refused before its run directory existed has nothing to keep, and its own result says why.
       // Its result is not reported as the run's own, since the evidence is not here.
-      if ("error" in copied && stopAt === undefined && run.state !== undefined)
+      if ("error" in copied && !stoppedRunning && run.state !== undefined)
         return {
           runId,
           exitCode: 2,
@@ -295,7 +298,7 @@ export async function followRemoteRun(args: {
         };
       return await endRun(launch, runId, {
         // A run stopped from here exits as a local one does on that signal.
-        exitCode: stopAt === undefined ? run.result.exitCode : signals.exitCode,
+        exitCode: stoppedRunning ? signals.exitCode : run.result.exitCode,
         result: run.result.result,
         ...("files" in copied
           ? { files: copied.files }
@@ -306,7 +309,12 @@ export async function followRemoteRun(args: {
     }
     if (signals.requested === "detach") return { runId, exitCode: 0, detached: true };
     if (signals.requested === "stop" && stopAt === undefined) {
-      say("Stopping the remote run; its participants are reclaimed before it ends.");
+      stoppedRunning = state === undefined || state === "running";
+      say(
+        stoppedRunning
+          ? "Stopping the remote run; its participants are reclaimed before it ends."
+          : `Run ${runId}'s participants have finished; stopping its analysis, if it still runs, and copying its evidence back.`,
+      );
       stopAt = Date.now() + STOP_DEADLINE_MS;
       if (state === undefined)
         return await endRun(launch, runId, {
