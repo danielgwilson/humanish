@@ -3,7 +3,7 @@
 Two remote studies ran for 8 hours on a public movie-guessing game, on humanish 0.153.0. The
 OpenAI study had 2 participants who kept the game open all day and 18 visitors who arrived in
 three waves. The Claude study had one all-day participant on Modal. They are the first runs of
-that length and size. They found five bugs, fixed for 0.154.0, and two more that are filed.
+that length and size. They found five bugs, fixed for 0.154.0, and one more on analysis coverage that is filed.
 
 | Run | Route | Participants | Wall time | Result | Cost |
 | --- | --- | --- | --- | --- | --- |
@@ -118,7 +118,8 @@ Found while setting up or watching these runs, fixed for 0.154.0:
   participants, though its figures counted the 8 hours.
 
 Filed: analysis coverage of long runs. A separate check the same day found that a Ctrl-C during
-copy-back of a finished remote run printed the stop line and exited 130; its fix is in review.
+copy-back of a finished remote run printed the stop line and exited 130; it is fixed for 0.154.0
+too.
 
 ## Not verified
 
