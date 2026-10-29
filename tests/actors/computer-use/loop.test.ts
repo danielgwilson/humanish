@@ -1072,6 +1072,100 @@ describe("runComputerUseLoop", () => {
     ).toBe(true);
   });
 
+  describe("an observe() whose connection to the desktop drops", () => {
+    const doneAtOnce: CuaProvider = {
+      id: "done-at-once",
+      version: "d",
+      capabilities: FAKE_CAPS,
+      nextTurn: async () => ({ actions: [], pendingSafetyChecks: [], done: true, message: "done" }),
+    };
+    const dropped = (): Error =>
+      new TypeError("fetch failed", {
+        cause: Object.assign(new Error("other side closed"), { code: "UND_ERR_SOCKET" }),
+      });
+    const run = (executor: CuaExecutor, slept: number[]) =>
+      runComputerUseLoop({
+        instructions: "go",
+        provider: doneAtOnce,
+        executor,
+        persona,
+        redaction: defaultRedactionHooks,
+        timeoutMs: 10_000_000,
+        now: monotonicClock(),
+        sleep: async (ms) => {
+          slept.push(ms);
+        },
+      });
+
+    it("is asked again once after a pause, and the session goes on", async () => {
+      let observes = 0;
+      const slept: number[] = [];
+      const result = await run(
+        {
+          observe: async () => {
+            observes += 1;
+            if (observes === 1) throw dropped();
+            return { screenshot: frame(), stateSignature: "s0" };
+          },
+          execute: async () => {},
+        },
+        slept,
+      );
+      expect(observes).toBe(2);
+      expect(slept).toEqual([3_000]);
+      expect(result.completionReason).toBe("goal_satisfied");
+      expect(
+        result.trace.items.find((item) => item.title === "observation failed; retrying once"),
+      ).toMatchObject({ kind: "notice", status: "warn" });
+    });
+
+    it("ends the session when the second look fails too", async () => {
+      let observes = 0;
+      const result = await run(
+        {
+          observe: async () => {
+            observes += 1;
+            throw dropped();
+          },
+          execute: async () => {},
+        },
+        [],
+      );
+      expect(observes).toBe(2);
+      expect(result.completionReason).toBe("actor_error");
+    });
+
+    it("is not asked again by an executor that cannot replay a request, or for an error that is not a dropped connection", async () => {
+      let observes = 0;
+      const failClosed = await run(
+        {
+          stallRecovery: "fail_closed",
+          observe: async () => {
+            observes += 1;
+            throw dropped();
+          },
+          execute: async () => {},
+        },
+        [],
+      );
+      expect(observes).toBe(1);
+      expect(failClosed.completionReason).toBe("actor_error");
+      observes = 0;
+      const broken = await run(
+        {
+          observe: async () => {
+            observes += 1;
+            throw new RangeError("frame has no pixels");
+          },
+          execute: async () => {},
+        },
+        [],
+      );
+      expect(observes).toBe(1);
+      expect(broken.completionReason).toBe("actor_error");
+    });
+  });
+
   it("a raceSessionDeadline deadline during execute() propagates (timed_out), never swallowed as a skipped action", async () => {
     let t = 0;
     const now = (): number => t;
