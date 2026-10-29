@@ -28,6 +28,11 @@ The Unreleased section holds the full notes for the next version until it is tag
   hold part of the text, and is not retried. Before, the participant ended with `actor_error`.
 - A click at x 0 or y 0 on an E2B or Modal desktop moves the pointer there first. Before, it
   clicked wherever the pointer was, while the trace recorded the edge coordinate.
+- A plan whose participants include some with their own end or cap says so: "at most 4 run at once
+  when every session uses its full budget: its own end or cap, or else 40m", and the fan-out line
+  gives the study budget "per participant without its own end or cap". Before, a roster with two
+  8-hour participants read as if every session used the 40-minute budget, though the figures
+  already counted the 8 hours.
 
 ## 0.153.0: Claude participants receive JPEG screenshots (2026-10-28)
 

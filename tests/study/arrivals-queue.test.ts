@@ -25,6 +25,7 @@ describe("planArrivals", () => {
       longestWaitMs: 0,
       lastEndMs: 330 * S,
       sessionMs: 120 * S,
+      ownBudgets: false,
     });
   });
 
@@ -54,6 +55,7 @@ describe("planArrivals", () => {
       longestWaitMs: 60 * S,
       lastEndMs: 120 * S,
       sessionMs: 60 * S,
+      ownBudgets: false,
     });
   });
 

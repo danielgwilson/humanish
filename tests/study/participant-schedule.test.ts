@@ -14,7 +14,7 @@ import {
   participantRunsAndPlan,
   scheduledParticipantDeps,
 } from "../../src/routes/computer-use/participant-runs.js";
-import { startingWithTheRun } from "../../src/study/arrivals.js";
+import { describeArrivals, startingWithTheRun } from "../../src/study/arrivals.js";
 import { parseStudy } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import type { ComputerUsePlan, PlanResult } from "../../src/study/plan-types.js";
@@ -72,7 +72,11 @@ describe("a roster of starts, ends and caps", () => {
       longestWaitMs: 0,
       lastEndMs: 2 * HOURS + 5 * MIN,
       sessionMs: 1 * MIN,
+      ownBudgets: true,
     });
+    expect(describeArrivals(planned.arrivals)).toBe(
+      "the first participant starts at +0s and the last at +10m; at most 4 run at once when every session uses its full budget: its own end or cap, or else 1m.",
+    );
     expect(planned.warnings).toBeUndefined();
   });
 

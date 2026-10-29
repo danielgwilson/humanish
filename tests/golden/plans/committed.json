@@ -128,7 +128,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 1200000,
-        "sessionMs": 1200000
+        "sessionMs": 1200000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 1200000,
       "sandboxMs": 3600000,
@@ -233,7 +234,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 600000,
-        "sessionMs": 600000
+        "sessionMs": 600000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 600000,
       "sandboxMs": 3000000,
@@ -340,7 +342,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 600000,
-        "sessionMs": 600000
+        "sessionMs": 600000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 600000,
       "sandboxMs": 3000000,
@@ -455,7 +458,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 600000,
-        "sessionMs": 600000
+        "sessionMs": 600000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 600000,
       "sandboxMs": 3000000,
@@ -612,7 +616,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 300000,
-        "sessionMs": 300000
+        "sessionMs": 300000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 300000,
       "sandboxMs": 2700000,
@@ -757,7 +762,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 1200000,
-        "sessionMs": 1200000
+        "sessionMs": 1200000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 1200000,
       "sandboxMs": 3600000,
@@ -929,7 +935,8 @@
         "waiting": 2,
         "longestWaitMs": 900000,
         "lastEndMs": 1800000,
-        "sessionMs": 900000
+        "sessionMs": 900000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 900000,
       "sandboxMs": 1500000,
@@ -1308,7 +1315,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 240000,
-        "sessionMs": 240000
+        "sessionMs": 240000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 240000,
       "sandboxMs": 2640000,
@@ -1456,7 +1464,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 420000,
-        "sessionMs": 420000
+        "sessionMs": 420000,
+        "ownBudgets": false
       },
       "sessionTimeoutMs": 420000,
       "brain": {
@@ -1591,7 +1600,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 240000,
-        "sessionMs": 240000
+        "sessionMs": 240000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 240000,
       "sandboxMs": 2640000,
@@ -1734,7 +1744,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 1200000,
-        "sessionMs": 1200000
+        "sessionMs": 1200000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 1200000,
       "sandboxMs": 3600000,
@@ -1972,7 +1983,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 600000,
-        "sessionMs": 600000
+        "sessionMs": 600000,
+        "ownBudgets": false
       },
       "sessionTimeoutMs": 600000,
       "brain": {
@@ -2160,7 +2172,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 900000,
-        "sessionMs": 900000
+        "sessionMs": 900000,
+        "ownBudgets": false
       },
       "sessionTimeoutMs": 900000,
       "brain": {
@@ -2421,7 +2434,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 1080000,
-        "sessionMs": 1080000
+        "sessionMs": 1080000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 1080000,
       "sandboxMs": 3480000,
@@ -2608,7 +2622,8 @@
         "waiting": 0,
         "longestWaitMs": 0,
         "lastEndMs": 600000,
-        "sessionMs": 600000
+        "sessionMs": 600000,
+        "ownBudgets": false
       },
       "sessionBudgetMs": 600000,
       "sandboxMs": 1200000,
