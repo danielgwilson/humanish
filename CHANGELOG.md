@@ -31,6 +31,10 @@ The Unreleased section holds the full notes for the next version until it is tag
   hold part of the text, and is not retried. Before, the participant ended with `actor_error`.
 - A click at x 0 or y 0 on an E2B or Modal desktop moves the pointer there first. Before, it
   clicked wherever the pointer was, while the trace recorded the edge coordinate.
+- A computer-use participant whose screenshot fails because the connection to its desktop dropped
+  (`fetch failed`, a reset socket, or gRPC UNAVAILABLE) is given a second look 3 seconds later, with
+  a warning in its trace. A second failure still ends it. Before, one dropped connection ended an
+  8-hour participant with `actor_error` 3.5 hours in.
 
 ## 0.153.0: Claude participants receive JPEG screenshots (2026-10-28)
 
