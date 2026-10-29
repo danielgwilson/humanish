@@ -31,7 +31,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 - A computer-use participant whose screenshot fails because the connection to its desktop dropped
   (`fetch failed`, a reset socket, or gRPC UNAVAILABLE) is given a second look 3 seconds later, with
   a warning in its trace. A second failure still ends it. Before, one dropped connection ended an
-  8-hour participant with `actor_error` 3.5 hours in.
+  8-hour participant with `actor_error` 3 hours 42 minutes in.
+- A plan whose participants include some with their own end or cap says so: "at most 4 run at once
+  when every session uses its full budget: its own end or cap, or else 40m", and the fan-out line
+  gives the study budget "per participant without its own end or cap". Before, a roster with two
+  8-hour participants read as if every session used the 40-minute budget, though the figures
+  already counted the 8 hours.
 
 ## 0.153.0: Claude participants receive JPEG screenshots (2026-10-28)
 
