@@ -606,4 +606,57 @@ describe("following a remote run", () => {
       await rm(cwd, { recursive: true, force: true });
     }
   });
+
+  it.each([
+    ["running", 130, /participants are reclaimed/],
+    ["finished", 1, /participants have finished/],
+  ])(
+    "after Ctrl-C on a %s run, exits %d with the result its stopped watch writes",
+    async (state, exitCode, stopLine) => {
+      const { home, runner, runDir } = await localRunner();
+      const cwd = await mkdtemp(path.join(tmpdir(), "humanish-follow-"));
+      const created = await createRunArtifactPaths(cwd, "cua-remote");
+      if (!created.ok) throw new Error("run directory not created");
+      await writeFile(
+        path.join(runDir, "status.json"),
+        `${JSON.stringify({ runId: "cua-remote", state }, null, 2)}\n`,
+      );
+      // Named as the runner's watch, and like it, writes its result when the stop reaches it.
+      const result = path.join(home, ".humanish-remote", "result.json");
+      const written = path.join(home, "written.json");
+      // The run's own exit is 1, since a 0 becomes 2 here, where its sandboxes cannot be reclaimed.
+      await writeFile(written, `${JSON.stringify({ exitCode: 1, result: { ok: true } })}\n`);
+      const watch = spawn(
+        "bash",
+        [
+          "-c",
+          `exec -a 'humanish watch s.yaml --run-id cua-remote --local' bash -c 'trap "cp ${written} ${result}; exit 0" TERM; sleep 30 & wait'`,
+        ],
+        { stdio: "ignore" },
+      );
+      const said: string[] = [];
+      const signals = watchSignals();
+      try {
+        const following = followRemoteRun({
+          launch: { cwd, env: {}, say: (line) => said.push(line) },
+          runner,
+          paths: created.paths,
+          runId: "cua-remote",
+          signals,
+          proxyUrl: undefined,
+        });
+        setTimeout(() => process.emit("SIGINT"), 500);
+        const outcome = await following;
+        expect(outcome).toMatchObject({ runId: "cua-remote", exitCode, result: { ok: true } });
+        expect(said.filter((line) => /^Stopping|participants/.test(line))).toEqual([
+          expect.stringMatching(stopLine),
+        ]);
+      } finally {
+        watch.kill();
+        signals.dispose();
+        await rm(home, { recursive: true, force: true });
+        await rm(cwd, { recursive: true, force: true });
+      }
+    },
+  );
 });
