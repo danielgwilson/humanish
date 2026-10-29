@@ -116,7 +116,7 @@ Found while setting up or watching these runs, fixed for 0.154.0:
   in #2006.
 - #2007: one dropped connection on a screenshot ended an 8-hour participant. Fixed in #2008.
 - The plan line said "when every session uses its 40m budget" for a roster with two 8-hour
-  participants, though its figures counted the 8 hours.
+  participants, though its figures counted the 8 hours. Fixed in #2011.
 
 Filed: #2009 (a Ctrl-C during copy-back of a finished remote run prints the stop line and exits
 130) and #2010 (analysis coverage of long runs).
