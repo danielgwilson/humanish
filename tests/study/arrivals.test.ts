@@ -165,6 +165,7 @@ describe("the plan's schedule", () => {
       longestWaitMs: 0,
       lastEndMs: 330_000,
       sessionMs: 120_000,
+      ownBudgets: false,
     });
   });
 

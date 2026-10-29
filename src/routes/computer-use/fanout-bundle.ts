@@ -57,7 +57,7 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
     at: args.run.createdAt,
     level: "info",
     type: "cua-lab.fanout.plan",
-    message: `Fan-out plan: ${plural(args.participantPlan.laneCount, "participant")} (${args.participantPlan.strategy}), concurrency ${args.participantPlan.concurrency}, ${plural(args.participantPlan.waves, "wave")}; session budget ${Math.round(args.participantPlan.perLaneSessionBudgetMs / 1000)}s per participant; worst-case ~${args.participantPlan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}.${args.participantPlan.schedule === undefined ? "" : ` Schedule: ${describeArrivals(args.participantPlan.schedule)}`} Participants: ${args.participantPlan.lanes.map(formatParticipantPlanEntry).join(", ")}.`,
+    message: `Fan-out plan: ${plural(args.participantPlan.laneCount, "participant")} (${args.participantPlan.strategy}), concurrency ${args.participantPlan.concurrency}, ${plural(args.participantPlan.waves, "wave")}; session budget ${Math.round(args.participantPlan.perLaneSessionBudgetMs / 1000)}s per participant${args.participantPlan.schedule?.ownBudgets === true ? " without its own end or cap" : ""}; worst-case ~${args.participantPlan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}.${args.participantPlan.schedule === undefined ? "" : ` Schedule: ${describeArrivals(args.participantPlan.schedule)}`} Participants: ${args.participantPlan.lanes.map(formatParticipantPlanEntry).join(", ")}.`,
   });
   return events;
 }
