@@ -49,6 +49,11 @@ export interface RemotePlan {
    * never held in an egress proxy.
    */
   readonly plainKeys: readonly string[];
+  /**
+   * Names the run sends as an `Authorization: Bearer` header to one URL the study names, keyed by
+   * name, so a provider's egress proxy can hold them for that URL's host.
+   */
+  readonly bearerTokens: Readonly<Record<string, string>>;
   /** The study's route, which names its run. */
   readonly route: "computer-use" | "terminal";
   /**
@@ -126,6 +131,7 @@ export function planRemoteRun(args: {
       ].sort(),
       alternatives: [...analystKeyNames(plan), ...route.alternatives],
       plainKeys: route.plainKeys,
+      bearerTokens: route.bearerTokens,
       settings,
     },
   };
@@ -144,6 +150,7 @@ interface RemoteRoute {
   /** Key names of which the run reads only the first one set. */
   alternatives: (readonly string[])[];
   plainKeys: string[];
+  bearerTokens: Record<string, string>;
 }
 
 function computerUseRoute(config: StudyConfig, plan: ComputerUsePlan): RemoteRoute | string {
@@ -157,8 +164,19 @@ function computerUseRoute(config: StudyConfig, plan: ComputerUsePlan): RemoteRou
   if (servedHere(runner.subject.appUrl))
     return "its app URL points at this machine or a private network, which the runner cannot reach.";
   if (plan.rerun !== undefined) return "a rerun reads a run on this machine.";
-  if (config.comms !== undefined)
-    return "its email setup reads files and connections on this machine.";
+  const email = config.comms?.email;
+  const external = email?.kind === "fake" ? email.external : undefined;
+  if (email !== undefined && external === undefined)
+    return "its email setup reads files and connections on this machine. An email catch declared under comms.email.external at a public address runs remotely.";
+  if (external !== undefined) {
+    if (servedHere(external.catchBaseUrl))
+      return "its comms.email.external.catchBaseUrl points at this machine or a private network, which the runner cannot drain.";
+    if (external.inboxBaseUrl !== undefined && servedHere(external.inboxBaseUrl))
+      return "its comms.email.external.inboxBaseUrl points at this machine or a private network, which the runner's participants cannot open.";
+    const token = external.authTokenEnv;
+    if (token !== undefined && readsAsKey(plan, runner.provider, token))
+      return `its comms.email.external.authTokenEnv names ${token}, which the run also reads as a provider key. Give the catch token its own variable.`;
+  }
   return {
     route: "computer-use",
     provider: runner.provider,
@@ -170,7 +188,28 @@ function computerUseRoute(config: StudyConfig, plan: ComputerUsePlan): RemoteRou
     uploads: [],
     alternatives: [],
     plainKeys: [],
+    bearerTokens:
+      external?.authTokenEnv === undefined
+        ? {}
+        : { [external.authTokenEnv]: external.catchBaseUrl },
   };
+}
+
+/**
+ * Whether the run reads `name` as a model, analysis or provider key. A catch token by that name
+ * would go to the catch and the key's own host both, and a proxy can hold it for only one.
+ */
+function readsAsKey(plan: StudyPlan, provider: SandboxProviderId, name: string): boolean {
+  return (
+    PROVIDER_KEYS[provider].includes(name) ||
+    analysisReads(plan, name) ||
+    plan.requirements.some((requirement) =>
+      requirement.kind === "key"
+        ? requirement.name === name
+        : requirement.kind === "key-one-of" &&
+          (requirement.names as readonly string[]).includes(name),
+    )
+  );
 }
 
 /**
@@ -204,6 +243,7 @@ function terminalRoute(
     // analysis reads it, and is then held as usual.
     alternatives: analysisReads(plan, "OPENAI_API_KEY") ? [] : [TERMINAL_RUNTIME_KEY_NAMES],
     plainKeys: [...TERMINAL_RUNTIME_KEY_NAMES],
+    bearerTokens: {},
   };
 }
 

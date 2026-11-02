@@ -108,6 +108,52 @@ describe("keys held in E2B's egress proxy", () => {
     ).toThrow("generativelanguage.googleapis.com");
   });
 
+  it("holds a study's bearer token on the host the study names for it", () => {
+    const held = holdKeysInEgress(
+      { SYNTHETIC_CATCH_TOKEN: "synthetic-catch-token", OPENAI_API_KEY: "synthetic-openai" },
+      { bearerTokens: { SYNTHETIC_CATCH_TOKEN: "https://catch.example.com/" } },
+    );
+    const network: InstalledSdkNetwork = held.network;
+    expect(network).toMatchObject({ rules: { "catch.example.com": expect.any(Array) } });
+    expect(held.network.rules?.["catch.example.com"]).toEqual([
+      { transform: { headers: { Authorization: "Bearer synthetic-catch-token" } } },
+    ]);
+    expect(held.env.SYNTHETIC_CATCH_TOKEN).toBe(EGRESS_PLACEHOLDER);
+    expect(held.held).toEqual(["OPENAI_API_KEY", "SYNTHETIC_CATCH_TOKEN"]);
+  });
+
+  it.each([
+    "http://catch.example.com/",
+    "https://203.0.113.7/",
+    "https://[2001:db8::7]/",
+    "https://catch.example.com:8443/",
+  ])("passes a bearer token for %s through, as no transform applies to it", (url) => {
+    expect(
+      holdKeysInEgress(
+        { SYNTHETIC_CATCH_TOKEN: "synthetic-catch-token" },
+        { bearerTokens: { SYNTHETIC_CATCH_TOKEN: url } },
+      ),
+    ).toEqual({ network: {}, env: { SYNTHETIC_CATCH_TOKEN: "synthetic-catch-token" }, held: [] });
+  });
+
+  it("holds a bearer token for a domain name written with its trailing dot", () => {
+    const held = holdKeysInEgress(
+      { SYNTHETIC_CATCH_TOKEN: "synthetic-catch-token" },
+      { bearerTokens: { SYNTHETIC_CATCH_TOKEN: "https://Catch.Example.com./" } },
+    );
+    expect(Object.keys(held.network.rules ?? {})).toEqual(["catch.example.com"]);
+  });
+
+  it("refuses a bearer host for a name that already goes to a fixed host", () => {
+    const refuse = () =>
+      holdKeysInEgress(
+        { OPENAI_API_KEY: "synthetic-openai" },
+        { bearerTokens: { OPENAI_API_KEY: "https://catch.example.com/" } },
+      );
+    expect(refuse).toThrow("OPENAI_API_KEY");
+    expect(refuse).not.toThrow(/synthetic/);
+  });
+
   it("holds nothing and adds no rules when no header key is set", () => {
     expect(holdKeysInEgress({ MODAL_ENVIRONMENT: "main" })).toEqual({
       network: {},

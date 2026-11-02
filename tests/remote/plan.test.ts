@@ -2,7 +2,9 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { runnerKeys } from "../../src/remote/launch.js";
 import { planRemoteRun } from "../../src/remote/plan.js";
+import { EGRESS_PLACEHOLDER } from "../../src/substrates/e2b/egress-keys.js";
 import { parseStudy } from "../../src/study/config.js";
 import { planStudy } from "../../src/study/plan.js";
 import type { StudyConfig } from "../../src/study/types.js";
@@ -148,6 +150,86 @@ describe("a computer-use study on hosted desktops with a public app", () => {
     );
     if (!result.ok) throw new Error(result.reason);
     expect(result.plan.settings).toEqual({});
+  });
+});
+
+describe("a computer-use study whose email catch the adopter hosts", () => {
+  const withCatch = (external: Record<string, string>, target = "e2b-desktop") =>
+    remote(
+      study("cuAppUrl", {
+        ...PUBLIC_APP,
+        execution: { target, timeoutMs: 600_000 },
+        comms: { email: { kind: "fake", external } },
+      }),
+    );
+  const env = {
+    E2B_API_KEY: "synthetic-e2b",
+    MODAL_TOKEN_ID: "synthetic-modal-id",
+    MODAL_TOKEN_SECRET: "synthetic-modal-secret",
+    OPENAI_API_KEY: "synthetic-openai",
+    SYNTHETIC_CATCH_TOKEN: "synthetic-catch-token",
+  };
+
+  it("runs remotely, and on E2B the proxy holds the catch token for an HTTPS catch", () => {
+    const result = withCatch({
+      catchBaseUrl: "https://catch.example.com/",
+      authTokenEnv: "SYNTHETIC_CATCH_TOKEN",
+    });
+    if (!result.ok) throw new Error(result.reason);
+    const keys = runnerKeys(result.plan, env);
+    expect(keys.held).toContain("SYNTHETIC_CATCH_TOKEN");
+    expect(keys.env.SYNTHETIC_CATCH_TOKEN).toBe(EGRESS_PLACEHOLDER);
+    expect(keys.network.rules?.["catch.example.com"]).toEqual([
+      { transform: { headers: { Authorization: "Bearer synthetic-catch-token" } } },
+    ]);
+  });
+
+  it("sends the token as its value to an http catch and to a Modal runner", () => {
+    const http = withCatch({
+      catchBaseUrl: "http://catch.example.com/",
+      authTokenEnv: "SYNTHETIC_CATCH_TOKEN",
+    });
+    const modal = withCatch(
+      { catchBaseUrl: "https://catch.example.com/", authTokenEnv: "SYNTHETIC_CATCH_TOKEN" },
+      "modal-desktop",
+    );
+    for (const result of [http, modal]) {
+      if (!result.ok) throw new Error(result.reason);
+      const keys = runnerKeys(result.plan, env);
+      expect(keys.sent).toContain("SYNTHETIC_CATCH_TOKEN");
+      expect(keys.env.SYNTHETIC_CATCH_TOKEN).toBe("synthetic-catch-token");
+    }
+  });
+
+  it.each([
+    [{ catchBaseUrl: "http://127.0.0.1:8025/" }, "catchBaseUrl"],
+    [{ catchBaseUrl: "http://10.0.0.5:8025/" }, "catchBaseUrl"],
+    [{ catchBaseUrl: "http://catch.local/" }, "catchBaseUrl"],
+    [
+      { catchBaseUrl: "https://catch.example.com/", inboxBaseUrl: "http://192.168.1.5:8026/" },
+      "inboxBaseUrl",
+    ],
+    [
+      { catchBaseUrl: "https://catch.example.com/", authTokenEnv: "OPENAI_API_KEY" },
+      "authTokenEnv names OPENAI_API_KEY",
+    ],
+    [
+      { catchBaseUrl: "https://catch.example.com/", authTokenEnv: "E2B_API_KEY" },
+      "authTokenEnv names E2B_API_KEY",
+    ],
+  ])("is refused for %j, naming %s", (external, field) => {
+    expect(withCatch(external)).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining(field),
+    });
+  });
+
+  it("is refused for a saved email connection, which lives on this machine", () => {
+    const email = { kind: "real", connection: "synthetic-inbox" };
+    expect(remote(study("cuAppUrl", { ...PUBLIC_APP, comms: { email } }))).toMatchObject({
+      ok: false,
+      reason: expect.stringContaining("email setup reads files"),
+    });
   });
 });
 

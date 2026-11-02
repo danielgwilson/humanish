@@ -74,6 +74,10 @@ retains its separate hosted-route and management-credential requirements.
 
 ## Existing external catches
 
+A study with an external catch runs remotely by default when `catchBaseUrl` and `inboxBaseUrl`
+are on the public internet: the runner reads `/deliveries` from it, so it must be reachable from the provider's
+network with the token set. A catch on this machine or a private network keeps the run here.
+
 Upgrade the humanish installation that runs `humanish comms catch` and **restart that
 catch process**, as well as upgrading the installation that starts the study. Updating
 only the study client leaves an older catch without participant routes.

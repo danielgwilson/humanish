@@ -574,7 +574,7 @@ export interface RunnerKeys {
 
 /**
  * How each sandbox provider's runner receives the keys forwarded to it. E2B holds each key that
- * travels as a header to a fixed host in an E2B header transform: the run gets a placeholder, and
+ * travels as a header to one host in an E2B header transform: the run gets a placeholder, and
  * the system CA bundle that holds E2B's proxy CA, which Node does not read by default. Modal has no
  * such transform, so a Modal runner receives every key as an environment variable. The first key
  * set of the plan's `plainKeys` reaches the run as its value on E2B too. A new sandbox provider
@@ -587,17 +587,22 @@ const KEY_PLACEMENT: Readonly<
       forwarded: Record<string, string>,
       routing: E2BNetworkOptions,
       plainKeys: readonly string[],
+      bearerTokens: Readonly<Record<string, string>>,
     ) => RunnerKeys
   >
 > = {
-  e2b: (forwarded, routing, plainKeys) => {
+  e2b: (forwarded, routing, plainKeys, bearerTokens) => {
     const plain = Object.fromEntries(
       Object.entries(forwarded).filter(([name]) => plainKeys.includes(name)),
     );
     const holdable = Object.fromEntries(
       Object.entries(forwarded).filter(([name]) => !plainKeys.includes(name)),
     );
-    const held = holdKeysInEgress(holdable, { domain: forwarded.E2B_DOMAIN, existing: routing });
+    const held = holdKeysInEgress(holdable, {
+      domain: forwarded.E2B_DOMAIN,
+      existing: routing,
+      bearerTokens,
+    });
     const env = { ...held.env, ...plain };
     return {
       env: held.held.length === 0 ? env : { ...env, NODE_EXTRA_CA_CERTS: E2B_SYSTEM_CA_BUNDLE },
@@ -622,7 +627,10 @@ const KEY_PLACEMENT: Readonly<
  * them (KEY_PLACEMENT). The plan's settings replace this machine's values of the same names.
  */
 export function runnerKeys(
-  remote: Pick<RemotePlan, "provider" | "envNames" | "alternatives" | "plainKeys" | "settings">,
+  remote: Pick<
+    RemotePlan,
+    "provider" | "envNames" | "alternatives" | "plainKeys" | "bearerTokens" | "settings"
+  >,
   env: Readonly<Record<string, string | undefined>>,
 ): RunnerKeys {
   const set = (name: string) => (env[name]?.trim() ?? "") !== "";
@@ -640,6 +648,7 @@ export function runnerKeys(
     forwarded,
     { allowPublicTraffic: false },
     plain === undefined ? [] : [plain],
+    remote.bearerTokens,
   );
 }
 
