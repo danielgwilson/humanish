@@ -450,7 +450,10 @@ back through the E2B API, as [trust boundaries](/docs/trust-boundaries) describe
 keys are in the run's environment. A terminal study's runtime key (`CODEX_API_KEY` or
 `OPENAI_API_KEY`) enters the runner's environment on both providers, because the run in the runner
 places it in the shell sandbox's own egress rule or Codex command; the participant gets it as a
-local run would give it. It costs
+local run would give it. A study with an email catch you host (`comms.email.external`) sends its
+catch token, the variable `authTokenEnv` names, too: on E2B the egress proxy holds it for an
+`https://` catch at a domain name on the default port, and any other catch gets it in the runner's
+environment. It costs
 one more sandbox for the length of the study, and on E2B it counts against your concurrent
 sandboxes: the run in the runner holds its desktops to your limit less one. A study that declares
 no `execution.concurrency` runs remotely while the most participants its schedule runs at once
@@ -461,7 +464,9 @@ it. On Modal it has 2 CPU and 4 GiB.
 
 A study runs remotely when it is a computer-use study whose participants use `e2b-desktop` or
 `modal-desktop`, with a model API key (not a local agent) and an `app-url` subject on the public
-internet, or a live terminal study on `e2b-terminal` or `modal-terminal`. The run must use none of
+internet, or a live terminal study on `e2b-terminal` or `modal-terminal`. A computer-use study with
+`comms.email` runs remotely only with an email catch you host whose `catchBaseUrl` and
+`inboxBaseUrl` are on the public internet; the runner drains it and the bundle gets the same comms evidence. The run must use none of
 `--scorer`, `--count`, `--rerun-failed-from`, `--participants` or `--expose`, and a terminal
 study's `subject.product.upload` must be inside the project, which the runner receives. Any other
 hosted study runs on this machine, and the command says why. To choose:

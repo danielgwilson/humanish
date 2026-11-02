@@ -563,7 +563,8 @@ SIGTERM stops the run: humanish marks it interrupted and stops its sandboxes.
   the run used. On E2B the OpenAI, Gemini and E2B keys stay in E2B's egress proxy and the runner
   holds placeholders; a Modal runner receives them as environment variables. A terminal study's
   runtime key enters the runner's environment on both, since the run places it in the shell
-  sandbox.
+  sandbox. A study with `comms.email.external` runs remotely when its `catchBaseUrl` is public;
+  on E2B its catch token stays in the proxy for an `https://` catch at a domain name on port 443.
 - Start a study that can outlive your shell call in tmux, for example
   `tmux new -d -s study 'npx humanish run <study> --json --no-open > run-result.json 2> run.log'`.
   `--detach` only skips the Observer server at the end; it does not move the run to the background.

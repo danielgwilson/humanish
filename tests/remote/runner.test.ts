@@ -399,6 +399,7 @@ describe("the keys a runner receives", () => {
     ],
     alternatives: [["GEMINI_API_KEY", "GOOGLE_API_KEY"]],
     plainKeys: [],
+    bearerTokens: {},
     settings: {},
   };
   const env = {
@@ -442,6 +443,7 @@ describe("the keys a runner receives", () => {
       envNames: ["ANTHROPIC_API_KEY"],
       alternatives: [],
       plainKeys: [],
+      bearerTokens: {},
       settings: {},
     };
     const set = { ANTHROPIC_API_KEY: "synthetic-anthropic" };
@@ -461,6 +463,7 @@ describe("the keys a runner receives", () => {
         envNames: ["E2B_API_KEY", "E2B_DOMAIN"],
         alternatives: [],
         plainKeys: [],
+        bearerTokens: {},
         settings: {},
       },
       { E2B_API_KEY: "synthetic-e2b", E2B_DOMAIN: "e2b.example.test" },
@@ -476,6 +479,7 @@ describe("the keys a runner receives", () => {
         envNames: ["CODEX_API_KEY", "E2B_API_KEY", "OPENAI_API_KEY"],
         alternatives: [],
         plainKeys: ["CODEX_API_KEY", "OPENAI_API_KEY"],
+        bearerTokens: {},
         settings: {},
       },
       env,
@@ -496,6 +500,7 @@ describe("the keys a runner receives", () => {
       provider: "e2b" as const,
       envNames: ["CODEX_API_KEY", "OPENAI_API_KEY"],
       plainKeys: ["CODEX_API_KEY", "OPENAI_API_KEY"],
+      bearerTokens: {},
       settings: {},
     };
     // The analysis reads OPENAI_API_KEY, so it goes to the runner, held in the proxy.
@@ -521,6 +526,7 @@ describe("the keys a runner receives", () => {
         envNames: ["GEMINI_API_KEY", "GOOGLE_API_KEY", "MODAL_TOKEN_ID", "OPENAI_API_KEY"],
         alternatives: [["GEMINI_API_KEY", "GOOGLE_API_KEY"]],
         plainKeys: [],
+        bearerTokens: {},
         settings: {},
       },
       { ...env, MODAL_TOKEN_ID: "synthetic-modal", OPENAI_API_KEY: " " },
@@ -535,6 +541,28 @@ describe("the keys a runner receives", () => {
   });
 });
 
+describe("an email catch token on the runner", () => {
+  it("holds a catch token on the catch's host on E2B and sends it to a Modal runner", () => {
+    const plan = {
+      envNames: ["SYNTHETIC_CATCH_TOKEN"],
+      alternatives: [],
+      plainKeys: [],
+      bearerTokens: { SYNTHETIC_CATCH_TOKEN: "https://catch.example.com/" },
+      settings: {},
+    };
+    const set = { SYNTHETIC_CATCH_TOKEN: "synthetic-catch-token" };
+    const e2b = runnerKeys({ ...plan, provider: "e2b" }, set);
+    expect(e2b.held).toEqual(["SYNTHETIC_CATCH_TOKEN"]);
+    expect(e2b.env.SYNTHETIC_CATCH_TOKEN).toBe(EGRESS_PLACEHOLDER);
+    expect(e2b.network.rules?.["catch.example.com"]).toEqual([
+      { transform: { headers: { Authorization: "Bearer synthetic-catch-token" } } },
+    ]);
+    const modal = runnerKeys({ ...plan, provider: "modal" }, set);
+    expect(modal.env).toEqual(set);
+    expect(modal.sent).toEqual(["SYNTHETIC_CATCH_TOKEN"]);
+  });
+});
+
 describe("the plan's settings", () => {
   it("replace this machine's values of the same names", () => {
     const keys = runnerKeys(
@@ -543,6 +571,7 @@ describe("the plan's settings", () => {
         envNames: ["E2B_API_KEY", "HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES"],
         alternatives: [],
         plainKeys: [],
+        bearerTokens: {},
         settings: { HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: "99" },
       },
       { E2B_API_KEY: "synthetic-e2b", HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: "100" },
