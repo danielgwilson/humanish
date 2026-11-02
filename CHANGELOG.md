@@ -8,16 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.155.0: Studies with an email catch you host run remotely (2026-11-02)
 
-- A computer-use study with an email catch you host (`comms.email.external`) runs remotely by
-  default when its `catchBaseUrl` is on the public internet. The runner drains the catch and
-  writes the same comms evidence a local run writes. On E2B, the catch token named by
-  `authTokenEnv` stays in E2B's egress proxy for an `https://` catch at a domain name on the
-  default port, and the runner gets a placeholder; otherwise it enters the runner's environment.
-  A `catchBaseUrl` or `inboxBaseUrl` on this machine or a private network, or an `authTokenEnv`
-  that names a provider key the run reads, keeps the study here and says so. A saved real-inbox
-  connection still keeps it here.
+humanish 0.155.0 runs a computer-use study with `comms.email.external` remotely by default when
+its catch and inbox are on the public internet, so a study whose participants confirm by email no
+longer needs a machine that stays awake. The runner drains the catch and the bundle gets the same
+comms evidence a local run writes. On E2B, the catch token stays in E2B's egress proxy for an
+`https://` catch at a domain name on the default port.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.155.0)
 
 ## 0.154.0: Day-long studies with arrivals run remotely and show live status (2026-10-29)
 
