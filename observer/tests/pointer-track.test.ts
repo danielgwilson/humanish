@@ -98,6 +98,22 @@ describe("framePointers", () => {
     ).toBe(true);
     expect(seen.at(-1)).toEqual({ point: { x: 100, y: 100 }, pressedAgoMs: null, held: false });
   });
+});
+
+describe("framePointers at the edges of the evidence", () => {
+  const click = row({
+    id: "click-1",
+    frameIndex: 0,
+    atMs: 18_000,
+    coord: { x: 400, y: 300 },
+    pointerPath: [{ x: 400, y: 300 }],
+  });
+  const move = row({
+    id: "move-1",
+    frameIndex: 1,
+    atMs: 25_000,
+    pointerPath: [{ x: 100, y: 100 }],
+  });
 
   it("draws no movement for untimed captures, only where the pointer rests at each", () => {
     const untimed = [
@@ -146,6 +162,27 @@ describe("framePointers", () => {
     expect(pointerAt(second!, 1_000).point).toBeNull();
     expect(pointerAt(second!, 4_100)).toMatchObject({ point: { x: 60, y: 40 }, pressedAgoMs: 100 });
     expect(pointerAt(second!, 4_000 + PRESS_RING_MS).point).toBeNull();
+  });
+
+  it("draws a recorded glide through its own points, one every 16 ms, then lands", () => {
+    const glided = row({
+      id: "glided",
+      frameIndex: 1,
+      atMs: 25_000,
+      coord: { x: 430, y: 300 },
+      pointerPath: [{ x: 430, y: 300 }],
+      pointerApproach: [
+        { x: 400, y: 300 },
+        { x: 410, y: 290 },
+        { x: 420, y: 295 },
+      ],
+    });
+    const [, second] = framePointers(model([click, glided]), "p1");
+    const move = second!.moves[0]!;
+    expect(move.endMs - move.startMs).toBe(48);
+    expect(pointerAt(second!, move.startMs + 16).point).toEqual({ x: 410, y: 290 });
+    expect(pointerAt(second!, move.startMs + 24).point).toEqual({ x: 415, y: 292.5 });
+    expect(pointerAt(second!, move.endMs).point).toEqual({ x: 430, y: 300 });
   });
 
   it("names when the drawn pointer next changes so playback can idle between moves", () => {

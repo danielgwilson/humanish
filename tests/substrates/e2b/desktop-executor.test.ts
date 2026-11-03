@@ -301,3 +301,18 @@ describe("createE2BDesktopExecutor held modifiers", () => {
     expect(calls).toEqual([]);
   });
 });
+
+describe("a glide on a hosted desktop", () => {
+  it("moves through every point in one xdotool command and presses nothing", async () => {
+    const { desktop, calls } = makeFakeDesktop(Buffer.alloc(0));
+    const executor = createE2BDesktopExecutor(desktop);
+    await executor.glide?.(
+      [
+        { x: 10, y: 10 },
+        { x: 20, y: 15 },
+      ],
+      16,
+    );
+    expect(calls).toEqual(["xdotool mousemove 10 10 sleep 0.016 mousemove 20 15"]);
+  });
+});

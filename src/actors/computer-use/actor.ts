@@ -70,6 +70,8 @@ export interface CuaActorSessionOptions {
   noProgressSteps?: number;
   /** The longest one wait action lasts, forwarded to the loop. See LoopRunOptions.maxWaitMs. */
   maxWaitMs?: number;
+  /** How the pointer reaches each target, forwarded to the loop. See CuaLoopOptions.pointer. */
+  pointer?: "glide" | "jump";
   /** How long a wait with no duration lasts in an idle turn. See LoopRunOptions.idleWaitMs. */
   idleWaitMs?: number;
   /** The participant's time zone and scheduled end, forwarded to the loop. See CuaLoopOptions.clock. */
@@ -143,6 +145,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
     ...(options.idleSteps === undefined ? {} : { idleSteps: options.idleSteps }),
     ...(options.noProgressSteps === undefined ? {} : { noProgressSteps: options.noProgressSteps }),
     ...(options.maxWaitMs === undefined ? {} : { maxWaitMs: options.maxWaitMs }),
+    ...(options.pointer === undefined ? {} : { pointer: options.pointer }),
     ...(options.idleWaitMs === undefined ? {} : { idleWaitMs: options.idleWaitMs }),
     ...(options.acknowledgeSafetyChecks === undefined
       ? {}

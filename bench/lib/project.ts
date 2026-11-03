@@ -67,6 +67,7 @@ export function studyYaml(
   mission: Mission,
   participantCapUsd: number,
   persona = "synthetic-new-user",
+  pointer?: "glide" | "jump",
 ): string {
   const id = studyId(brain, arm);
   const actor = Object.entries(brain.actor)
@@ -90,7 +91,7 @@ ${actor}
   mission: ${JSON.stringify(mission.text)}
 ${caps}execution:
   target: e2b-desktop
-  timeoutMs: ${SESSION_TIMEOUT_MS}
+${pointer === undefined ? "" : `  pointer: ${pointer}\n`}  timeoutMs: ${SESSION_TIMEOUT_MS}
 review:
   analysis: false
 policies:
@@ -109,6 +110,7 @@ export function writeProject(
   participantCapUsd: number,
   personaFile: string = DEFAULT_PERSONA_FILE,
   storage: Storage = "memory",
+  pointer?: "glide" | "jump",
 ): void {
   const persona = personaId(personaFile);
   mkdirSync(path.join(projectDir, "humanish", "studies"), { recursive: true });
@@ -123,7 +125,7 @@ export function writeProject(
     for (const arm of ["planted", "clean"] as const) {
       writeFileSync(
         path.join(projectDir, "humanish", "studies", `${studyId(brain, arm)}.yaml`),
-        studyYaml(brain, arm, mission, participantCapUsd, persona),
+        studyYaml(brain, arm, mission, participantCapUsd, persona, pointer),
       );
     }
   }

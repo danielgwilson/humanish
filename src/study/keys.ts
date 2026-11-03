@@ -158,6 +158,7 @@ export const EXECUTION = {
   >,
   // true or false, or a mapping whose keys are checked here.
   network: { origins: true } satisfies Keys<Exclude<Field<Execution, "network">, boolean>>,
+  pointer: true,
   desktop: {
     template: true,
     browser: true,
