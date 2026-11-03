@@ -640,6 +640,11 @@ export interface StudyExecution {
   desktop?: StudyExecutionDesktop;
   /** Each browser participant's network log; see StudyNetworkCapture. Absent or false: off. */
   network?: StudyNetworkCapture;
+  /**
+   * How a computer-use participant's pointer reaches each target on a hosted desktop: `glide`
+   * moves it along a curve timed by Fitts's law, `jump` moves it in one step. Absent: jump.
+   */
+  pointer?: "glide" | "jump";
   /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */
   terminal?: StudyExecutionTerminal;
   /** `terminal-product` route: runtime key placement, defaulting to openai-egress, an external

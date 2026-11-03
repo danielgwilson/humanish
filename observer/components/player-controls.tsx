@@ -255,7 +255,7 @@ export function PlayerReviewTools({
         </label>
       )}
       {playback.rows.pointerFrames > 0 ? (
-        <label title="Draws the participant's pointer moving between the positions its actions recorded. The path between them is drawn, the positions are recorded.">
+        <label title="Draws the participant's pointer moving between the positions its actions recorded. A glided run draws the path its pointer took; otherwise the path between positions is drawn.">
           <Checkbox checked={showPointer} onCheckedChange={onShowPointer} /> Pointer
         </label>
       ) : null}

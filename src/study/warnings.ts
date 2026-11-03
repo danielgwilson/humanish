@@ -121,6 +121,13 @@ const ACTOR_ROWS: readonly InertRow[] = [
     applies: (config, routes) =>
       config.actor?.idleWaitMs !== undefined && !routes.cua && !routes.shared,
   },
+  {
+    field: "execution.pointer",
+    reason:
+      "how a computer-use participant's pointer reaches each target; needs route: computer-use or shared-world",
+    applies: (config, routes) =>
+      config.execution?.pointer !== undefined && !routes.cua && !routes.shared,
+  },
 ];
 
 const TERMINAL_ONLY = "needs subject.source: terminal-product + a registered terminal actor";

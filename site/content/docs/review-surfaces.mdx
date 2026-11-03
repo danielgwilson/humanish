@@ -148,8 +148,9 @@ visible. **Skip waits** compresses intervals associated with recorded waits and
 reports the skipped duration. The participant's pointer is drawn over each capture,
 in the player and on grid tiles: it glides from where the last action left it to the
 next click, scroll or drag, lands at the time that action was recorded, and rings
-where a press landed. The positions are recorded; the path between them is drawn,
-because the desktop pointer jumps. **Pointer** hides it. **Next action**, **Next flagged frame**, activity
+where a press landed. The positions are recorded. With `execution.pointer: glide`
+the path is the one the desktop pointer took; otherwise the desktop pointer jumps and
+the path between positions is drawn. **Pointer** hides it. **Next action**, **Next flagged frame**, activity
 filters and grouped waits make long traces easier to inspect without deleting events.
 Older unstamped recordings use labeled estimated pacing. Long feeds, filmstrips,
 terminal output and event lists stay bounded while earlier/later content remains

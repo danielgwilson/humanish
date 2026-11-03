@@ -74,6 +74,7 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
   --participant <model[@effort]> the participant model and reasoning effort (default: the CLI's); computer-use takes
                            any listed model on its own vendor, such as claude-haiku-5-5
   --service-tier fast      send participant requests in OpenAI Fast mode
+  --pointer <mode>         glide or jump: the studies' execution.pointer (default: the CLI's)
   --persona <file>         persona file the studies use (default: humanish/personas/synthetic-new-user.yaml)
   --storage <where>        memory (default): tasks are lost on reload; local: the builds keep them in localStorage
   --analysis-max-usd <usd> per-run cap override (default: the admitted cost analyze --dry-run reports)
@@ -124,6 +125,7 @@ const { values } = parseArgs({
     "analysis-max-usd": { type: "string" },
     participant: { type: "string" },
     "service-tier": { type: "string" },
+    pointer: { type: "string" },
     persona: { type: "string" },
     storage: { type: "string", default: "memory" },
     "analysis-max-output-tokens": { type: "string" },
@@ -387,6 +389,9 @@ if (values.mission !== "neutral" && values.mission !== "walked") fail(`--mission
 const mission = MISSIONS[values.mission as MissionId];
 if (values.storage !== "memory" && values.storage !== "local") fail(`--storage must be memory or local.`);
 const storage: Storage = values.storage;
+if (values.pointer !== undefined && values.pointer !== "glide" && values.pointer !== "jump")
+  fail(`--pointer must be glide or jump.`);
+const pointer = values.pointer as "glide" | "jump" | undefined;
 
 /** The checkout's commit, and the commit that last changed src/, which is what the build measures. */
 function gitState(): string {
@@ -414,6 +419,7 @@ writeProject(
   positiveNumber(values["participant-cap"], "--participant-cap"),
   personaFile,
   storage,
+  pointer,
 );
 
 // The CLI's own dry run checks each generated study and reports its worst-case desktop minutes.
@@ -496,6 +502,7 @@ const manifest: Manifest = {
   fixture: fixtureDigests(personaFile, storage),
   ...(storage === "memory" ? {} : { storage }),
   ...(participant === undefined ? {} : { participant }),
+  ...(pointer === undefined ? {} : { pointer }),
   persona: personaId(personaFile),
   stopped: {},
   runs: [],

@@ -7,6 +7,7 @@ import { ComputerUseExecutorError } from "../../actors/computer-use/executor-err
 import type { ExternalHandoff } from "../../actors/computer-use/external-handoff.js";
 import {
   executeX11Action,
+  glideX11Pointer,
   parseMouseLocation,
   type X11TextChannel,
   type X11Transport,
@@ -262,6 +263,8 @@ export function createE2BDesktopExecutor(
     },
     execute: (action, signal) =>
       executeX11Action(action, { transport, dialect }, signal ?? NEVER_ABORTED),
+    glide: (path, stepMs, signal) =>
+      glideX11Pointer(path, stepMs, { transport, dialect }, signal ?? NEVER_ABORTED),
   };
 }
 

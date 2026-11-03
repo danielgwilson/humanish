@@ -14,10 +14,19 @@ The Unreleased section holds the full notes for the next version until it is tag
   participant player and on every grid tile. The arrow glides to each click, scroll and drag on a
   curve timed by Fitts's law, lands at the time the action was recorded, rings where a press
   landed, and shrinks while a drag holds the button. Runs now record `items[].pointerPath`, the
-  points each action moved the pointer through. The path between two recorded positions is an
-  illustration: the desktop pointer still jumps between them. Older bundles, which recorded clicks
+  points each action moved the pointer through. Unless the study glides the pointer (below), the
+  path between two recorded positions is an illustration: the desktop pointer jumps between them.
+  Older bundles, which recorded clicks
   only, show the arrow at each click and its ring. A **Pointer** checkbox hides it in the player.
   A run's desktop video is unchanged and shows the real pointer.
+
+- `execution.pointer: glide` moves each computer-use participant's real pointer along a curve to
+  its next target on E2B and Modal desktops, timed by Fitts's law (150-500 ms a move) and sent as
+  one desktop command a move. Hovers along the way happen as they would for a person, and the live
+  view and desktop video show the motion. Each action's `pointerApproach` records the path, and
+  the Observer draws it from those points. The default stays `jump`, one step to the target, until
+  a benchmark comparison shows gliding does not change what participants find. The local VM moves
+  in one step either way.
 
 ### Changed
 

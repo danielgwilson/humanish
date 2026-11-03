@@ -1,3 +1,6 @@
+/** A glide's points are this far apart in time: one per frame at 60 frames a second. */
+export const POINTER_GLIDE_STEP_MS = 16;
+
 /** A point on the desktop, in desktop pixels. */
 export interface PointerPoint {
   readonly x: number;

@@ -1,6 +1,7 @@
 import {
   minimumJerk,
   planPointerGlide,
+  POINTER_GLIDE_STEP_MS,
   pointerMoveMs,
   type PointerGlide,
   type PointerPoint,
@@ -76,10 +77,13 @@ export function framePointers(model: PlayerModel, seed: string): FramePointer[] 
       }
       const endMs = Math.max(previousEnd, Math.min(hold, offset));
       const start = recorded ? (last ?? path[0]!) : target;
+      // A recorded glide is drawn from its own points; otherwise the glide is planned.
+      const approach =
+        row.pointerApproach === undefined
+          ? planPointerGlide(start, path[0]!, `${seed}:${row.id}`)
+          : timedPath([...row.pointerApproach, path[0]!]);
       const motion: PointerGlide & { heldFrom?: number } =
-        path.length === 1
-          ? planPointerGlide(start, target, `${seed}:${row.id}`)
-          : dragMotion(start, path, `${seed}:${row.id}`);
+        path.length === 1 ? approach : dragMotion(approach, path);
       moves.push({
         rowId: row.id,
         startMs: Math.max(previousEnd, endMs - motion.durationMs),
@@ -124,13 +128,11 @@ export function nextChangeMs(frame: FramePointer, ageMs: number): number | null 
   return null;
 }
 
-/** A drag: a glide to where the button goes down, then the dragged path with the button held. */
+/** A drag: the glide to where the button goes down, then the dragged path with the button held. */
 function dragMotion(
-  start: PointerPoint,
+  approach: PointerGlide,
   path: readonly PointerPoint[],
-  seed: string,
 ): PointerGlide & { heldFrom: number } {
-  const approach = planPointerGlide(start, path[0]!, seed);
   const dragged = polyline(path);
   const durationMs = approach.durationMs + dragged.durationMs;
   const heldFrom = durationMs > 0 ? approach.durationMs / durationMs : 0;
@@ -140,6 +142,26 @@ function dragMotion(
     position(fraction) {
       if (fraction < heldFrom) return approach.position(fraction / heldFrom);
       return dragged.position(heldFrom < 1 ? (fraction - heldFrom) / (1 - heldFrom) : 1);
+    },
+  };
+}
+
+/**
+ * A glide the desktop took, drawn as it was sent: one point every glide step, so the drawn pointer
+ * passes each point at the time the desktop moved there.
+ */
+function timedPath(points: readonly PointerPoint[]): PointerGlide {
+  const last = points.length - 1;
+  return {
+    durationMs: last * POINTER_GLIDE_STEP_MS,
+    position(fraction) {
+      const at = Math.min(1, Math.max(0, fraction)) * last;
+      const index = Math.min(last - 1, Math.floor(at));
+      if (index < 0) return points[0]!;
+      const from = points[index]!;
+      const to = points[index + 1]!;
+      const share = at - index;
+      return { x: from.x + (to.x - from.x) * share, y: from.y + (to.y - from.y) * share };
     },
   };
 }

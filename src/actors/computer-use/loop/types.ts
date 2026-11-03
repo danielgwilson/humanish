@@ -401,6 +401,17 @@ export interface CuaExecutor {
    * with batchScreenshots, and never as the last action of its batch.
    */
   execute(action: CuaAction, signal?: AbortSignal): Promise<CuaActionResult | void>;
+  /**
+   * Move the pointer through `path`, in desktop pixels, `stepMs` apart, and press nothing. Only an
+   * executor with this method is sent glides: with `pointer: "glide"`, the loop sends one before a
+   * pointer action, ending short of the action's own target, so the action still makes the last
+   * move itself. Wrappers must forward it.
+   */
+  glide?(
+    path: readonly { x: number; y: number }[],
+    stepMs: number,
+    signal?: AbortSignal,
+  ): Promise<void>;
 }
 
 export interface CuaLoopOptions {
@@ -450,6 +461,13 @@ export interface CuaLoopOptions {
    * desktop, and 600000 for a watch.
    */
   maxWaitMs?: number;
+  /**
+   * How the pointer reaches each action's target: the study's execution.pointer. `glide` moves it
+   * along a curve timed by Fitts's law, as a hand would, before the action makes its last move, when
+   * the executor has `glide` and the pointer's position is known; the trace records the path on
+   * the action's `pointerApproach`. `jump`, the default, moves it there in one step.
+   */
+  pointer?: "glide" | "jump";
   /**
    * How long a `wait` that names no duration lasts, in ms, when its turn only waits or takes
    * screenshots: the study's actor.idleWaitMs. It is also the shortest such a turn is watched for,

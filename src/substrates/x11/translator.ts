@@ -148,6 +148,31 @@ export function guestX11Dialect(frame: X11Frame): X11Dialect {
 
 const BUTTONS = { left: "1", middle: "2", right: "3" } as const;
 
+/**
+ * One xdotool command that moves the pointer through `path`, waiting `stepMs` between points, so a
+ * glide costs one desktop call. Points are rounded to pixels; on a dialect with a frame they are
+ * kept inside it, since a curve near an edge may bow past it and a glide never presses there. An
+ * empty path is refused.
+ */
+export function planX11Glide(
+  path: readonly X11Point[],
+  stepMs: number,
+  dialect: X11Dialect,
+): readonly string[] {
+  if (path.length === 0 || !Number.isFinite(stepMs) || stepMs < 0) throw refused();
+  const frame = dialect.frame;
+  const pixel = (value: number, size: number | undefined) =>
+    String(
+      Math.max(0, size === undefined ? Math.round(value) : Math.min(size - 1, Math.round(value))),
+    );
+  const pause = ["sleep", (stepMs / 1000).toFixed(3)];
+  return path.flatMap((point, index) => {
+    if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) throw refused();
+    const step = ["mousemove", pixel(point.x, frame?.width), pixel(point.y, frame?.height)];
+    return index === 0 ? step : [...pause, ...step];
+  });
+}
+
 function refused(): ComputerUseExecutorError {
   return new ComputerUseExecutorError("action_rejected", "not_dispatched");
 }

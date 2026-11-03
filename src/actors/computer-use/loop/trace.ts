@@ -181,6 +181,7 @@ export function loopResult(
       idleWaitMs: session.waits.idleWaitMs,
       settleWaitMs: session.waits.settleWaitMs,
     },
+    ...(session.pointerMotion === "glide" ? { pointerMotion: "glide" as const } : {}),
     counts,
     items: recorder.items,
     ...(session.finalPage === undefined ? {} : { finalPage: session.finalPage }),

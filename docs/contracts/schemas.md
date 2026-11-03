@@ -1139,6 +1139,17 @@ Core-owned fields:
   went straight there has one point. The Observer draws the pointer from it.
   Additive: absent on actions that left the pointer where it was, other
   producers and older bundles. An action the desktop refused has no item
+- optional `items[].pointerApproach` (`[{ x, y }]` in desktop pixels), on the
+  computer-use `ui_action` the pointer glided toward under
+  `execution.pointer: glide`: where the pointer was, then each point the glide
+  sent, 16 ms apart, ending short of `pointerPath`'s first point. The action
+  made the last move itself. The Observer draws a glided action from these
+  points. Additive: absent when no glide was sent (the first action before the
+  pointer's position is known, an executor without `glide`, the local VM, a
+  glide that failed and was noted), other producers and older bundles
+- optional `pointerMotion: "glide"` on the computer-use trace, beside
+  `waitSettings`, when the study set `execution.pointer: glide`. Absent when
+  the pointer moved in one step, on other producers and on older bundles
 - optional `items[].page` and `finalPage` (`{ origin, path }`, `TracePage` in
   `src/actors/contract.ts`): where a computer-use participant's browser was. The loop puts `page`
   on the `screenshot` item of each observation that read a URL: `turn-00-start` is the page before

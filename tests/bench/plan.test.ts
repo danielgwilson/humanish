@@ -116,6 +116,22 @@ describe("the generated benchmark studies", () => {
     expect(study.actor.persona).toBe("keyboard-tester");
   });
 
+  it("sets the studies' pointer mode only when one is chosen", () => {
+    const studyWith = (pointer?: "glide" | "jump") =>
+      parse(
+        studyYaml(
+          BRAINS["computer-use"],
+          "planted",
+          MISSIONS.neutral,
+          0.6,
+          "synthetic-new-user",
+          pointer,
+        ),
+      ) as { execution: { pointer?: string } };
+    expect(studyWith("glide").execution.pointer).toBe("glide");
+    expect(studyWith().execution.pointer).toBeUndefined();
+  });
+
   it("refuses a participant setting the brain cannot send", () => {
     expect(() =>
       withParticipant(BRAINS["local-agent-codex"], parseParticipant("gpt-6.1-sol")),
