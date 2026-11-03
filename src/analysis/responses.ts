@@ -193,9 +193,7 @@ export function recordProviderUsage(
   usage.dispatched = responses.some((response) => response.dispatched);
   const turns = responses.flatMap((response) => (response.usage ? [response.usage] : []));
   if (turns.length === 0) return;
-  const total = (
-    key: "input" | "output" | "cachedInput" | "cacheWriteInput",
-  ): number | undefined =>
+  const total = (key: "input" | "output" | "cachedInput" | "cacheWriteInput"): number | undefined =>
     turns.some((turn) => turn[key] !== undefined)
       ? turns.reduce((sum, turn) => sum + (turn[key] ?? 0), 0)
       : undefined;

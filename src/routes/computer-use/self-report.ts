@@ -177,9 +177,8 @@ function stripNegatedNonBlockerPhrases(text: string): string {
       // 2026-09-01. A verb of encounter followed by "no" negates the whole clause, so drop the clause.
       // ... unless the clause names a defect: "the delete control had no visible focus" is a
       // finding, and the verb it happens to use must not decide whether it counts.
-      .replace(
-        /\b(?:encountered|hit|saw|found|met|had|got|ran into)\s+no\s+[^.!?\n]*/g,
-        (clause) => (DEFECT_SHAPED_NEGATION.test(clause) ? clause : " "),
+      .replace(/\b(?:encountered|hit|saw|found|met|had|got|ran into)\s+no\s+[^.!?\n]*/g, (clause) =>
+        DEFECT_SHAPED_NEGATION.test(clause) ? clause : " ",
       )
       .replace(
         /\bno\s+(?:real\s+|remaining\s+|actual\s+)?(?:blocker|blockers|blocking issue|blocking issues|error|errors|failure|failures)\s+(?:was\s+|were\s+)?(?:encountered|observed|found|hit|seen|reported|detected)\b/g,
