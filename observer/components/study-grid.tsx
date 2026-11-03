@@ -4,6 +4,7 @@ import type { ObserverData, ObserverStream } from "@/lib/observer-data";
 import type { GridDensity } from "@/lib/preferences";
 import { participantLabels } from "@/lib/participant-label";
 import { ParticipantCard } from "./participant-card";
+import { useGridPointers } from "./pointer-cursor";
 import { gridMoment, type GridRecording } from "@/lib/grid-recording";
 import { usePinReorder } from "@/lib/use-pin-reorder";
 // The one runtime import from the CLI tree: run-cost.ts has only type imports, so the artifact
@@ -122,10 +123,15 @@ export function StudyGrid({
   recording,
   atMs,
   reviewing,
+  playing = false,
+  speed = 1,
   page,
   onPageChange,
   serverStopped = false,
 }: {
+  /** The study clock is running, and how fast: drawn pointers move with it. */
+  playing?: boolean;
+  speed?: number;
   serverStopped?: boolean;
   tools?: ReactNode;
   /** The row under the tally that counts and filters the participants by status. */
@@ -150,6 +156,7 @@ export function StudyGrid({
   updating?: boolean;
 }) {
   const labels = participantLabels(data.streams);
+  const pointerFor = useGridPointers(recording, playing, speed);
   const grid = useRef<HTMLDivElement>(null);
   const section = useRef<HTMLElement>(null);
   const pageCount = Math.max(1, Math.ceil(streams.length / PAGE_SIZE));
@@ -189,27 +196,33 @@ export function StudyGrid({
           onPointerOver={(event) => prioritize(event.target as Element)}
           onFocusCapture={(event) => prioritize(event.target)}
         >
-          {shown.map((stream) => (
-            <ParticipantCard
-              key={stream.id}
-              stream={stream}
-              name={labels.get(stream.id) ?? stream.label}
-              onOpen={onOpen}
-              replay={reviewing ? gridMoment(recording, stream.id, atMs ?? Number.NaN) : undefined}
-              reviewOutcome={
-                reviewOutcomes?.find((outcome) => outcome.streamId === stream.id)?.label
-              }
-              updating={updating}
-              serverStopped={serverStopped}
-              liveThumb={liveThumbIds.has(stream.id)}
-              pinned={pinnedIds.includes(stream.id)}
-              compared={compareIds.includes(stream.id)}
-              comparisonFull={compareIds.length >= 3}
-              onPin={pinWithMotion}
-              onCompare={onCompare}
-              now={now}
-            />
-          ))}
+          {shown.map((stream) => {
+            const replay = reviewing
+              ? gridMoment(recording, stream.id, atMs ?? Number.NaN)
+              : undefined;
+            return (
+              <ParticipantCard
+                key={stream.id}
+                stream={stream}
+                name={labels.get(stream.id) ?? stream.label}
+                onOpen={onOpen}
+                replay={replay}
+                pointer={pointerFor(stream.id, replay)}
+                reviewOutcome={
+                  reviewOutcomes?.find((outcome) => outcome.streamId === stream.id)?.label
+                }
+                updating={updating}
+                serverStopped={serverStopped}
+                liveThumb={liveThumbIds.has(stream.id)}
+                pinned={pinnedIds.includes(stream.id)}
+                compared={compareIds.includes(stream.id)}
+                comparisonFull={compareIds.length >= 3}
+                onPin={pinWithMotion}
+                onCompare={onCompare}
+                now={now}
+              />
+            );
+          })}
         </div>
       )}
       {pageCount > 1 ? (

@@ -8,6 +8,7 @@ import { useSettled } from "@/lib/use-settled";
 import { cardText, type CardText } from "@/lib/card-text";
 import { IconButton } from "./ui/icon-button";
 import { ReviewIcon } from "./review-icon";
+import { PointerCursor, type PointerView } from "./pointer-cursor";
 import { CardDetails } from "./participant-card-details";
 import TerminalCast, { type TerminalLine } from "./terminal-cast";
 
@@ -88,11 +89,14 @@ export function ParticipantCard({
   updating = true,
   reviewOutcome,
   replay,
+  pointer = null,
   serverStopped = false,
 }: {
   /** The serving process is gone; one page notice says so in place of a message per tile. */
   serverStopped?: boolean;
   replay?: GridMoment | undefined;
+  /** The participant's pointer at the study clock's moment, drawn over the recorded capture. */
+  pointer?: PointerView | null;
   reviewOutcome?: string | undefined;
   stream: ObserverStream;
   name: string;
@@ -146,6 +150,7 @@ export function ParticipantCard({
         active={active}
         text={text}
         viewport={viewport}
+        pointer={liveView ? null : pointer}
         onOpen={onOpen}
       />
       {slowLoad ? (
@@ -207,8 +212,10 @@ function CardPreview({
   active,
   text,
   viewport,
+  pointer,
   onOpen,
 }: {
+  pointer: PointerView | null;
   stream: ObserverStream;
   name: string;
   /** Set only when the tile streams the live desktop. */
@@ -268,6 +275,20 @@ function CardPreview({
                 onError={() => capture.errored(slot.key)}
               />
             ))}
+            {pointer && viewport && !failed && !pending ? (
+              <div className="pins" aria-hidden="true">
+                <PointerCursor
+                  view={pointer}
+                  // Pointer positions are desktop pixels, as in the player.
+                  viewport={
+                    stream.desktopGeometry?.screen.verified ??
+                    stream.desktopGeometry?.screen.requested ??
+                    stream.viewport ??
+                    viewport
+                  }
+                />
+              </div>
+            ) : null}
             {failed ? (
               <div className="thumb-ph frame-unavailable">
                 <span className="ph-state">Frame unavailable</span>

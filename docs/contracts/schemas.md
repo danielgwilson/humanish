@@ -1132,6 +1132,13 @@ Core-owned fields:
   `wait_minutes` call whose minutes were not a finite number above zero, and
   a call to a function it does not have. Additive: absent on waits that named
   none, other items and producers, and older bundles
+- optional `items[].pointerPath` (`[{ x, y }]` in desktop pixels), on the
+  computer-use `ui_action` of a completed action that moved the pointer: a
+  move, a scroll, a drag, or a click, press or release at a point. It lists the
+  points the pointer passed through and ends where it rested; a pointer that
+  went straight there has one point. The Observer draws the pointer from it.
+  Additive: absent on actions that left the pointer where it was, other
+  producers and older bundles. An action the desktop refused has no item
 - optional `items[].page` and `finalPage` (`{ origin, path }`, `TracePage` in
   `src/actors/contract.ts`): where a computer-use participant's browser was. The loop puts `page`
   on the `screenshot` item of each observation that read a URL: `turn-00-start` is the page before

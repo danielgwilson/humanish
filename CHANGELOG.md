@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Added
+
+- The Observer draws each computer-use participant's pointer moving through a replay, in the
+  participant player and on every grid tile. The arrow glides to each click, scroll and drag on a
+  curve timed by Fitts's law, lands at the time the action was recorded, rings where a press
+  landed, and shrinks while a drag holds the button. Runs now record `items[].pointerPath`, the
+  points each action moved the pointer through. The path between two recorded positions is an
+  illustration: the desktop pointer still jumps between them. Older bundles, which recorded clicks
+  only, show the arrow at each click and its ring. A **Pointer** checkbox hides it in the player.
+  A run's desktop video is unchanged and shows the real pointer.
+
 ### Changed
 
 - A computer-use study with `comms.email.external` and no `comms.email.recipients` gives each

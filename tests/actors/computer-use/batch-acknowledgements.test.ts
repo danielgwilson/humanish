@@ -266,3 +266,57 @@ describe("what a read action returns", () => {
     ]);
   });
 });
+
+describe("the pointer's recorded path", () => {
+  it("records where every action that moves the pointer took it", async () => {
+    const { provider } = scripted([
+      turn({
+        actions: [
+          { kind: "move", x: 20, y: 30 },
+          { kind: "click", x: 7, y: 8 },
+          { kind: "scroll", x: 40, y: 50, dx: 0, dy: 3 },
+          {
+            kind: "drag",
+            path: [
+              { x: 1, y: 1 },
+              { x: 5, y: 5 },
+              { x: 9, y: 9 },
+            ],
+          },
+          { kind: "mouse_down", x: 11, y: 12 },
+          { kind: "mouse_up" },
+          typing,
+        ],
+      }),
+    ]);
+    const result = await run(provider, desktop());
+    const acted = result.trace.items.filter((item) => item.kind === "ui_action");
+    expect(acted.map((item) => item.pointerPath)).toEqual([
+      [{ x: 20, y: 30 }],
+      [{ x: 7, y: 8 }],
+      [{ x: 40, y: 50 }],
+      [
+        { x: 1, y: 1 },
+        { x: 5, y: 5 },
+        { x: 9, y: 9 },
+      ],
+      [{ x: 11, y: 12 }],
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it("records no path for a press the desktop refused", async () => {
+    const { provider } = scripted([turn({ actions: [click] })]);
+    const result = await run(
+      provider,
+      desktop(async () => {
+        throw Object.assign(new Error("xdotool exited 1"), { exitCode: 1, stderr: "" });
+      }),
+    );
+    const pressed = result.trace.items.find(
+      (item) => item.kind === "ui_action" && item.title.startsWith("click"),
+    );
+    expect(pressed?.pointerPath).toBeUndefined();
+  });
+});

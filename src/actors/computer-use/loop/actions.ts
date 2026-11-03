@@ -182,6 +182,21 @@ function pressedAt(action: CuaAction): { x: number; y: number } | undefined {
   }
 }
 
+/** The points an action moves the pointer through, ending where it rests. */
+function movedThrough(action: CuaAction): Array<{ x: number; y: number }> | undefined {
+  switch (action.kind) {
+    case "move":
+    case "scroll":
+      return [{ x: action.x, y: action.y }];
+    case "drag":
+      return action.path.length > 0 ? action.path.map(({ x, y }) => ({ x, y })) : undefined;
+    default: {
+      const pressed = pressedAt(action);
+      return pressed === undefined ? undefined : [pressed];
+    }
+  }
+}
+
 type ExecutionStatus = CuaActionAcknowledgement["status"];
 
 /**
@@ -384,6 +399,7 @@ export async function runActionBatch(
     execution.actions.push({ index, status, ...(result === undefined ? {} : { result }) });
     countAttempt(session, action, title, status);
     const coord = pressedAt(action);
+    const pointerPath = movedThrough(action);
     const read = await readEvidence(session, action, result);
     trace.record("ui_action", () => ({
       lifecycle: "completed",
@@ -393,6 +409,7 @@ export async function runActionBatch(
       // Structured pin coordinates, exactly the presses the Observer
       // pins render: recorded fact instead of a title re-parse downstream.
       ...(coord === undefined ? {} : { coord }),
+      ...(pointerPath === undefined ? {} : { pointerPath }),
       ...(watched !== undefined && waitIndex === watched.endedOn ? { watch: watched.watch } : {}),
       ...(requested.kind === "wait" && requested.ms !== undefined ? { namedMs: requested.ms } : {}),
     }));

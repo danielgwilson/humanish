@@ -174,3 +174,30 @@ describe("the live view's proportions", () => {
     );
   });
 });
+
+describe("the drawn pointer on a recorded capture", () => {
+  it("is drawn only once the selected capture has loaded", async () => {
+    const view = {
+      frame: { rest: { x: 640, y: 400 }, moves: [], pressesOnly: false },
+      ageMs: 0,
+      playing: false,
+      speed: 1,
+      limitMs: 1_000,
+      anchor: "a",
+    };
+    await render({ zoom: "fit", pointer: view });
+    const drawn = () => container.querySelector("[data-testid=pointer-cursor]");
+    expect(drawn()).toBeNull();
+    const recorded = container.querySelector<HTMLImageElement>(".stage-box img")!;
+    Object.defineProperty(recorded, "naturalWidth", { value: 1280 });
+    Object.defineProperty(recorded, "naturalHeight", { value: 800 });
+    await act(async () => recorded.dispatchEvent(new Event("load")));
+    expect(drawn()?.hasAttribute("data-placed")).toBe(true);
+    await render({
+      zoom: "fit",
+      pointer: view,
+      frame: { ...frame, itemId: "next", href: "../screenshots/next.png" },
+    });
+    expect(drawn()).toBeNull();
+  });
+});

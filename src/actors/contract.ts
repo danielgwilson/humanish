@@ -176,6 +176,11 @@ export interface ActorTraceItem {
   /** On a computer-use pointer read's `ui_action`: the position the read returned, in desktop
    *  pixels. Additive: absent on other items and producers, and in older bundles. */
   pointer?: { x: number; y: number };
+  /** On a computer-use `ui_action` that moved the pointer: the points it passed through, in
+   *  desktop pixels, ending where it rested. A replay draws the pointer from these. One point when
+   *  the pointer went straight there. Additive: absent on actions that left the pointer where it
+   *  was, on other producers, and in older bundles. An action the desktop refused has no item. */
+  pointerPath?: Array<{ x: number; y: number }>;
 }
 
 /**
