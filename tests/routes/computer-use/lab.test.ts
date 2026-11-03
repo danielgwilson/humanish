@@ -867,8 +867,8 @@ describe("runCuaActorLab", () => {
       review: { analysis: false },
     });
     if (!parsed.ok) throw new Error(parsed.error.message);
-    // The catch holds one send to the declared address, and serves it only with the run's token,
-    // which the drain reads from the participants' env.
+    // The catch is empty when the run starts and holds one send to the declared address once the
+    // participant ran. It serves either only with the run's token, which the run reads from env.
     const send = {
       path: "/emails",
       body: JSON.stringify({
@@ -880,6 +880,7 @@ describe("runCuaActorLab", () => {
       t: 1,
     };
     const drainAuth: Array<string | null> = [];
+    let participantRan = false;
     vi.stubGlobal("fetch", async (input: string | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/health")) {
@@ -896,7 +897,7 @@ describe("runCuaActorLab", () => {
         const auth = new Headers(init?.headers).get("authorization");
         drainAuth.push(auth);
         if (auth !== `Bearer ${token}`) return new Response("unauthorized", { status: 401 });
-        return new Response(`${JSON.stringify(send)}\n`, { status: 200 });
+        return new Response(participantRan ? `${JSON.stringify(send)}\n` : "", { status: 200 });
       }
       throw new Error(`unexpected fetch ${url}`);
     });
@@ -913,14 +914,17 @@ describe("runCuaActorLab", () => {
         },
         deps: {
           desktopModule: async () => module,
-          runSession: async (options) =>
-            runCuaActorSession({
+          runSession: async (options) => {
+            participantRan = true;
+            return runCuaActorSession({
               ...options,
               participant: scriptedParticipant(TWO_TURN_SESSION),
-            }),
+            });
+          },
         },
       });
-      expect(drainAuth).toEqual([`Bearer ${token}`]);
+      // One read when the run starts, one drain after the participant.
+      expect(drainAuth).toEqual([`Bearer ${token}`, `Bearer ${token}`]);
       expect(result.warnings.join("\n")).not.toContain("Comms");
       expect(result.ok).toBe(true);
 
@@ -7627,20 +7631,21 @@ describe("adopter-hosted comms on the app-url route", () => {
       }
       expect(healthy).toBe(true);
 
-      // The app's send, captured by the adopter's catch, addressed to lane-01's filled
-      // deterministic address (recipients omitted in the study on purpose: the parser fills one
-      // per participant, and this proves the filled address is what the funnel matches).
-      const posted = await fetch(`${baseUrl}/emails`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          from: "no-reply@example.test",
-          to: ["lane-01@example.test"],
-          subject: "Confirm your email",
-          html: '<a href="https://app.example.test/verify?token=xyz789">Verify</a>',
-        }),
-      });
-      expect(posted.ok).toBe(true);
+      // The app's send during the run, captured by the adopter's catch, addressed to lane-01's
+      // filled deterministic address (recipients omitted in the study on purpose: the parser fills
+      // one per participant, and this proves the filled address is what the funnel matches).
+      const appSends = () =>
+        fetch(`${baseUrl}/emails`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            from: "no-reply@example.test",
+            to: ["lane-01@example.test"],
+            subject: "Confirm your email",
+            html: '<a href="https://app.example.test/verify?token=xyz789">Verify</a>',
+          }),
+        });
+      let posted: Response | undefined;
 
       const parsed = parseStudy({
         schema: STUDY_SCHEMA,
@@ -7672,6 +7677,7 @@ describe("adopter-hosted comms on the app-url route", () => {
           desktopModule: async () => module,
           runSession: async (options) => {
             seenInstructions.push(options.instructions);
+            posted ??= await appSends();
             return runCuaActorSession({
               ...options,
               participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
@@ -7681,6 +7687,7 @@ describe("adopter-hosted comms on the app-url route", () => {
       );
       if (outcome.route !== "computer-use") throw new Error("expected cua backend");
       const result = outcome.result;
+      expect(posted?.ok).toBe(true);
 
       // Every persona was told its own filled address and the adopter's inbox URL (this
       // route previously ignored the whole block).

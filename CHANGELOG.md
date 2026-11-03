@@ -10,6 +10,12 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ### Fixed
 
+- A run with `comms.email.external` records only the mail sent during that run. Before, it read
+  every send the catch had ever stored, so a catch reused across runs put earlier runs' mail in
+  `comms/thread.json`. The run now counts the sends the catch holds before its participants start
+  and collects only later ones. When the catch cannot be read at that point, the run collects
+  everything as before and its warnings say the thread may include earlier mail.
+
 - A remote run survives the machine that follows it sleeping or being stopped. Before, the first
   read that failed after 120 s without an answer ended the run and reclaimed its sandboxes, and
   that count included the time this machine was asleep, so a run could end on waking while its

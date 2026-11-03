@@ -467,8 +467,11 @@ export async function drainExternalCommsCatch(
   const body = await response.text();
   let lines = body.split("\n").filter((line) => line.trim().length > 0);
   if (!body.endsWith("\n") && lines.length > 0) lines = lines.slice(0, -1);
+  // Fewer lines than the cursor means the catch's file was emptied after the cursor was read (a new
+  // --dir, or the file removed), so every line it holds now is new.
+  const start = lines.length < cursor ? 0 : cursor;
   const sends: RawCapturedSend[] = [];
-  for (const line of lines.slice(cursor)) {
+  for (const line of lines.slice(start)) {
     try {
       const parsed = JSON.parse(line) as Record<string, unknown>;
       if (typeof parsed.path === "string" && typeof parsed.body === "string") {
@@ -495,6 +498,11 @@ export async function collectExternalCommsThread(args: {
   channel: CommsChannel;
   inboxes: CommsAddress[];
   profiles?: EmailSendProfile[];
+  /**
+   * The catch's line count when the run started. The catch keeps every send it has received, so
+   * without it a catch reused across runs hands this run every earlier run's mail.
+   */
+  cursor?: number;
   timeoutMs?: number;
   fetchFn?: typeof fetch;
 }): Promise<CommsThreadCollection> {
@@ -502,7 +510,7 @@ export async function collectExternalCommsThread(args: {
     ...(args.timeoutMs === undefined ? {} : { timeoutMs: args.timeoutMs }),
     ...(args.fetchFn ? { fetchFn: args.fetchFn } : {}),
   };
-  const { sends } = await drainExternalCommsCatch(args.external, 0, drainOptions);
+  const { sends } = await drainExternalCommsCatch(args.external, args.cursor ?? 0, drainOptions);
   if (sends.length === 0) return { captured: 0, matched: 0 };
   await routeCapturedSends(sends, args.channel, args.profiles);
   const seen = new Set<string>();

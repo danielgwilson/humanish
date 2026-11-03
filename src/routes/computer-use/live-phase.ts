@@ -8,6 +8,7 @@ import { pricedModel } from "../../study/plan-base.js";
 import { runAllCuaParticipants } from "./participant-execution.js";
 import { startLiveTraceFlush } from "./live-flush.js";
 import { drainExternalComms } from "./external-comms.js";
+import { externalCatchCursor } from "../../comms/external-evidence.js";
 import { buildCuaRunBundle, judgeComputerUseRun } from "./bundle.js";
 import { participantSubjectEnv, type ParticipantRunOutcome } from "./types.js";
 import type { CuaParticipantsSetup, CuaRunSetup } from "./setup.js";
@@ -108,6 +109,9 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
       };
     }
   }
+  // Mail the catch already holds belongs to earlier runs.
+  const catchStart =
+    !dryRun && externalComms ? await externalCatchCursor(externalComms.config, env) : undefined;
   // Run the participants (dry-run runs none). In-process is always one.
   let outcomes: ParticipantRunOutcome[] | undefined;
   try {
@@ -151,6 +155,7 @@ export async function runStudyParticipants(setup: CuaRunSetup, participants: Cua
           participantRuns: participantRuns,
           outcomes,
           knownSecretValues: run.secrets.values(),
+          startCursor: catchStart,
         })
       : [];
 

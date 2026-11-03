@@ -20,6 +20,8 @@ export async function drainExternalComms(args: {
   participantRuns: readonly DesktopParticipantRun[];
   outcomes: ParticipantRunOutcome[];
   knownSecretValues: readonly string[];
+  /** The catch's send count before the participants started. */
+  startCursor: number | undefined;
 }): Promise<string[]> {
   const { externalCommsEmail, participantRuns, outcomes } = args;
   const { path: commsPath, warnings } = await collectExternalCommsEvidence({
@@ -28,6 +30,7 @@ export async function drainExternalComms(args: {
     env: args.env,
     runPaths: args.runPaths,
     knownSecretValues: args.knownSecretValues,
+    startCursor: args.startCursor,
   });
   if (commsPath !== undefined) {
     for (const [index, outcome] of outcomes.entries()) {
