@@ -23,6 +23,20 @@ describe("owned desktop session", () => {
     expect(backend.execute).toHaveBeenCalledWith(action, signal);
   });
 
+  it("forwards a glide only from an executor that can glide", async () => {
+    const owned = () =>
+      ownDesktopAllocation({
+        resourceId: "owned",
+        release: async () => ({ status: "released", reason: "terminated" }),
+      });
+    expect(owned().open(executor()).executor.glide).toBeUndefined();
+    const glide = vi.fn(async () => {});
+    const session = owned().open({ ...executor(), glide });
+    const signal = new AbortController().signal;
+    await session.executor.glide?.([{ x: 1, y: 2 }], 16, signal);
+    expect(glide).toHaveBeenCalledWith([{ x: 1, y: 2 }], 16, signal);
+  });
+
   it("shares one close attempt and rejects new operations before release settles", async () => {
     let finish!: () => void;
     const released = new Promise<void>((resolve) => {

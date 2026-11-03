@@ -97,6 +97,7 @@ const NOT_FREE_TEXT: Readonly<Record<string, readonly string[]>> = {
     "comms.email.kind",
     "execution.desktop.browser",
     "execution.desktop.device",
+    "execution.pointer",
     "execution.runtimeAuth",
     "execution.target",
     "execution.terminal.stdin",

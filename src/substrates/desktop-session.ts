@@ -82,6 +82,18 @@ export function ownDesktopAllocation(options: {
             assertOpen();
             return executor.execute(action, signal);
           },
+          ...(executor.glide === undefined
+            ? {}
+            : {
+                glide: async (
+                  path: readonly { x: number; y: number }[],
+                  stepMs: number,
+                  signal?: AbortSignal,
+                ) => {
+                  assertOpen();
+                  return executor.glide?.(path, stepMs, signal);
+                },
+              }),
         },
       });
     },

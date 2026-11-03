@@ -19,6 +19,7 @@ import {
   requestScope,
 } from "./race.js";
 import { readEvidence } from "./frames.js";
+import { glideBefore, movedThrough, notePointer, pressedAt } from "./pointer.js";
 import type { LoopSession } from "./session.js";
 import { notice } from "./trace.js";
 import type {
@@ -163,23 +164,6 @@ function isIdleAction(action: CuaAction): boolean {
 
 export function isIdleTurn(actions: readonly CuaAction[]): boolean {
   return actions.every(isIdleAction);
-}
-
-/** The point a pointer action pressed at, for the Observer's pins; absent for the rest. */
-function pressedAt(action: CuaAction): { x: number; y: number } | undefined {
-  switch (action.kind) {
-    case "click":
-    case "double_click":
-    case "triple_click":
-      return { x: action.x, y: action.y };
-    case "mouse_down":
-    case "mouse_up":
-      return action.x === undefined || action.y === undefined
-        ? undefined
-        : { x: action.x, y: action.y };
-    default:
-      return undefined;
-  }
 }
 
 type ExecutionStatus = CuaActionAcknowledgement["status"];
@@ -332,13 +316,17 @@ export async function runActionBatch(
     // it reached for.
     actionHistory.affordances.push(classifyCuaAction(action));
     session.phase = `executing ${title}`;
+    const dispatching =
+      watchedMs === undefined && !(action.kind === "screenshot" && !sendsScreenshot(index));
+    const approach = dispatching
+      ? await glideBefore(session, action, String(trace.counts.actions))
+      : undefined;
     let status: ExecutionStatus;
     let result: CuaActionResult | undefined;
     try {
-      ({ status, result } =
-        watchedMs === undefined && !(action.kind === "screenshot" && !sendsScreenshot(index))
-          ? await dispatchAction(session, action, title, wait?.steps)
-          : { status: "completed", result: undefined });
+      ({ status, result } = dispatching
+        ? await dispatchAction(session, action, title, wait?.steps)
+        : { status: "completed", result: undefined });
     } catch (error) {
       const failedCommand = isCommandExitError(error) || isFailedTyping(error);
       const declared = isComputerUseExecutorError(error)
@@ -384,6 +372,8 @@ export async function runActionBatch(
     execution.actions.push({ index, status, ...(result === undefined ? {} : { result }) });
     countAttempt(session, action, title, status);
     const coord = pressedAt(action);
+    const pointerPath = movedThrough(action);
+    notePointer(session, result, pointerPath);
     const read = await readEvidence(session, action, result);
     trace.record("ui_action", () => ({
       lifecycle: "completed",
@@ -393,6 +383,8 @@ export async function runActionBatch(
       // Structured pin coordinates, exactly the presses the Observer
       // pins render: recorded fact instead of a title re-parse downstream.
       ...(coord === undefined ? {} : { coord }),
+      ...(pointerPath === undefined ? {} : { pointerPath }),
+      ...(approach === undefined ? {} : { pointerApproach: approach }),
       ...(watched !== undefined && waitIndex === watched.endedOn ? { watch: watched.watch } : {}),
       ...(requested.kind === "wait" && requested.ms !== undefined ? { namedMs: requested.ms } : {}),
     }));

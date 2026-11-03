@@ -176,6 +176,16 @@ export interface ActorTraceItem {
   /** On a computer-use pointer read's `ui_action`: the position the read returned, in desktop
    *  pixels. Additive: absent on other items and producers, and in older bundles. */
   pointer?: { x: number; y: number };
+  /** On a computer-use `ui_action` that moved the pointer: the points it passed through, in
+   *  desktop pixels, ending where it rested. A replay draws the pointer from these. One point when
+   *  the pointer went straight there. Additive: absent on actions that left the pointer where it
+   *  was, on other producers, and in older bundles. An action the desktop refused has no item. */
+  pointerPath?: Array<{ x: number; y: number }>;
+  /** On a computer-use `ui_action` the pointer glided toward (`execution.pointer: glide`): the
+   *  points it moved through on the way, in desktop pixels, from where it was to just short of the
+   *  first point of `pointerPath`, about 16 ms apart. The action then made the last move. Additive:
+   *  absent when no glide was sent, on other producers, and in older bundles. */
+  pointerApproach?: Array<{ x: number; y: number }>;
 }
 
 /**
@@ -586,6 +596,11 @@ export interface ActorTrace {
    * on other producers and on bundles written before it was recorded.
    */
   waitSettings?: ActorWaitSettings;
+  /** Additive + optional: `glide` when the computer-use loop glided the pointer to its targets
+   *  (execution.pointer). Absent when it moved the pointer in one step, on other producers, and on
+   *  bundles written before it was recorded. A glide also needs an executor that can glide, so the
+   *  items' `pointerApproach` says which actions glided. */
+  pointerMotion?: "glide";
   counts: Record<string, number>;
   /**
    * Additive + optional affordance record (humanish.affordance-use.v1): which kind of route

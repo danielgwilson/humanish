@@ -185,6 +185,7 @@ export function participantSessionOptions(
     ...(spec.planned.limits.maxWaitMs === undefined
       ? {}
       : { maxWaitMs: spec.planned.limits.maxWaitMs }),
+    ...(spec.planned.limits.pointer === undefined ? {} : { pointer: spec.planned.limits.pointer }),
     ...(spec.planned.limits.idleWaitMs === undefined
       ? {}
       : { idleWaitMs: spec.planned.limits.idleWaitMs }),

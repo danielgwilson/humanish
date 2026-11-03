@@ -198,7 +198,8 @@ const V2_KEYS: KeyShape = {
     ...without(ACTOR, "type", "maxWaitMs", "idleWaitMs", "clock", "provider"),
     laneFocus: { id: true, label: true, instruction: true },
   },
-  execution: withAfter(EXECUTION, "egressAllow", { caps: CAPS }),
+  // execution.pointer arrived after v2.
+  execution: withAfter(without(EXECUTION, "pointer"), "egressAllow", { caps: CAPS }),
   // Inline personas were validated by the persona resolver.
   personas: true,
   scenario: { ref: true, mode: true, inline: true, caps: CAPS },

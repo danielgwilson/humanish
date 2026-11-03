@@ -11,6 +11,7 @@ import {
   recordingInterval as streamRecordingInterval,
 } from "../../src/run/run-clock.js";
 import { PlayerStage, type Zoom } from "./player-stage";
+import { usePointerView } from "./pointer-cursor";
 import { RecordingVideo } from "./recording-video";
 
 /**
@@ -44,6 +45,8 @@ export function PlayerScreen({
   zoom,
   streamRevision,
   label,
+  speed,
+  showPointer,
 }: {
   stream: ObserverStream;
   model: PlayerModel;
@@ -54,7 +57,10 @@ export function PlayerScreen({
   zoom: Zoom;
   streamRevision: number;
   label: string;
+  speed: number;
+  showPointer: boolean;
 }) {
+  const pointer = usePointerView(model, stream.id, playback, studyPlayback, speed, showPointer);
   if (recording.show && recording.interval && studyPlayback && studyPlayback.atMs !== null)
     return (
       <RecordingVideo
@@ -98,6 +104,7 @@ export function PlayerScreen({
         stream.viewport
       }
       pins={playback.pins}
+      pointer={pointer}
       zoom={zoom}
       live={playback.live}
       streamRevision={streamRevision}

@@ -48,6 +48,13 @@ export function parseExecution(
       return invalid("`execution.remote` must be true or false.");
     execution.remote = raw.remote;
   }
+  if (raw.pointer !== undefined) {
+    if (raw.pointer !== "glide" && raw.pointer !== "jump")
+      return invalid(
+        "`execution.pointer` must be glide, to move each participant's pointer along a curve to its targets, or jump, to move it there in one step.",
+      );
+    execution.pointer = raw.pointer;
+  }
   const timeoutMs = posInt(raw.timeoutMs);
   if (timeoutMs !== undefined) execution.timeoutMs = timeoutMs;
   const completionTimeoutMs = posInt(raw.completionTimeoutMs);

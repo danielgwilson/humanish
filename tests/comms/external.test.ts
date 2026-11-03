@@ -2,7 +2,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -20,6 +20,13 @@ import {
 } from "../../src/comms/sandbox-catch.js";
 import { SANDBOX_CATCH_SCRIPT } from "../../src/comms/sandbox-catch-script.js";
 import { FakeInbox } from "../../src/comms/fake-inbox.js";
+import {
+  collectExternalCommsEvidence,
+  externalCatchCursor,
+  externalRunEmail,
+} from "../../src/comms/external-evidence.js";
+import { addressedRecipients } from "../../src/study/parse/comms.js";
+import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { parseStudy } from "../../src/study/config.js";
 import { freePort } from "../helpers/free-port.js";
@@ -109,6 +116,61 @@ describe("adopter-hosted comms ingress", () => {
     expect(serialized).not.toContain("abc123");
   });
 
+  it("collects only the mail sent after the run started from a catch an earlier run used", async () => {
+    const send = (to: string, subject: string) =>
+      fetch(`${baseUrl}/emails`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ from: "no-reply@example.test", to: [to], subject, text: subject }),
+      });
+    await send("reuse@example.test", "Code from the earlier run");
+    const external = { catchBaseUrl: baseUrl, authTokenEnv: "CATCH_TOKEN" };
+    const env = { CATCH_TOKEN: TOKEN };
+    const startCursor = await externalCatchCursor(external, env);
+    expect(startCursor).toBeGreaterThanOrEqual(1);
+    await send("reuse@example.test", "Code from this run");
+
+    const runPaths = await prepareRunArtifactPaths(dir, "catch-reuse");
+    const evidence = (cursor: number | undefined) =>
+      collectExternalCommsEvidence({
+        external,
+        email: {
+          kind: "fake",
+          recipients: [{ lane: "p1", address: "reuse@example.test" }],
+        },
+        env,
+        runPaths,
+        knownSecretValues: [],
+        startCursor: cursor,
+      });
+    const threadCount = async () =>
+      (
+        JSON.parse(
+          await readFile(path.join(runPaths.absoluteRunRoot, "comms/thread.json"), "utf8"),
+        ) as {
+          count: number;
+        }
+      ).count;
+
+    const fromStart = await evidence(startCursor);
+    expect(fromStart.path).toBe("comms/thread.json");
+    expect(fromStart.warnings).toEqual([]);
+    expect(await threadCount()).toBe(1);
+
+    // A catch that could not be read at run start falls back to every send, and the run says so.
+    const unmarked = await evidence(undefined);
+    expect(await threadCount()).toBe(2);
+    expect(unmarked.warnings).toHaveLength(1);
+  });
+
+  it("reads every send when the catch holds fewer than the cursor, because it restarted empty", async () => {
+    const line = JSON.stringify({ path: "/emails", body: "{}", t: 1 });
+    const fetchFn = (async () => new Response(`${line}\n`)) as typeof fetch;
+    const drained = await drainExternalCommsCatch({ catchBaseUrl: baseUrl }, 5, { fetchFn });
+    expect(drained.sends).toHaveLength(1);
+    expect(drained.cursor).toBe(1);
+  });
+
   it("derives the persona inbox URL, defaulting to the catch host when no separate inbox is declared", () => {
     expect(externalInboxUrl({ catchBaseUrl: "https://catch.example.test" })).toBe(
       "https://catch.example.test/inbox",
@@ -148,10 +210,35 @@ describe("comms.email.external config", () => {
     // The previously-inert warning must be gone: this is the whole point of the feature.
     expect(result.warnings.join("\n")).not.toContain("comms.email (the in-sandbox email/SMS catch");
     expect(result.config.comms?.email?.external?.catchBaseUrl).toBe("https://catch.example.test");
-    // Recipients still auto-fill per participant, so the persona is told an address without extra
-    // config.
-    expect(result.config.comms?.email?.recipients).toEqual([
-      { lane: "lane-01", address: "lane-01@example.test" },
+    // The run fills the addresses, one set per run, so the parser leaves them out.
+    expect(result.config.comms?.email?.recipients).toBeUndefined();
+    const email = result.config.comms?.email;
+    if (email === undefined) throw new Error("expected comms.email");
+    const first = externalRunEmail(email, ["lane-01"], "cua-run-a");
+    const [address] = addressedRecipients(first).map((recipient) => recipient.address);
+    expect(address).toMatch(/^lane-01-[0-9a-f]{6}@example\.test$/);
+    expect(addressedRecipients(externalRunEmail(email, ["lane-01"], "cua-run-a"))).toEqual(
+      addressedRecipients(first),
+    );
+    expect(
+      addressedRecipients(externalRunEmail(email, ["lane-01"], "cua-run-b"))[0]?.address,
+    ).not.toBe(address);
+  });
+
+  it("keeps declared addresses as written on every run", () => {
+    const result = parseStudy(
+      appUrlLab({
+        email: {
+          external: { catchBaseUrl: "https://catch.example.test" },
+          recipients: [{ lane: "lane-01", address: "returning@example.test" }],
+        },
+      }),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    const email = result.config.comms?.email;
+    if (email === undefined) throw new Error("expected comms.email");
+    expect(addressedRecipients(externalRunEmail(email, ["lane-01"], "cua-run-a"))).toEqual([
+      { participantId: "lane-01", address: "returning@example.test" },
     ]);
   });
 

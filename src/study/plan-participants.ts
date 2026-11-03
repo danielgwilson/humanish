@@ -53,6 +53,8 @@ export interface DesktopParticipant extends Participant {
     readonly serviceTier?: "fast";
     /** actor.maxWaitMs: the longest one wait or one turn of only waits lasts. */
     readonly maxWaitMs?: number;
+    /** execution.pointer: how the pointer reaches each target on a desktop that can glide. */
+    readonly pointer?: "glide" | "jump";
     /**
      * The participant's idleWaitMs, else actor.idleWaitMs: how long a wait with no duration lasts
      * while the participant only waits, and how often the loop looks at its screen then.
@@ -125,6 +127,7 @@ function desktopParticipant(
   const maxOutputTokens = actor?.maxOutputTokens;
   const serviceTier = actor?.serviceTier;
   const maxWaitMs = actor?.maxWaitMs;
+  const pointer = config.execution?.pointer;
   const idleWaitMs = entry?.idleWaitMs ?? actor?.idleWaitMs;
   const timeZone = entry?.clock?.timeZone ?? actor?.clock?.timeZone;
   return {
@@ -148,6 +151,7 @@ function desktopParticipant(
       ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
       ...(serviceTier === undefined ? {} : { serviceTier }),
       ...(maxWaitMs === undefined ? {} : { maxWaitMs }),
+      ...(pointer === undefined ? {} : { pointer }),
       ...(idleWaitMs === undefined ? {} : { idleWaitMs }),
       ...(timeZone === undefined ? {} : { timeZone }),
     },

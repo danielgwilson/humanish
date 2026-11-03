@@ -640,6 +640,11 @@ export interface StudyExecution {
   desktop?: StudyExecutionDesktop;
   /** Each browser participant's network log; see StudyNetworkCapture. Absent or false: off. */
   network?: StudyNetworkCapture;
+  /**
+   * How a computer-use participant's pointer reaches each target on a hosted desktop: `glide`
+   * moves it along a curve timed by Fitts's law, `jump` moves it in one step. Absent: jump.
+   */
+  pointer?: "glide" | "jump";
   /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */
   terminal?: StudyExecutionTerminal;
   /** `terminal-product` route: runtime key placement, defaulting to openai-egress, an external
@@ -845,8 +850,10 @@ interface StudyCommsCaptureEmail {
   linkOrigin?: string;
   /** Each participant's inbox address: the actor is told to sign up with it (the injected inbox
    *  instruction carries it) and the teardown drain matches captured mail against it. Omit the
-   *  whole list and the parser fills one deterministic address per participant (`<laneId>@example.test`)
-   *  so every participant can do email out of the box. When declared: a `lane` naming a participant
+   *  whole list and every participant gets one address (`<laneId>@example.test`) so every
+   *  participant can do email out of the box. With `external`, the run fills it instead and adds a
+   *  tag from the run id (`<laneId>-<tag>@example.test`), because the adopter's catch and app
+   *  outlive the run. When declared: a `lane` naming a participant
    * that  does not exist is a hard parse error (a mismatch silently disables the funnel for that
    * participant),  zero covered participants is a hard error, and partial coverage warns with the
    * uncovered ones. An  entry without `address` is legal but inert for the funnel: the drain does

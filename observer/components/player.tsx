@@ -127,6 +127,8 @@ export function Player({
           zoom={zoom}
           streamRevision={streamRevision}
           label={participantName}
+          speed={preferences.speed}
+          showPointer={preferences.pointer}
         />
         {!playback.controlled ? (
           <PlayerTransport
@@ -143,6 +145,8 @@ export function Player({
           playback={playback}
           skipWaits={preferences.skipWaits}
           onSkipWaits={prefs.setSkipWaits}
+          showPointer={preferences.pointer}
+          onShowPointer={prefs.setPointer}
           zoom={zoom}
           onZoom={setZoom}
           onFullscreen={fullscreen}

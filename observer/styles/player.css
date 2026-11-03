@@ -676,3 +676,57 @@
   color: var(--muted);
   font: 11px/1.4 var(--sans);
 }
+/* The participant's drawn pointer: the arrow's tip is the pointer's position, as a pin's center
+   is. It sits above the pins and never takes input. */
+.pointer-cursor {
+  position: absolute;
+  width: 18px;
+  height: 24px;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+/* Placed: shown unless the layer it sits in is hidden while its capture loads. */
+.pointer-cursor[data-placed] {
+  visibility: inherit;
+}
+.pointer-cursor[data-held] .pointer-arrow {
+  transform: scale(0.85);
+  transform-origin: 0 0;
+}
+.pointer-arrow {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 1px 2px var(--dz));
+}
+.pointer-arrow path {
+  fill: var(--accent);
+  /* Frames are the app's own pixels in either Observer theme, so the outline stays light. */
+  stroke: var(--dz-ink);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+.pointer-ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-round);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.4);
+}
+/* A grid tile is a fraction of the stage's width, so its pointer is smaller. */
+.card .pointer-cursor {
+  width: 12px;
+  height: 16px;
+}
+.card .pointer-ring {
+  width: 20px;
+  height: 20px;
+}

@@ -9,6 +9,7 @@ import {
   HOSTED_X11_DIALECT,
   guestX11Dialect,
   planX11Action,
+  planX11Glide,
   type X11Plan,
 } from "../../../src/substrates/x11/translator.js";
 
@@ -125,6 +126,33 @@ describe("the hosted dialect", () => {
   it("passes out-of-frame and fractional points to xdotool as given", () => {
     expect(planX11Action({ kind: "move", x: -3, y: 1e21 }, HOSTED_X11_DIALECT)).toEqual(
       commands(["mousemove", "--sync", "-3", "1e+21"]),
+    );
+  });
+});
+
+describe("a glide", () => {
+  it("is one command of rounded moves with a pause between them", () => {
+    expect(
+      planX11Glide(
+        [
+          { x: 10.4, y: 20.6 },
+          { x: 30, y: 40 },
+        ],
+        16,
+        HOSTED_X11_DIALECT,
+      ),
+    ).toEqual(["mousemove", "10", "21", "sleep", "0.016", "mousemove", "30", "40"]);
+  });
+
+  it("keeps a curve that bows past a framed desktop's edge inside it", () => {
+    const guest = guestX11Dialect({ width: 100, height: 80 });
+    expect(planX11Glide([{ x: -3, y: 85 }], 16, guest)).toEqual(["mousemove", "0", "79"]);
+  });
+
+  it("refuses an empty path or a point that is not a number", () => {
+    expect(() => planX11Glide([], 16, HOSTED_X11_DIALECT)).toThrow("rejected the action");
+    expect(() => planX11Glide([{ x: Number.NaN, y: 1 }], 16, HOSTED_X11_DIALECT)).toThrow(
+      "rejected the action",
     );
   });
 });

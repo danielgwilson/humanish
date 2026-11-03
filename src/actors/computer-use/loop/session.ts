@@ -80,6 +80,10 @@ export class LoopSession {
   readonly signal: AbortSignal | undefined;
   readonly timeoutMs: number;
   readonly idleSteps: number;
+  /** How the pointer reaches each action's target (CuaLoopOptions.pointer). */
+  readonly pointerMotion: "glide" | "jump";
+  /** Where the pointer is, in desktop pixels, once an action or a read has placed it. */
+  pointerPosition: { x: number; y: number } | undefined;
   readonly noProgressSteps: number;
   /** How long each wait lasts: the study's wait fields or their defaults. */
   readonly waits: WaitSettings;
@@ -145,6 +149,7 @@ export class LoopSession {
       now,
       signal,
       idleSteps = DEFAULT_IDLE_STEPS,
+      pointer = "jump",
       noProgressSteps = DEFAULT_NO_PROGRESS_STEPS,
       maxWaitMs,
       idleWaitMs,
@@ -191,6 +196,8 @@ export class LoopSession {
     this.signal = signal;
     this.timeoutMs = timeoutMs;
     this.idleSteps = idleSteps;
+    this.pointerMotion = pointer;
+    this.pointerPosition = undefined;
     this.noProgressSteps = noProgressSteps;
     this.waits = resolveWaitSettings({
       maxWaitMs,

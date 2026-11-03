@@ -4,6 +4,7 @@ import { ComputerUseExecutorError } from "../../actors/computer-use/executor-err
 import type { CuaAction, CuaActionResult } from "../../actors/computer-use/loop.js";
 import {
   planX11Action,
+  planX11Glide,
   type X11Dialect,
   type X11Point,
   type X11Region,
@@ -70,6 +71,17 @@ export async function executeX11Action(
   const run = () => runSteps(plan.steps, desktop.transport, signal);
   if (plan.held === undefined) return run();
   return holding(plan.held, desktop, signal, run);
+}
+
+/** Move the pointer through `path` in one desktop call, pressing nothing. */
+export async function glideX11Pointer(
+  path: readonly X11Point[],
+  stepMs: number,
+  desktop: X11Desktop,
+  signal: AbortSignal,
+): Promise<void> {
+  signal.throwIfAborted();
+  await desktop.transport.input(planX11Glide(path, stepMs, desktop.dialect), signal);
 }
 
 async function runSteps(

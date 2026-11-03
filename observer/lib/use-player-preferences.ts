@@ -10,13 +10,15 @@ interface Preferences {
   skipWaits: boolean;
   inspector: boolean;
   width: number;
+  /** Draw the participant's pointer moving between recorded positions. */
+  pointer: boolean;
 }
 
 const clampWidth = (width: number) =>
   Math.max(INSPECTOR_WIDTH.min, Math.min(INSPECTOR_WIDTH.max, width));
 
 function readPreferences(): Preferences {
-  const fallback = { speed: 1, skipWaits: false, inspector: true, width: 340 };
+  const fallback = { speed: 1, skipWaits: false, inspector: true, width: 340, pointer: true };
   try {
     const value: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null");
     if (!value || typeof value !== "object") return fallback;
@@ -29,14 +31,15 @@ function readPreferences(): Preferences {
         typeof prefs.width === "number" && Number.isFinite(prefs.width)
           ? clampWidth(prefs.width)
           : 340,
+      pointer: prefs.pointer !== false,
     };
   } catch {
     return fallback;
   }
 }
 
-/** The review player's saved view settings: playback speed, skipped waits, and the inspector's
- * visibility and width. Values outside the speed list or the width range fall back or clamp. */
+/** The review player's saved view settings: playback speed, skipped waits, the drawn pointer, and
+ * the inspector's visibility and width. Values outside the speed list or the width range fall back or clamp. */
 export function usePlayerPreferences() {
   const [preferences, setPreferences] = useState(readPreferences);
   useEffect(() => {
@@ -55,6 +58,7 @@ export function usePlayerPreferences() {
         speed: SPEEDS[(SPEEDS.indexOf(value.speed as 1) + 1) % SPEEDS.length] ?? 1,
       })),
     setSkipWaits: (skipWaits: boolean) => setPreferences((value) => ({ ...value, skipWaits })),
+    setPointer: (pointer: boolean) => setPreferences((value) => ({ ...value, pointer })),
     toggleInspector: () => setPreferences((value) => ({ ...value, inspector: !value.inspector })),
     /** Sets the width `update` returns for the current width, clamped to INSPECTOR_WIDTH. */
     resizeInspector: (update: (width: number) => number) =>

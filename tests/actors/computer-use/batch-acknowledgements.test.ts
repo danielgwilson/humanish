@@ -266,3 +266,139 @@ describe("what a read action returns", () => {
     ]);
   });
 });
+
+describe("the pointer's recorded path", () => {
+  it("records where every action that moves the pointer took it", async () => {
+    const { provider } = scripted([
+      turn({
+        actions: [
+          { kind: "move", x: 20, y: 30 },
+          { kind: "click", x: 7, y: 8 },
+          { kind: "scroll", x: 40, y: 50, dx: 0, dy: 3 },
+          {
+            kind: "drag",
+            path: [
+              { x: 1, y: 1 },
+              { x: 5, y: 5 },
+              { x: 9, y: 9 },
+            ],
+          },
+          { kind: "mouse_down", x: 11, y: 12 },
+          { kind: "mouse_up" },
+          typing,
+        ],
+      }),
+    ]);
+    const result = await run(provider, desktop());
+    const acted = result.trace.items.filter((item) => item.kind === "ui_action");
+    expect(acted.map((item) => item.pointerPath)).toEqual([
+      [{ x: 20, y: 30 }],
+      [{ x: 7, y: 8 }],
+      [{ x: 40, y: 50 }],
+      [
+        { x: 1, y: 1 },
+        { x: 5, y: 5 },
+        { x: 9, y: 9 },
+      ],
+      [{ x: 11, y: 12 }],
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it("records no path for a press the desktop refused", async () => {
+    const { provider } = scripted([turn({ actions: [click] })]);
+    const result = await run(
+      provider,
+      desktop(async () => {
+        throw Object.assign(new Error("xdotool exited 1"), { exitCode: 1, stderr: "" });
+      }),
+    );
+    const pressed = result.trace.items.find(
+      (item) => item.kind === "ui_action" && item.title.startsWith("click"),
+    );
+    expect(pressed?.pointerPath).toBeUndefined();
+  });
+});
+
+describe("gliding the pointer to each target", () => {
+  const gliding = (glide: NonNullable<CuaExecutor["glide"]>) => ({ ...desktop(), glide });
+
+  it("glides from where the last action left the pointer to just short of the next target", async () => {
+    const glide = vi.fn(async () => {});
+    const { provider } = scripted([
+      turn({
+        actions: [
+          { kind: "click", x: 100, y: 100 },
+          { kind: "click", x: 700, y: 400 },
+        ],
+      }),
+    ]);
+    const result = await run(provider, gliding(glide), { pointer: "glide" });
+    expect(glide).toHaveBeenCalledTimes(1);
+    const [points, stepMs] = glide.mock.calls[0] as unknown as [{ x: number; y: number }[], number];
+    expect(stepMs).toBe(16);
+    expect(points.length).toBeGreaterThan(5);
+    expect(points.at(-1)).not.toEqual({ x: 700, y: 400 });
+    const clicks = result.trace.items.filter((item) => item.title.startsWith("click"));
+    expect(clicks[0]?.pointerApproach).toBeUndefined();
+    expect(clicks[1]?.pointerApproach?.[0]).toEqual({ x: 100, y: 100 });
+    expect(clicks[1]?.pointerApproach?.slice(1)).toEqual(points);
+    expect(clicks[1]?.pointerPath).toEqual([{ x: 700, y: 400 }]);
+  });
+
+  it("starts from a pointer read when no action has placed the pointer yet", async () => {
+    const glide = vi.fn(async () => {});
+    const { provider } = scripted([
+      turn({ actions: [{ kind: "read_pointer" }, { kind: "move", x: 600, y: 300 }] }),
+    ]);
+    const executor = {
+      ...gliding(glide),
+      execute: vi.fn(async (action: CuaAction) =>
+        action.kind === "read_pointer" ? { kind: "pointer" as const, x: 10, y: 20 } : undefined,
+      ),
+    };
+    const result = await run(provider, executor, { pointer: "glide" });
+    const moved = result.trace.items.find((item) => item.title.startsWith("move"));
+    expect(moved?.pointerApproach?.[0]).toEqual({ x: 10, y: 20 });
+  });
+
+  it("sends no glide by default or to an executor that cannot glide", async () => {
+    const glide = vi.fn(async () => {});
+    const twoClicks = () =>
+      scripted([
+        turn({
+          actions: [
+            { kind: "click", x: 1, y: 1 },
+            { kind: "click", x: 500, y: 500 },
+          ],
+        }),
+      ]).provider;
+    const jumped = await run(twoClicks(), gliding(glide));
+    const unable = await run(twoClicks(), desktop(), { pointer: "glide" });
+    expect(glide).not.toHaveBeenCalled();
+    for (const result of [jumped, unable])
+      expect(result.trace.items.some((item) => item.pointerApproach !== undefined)).toBe(false);
+  });
+
+  it("notes a failed glide and still runs the action", async () => {
+    const glide = vi.fn(async () => {
+      throw new Error("desktop call failed");
+    });
+    const { provider } = scripted([
+      turn({
+        actions: [
+          { kind: "click", x: 1, y: 1 },
+          { kind: "click", x: 500, y: 500 },
+        ],
+      }),
+    ]);
+    const executor = gliding(glide);
+    const result = await run(provider, executor, { pointer: "glide" });
+    expect(executor.execute).toHaveBeenCalledTimes(2);
+    expect(result.trace.items.some((item) => item.title === "pointer glide failed")).toBe(true);
+    const second = result.trace.items.filter((item) => item.title.startsWith("click"))[1];
+    expect(second?.pointerApproach).toBeUndefined();
+    expect(second?.pointerPath).toEqual([{ x: 500, y: 500 }]);
+  });
+});

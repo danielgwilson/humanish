@@ -148,6 +148,7 @@ describe("the inspector", () => {
       skipWaits: false,
       inspector: true,
       width: 500,
+      pointer: true,
     });
     // The handle's arrow keys resize; they do not step the recording.
     expect(counter()).toBe("1 / 3");

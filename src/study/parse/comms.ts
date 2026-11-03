@@ -243,6 +243,21 @@ export function recipientParticipantId(recipient: StudyCommsRecipient): string {
   return recipient.lane;
 }
 
+/**
+ * One address per participant, for a study that declares no recipients. `runTag` goes into each
+ * address when the run passes one, so a catch and an app that outlive the run see a new address on
+ * every run.
+ */
+export function filledRecipients(
+  participantIds: readonly string[],
+  runTag?: string,
+): StudyCommsRecipient[] {
+  return participantIds.map((id) => ({
+    lane: id,
+    address: `${id.toLowerCase()}${runTag === undefined ? "" : `-${runTag}`}@example.test`,
+  }));
+}
+
 /** The declared recipients that name an address, in declaration order, by participant id. */
 export function addressedRecipients(
   email: Pick<StudyCommsEmail, "recipients">,

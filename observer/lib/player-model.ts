@@ -28,6 +28,10 @@ export interface PlayerRow {
   isFrame: boolean;
   atMs?: number;
   coord?: { x: number; y: number };
+  /** Where this action moved the pointer, ending where it rested: the recorded `pointerPath`. */
+  pointerPath?: Array<{ x: number; y: number }>;
+  /** The recorded glide toward `pointerPath`'s first point, when the pointer glided there. */
+  pointerApproach?: Array<{ x: number; y: number }>;
   /** On a zoom's row: the image of the region the participant looked at closely. */
   zoomHref?: string;
 }
@@ -108,6 +112,12 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
         ? { atMs: Date.parse(item.at) }
         : {}),
       ...(coord !== null ? { coord } : {}),
+      ...(item.pointerPath !== undefined && item.pointerPath.length > 0
+        ? { pointerPath: item.pointerPath }
+        : {}),
+      ...(item.pointerApproach !== undefined && item.pointerApproach.length > 0
+        ? { pointerApproach: item.pointerApproach }
+        : {}),
     });
   }
 

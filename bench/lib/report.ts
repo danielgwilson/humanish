@@ -131,6 +131,8 @@ export interface Manifest {
   persona?: string;
   /** Where the served builds kept tasks; absent means memory, as before `--storage` existed. */
   storage?: Storage;
+  /** The studies' execution.pointer from `--pointer`; absent means the CLI's default. */
+  pointer?: "glide" | "jump";
 }
 
 export interface ScoredRun {
@@ -212,6 +214,8 @@ export interface BenchResult {
   rubric: { id: string; version: number; sha256: string };
   fixture: { id: "taskly" | "taskly-local"; digests: FixtureDigests; persona: string };
   participant?: ParticipantSettings;
+  /** The studies' execution.pointer; absent means the CLI's default. */
+  pointer?: "glide" | "jump";
   mission: { id: MissionId; sha256: string; text: string };
   runsPerArm: number;
   budget: BudgetSettings;
@@ -417,6 +421,7 @@ export function buildResult(projectDir: string, manifest: Manifest): BenchResult
       id: manifest.storage === "local" ? "taskly-local" : "taskly",
       digests: manifest.fixture, persona: manifest.persona ?? "synthetic-new-user" },
     ...(manifest.participant === undefined ? {} : { participant: manifest.participant }),
+    ...(manifest.pointer === undefined ? {} : { pointer: manifest.pointer }),
     mission: { id: mission.id, sha256: sha256(mission.text), text: mission.text },
     runsPerArm: manifest.runsPerArm,
     budget: manifest.budget,
@@ -511,7 +516,8 @@ export function summaryMarkdown(result: BenchResult, jsonName: string): string {
     `# Taskly benchmark, ${date}, humanish ${result.humanish.version}`,
     "",
     `Mission \`${result.mission.id}\`, ${result.runsPerArm} planned runs per arm, rubric ` +
-      `\`${result.rubric.id}\` version ${result.rubric.version}. Built from ${result.humanish.source}. ` +
+      `\`${result.rubric.id}\` version ${result.rubric.version}` +
+      `${result.pointer === undefined ? "" : `, pointer ${result.pointer}`}. Built from ${result.humanish.source}. ` +
       `Full results: [${jsonName}](${jsonName}). Definitions: [README](README.md).`,
     "",
   ];

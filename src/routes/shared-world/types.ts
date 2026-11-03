@@ -232,6 +232,8 @@ export interface ExternalCommsWiring {
   external: StudyCommsExternal;
   email: StudyCommsEmail;
   inboxUrl: string;
+  /** The catch's send count when the run was set up; mail before it belongs to earlier runs. */
+  startCursor: number | undefined;
 }
 
 /** What buildConcurrentSharedWorldBundle projects into a run bundle. */

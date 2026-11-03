@@ -197,7 +197,7 @@ const ZOOM_OPTIONS = [
 
 /**
  * The review toolbar under the stage: capture stepping under a study clock (or Skip waits for
- * local playback), Next action, Next flagged frame, zoom, moment link, the original frame, the
+ * local playback), the drawn pointer when actions recorded positions, Next action, Next flagged frame, zoom, moment link, the original frame, the
  * shortcut list and the redaction state.
  */
 export function PlayerReviewTools({
@@ -206,6 +206,8 @@ export function PlayerReviewTools({
   playback,
   skipWaits,
   onSkipWaits,
+  showPointer,
+  onShowPointer,
   zoom,
   onZoom,
   onFullscreen,
@@ -216,6 +218,8 @@ export function PlayerReviewTools({
   playback: PlayerPlayback;
   skipWaits: boolean;
   onSkipWaits: (skip: boolean) => void;
+  showPointer: boolean;
+  onShowPointer: (show: boolean) => void;
   zoom: Zoom;
   onZoom: (zoom: Zoom) => void;
   onFullscreen: () => void;
@@ -250,6 +254,11 @@ export function PlayerReviewTools({
           <Checkbox checked={skipWaits} onCheckedChange={onSkipWaits} /> Skip waits
         </label>
       )}
+      {playback.rows.pointerFrames > 0 ? (
+        <label title="Draws the participant's pointer moving between the positions its actions recorded. A glided run draws the path its pointer took; otherwise the path between positions is drawn.">
+          <Checkbox checked={showPointer} onCheckedChange={onShowPointer} /> Pointer
+        </label>
+      ) : null}
       <button
         type="button"
         className="tbtn"

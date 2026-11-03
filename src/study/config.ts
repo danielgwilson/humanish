@@ -41,7 +41,7 @@ import {
   parseActorType,
   parseParticipantEntries,
 } from "./parse/actors.js";
-import { parseComms, recipientParticipantId } from "./parse/comms.js";
+import { filledRecipients, parseComms, recipientParticipantId } from "./parse/comms.js";
 import {
   parseCaps,
   parseDefaults,
@@ -316,11 +316,10 @@ function checkStudyConfig(config: StudyConfig): StudyParseResult {
   if (config.comms?.email?.kind === "fake" && isComputerUseComposition(config)) {
     const participantIds = declaredParticipantIds(config);
     const email = config.comms.email;
+    // An adopter-hosted catch and its app outlive the run, so the run fills those addresses
+    // itself, one set per run (externalRunEmail).
     if (email.recipients === undefined) {
-      email.recipients = participantIds.map((id) => ({
-        lane: id,
-        address: `${id.toLowerCase()}@example.test`,
-      }));
+      if (email.external === undefined) email.recipients = filledRecipients(participantIds);
     } else {
       const unknown = email.recipients.filter(
         (recipient) => !participantIds.includes(recipientParticipantId(recipient)),

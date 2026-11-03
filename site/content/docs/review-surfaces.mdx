@@ -145,7 +145,12 @@ following. A missing addressed moment is reported instead of silently replaced.
 
 Screenshot playback is sparse evidence, not a video recording. Capture gaps stay
 visible. **Skip waits** compresses intervals associated with recorded waits and
-reports the skipped duration. **Next action**, **Next flagged frame**, activity
+reports the skipped duration. The participant's pointer is drawn over each capture,
+in the player and on grid tiles: it glides from where the last action left it to the
+next click, scroll or drag, lands at the time that action was recorded, and rings
+where a press landed. The positions are recorded. With `execution.pointer: glide`
+the path is the one the desktop pointer took; otherwise the desktop pointer jumps and
+the path between positions is drawn. **Pointer** hides it. **Next action**, **Next flagged frame**, activity
 filters and grouped waits make long traces easier to inspect without deleting events.
 Older unstamped recordings use labeled estimated pacing. Long feeds, filmstrips,
 terminal output and event lists stay bounded while earlier/later content remains
