@@ -16,7 +16,7 @@ import { RecordingReturn } from "./recording-return";
 import { StudyGrid } from "./study-grid";
 import { ParticipantPager } from "./topbar";
 
-type GridPlayback = Pick<StudyPlayback, "recording" | "atMs" | "reviewing">;
+type GridPlayback = Pick<StudyPlayback, "recording" | "atMs" | "reviewing" | "playing" | "speed">;
 
 /**
  * The Participants view: the grid, one participant's recording (the player, or the stub when it
@@ -194,6 +194,8 @@ function ParticipantGrid({
       recording={playback.recording}
       atMs={playback.atMs}
       reviewing={playback.reviewing}
+      playing={playback.playing}
+      speed={playback.speed}
       page={grid.page}
       onPageChange={grid.setPage}
       statusSummary={

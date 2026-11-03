@@ -12,7 +12,8 @@ import {
 } from "../lib/player-model";
 import { openPlayback, playbackIndex, seekPlayback } from "../lib/player-state";
 import { formatHash, parseHash } from "../lib/route";
-import { fittedSize, pinPosition } from "../components/player-stage";
+import { fittedSize } from "../components/player-stage";
+import { pinPosition } from "../lib/stage-geometry";
 
 function model(count = 3): PlayerModel {
   return {

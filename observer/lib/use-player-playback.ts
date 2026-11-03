@@ -86,7 +86,9 @@ function indexRows(model: PlayerModel, notableEnd: boolean) {
   const waits = new Set<number>();
   let thoughtCount = 0;
   let actionCount = 0;
+  const pointer = new Set<number>();
   for (const row of model.rows) {
+    if (row.pointerPath !== undefined || row.coord !== undefined) pointer.add(row.frameIndex);
     if (row.coord) pins.set(row.frameIndex, [...(pins.get(row.frameIndex) ?? []), row]);
     if (isActionRow(row)) actions.add(row.frameIndex);
     if (isFindingRow(row)) findings.add(row.frameIndex);
@@ -102,6 +104,8 @@ function indexRows(model: PlayerModel, notableEnd: boolean) {
     waits,
     thoughtCount,
     actionCount,
+    /** How many captures have an action that moved the pointer. */
+    pointerFrames: pointer.size,
     notableEnd,
     /** Each row's position in `model.rows`, by id. */
     positions: new Map(model.rows.map((row, index) => [row.id, index])),

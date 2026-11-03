@@ -1,13 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { PlayerFrame, PlayerRow } from "@/lib/player-model";
+import { pinPosition, type Size } from "@/lib/stage-geometry";
 import { useDecodedImage, type DecodedImageState } from "@/lib/use-decoded-image";
+import { PointerCursor, type PointerView } from "./pointer-cursor";
 
 export type Zoom = "fit" | "actual" | number;
-export interface Size {
-  width: number;
-  height: number;
-}
-
 /** The wrapper is the raster rectangle, not an object-fit letterbox. Pins share it. */
 export function fittedSize(image: Size, available: Size, zoom: Zoom): Size {
   const factor =
@@ -18,24 +15,6 @@ export function fittedSize(image: Size, available: Size, zoom: Zoom): Size {
         : zoom;
   const safeFactor = Number.isFinite(factor) && factor > 0 ? factor : 1;
   return { width: image.width * safeFactor, height: image.height * safeFactor };
-}
-
-export function pinPosition(coord: { x: number; y: number }, viewport: Size): CSSProperties | null {
-  if (
-    !Number.isFinite(coord.x) ||
-    !Number.isFinite(coord.y) ||
-    viewport.width <= 0 ||
-    viewport.height <= 0 ||
-    coord.x < 0 ||
-    coord.y < 0 ||
-    coord.x > viewport.width ||
-    coord.y > viewport.height
-  )
-    return null;
-  return {
-    left: `${(100 * coord.x) / viewport.width}%`,
-    top: `${(100 * coord.y) / viewport.height}%`,
-  };
 }
 
 /**
@@ -96,6 +75,7 @@ export function PlayerStage({
   count,
   viewport,
   pins,
+  pointer = null,
   zoom,
   live,
   label,
@@ -107,6 +87,8 @@ export function PlayerStage({
   count: number;
   viewport: Size | undefined;
   pins: PlayerRow[];
+  /** The participant's pointer to draw over a recorded capture, when there is one to draw. */
+  pointer?: PointerView | null;
   zoom: Zoom;
   live: string | null;
   label: string;
@@ -228,6 +210,7 @@ export function PlayerStage({
             dimensions={recordedDimensions}
             zoom={zoom}
             pins={pins}
+            pointer={pointer}
           />
         ) : (
           <p className="evidence-empty" role="status">
@@ -247,6 +230,7 @@ function RecordedImage({
   dimensions,
   zoom,
   pins,
+  pointer,
 }: {
   frame: PlayerFrame;
   count: number;
@@ -255,6 +239,7 @@ function RecordedImage({
   dimensions: Size;
   zoom: Zoom;
   pins: PlayerRow[];
+  pointer: PointerView | null;
 }) {
   const { decoded, slots, status, loaded, errored, retry } = image;
   // Fit is sized by CSS from the stage container and the stage's --fit-ratio. Zoom levels are the
@@ -342,6 +327,9 @@ function RecordedImage({
               </span>
             ) : null;
           })}
+          {pointer && status === "ready" ? (
+            <PointerCursor view={pointer} viewport={viewport} />
+          ) : null}
         </div>
       ) : null}
     </div>
