@@ -339,32 +339,31 @@ hx reclaim --env-file missing.env --json >"$work/logs/env-file-missing.json" 2>"
 env_file_missing_exit=$?
 if [ "$env_file_missing_exit" = 9 ] && [ ! -s "$work/logs/env-file-missing.json" ] &&
   grep -q "missing.env: not found" "$work/logs/env-file-missing.err"; then
-  record "reclaim --env-file missing.env (alias, Node checks it)" PASS "exit 9 from Node, stdout empty" "#1546"
+  record "reclaim --env-file missing.env (removed, Node checks it)" PASS "exit 9 from Node, stdout empty" "#1546"
 else
-  record "reclaim --env-file missing.env (alias, Node checks it)" FAIL "exit $env_file_missing_exit; see logs/env-file-missing.*" "#1546"
+  record "reclaim --env-file missing.env (removed, Node checks it)" FAIL "exit $env_file_missing_exit; see logs/env-file-missing.*" "#1546"
 fi
 dotenv_label='d.checks.filter((c) => c.name === "key E2B_API_KEY").map((c) => c.detail || c.message || "").join(" ")'
-rename_warning="\`--env-file\` is now \`--dotenv\`; \`--env-file\` is removed in the first minor release on or after 2026-11-03."
 hx doctor --dotenv present.env --json >"$work/logs/doctor-dotenv.json" 2>"$work/logs/doctor-dotenv.err"
 doctor_dotenv_label=$(json_field "$work/logs/doctor-dotenv.json" "$dotenv_label")
 case "$doctor_dotenv_label" in
   *"supplied by --dotenv present.env"*) record "doctor --dotenv present.env: key label" PASS "supplied by --dotenv present.env" "#1546" ;;
   *) record "doctor --dotenv present.env: key label" FAIL "label '${doctor_dotenv_label}'; see logs/doctor-dotenv.json" "#1546" ;;
 esac
+# --env-file was removed in 0.156.0. Node loads present.env, then humanish rejects the option.
 hx doctor --env-file present.env --json >"$work/logs/doctor-env-file.json" 2>"$work/logs/doctor-env-file.err"
-doctor_alias_label=$(json_field "$work/logs/doctor-env-file.json" "$dotenv_label")
-doctor_alias_warned=$(W="$rename_warning" json_field "$work/logs/doctor-env-file.json" '(d.warnings || []).includes(process.env.W)')
-if [ "$doctor_alias_warned" = true ] && [ "$(grep -cF "warning: $rename_warning" "$work/logs/doctor-env-file.err")" = 1 ] &&
-  case "$doctor_alias_label" in *"supplied by --dotenv present.env"*) true ;; *) false ;; esac; then
-  record "doctor --env-file present.env (alias): label and one warning" PASS "same label; rename warning (2026-11-03) on stderr and in warnings[]" "#1546, #1568"
+doctor_env_file_exit=$?
+if [ "$doctor_env_file_exit" = 1 ] && [ ! -s "$work/logs/doctor-env-file.json" ] &&
+  grep -q "^error: unknown option '--env-file'" "$work/logs/doctor-env-file.err"; then
+  record "doctor --env-file present.env (removed): unknown option" PASS "exit 1, error: unknown option '--env-file'" "0.156.0"
 else
-  record "doctor --env-file present.env (alias): label and one warning" FAIL "label '${doctor_alias_label}', warned '${doctor_alias_warned}'; see logs/doctor-env-file.*" "#1546, #1568"
+  record "doctor --env-file present.env (removed): unknown option" FAIL "exit $doctor_env_file_exit; see logs/doctor-env-file.*" "0.156.0"
 fi
 reclaim_help=$(hx reclaim --help 2>"$work/logs/reclaim-help.err")
 if printf '%s' "$reclaim_help" | grep -q -- "--dotenv <path>" && ! printf '%s' "$reclaim_help" | grep -q -- "--env-file"; then
-  record "reclaim --help: --dotenv listed, --env-file hidden" PASS "--dotenv <path>" "#1546"
+  record "reclaim --help: --dotenv listed, no --env-file" PASS "--dotenv <path>" "#1546"
 else
-  record "reclaim --help: --dotenv listed, --env-file hidden" FAIL "see logs/reclaim-help.err and the help text" "#1546"
+  record "reclaim --help: --dotenv listed, no --env-file" FAIL "see logs/reclaim-help.err and the help text" "#1546"
 fi
 
 # 14c. Sandbox ids: see check 21's group below, which runs last because it edits the dry run's dir.
@@ -504,20 +503,16 @@ else
   record "reclaim --check: mode check, run dir unchanged" FAIL "exit $check_exit, '${check_view}', human '${check_human}'; files changed: $([ "$before_files" = "$after_files" ] && echo no || echo yes)" "#1557, #1561"
 fi
 
-# 20g. cleanup is a deprecated alias of reclaim --check: one warning on stderr, the same text first
-# in warnings[], then the reclaim --check result. It writes no cleanup.json and is not in --help.
-cleanup_warning="\`cleanup\` is now \`reclaim --check\`; \`cleanup\` is removed in the first minor release on or after 2026-11-03."
-hx cleanup --run "$run_id" --json >"$work/logs/cleanup-alias.json" 2>"$work/logs/cleanup-alias.err"
-alias_exit=$?
-alias_first=$(W="$cleanup_warning" json_field "$work/logs/cleanup-alias.json" '(d.warnings || [])[0] === process.env.W')
-same_result=$(node -e 'const fs=require("fs");const a=JSON.parse(fs.readFileSync(process.argv[1],"utf8")),b=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));delete a.warnings;delete b.warnings;process.stdout.write(String(JSON.stringify(a)===JSON.stringify(b)))' "$work/logs/cleanup-alias.json" "$work/logs/reclaim-check.json" 2>/dev/null)
+# 20g. cleanup was removed in 0.156.0: it is an unknown command, and runs nothing.
+hx cleanup --run "$run_id" --json >"$work/logs/cleanup-removed.json" 2>"$work/logs/cleanup-removed.err"
+cleanup_exit=$?
 help_mentions=$(hx --help 2>/dev/null | grep -c "cleanup")
-if [ "$alias_exit" = 0 ] && [ "$alias_first" = true ] && [ "$same_result" = true ] &&
-  [ "$(grep -cF "warning: $cleanup_warning" "$work/logs/cleanup-alias.err")" = 1 ] &&
+if [ "$cleanup_exit" = 1 ] && [ ! -s "$work/logs/cleanup-removed.json" ] &&
+  grep -q "^error: unknown command 'cleanup'" "$work/logs/cleanup-removed.err" &&
   [ ! -e "$run_dir/cleanup.json" ] && [ "$help_mentions" = 0 ]; then
-  record "cleanup (deprecated): warns, runs reclaim --check" PASS "one stderr warning, warnings[0], same result, no cleanup.json, hidden from --help" "#1557"
+  record "cleanup (removed): unknown command" PASS "exit 1, error: unknown command 'cleanup', no cleanup.json, not in --help" "0.156.0"
 else
-  record "cleanup (deprecated): warns, runs reclaim --check" FAIL "exit $alias_exit, warnings[0] '${alias_first}', same '${same_result}', --help mentions $help_mentions; see logs/cleanup-alias.*" "#1557"
+  record "cleanup (removed): unknown command" FAIL "exit $cleanup_exit, --help mentions $help_mentions; see logs/cleanup-removed.*" "0.156.0"
 fi
 
 # 20h. Claude Code below 2.1.248 is refused before a desktop starts (#1555). A stand-in `claude`
@@ -693,7 +688,7 @@ else
   record "verify blocks a token= parameter" FAIL "exit $token_exit, '${token_view}'; see logs/verify-token.json" "#1564"
 fi
 
-# 20n-20u: 0.110.3 (#1567, #1568, #1569). There is no 20p: check 14b reads the --env-file warning.
+# 20n-20u: 0.110.3 (#1567, #1568, #1569). There is no 20p: check 14b covers --env-file.
 # The PTY helper runs `npx humanish <args>` under a pseudo-terminal with run_env's variables plus
 # any KEY=VALUE given. Asked to, it sends Ctrl-C (byte 0x03) the moment "press Ctrl-C to stop"
 # appears. It prints whether it sent one and the output's `... stopped` lines, and never waits
@@ -3397,14 +3392,14 @@ if [ "$sbx_raw_share" = local_only ] && grep -q RAW_SANDBOX_ID "$work/logs/sbx-v
 else
   record "raw sandbox id in run.json: verify local_only RAW_SANDBOX_ID" FAIL "shareSafety '${sbx_raw_share}'; see logs/sbx-verify-raw.json" "#1548"
 fi
-# cleanup is reclaim --check from 0.110.1 (#1557): its result names each receipt's sandbox in
-# outcomes[] by marker and digest. With no E2B key the check fails, so the state is unknown.
-hx_e2b cleanup --run "$run_id" --json >"$work/logs/sbx-cleanup.json" 2>"$work/logs/sbx-cleanup.err"
+# reclaim --check names each receipt's sandbox in outcomes[] by marker and digest (#1557). With no
+# E2B key the check fails, so the state is unknown.
+hx_e2b reclaim --check --run "$run_id" --json >"$work/logs/sbx-cleanup.json" 2>"$work/logs/sbx-cleanup.err"
 sbx_cleanup=$(json_field "$work/logs/sbx-cleanup.json" '(d.outcomes || []).map((o) => o.sandboxId + " " + o.sandboxIdDigest + " " + o.source).join(",")')
 if [ "$sbx_cleanup" = "[redacted-sandbox-id] $raw_digest receipt" ] && ! grep -qF "$raw_id" "$work/logs/sbx-cleanup.json" "$work/logs/sbx-cleanup.err"; then
-  record "cleanup --json (reclaim --check): marker and digest, no raw id" PASS "[redacted-sandbox-id] $raw_digest, source receipt" "#1548, #1557"
+  record "reclaim --check --json: marker and digest, no raw id" PASS "[redacted-sandbox-id] $raw_digest, source receipt" "#1548, #1557"
 else
-  record "cleanup --json (reclaim --check): marker and digest, no raw id" FAIL "outcomes '${sbx_cleanup}'; see logs/sbx-cleanup.*" "#1548, #1557"
+  record "reclaim --check --json: marker and digest, no raw id" FAIL "outcomes '${sbx_cleanup}'; see logs/sbx-cleanup.*" "#1548, #1557"
 fi
 # Without an E2B key, the SDK's error names the dashboard link; redacted output keeps it (#1562).
 # 0.110.1 printed it as [REDACTED_SECRET].

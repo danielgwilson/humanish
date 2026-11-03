@@ -9,7 +9,7 @@ import { analysisKeyNames, discoverProviderKeys, type DotenvLoad } from "../keys
 import type { EnvFileLoadResult } from "../keys/env-file.js";
 import { deriveRunFacts, type TelemetryProperties } from "./telemetry.js";
 import type { UpdateCheckContext } from "./update-check.js";
-import { warnAndQueue, withQueuedWarnings } from "./deprecations.js";
+import { withQueuedWarnings } from "./deprecations.js";
 import { forTerminal } from "../routes/terminal/encoding.js";
 import type { RunResult } from "../run/results.js";
 import { cli } from "./invocation.js";
@@ -36,30 +36,6 @@ export const CWD_OPTION_DESCRIPTION = "Project directory.";
 export const RUN_OPTION_DESCRIPTION = "Run id, or latest.";
 export const DOTENV_OPTION_DESCRIPTION =
   "Load unset variables from this dotenv file. Values are never printed or saved.";
-const ENV_FILE_RENAMED =
-  "`--env-file` is now `--dotenv`; `--env-file` is removed in the first minor release on or after 2026-11-03.";
-
-/**
- * The hidden `--env-file <path>` that `--dotenv` replaced. Node scans the whole argv for
- * `--env-file` before a script runs, and stops only at `--` (src/node_dotenv.cc), so a missing file
- * exits 9 through Node and never reaches humanish. `--dotenv` does not collide.
- * Removed in the first minor release on or after 2026-11-03: deprecated in 0.110.0 on 2026-10-03, it stays at least 30 days and one
- * minor release.
- */
-export function envFileAliasOption(): Option {
-  return new Option("--env-file <path>").hideHelp().conflicts("dotenv");
-}
-
-/** The dotenv path a command was given: `--dotenv`, or the `--env-file` alias with its warning. */
-export function dotenvPathOf(
-  options: { dotenv?: string | undefined; envFile?: string | undefined },
-  command: Command,
-  io: CliIo,
-): string | undefined {
-  if (options.envFile === undefined) return options.dotenv;
-  warnAndQueue(command, io, ENV_FILE_RENAMED);
-  return options.envFile;
-}
 export const PORT_OPTION_DESCRIPTION = "Port to listen on at 127.0.0.1.";
 
 /** `--port` for a loopback server whose default, 0, lets the OS pick a free port. */
@@ -73,7 +49,6 @@ export interface StudyCommandOptions {
   detach?: boolean | undefined;
   dryRun?: boolean | undefined;
   dotenv?: string | undefined;
-  envFile?: string | undefined;
   json?: boolean | undefined;
   open?: boolean | undefined;
   participants?: string | undefined;

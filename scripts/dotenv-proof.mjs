@@ -1,6 +1,7 @@
-// After build: `--dotenv` and its `--env-file` alias, run through Node as a user runs them.
-// Node scans the whole argv for `--env-file` before dist/cli.js loads, so the alias with a missing
-// file exits 9 from Node, and `--dotenv` with a missing file reaches humanish's exit-2 envelope.
+// After build: `--dotenv`, and the removed `--env-file`, run through Node as a user runs them.
+// Node scans the whole argv for `--env-file` before dist/cli.js loads, so `--env-file` with a
+// missing file exits 9 from Node, and `--dotenv` with a missing file reaches humanish's exit-2
+// envelope. With a present file, Node loads it and humanish rejects the unknown option.
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
@@ -10,8 +11,6 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const cli = join(root, "dist/cli.js");
-const renamed =
-  "`--env-file` is now `--dotenv`; `--env-file` is removed in the first minor release on or after 2026-11-03.";
 const cwd = await mkdtemp(join(tmpdir(), "humanish-dotenv-proof-"));
 
 function humanish(...args) {
@@ -54,13 +53,12 @@ try {
   const { row } = e2bRow(labelled.stdout);
   assert.match(row.message, /^supplied by --dotenv present\.env;/);
 
-  const alias = humanish("doctor", "--env-file", "present.env");
-  const aliased = e2bRow(alias.stdout);
-  assert.match(aliased.row.message, /^supplied by --dotenv present\.env;/);
-  assert.deepEqual(aliased.result.warnings, [renamed]);
-  assert.equal(alias.stderr, `warning: ${renamed}\n`);
+  const removed = humanish("doctor", "--env-file", "present.env");
+  assert.equal(removed.status, 1, removed.stderr);
+  assert.equal(removed.stdout, "");
+  assert.match(removed.stderr, /^error: unknown option '--env-file'/);
 
-  for (const child of [missing, intercepted, labelled, alias]) {
+  for (const child of [missing, intercepted, labelled, removed]) {
     assert.doesNotMatch(child.stdout + child.stderr, /synthetic-dotenv-proof-key/);
   }
 } finally {

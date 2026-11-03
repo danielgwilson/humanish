@@ -217,31 +217,15 @@ describe("dry-run bundles", () => {
     });
   });
 
-  it("runs the deprecated humanish cleanup as reclaim --check, with one warning", async () => {
+  it("rejects the removed humanish cleanup as an unknown command and writes nothing", async () => {
     await withFixtureCopy(async (cwd) => {
-      await runDryRun({ cwd, dryRun: true, runId: "cleanup-alias" });
-      const warning =
-        "`cleanup` is now `reclaim --check`; `cleanup` is removed in the first minor release on or after 2026-11-03.";
-      const check = await runCli(["reclaim", "--check", "--cwd", cwd, "--json"]);
+      await runDryRun({ cwd, dryRun: true, runId: "cleanup-removed" });
       const cleanup = await runCli(["cleanup", "--cwd", cwd, "--json"]);
-      // The same result and exit code, with the warning first in warnings[] and once on stderr.
-      expect(cleanup.exitCode).toBe(check.exitCode);
-      const { warnings, ...result } = JSON.parse(cleanup.stdout) as { warnings: string[] };
-      const { warnings: checkWarnings, ...checkResult } = JSON.parse(check.stdout) as {
-        warnings: string[];
-      };
-      expect(result).toEqual(checkResult);
-      expect(result).toMatchObject({ mode: "check" });
-      expect(warnings).toEqual([warning, ...checkWarnings]);
-      expect(cleanup.stderr.split(warning)).toHaveLength(2);
-
-      const human = await runCli(["cleanup", "--cwd", cwd]);
-      const humanCheck = await runCli(["reclaim", "--check", "--cwd", cwd]);
-      expect(human.stdout).toBe(humanCheck.stdout);
-      expect(human.stderr).toContain(`warning: ${warning}`);
-      // It writes nothing, so verify reads no cleanup receipt for the run.
+      expect(cleanup.exitCode).toBe(1);
+      expect(cleanup.stdout).toBe("");
+      expect(cleanup.stderr).toMatch(/^error: unknown command 'cleanup'\./);
       await expect(
-        stat(path.join(cwd, ".humanish/runs/cleanup-alias/cleanup.json")),
+        stat(path.join(cwd, ".humanish/runs/cleanup-removed/cleanup.json")),
       ).rejects.toMatchObject({ code: "ENOENT" });
     });
   });

@@ -32,8 +32,6 @@ import {
   type CliIo,
   CWD_OPTION_DESCRIPTION,
   DOTENV_OPTION_DESCRIPTION,
-  dotenvPathOf,
-  envFileAliasOption,
   JSON_OPTION_DESCRIPTION,
   markInvocationEnvelopeWritten,
   wantsJson,
@@ -109,7 +107,6 @@ export function registerDoctorCommand(parent: Command, io: CliIo): void {
       "Check the study's desktop, participant authentication and separate analysis requirements; no provider calls.",
     )
     .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
-    .addOption(envFileAliasOption())
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(
       async (
@@ -117,12 +114,11 @@ export function registerDoctorCommand(parent: Command, io: CliIo): void {
           cwd: string;
           study?: string;
           dotenv?: string;
-          envFile?: string;
           json?: boolean;
         },
         command,
       ) => {
-        const dotenv = dotenvPathOf(options, command, io);
+        const dotenv = options.dotenv;
         let loaded: DotenvLoad | undefined;
         if (
           dotenv &&

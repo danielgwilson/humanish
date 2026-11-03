@@ -54,6 +54,15 @@ The Unreleased section holds the full notes for the next version until it is tag
   the count over. Each evidence file the runner sends counts as an answer, so a long catch-up after
   a wake does too. A runner that has really stopped answering still ends the run after 120 s awake.
 
+### Removed
+
+- `humanish cleanup`, deprecated in 0.110.1. Use `humanish reclaim --check`. `cleanup` now fails
+  with "error: unknown command 'cleanup'. humanish --help lists the commands." and exit 1.
+- `--env-file <path>`, deprecated in 0.110.0. Use `--dotenv <path>`. `--env-file` now fails with
+  "error: unknown option '--env-file'" and exit 1. Node still reads `--env-file` before humanish
+  starts, so a missing file exits 9 with Node's own error. The terminal surface's missing-key hint
+  names `humanish tui --dotenv .env`.
+
 ## 0.155.0: Studies with an email catch you host run remotely (2026-11-02)
 
 humanish 0.155.0 runs a computer-use study with `comms.email.external` remotely by default when

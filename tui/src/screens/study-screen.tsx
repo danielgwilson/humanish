@@ -166,7 +166,7 @@ export function StudyScreen(props: StudyScreenProps): React.ReactElement {
             {"  "}humanish keys set openai{"   "}· stores them for every project
           </Text>
           <Text dimColor>
-            {"  "}humanish tui --env-file .env{"   "}· or just this session
+            {"  "}humanish tui --dotenv .env{"   "}· or just this session
           </Text>
         </Box>
       ) : null}
