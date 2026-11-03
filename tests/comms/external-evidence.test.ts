@@ -19,6 +19,7 @@ it("returns a warning, not a rejection, for a catch token that is not well-forme
     // The failed drain never writes a file.
     runPaths: {} as PreparedRunArtifactPaths,
     knownSecretValues: [],
+    startCursor: undefined,
   });
   expect(result.path).toBeUndefined();
   expect(result.warnings.join("\n")).toContain("Comms evidence collection failed");
@@ -36,6 +37,7 @@ it("scrubs a known value from a warning and redacts a key that percent-encoding 
     env: { CATCH_TOKEN: "catch-token-value" },
     runPaths: {} as PreparedRunArtifactPaths,
     knownSecretValues: ["743921"],
+    startCursor: undefined,
   });
   const warning = result.warnings.join("\n");
   expect(warning).toContain("catch refused [REDACTED_SECRET] for [REDACTED_SECRET] at /inbox/a");

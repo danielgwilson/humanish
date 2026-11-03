@@ -6,6 +6,7 @@ import {
   catchTokenOf,
   catchTokenRefusal,
   collectExternalCommsEvidence,
+  externalCatchCursor,
 } from "../../comms/external-evidence.js";
 import { FakeInbox } from "../../comms/fake-inbox.js";
 import { prepareReceivingRun, type ReceivingSource } from "../../comms/receiving-runtime.js";
@@ -119,7 +120,11 @@ export async function prepareExternalComms(
       message: `The external comms catch or inbox is unreachable or incompatible (GET /health must identify humanish-comms-catch and advertise recipient-inbox-v1). Update humanish on the catch host and restart it with \`humanish comms catch\` on that host, or drop comms.email to run without the inbox funnel.`,
     };
   }
-  return { ok: true, wiring: { external: externalComms, email: externalCommsEmail, inboxUrl } };
+  const startCursor = dryRun ? undefined : await externalCatchCursor(externalComms, env);
+  return {
+    ok: true,
+    wiring: { external: externalComms, email: externalCommsEmail, inboxUrl, startCursor },
+  };
 }
 
 /**
@@ -193,6 +198,7 @@ export async function drainExternalComms(
     env: ctx.env,
     runPaths: ctx.runPaths,
     knownSecretValues: ctx.run.secrets.values(),
+    startCursor: comms.startCursor,
   });
   ctx.warnings.push(...warnings);
   return path;

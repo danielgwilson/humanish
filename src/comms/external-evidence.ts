@@ -10,7 +10,7 @@ import type { StudyCommsEmail, StudyCommsExternal } from "../study/types.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { FakeInbox } from "./fake-inbox.js";
-import { collectExternalCommsThread } from "./sandbox-catch.js";
+import { collectExternalCommsThread, drainExternalCommsCatch } from "./sandbox-catch.js";
 import type { CommsAddress } from "./types.js";
 import { plural } from "../run/text.js";
 
@@ -49,6 +49,28 @@ export function catchTokenOf(
 }
 
 /**
+ * How many sends the catch holds when the run starts, so the drain at the end reads only this
+ * run's mail. Undefined when the catch could not be read; the drain then reads from the start and
+ * says so. It never throws, because a failed read here should not stop a run the health check let
+ * through.
+ */
+export async function externalCatchCursor(
+  external: StudyCommsExternal,
+  env: Record<string, string | undefined>,
+): Promise<number | undefined> {
+  const authToken = catchTokenOf(external, env);
+  try {
+    const { cursor } = await drainExternalCommsCatch({
+      ...external,
+      ...(authToken === undefined ? {} : { authToken }),
+    });
+    return cursor;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Drains the catch, routes its sends to the declared recipients' inboxes and writes the thread to
  * `comms/thread.json`. Returns that path when a message matched, and the warnings to add to the
  * run, each scrubbed of the run's known secret values and the catch token, then redacted. It never
@@ -61,8 +83,10 @@ export async function collectExternalCommsEvidence(args: {
   runPaths: PreparedRunArtifactPaths;
   /** The run's known secret values. The route may add to it until the drain runs. */
   knownSecretValues: readonly string[];
+  /** externalCatchCursor at run start; undefined reads the catch from its first send. */
+  startCursor: number | undefined;
 }): Promise<{ path?: string; warnings: string[] }> {
-  const { external, email, env, runPaths, knownSecretValues } = args;
+  const { external, email, env, runPaths, knownSecretValues, startCursor } = args;
   const authToken = catchTokenOf(external, env);
   // Pattern redaction alone until the literal scrub exists, so a warning built in the catch below
   // is never unredacted. The scrub is built inside the try, where a failure becomes that warning.
@@ -82,6 +106,7 @@ export async function collectExternalCommsEvidence(args: {
       external: { ...external, ...(authToken === undefined ? {} : { authToken }) },
       channel,
       inboxes,
+      ...(startCursor === undefined ? {} : { cursor: startCursor }),
     });
     if (collected.artifact) {
       const path = "comms/thread.json";
@@ -91,7 +116,15 @@ export async function collectExternalCommsEvidence(args: {
         `${JSON.stringify(collected.artifact, null, 2)}\n`,
         "utf8",
       );
-      return { path, warnings: [] };
+      return {
+        path,
+        warnings:
+          startCursor === undefined
+            ? scrubbed([
+                `The email catch at ${external.catchBaseUrl} could not be read when the run started, so ${path} may include mail from earlier runs. Check the catch token and that the catch was up before the run.`,
+              ])
+            : [],
+      };
     }
     if (collected.captured > 0) {
       return {
