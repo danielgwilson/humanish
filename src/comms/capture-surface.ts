@@ -317,7 +317,9 @@ export function renderInboxList(
   options: InboxRenderOptions = {},
 ): string {
   const base = inboxPath(options);
-  const rows = messages
+  // Newest first, as mail clients list it, so the message a participant just asked for is on top.
+  const rows = [...messages]
+    .sort((a, b) => b.deliveredAt - a.deliveredAt || b.id.localeCompare(a.id))
     .map(
       (message) =>
         '<tr><td><a href="' +

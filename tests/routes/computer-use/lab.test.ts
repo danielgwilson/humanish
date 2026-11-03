@@ -7631,16 +7631,16 @@ describe("adopter-hosted comms on the app-url route", () => {
       }
       expect(healthy).toBe(true);
 
-      // The app's send during the run, captured by the adopter's catch, addressed to lane-01's
-      // filled deterministic address (recipients omitted in the study on purpose: the parser fills
-      // one per participant, and this proves the filled address is what the funnel matches).
-      const appSends = () =>
+      // The app's send during the run, captured by the adopter's catch, addressed to the address
+      // the run filled for lane-01 (recipients omitted in the study on purpose: the run fills one
+      // per participant, and this proves the filled address is what the funnel matches).
+      const appSends = (to: string) =>
         fetch(`${baseUrl}/emails`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             from: "no-reply@example.test",
-            to: ["lane-01@example.test"],
+            to: [to],
             subject: "Confirm your email",
             html: '<a href="https://app.example.test/verify?token=xyz789">Verify</a>',
           }),
@@ -7677,7 +7677,8 @@ describe("adopter-hosted comms on the app-url route", () => {
           desktopModule: async () => module,
           runSession: async (options) => {
             seenInstructions.push(options.instructions);
-            posted ??= await appSends();
+            const lane01 = /lane-01-[0-9a-f]{6}@example\.test/.exec(options.instructions)?.[0];
+            if (lane01 !== undefined) posted ??= await appSends(lane01);
             return runCuaActorSession({
               ...options,
               participant: scriptedParticipant(TWO_TURN_SESSION, "k1"),
@@ -7689,10 +7690,10 @@ describe("adopter-hosted comms on the app-url route", () => {
       const result = outcome.result;
       expect(posted?.ok).toBe(true);
 
-      // Every persona was told its own filled address and the adopter's inbox URL (this
-      // route previously ignored the whole block).
+      // Every persona was told its own address for this run and the adopter's inbox URL.
       expect(seenInstructions).toHaveLength(2);
-      for (const address of ["lane-01@example.test", "lane-02@example.test"]) {
+      const runTag = createHash("sha256").update(result.runId).digest("hex").slice(0, 6);
+      for (const address of [`lane-01-${runTag}@example.test`, `lane-02-${runTag}@example.test`]) {
         const scopedUrl = recipientInboxUrl(`${baseUrl}/inbox`, address);
         expect(
           seenInstructions.filter((text) => text.includes(scopedUrl) && text.includes(address)),
@@ -7704,7 +7705,7 @@ describe("adopter-hosted comms on the app-url route", () => {
       const threadPath = path.join(cwd, ".humanish", "runs", result.runId, "comms", "thread.json");
       const thread = await readFile(threadPath, "utf8");
       expect(thread).toContain("humanish.comms-thread.v1");
-      expect(thread).not.toContain("lane-01@example.test");
+      expect(thread).not.toContain(`lane-01-${runTag}@example.test`);
       expect(thread).not.toContain("Confirm your email");
       expect(thread).not.toContain("xyz789");
       expect(result.warnings.some((w) => w.includes("captured no email sends"))).toBe(false);

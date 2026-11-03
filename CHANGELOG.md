@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- A computer-use study with `comms.email.external` and no `comms.email.recipients` gives each
+  participant a new address on every run, `<participant id>-<tag>@example.test`, with a
+  6-character tag from the run id. Before, every run used `<participant id>@example.test`, so a
+  participant opened an inbox holding earlier runs' codes and signed up with an address the app
+  already had an account for. In a live check, a participant shown four identical code emails tried
+  old ones and gave up. Addresses declared in `recipients` are kept as written. `parseStudy` no
+  longer fills `recipients` for these studies; the run does.
+- The inbox page lists the newest message first.
+
 ### Fixed
 
 - A run with `comms.email.external` records only the mail sent during that run. Before, it read

@@ -23,7 +23,9 @@ import { FakeInbox } from "../../src/comms/fake-inbox.js";
 import {
   collectExternalCommsEvidence,
   externalCatchCursor,
+  externalRunEmail,
 } from "../../src/comms/external-evidence.js";
+import { addressedRecipients } from "../../src/study/parse/comms.js";
 import { prepareRunArtifactPaths } from "../../src/run/paths.js";
 import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { parseStudy } from "../../src/study/config.js";
@@ -208,10 +210,35 @@ describe("comms.email.external config", () => {
     // The previously-inert warning must be gone: this is the whole point of the feature.
     expect(result.warnings.join("\n")).not.toContain("comms.email (the in-sandbox email/SMS catch");
     expect(result.config.comms?.email?.external?.catchBaseUrl).toBe("https://catch.example.test");
-    // Recipients still auto-fill per participant, so the persona is told an address without extra
-    // config.
-    expect(result.config.comms?.email?.recipients).toEqual([
-      { lane: "lane-01", address: "lane-01@example.test" },
+    // The run fills the addresses, one set per run, so the parser leaves them out.
+    expect(result.config.comms?.email?.recipients).toBeUndefined();
+    const email = result.config.comms?.email;
+    if (email === undefined) throw new Error("expected comms.email");
+    const first = externalRunEmail(email, ["lane-01"], "cua-run-a");
+    const [address] = addressedRecipients(first).map((recipient) => recipient.address);
+    expect(address).toMatch(/^lane-01-[0-9a-f]{6}@example\.test$/);
+    expect(addressedRecipients(externalRunEmail(email, ["lane-01"], "cua-run-a"))).toEqual(
+      addressedRecipients(first),
+    );
+    expect(
+      addressedRecipients(externalRunEmail(email, ["lane-01"], "cua-run-b"))[0]?.address,
+    ).not.toBe(address);
+  });
+
+  it("keeps declared addresses as written on every run", () => {
+    const result = parseStudy(
+      appUrlLab({
+        email: {
+          external: { catchBaseUrl: "https://catch.example.test" },
+          recipients: [{ lane: "lane-01", address: "returning@example.test" }],
+        },
+      }),
+    );
+    if (!result.ok) throw new Error(result.error.message);
+    const email = result.config.comms?.email;
+    if (email === undefined) throw new Error("expected comms.email");
+    expect(addressedRecipients(externalRunEmail(email, ["lane-01"], "cua-run-a"))).toEqual([
+      { participantId: "lane-01", address: "returning@example.test" },
     ]);
   });
 

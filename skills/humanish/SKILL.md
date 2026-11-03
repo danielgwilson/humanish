@@ -429,7 +429,8 @@ comms:
 ```
 
 That is the whole block for the common case. Every participant automatically gets a
-deterministic inbox address (`<laneId>@example.test`), and each actor's prompt is
+deterministic inbox address (`<laneId>@example.test`; with `external`, a new
+`<laneId>-<tag>@example.test` on every run), and each actor's prompt is
 extended with the full handoff: its address ("when the app asks for an email
 address, enter exactly that"), the inbox URL to open, and the wait steering
 ("waiting for an email is normal, not a blocker"). Declare `recipients` only to
