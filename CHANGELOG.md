@@ -8,60 +8,19 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Added
+## 0.156.0: Replays show each participant's pointer moving (2026-11-03)
 
-- The Observer draws each computer-use participant's pointer moving through a replay, in the
-  participant player and on every grid tile. The arrow glides to each click, scroll and drag on a
-  curve timed by Fitts's law, lands at the time the action was recorded, rings where a press
-  landed, and shrinks while a drag holds the button. Runs now record `items[].pointerPath`, the
-  points each action moved the pointer through. Unless the study glides the pointer (below), the
-  path between two recorded positions is an illustration: the desktop pointer jumps between them.
-  Older bundles, which recorded clicks
-  only, show the arrow at each click and its ring. A **Pointer** checkbox hides it in the player.
-  A run's desktop video is unchanged and shows the real pointer.
+humanish 0.156.0 shows each computer-use participant's pointer moving through a replay. The
+Observer draws the arrow gliding from one action to the next and ringing where a press landed, in
+the participant player and on every grid tile, from the positions runs now record. A study can
+also set `execution.pointer: glide` to move the real desktop pointer along a curve to each target
+on E2B and Modal desktops, so the live view and the desktop video show the motion and hovers along
+the way happen. The default stays `jump`: the first benchmark comparison did not clear the bar for
+changing what every participant does. This release also
+gives each run fresh email addresses on an adopter-hosted catch, collects only that run's mail,
+and removes `humanish cleanup` and `--env-file`, deprecated since 0.110.
 
-- `execution.pointer: glide` moves each computer-use participant's real pointer along a curve to
-  its next target on E2B and Modal desktops, timed by Fitts's law (150-500 ms a move) and sent as
-  one desktop command a move. Hovers along the way happen as they would for a person, and the live
-  view and desktop video show the motion. Each action's `pointerApproach` records the path, and
-  the Observer draws it from those points. The default stays `jump`, one step to the target, until
-  a benchmark comparison shows gliding does not change what participants find. The local VM moves
-  in one step either way.
-
-### Changed
-
-- A computer-use study with `comms.email.external` and no `comms.email.recipients` gives each
-  participant a new address on every run, `<participant id>-<tag>@example.test`, with a
-  6-character tag from the run id. Before, every run used `<participant id>@example.test`, so a
-  participant opened an inbox holding earlier runs' codes and signed up with an address the app
-  already had an account for. In a live check, a participant shown four identical code emails tried
-  old ones and gave up. Addresses declared in `recipients` are kept as written. `parseStudy` no
-  longer fills `recipients` for these studies; the run does.
-- The inbox page lists the newest message first.
-
-### Fixed
-
-- A run with `comms.email.external` records only the mail sent during that run. Before, it read
-  every send the catch had ever stored, so a catch reused across runs put earlier runs' mail in
-  `comms/thread.json`. The run now counts the sends the catch holds before its participants start
-  and collects only later ones. When the catch cannot be read at that point, the run collects
-  everything as before and its warnings say the thread may include earlier mail.
-
-- A remote run survives the machine that follows it sleeping or being stopped. Before, the first
-  read that failed after 120 s without an answer ended the run and reclaimed its sandboxes, and
-  that count included the time this machine was asleep, so a run could end on waking while its
-  runner was still working. Now a sleep or stop of 30 s or more does not count, and each wake starts
-  the count over. Each evidence file the runner sends counts as an answer, so a long catch-up after
-  a wake does too. A runner that has really stopped answering still ends the run after 120 s awake.
-
-### Removed
-
-- `humanish cleanup`, deprecated in 0.110.1. Use `humanish reclaim --check`. `cleanup` now fails
-  with "error: unknown command 'cleanup'. humanish --help lists the commands." and exit 1.
-- `--env-file <path>`, deprecated in 0.110.0. Use `--dotenv <path>`. `--env-file` now fails with
-  "error: unknown option '--env-file'" and exit 1. Node still reads `--env-file` before humanish
-  starts, so a missing file exits 9 with Node's own error. The terminal surface's missing-key hint
-  names `humanish tui --dotenv .env`.
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.156.0)
 
 ## 0.155.0: Studies with an email catch you host run remotely (2026-11-02)
 
