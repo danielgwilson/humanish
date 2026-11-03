@@ -5,7 +5,8 @@
 
 import { redactText, toErrorMessage } from "../evidence/redaction.js";
 import { scrubSecretValues } from "../evidence/secret-scrub.js";
-import { addressedRecipients } from "../study/parse/comms.js";
+import { createHash } from "node:crypto";
+import { addressedRecipients, filledRecipients } from "../study/parse/comms.js";
 import type { StudyCommsEmail, StudyCommsExternal } from "../study/types.js";
 import { writeContainedOutputFile } from "../run/contained-output.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
@@ -46,6 +47,23 @@ export function catchTokenOf(
   env: Record<string, string | undefined>,
 ): string | undefined {
   return external.authTokenEnv === undefined ? undefined : env[external.authTokenEnv];
+}
+
+/**
+ * The email settings one run uses with an adopter-hosted catch. A study that declares no recipients
+ * gets one address per participant with a tag from the run id. The catch keeps every message and
+ * the app keeps every account, so a shared address would hand this run's participant an earlier
+ * run's inbox and, often, an existing account. Declared addresses are kept as written: a study
+ * of returning users names the addresses their accounts use.
+ */
+export function externalRunEmail(
+  email: StudyCommsEmail,
+  participantIds: readonly string[],
+  runId: string,
+): StudyCommsEmail {
+  if (email.kind !== "fake" || email.recipients !== undefined) return email;
+  const runTag = createHash("sha256").update(runId).digest("hex").slice(0, 6);
+  return { ...email, recipients: filledRecipients(participantIds, runTag) };
 }
 
 /**

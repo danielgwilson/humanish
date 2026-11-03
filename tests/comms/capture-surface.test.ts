@@ -240,6 +240,16 @@ describe("comms-inbox: renderInboxList", () => {
     expect(html).toContain("Confirm your email");
     expect(html).toContain(`/inbox/${messages[0]!.id}`);
   });
+
+  it("lists the newest message first", async () => {
+    const [older] = await captured("First code");
+    const [newer] = await captured("Second code");
+    const html = renderInboxList([
+      { ...older!, id: "comms-0001", deliveredAt: 1_700_000_000_000 },
+      { ...newer!, id: "comms-0002", deliveredAt: 1_700_000_060_000 },
+    ]);
+    expect(html.indexOf("Second code")).toBeLessThan(html.indexOf("First code"));
+  });
 });
 
 describe("recipient-scoped inbox files", () => {

@@ -7,6 +7,7 @@ import path from "node:path";
 import { type RunScope } from "../../run/run.js";
 import type { RefusedStudy } from "../../run/route-shell.js";
 import { externalInboxUrl } from "../../comms/sandbox-catch.js";
+import { externalRunEmail } from "../../comms/external-evidence.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { RunSecrets } from "../../run/secrets.js";
 import { participantKeys } from "../../actors/computer-use/providers.js";
@@ -388,6 +389,18 @@ export async function startCuaRun(
   });
   if (!started.ok) return admitted.refuse(started.code, started.message, descriptor.id);
   const { run } = started;
+  // An adopter-hosted catch's filled addresses depend on the run id, so they are filled here.
+  const runAdmitted: AdmittedCuaRun = {
+    ...admitted,
+    externalCommsEmail:
+      admitted.externalCommsEmail === undefined
+        ? undefined
+        : externalRunEmail(
+            admitted.externalCommsEmail,
+            participantRuns.map((participant) => participant.planned.id),
+            run.runId,
+          ),
+  };
   const { paths: runPaths, source } = run;
   const redactScreenshots = plan.residual.policies?.redactScreenshots === true;
 
@@ -397,7 +410,7 @@ export async function startCuaRun(
   // to grow; participants call it through deps.onTrace. It exists before deps so deps can reference it as
   // a stable indirection.
   const liveTrace: { flush?: LiveTraceFlush["flush"]; stop?: LiveTraceFlush["stop"] } = {};
-  const deps = cuaParticipantDeps(plan, input, admitted, {
+  const deps = cuaParticipantDeps(plan, input, runAdmitted, {
     runPaths,
     redactScreenshots,
     liveTrace,
@@ -431,7 +444,7 @@ export async function startCuaRun(
     ...(publicRepo === undefined ? {} : { publicRepo }),
   };
 
-  const { externalCommsConfig, externalCommsEmail } = admitted;
+  const { externalCommsConfig, externalCommsEmail } = runAdmitted;
   return {
     ok: true as const,
     setup: {
