@@ -20,8 +20,6 @@ import {
   type CliIo,
   CWD_OPTION_DESCRIPTION,
   DOTENV_OPTION_DESCRIPTION,
-  dotenvPathOf,
-  envFileAliasOption,
   JSON_OPTION_DESCRIPTION,
   parsePositiveInteger,
   RUN_OPTION_DESCRIPTION,
@@ -30,7 +28,6 @@ import {
   type HumanOutput,
 } from "../io.js";
 import { plural } from "../../run/text.js";
-import { warnAndQueue } from "../deprecations.js";
 import { type AnalysisFindings, readRunFindings } from "../findings.js";
 import { formatFindings } from "../findings-text.js";
 import { cli } from "../invocation.js";
@@ -66,29 +63,6 @@ export function registerVerifyCommand(parent: Command, io: CliIo): void {
         io.setExitCode(result.ok ? 0 : 2);
       },
     );
-}
-
-const CLEANUP_RENAMED =
-  "`cleanup` is now `reclaim --check`; `cleanup` is removed in the first minor release on or after 2026-11-03.";
-
-/**
- * The deprecated `cleanup`, hidden from help: one warning, then exactly `reclaim --check`, with
- * its output and exit code. The old command read only what computer-use runs recorded and passed
- * when it found no record; the check asks E2B.
- */
-export function registerCleanupCommand(parent: Command, io: CliIo): void {
-  parent
-    .command("cleanup", { hidden: true })
-    .description(`Deprecated: ${CLEANUP_RENAMED}`)
-    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
-    .option("--run <id>", RUN_OPTION_DESCRIPTION, "latest")
-    .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
-    .addOption(envFileAliasOption())
-    .option("--json", JSON_OPTION_DESCRIPTION)
-    .action(async (options: ReclaimCommandOptions, command: Command) => {
-      warnAndQueue(command, io, CLEANUP_RENAMED);
-      await runReclaimCommand(io, command, { ...options, check: true });
-    });
 }
 
 export function registerReviewCommand(parent: Command, io: CliIo): void {
@@ -320,7 +294,6 @@ export function registerReclaimCommand(parent: Command, io: CliIo): void {
       "Ask the provider whether each sandbox still exists; kill nothing and write nothing. Exits 0 only when all are gone.",
     )
     .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
-    .addOption(envFileAliasOption())
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options: ReclaimCommandOptions, command: Command) =>
       runReclaimCommand(io, command, options),
@@ -333,11 +306,9 @@ interface ReclaimCommandOptions {
   preflight?: boolean;
   check?: boolean;
   dotenv?: string;
-  envFile?: string;
   json?: boolean;
 }
 
-/** `reclaim`, and the deprecated `cleanup`, which runs it with `check`. */
 async function runReclaimCommand(
   io: CliIo,
   command: Command,
@@ -348,7 +319,7 @@ async function runReclaimCommand(
     !(await applyEnvFileOption({
       command,
       cwd: options.cwd,
-      envFile: dotenvPathOf(options, command, io),
+      envFile: options.dotenv,
       io,
     }))
   )

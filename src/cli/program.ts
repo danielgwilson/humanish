@@ -25,7 +25,6 @@ import { registerMigrateCommand } from "./commands/migrate.js";
 import { registerNotesCommand } from "./commands/notes.js";
 import { registerObserveCommand } from "./commands/observe.js";
 import {
-  registerCleanupCommand,
   registerExportCommand,
   registerReclaimCommand,
   registerReviewCommand,
@@ -493,7 +492,6 @@ export function createProgram(
   registerCommsCommands(program, cliIo);
   registerRuntimeCommands(program, cliIo);
   registerReclaimCommand(program, cliIo);
-  registerCleanupCommand(program, cliIo);
   registerKeysCommand(program, cliIo);
   registerTelemetryCommand(program, cliIo);
   registerTuiCommand(program, cliIo, { ...defaultTuiRuntime, ...io.tuiRuntime });

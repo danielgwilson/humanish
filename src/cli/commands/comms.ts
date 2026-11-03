@@ -14,8 +14,6 @@ import {
   type CliIo,
   CWD_OPTION_DESCRIPTION,
   DOTENV_OPTION_DESCRIPTION,
-  dotenvPathOf,
-  envFileAliasOption,
   JSON_OPTION_DESCRIPTION,
   PORT_OPTION_DESCRIPTION,
   writeResult,
@@ -46,7 +44,6 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     )
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
-    .addOption(envFileAliasOption())
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleCommsList(io, options, command));
   connections
@@ -75,7 +72,6 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .option("--study <path>", "Check the connection this study selects.")
     .option("--online", "Make a read-only provider authentication request.")
     .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
-    .addOption(envFileAliasOption())
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleCommsCheck(io, options, command));
   comms
@@ -102,7 +98,6 @@ export function registerCommsCommands(parent: Command, io: CliIo): void {
     .option("--run <id>", "One run to inspect or recover.")
     .option("--apply", "Recover the selected inactive run and verify mailbox deletion.")
     .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
-    .addOption(envFileAliasOption())
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action((options, command) => handleCommsRecover(io, options, command));
 
@@ -154,14 +149,14 @@ function handleCommsProviders(io: CliIo, _options: unknown, command: Command): v
 
 async function handleCommsList(
   io: CliIo,
-  options: { cwd: string; dotenv?: string; envFile?: string },
+  options: { cwd: string; dotenv?: string },
   command: Command,
 ): Promise<void> {
   if (
     !(await applyEnvFileOption({
       command,
       cwd: options.cwd,
-      envFile: dotenvPathOf(options, command, io),
+      envFile: options.dotenv,
       io,
     }))
   )
@@ -201,7 +196,6 @@ async function handleCommsCheck(
     study?: string;
     online?: boolean;
     dotenv?: string;
-    envFile?: string;
   },
   command: Command,
 ): Promise<void> {
@@ -209,7 +203,7 @@ async function handleCommsCheck(
     !(await applyEnvFileOption({
       command,
       cwd: options.cwd,
-      envFile: dotenvPathOf(options, command, io),
+      envFile: options.dotenv,
       io,
     }))
   )
@@ -270,14 +264,14 @@ async function handleCommsConfigure(
 
 async function handleCommsRecover(
   io: CliIo,
-  options: { cwd: string; run?: string; apply?: boolean; dotenv?: string; envFile?: string },
+  options: { cwd: string; run?: string; apply?: boolean; dotenv?: string },
   command: Command,
 ): Promise<void> {
   if (
     !(await applyEnvFileOption({
       command,
       cwd: options.cwd,
-      envFile: dotenvPathOf(options, command, io),
+      envFile: options.dotenv,
       io,
     }))
   )

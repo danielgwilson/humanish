@@ -134,7 +134,7 @@ describe("humanish reclaim on a dry run", () => {
 
   it.each([
     ["reclaim", ["reclaim"]],
-    ["cleanup", ["cleanup"]],
+    ["reclaim --check", ["reclaim", "--check"]],
   ])("%s exits 0 for a dry run", async (_command, args) => {
     let out = "";
     let exitCode: number | undefined;

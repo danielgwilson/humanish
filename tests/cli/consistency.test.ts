@@ -32,7 +32,6 @@ describe("every command a program might drive answers in JSON", () => {
       ["init"],
       ["observe"],
       ["reclaim"],
-      ["cleanup"],
     ]) {
       expect(flagsOf(argv), `${argv.join(" ")} has no --json`).toContain("--json");
     }

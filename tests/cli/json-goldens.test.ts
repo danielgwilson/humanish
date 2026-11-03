@@ -99,7 +99,6 @@ const STEPS: ReadonlyArray<readonly [name: string, args: string[]]> = [
   ["review", ["review"]],
   ["runs", ["runs"]],
   ["stats", ["stats"]],
-  ["cleanup", ["cleanup"]],
   ["study-list", ["study", "list"]],
   ["study-show", ["study", "show", "first-run"]],
   ["feedback-draft", ["feedback", "draft"]],
@@ -156,13 +155,6 @@ const PINS: Readonly<Record<string, (json: Json) => unknown>> = {
     state: json.state,
     reason: json.reason,
     tagSearch: (json.tagSearch as Json).status,
-  }),
-  // The deprecated alias of reclaim --check: its result, with the deprecation warning first.
-  cleanup: (json) => ({
-    mode: json.mode,
-    state: json.state,
-    reason: json.reason,
-    warning: Array.isArray(json.warnings) ? json.warnings[0] : undefined,
   }),
   "comms-providers": (json) => ({ ids: rows(json.providers).map((provider) => provider.id) }),
   "keys-list": (json) => ({ action: json.action }),

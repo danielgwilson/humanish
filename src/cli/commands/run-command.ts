@@ -9,8 +9,6 @@ import {
   type CliIo,
   CWD_OPTION_DESCRIPTION,
   DOTENV_OPTION_DESCRIPTION,
-  dotenvPathOf,
-  envFileAliasOption,
   formatRunHuman,
   freePortOption,
   JSON_OPTION_DESCRIPTION,
@@ -48,7 +46,6 @@ export function addRunOptions(command: Command): Command {
     )
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--dotenv <path>", DOTENV_OPTION_DESCRIPTION)
-    .addOption(envFileAliasOption())
     .option(
       "--run-id <id>",
       "Explicit run id for deterministic fixture tests; refused when that run already exists.",
@@ -116,7 +113,7 @@ export async function handleRun(
   const loaded = await applyEnvFileOption({
     command,
     cwd: options.cwd,
-    envFile: dotenvPathOf(options, command, io),
+    envFile: options.dotenv,
     io,
     // runStudyCommand discovers keys for a live study; a preview without a study needs none.
     discoverKeys: false,

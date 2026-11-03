@@ -10,7 +10,6 @@ import {
   applyEnvFileOption,
   type CliIo,
   collectRepeated,
-  dotenvPathOf,
   formatRunHuman,
   type StudyCommandOptions,
   parseObserverPort,
@@ -143,7 +142,7 @@ async function handleWatch(
     !(await applyEnvFileOption({
       command,
       cwd: options.cwd,
-      envFile: dotenvPathOf(options, command, io),
+      envFile: options.dotenv,
       io,
       // runStudyCommand discovers keys for a live study; a preview run needs none.
       discoverKeys: false,

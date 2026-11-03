@@ -126,30 +126,13 @@ describe("humanish reclaim --dotenv", () => {
     expect(result.output).not.toContain(CANARY);
   });
 
-  it("still loads the file through the --env-file alias, and warns once that it is now --dotenv", async () => {
+  it("rejects the removed --env-file as an unknown option before loading the file", async () => {
     await writeFile(path.join(cwd, "local.env"), `E2B_API_KEY=${CANARY}\n`);
     const result = await runCli(["reclaim", "--cwd", cwd, "--env-file", "local.env", "--json"]);
-    expect(seenKeys).toEqual([CANARY]);
-    const warning =
-      "`--env-file` is now `--dotenv`; `--env-file` is removed in the first minor release on or after 2026-11-03.";
-    expect(result.output).toContain(`warning: ${warning}\n`);
-    const json = JSON.parse(result.output.slice(result.output.indexOf("{")));
-    expect(json.warnings.filter((line: string) => line === warning)).toHaveLength(1);
-  });
-
-  it("refuses --dotenv and --env-file together", async () => {
-    await writeFile(path.join(cwd, "local.env"), `E2B_API_KEY=${CANARY}\n`);
-    const result = await runCli([
-      "reclaim",
-      "--cwd",
-      cwd,
-      "--dotenv",
-      "local.env",
-      "--env-file",
-      "local.env",
-    ]);
     expect(result.exitCode).toBe(1);
+    expect(result.output).toMatch(/^error: unknown option '--env-file'/);
     expect(loadModule).not.toHaveBeenCalled();
+    expect(result.output).not.toContain(CANARY);
   });
 
   it("stops with exit 2 before loading the provider when the file is missing", async () => {
