@@ -14,6 +14,7 @@ import {
   removeContainedOutputFile,
   writeContainedOutputFile,
 } from "../run/contained-output.js";
+import { startHeartbeat, systemHostClock, type Heartbeat } from "../run/host-suspension.js";
 import { createRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { reclaimRunSandboxes } from "../run/reclaim.js";
 import { pointLatestRunAt } from "../run/run.js";
@@ -49,10 +50,17 @@ import {
 
 /** The longest one read of the runner's run waits there for a change. */
 const WAIT_MS = 5_000;
+/**
+ * How long the launcher waits for one read: past the deadline the read gives the provider, since a
+ * connection that died in a sleep may otherwise never settle.
+ */
+const READ_DEADLINE_MS = WAIT_MS + 35_000;
 /** How long the launcher waits after a read the runner did not answer before it reads again. */
 const RETRY_MS = 5_000;
-/** How long the runner may leave reads unanswered before the launcher gives it up. */
+/** How long the runner may leave reads unanswered, with this machine awake, before it is given up. */
 const UNANSWERED_LIMIT_MS = 120_000;
+/** How often the launcher checks that it has not been asleep or stopped. */
+const AWAKE_CHECK_MS = 5_000;
 /** How long the run has to write its status record after it is started. */
 const START_DEADLINE_MS = 3 * 60_000;
 /** How often the launcher copies the run's settled evidence while it goes on. */
@@ -225,8 +233,7 @@ export async function acquireRunner(
   });
 }
 
-/** Follows the run until it ends, is stopped, detaches or stops answering. */
-export async function followRemoteRun(args: {
+interface FollowArgs {
   launch: RemoteContext;
   runner: Runner;
   paths: PreparedRunArtifactPaths;
@@ -234,7 +241,19 @@ export async function followRemoteRun(args: {
   signals: Signals;
   /** The local Observer address, for a run that has a live Observer. */
   proxyUrl: string | undefined;
-}): Promise<RemoteOutcome> {
+}
+
+/** Follows the run until it ends, is stopped, detaches or stops answering. */
+export async function followRemoteRun(args: FollowArgs): Promise<RemoteOutcome> {
+  const heartbeat = startHeartbeat(systemHostClock, AWAKE_CHECK_MS, () => undefined);
+  try {
+    return await followUntilEnd(args, heartbeat);
+  } finally {
+    heartbeat.stop();
+  }
+}
+
+async function followUntilEnd(args: FollowArgs, heartbeat: Heartbeat): Promise<RemoteOutcome> {
   const { launch, runner, paths, runId, signals } = args;
   const { say } = launch;
   // Evidence already copied while the run went on, by path, with its size then.
@@ -251,21 +270,35 @@ export async function followRemoteRun(args: {
   // them, such as the analysis, as Ctrl-C does in a local run, so the run's own result stands.
   let stoppedRunning = false;
   let answeredAt = Date.now();
+  const answered = () => {
+    answeredAt = Date.now();
+  };
+  // Reading the heartbeat checks the time since its last tick, so a read that fails on resume sees
+  // the sleep before the heartbeat's own timer has run.
+  const wokeAt = () => {
+    const lastSleep = heartbeat.suspensions().at(-1);
+    return lastSleep === undefined ? 0 : Date.parse(lastSleep.endedAt);
+  };
+  // The run goes on while this machine sleeps, so a sleep does not count against the runner. A wake
+  // starts the count over: the network comes back after this process does, and the short wakes
+  // some machines make during a long sleep must not add up to the limit.
+  const unansweredMs = () => Date.now() - Math.max(answeredAt, wokeAt());
   // The run was started just before, so it is taken as alive until a read says otherwise.
   let alive = true;
   const startBy = Date.now() + START_DEADLINE_MS;
   for (;;) {
+    const readAt = Date.now();
     const read = await readRun(runner, runId, { state, alive }, signals);
     // A signal ends the read, and is handled below without one.
     const run = read === "signal" ? undefined : read;
     if (read === undefined) {
-      if (Date.now() - answeredAt < UNANSWERED_LIMIT_MS)
+      if (unansweredMs() < UNANSWERED_LIMIT_MS)
         await Promise.race([
           new Promise((resolve) => setTimeout(resolve, RETRY_MS)),
           signals.requested === undefined ? signals.received : new Promise(() => undefined),
         ]);
     } else if (run !== undefined) {
-      answeredAt = Date.now();
+      answered();
       alive = run.alive;
     }
     if (run?.state !== undefined && state === undefined) {
@@ -323,18 +356,24 @@ export async function followRemoteRun(args: {
         });
       await stopRemoteRun(runner, runId).catch(() => undefined);
     }
+    // The stop and start deadlines judge what the runner says, so they wait for an answer to a read
+    // made since the last wake: a read that fails on waking says nothing, an answer that sat out a
+    // sleep says what the run was before it, and the limit covers a runner that gives no answer.
+    const current = readAt >= wokeAt();
     const ended =
-      Date.now() - answeredAt >= UNANSWERED_LIMIT_MS
+      unansweredMs() >= UNANSWERED_LIMIT_MS
         ? `the runner sandbox stopped answering for ${UNANSWERED_LIMIT_MS / 1000} s`
-        : run !== undefined && state !== undefined && !run.alive
-          ? stopAt === undefined
-            ? `the run ended without a result: ${run.errTail || "no output"}`
-            : "stopped"
-          : stopAt !== undefined && Date.now() > stopAt
-            ? "stopped, and the run did not end in time"
-            : state === undefined && Date.now() > startBy
-              ? `the run did not start in the runner: ${run?.errTail || "no output"}`
-              : undefined;
+        : run === undefined
+          ? undefined
+          : state !== undefined && !run.alive
+            ? stopAt === undefined
+              ? `the run ended without a result: ${run.errTail || "no output"}`
+              : "stopped"
+            : current && stopAt !== undefined && Date.now() > stopAt
+              ? "stopped, and the run did not end in time"
+              : current && state === undefined && Date.now() > startBy
+                ? `the run did not start in the runner: ${run.errTail || "no output"}`
+                : undefined;
     if (ended !== undefined) {
       // Participants may still be running, so everything is reclaimed after whatever copies.
       const copied = await copy().then(
@@ -353,7 +392,7 @@ export async function followRemoteRun(args: {
     if (state === "running" && Date.now() >= syncAt) {
       syncAt = Date.now() + SYNC_EVERY_MS;
       // Best effort: what this misses, the copy at the end takes.
-      await copySettledEvidence(runner, paths, runId, copied).catch(() => undefined);
+      await copySettledEvidence(runner, paths, runId, copied, answered).catch(() => undefined);
     }
   }
 }
@@ -368,9 +407,19 @@ async function readRun(
   seen: { state: string | undefined; alive: boolean },
   signals: Signals,
 ): Promise<RemoteRunState | "signal" | undefined> {
-  const read = waitForRemoteRun(runner, runId, seen, WAIT_MS).catch(() => undefined);
-  if (signals.requested !== undefined) return await read;
-  return await Promise.race([read, signals.received.then(() => "signal" as const)]);
+  let deadline: ReturnType<typeof setTimeout> | undefined;
+  const read = Promise.race([
+    waitForRemoteRun(runner, runId, seen, WAIT_MS).catch(() => undefined),
+    new Promise<undefined>((resolve) => {
+      deadline = setTimeout(() => resolve(undefined), READ_DEADLINE_MS);
+    }),
+  ]);
+  try {
+    if (signals.requested !== undefined) return await read;
+    return await Promise.race([read, signals.received.then(() => "signal" as const)]);
+  } finally {
+    clearTimeout(deadline);
+  }
 }
 
 /**
@@ -419,21 +468,23 @@ async function copyRunBack(
 
 /**
  * Copy the run's screenshots and recordings that have settled and are not here yet, while the run
- * goes on, so the copy at its end is only what is left.
+ * goes on, so the copy at its end is only what is left. Each file the runner sends is an answer, so
+ * a long catch-up after a sleep does not count against it.
  */
 async function copySettledEvidence(
   runner: Runner,
   paths: PreparedRunArtifactPaths,
   runId: string,
   copied: Map<string, number>,
+  answered: () => void,
 ): Promise<void> {
-  for (const file of await listSettledEvidence(runner, runId, SETTLED_SECONDS)) {
+  const settled = await listSettledEvidence(runner, runId, SETTLED_SECONDS);
+  answered();
+  for (const file of settled) {
     if (copied.get(file.path) === file.size) continue;
-    await writeContainedOutputFile(
-      paths,
-      file.path,
-      await readRemoteBytes(runner, runId, file.path),
-    );
+    const bytes = await readRemoteBytes(runner, runId, file.path);
+    answered();
+    await writeContainedOutputFile(paths, file.path, bytes);
     copied.set(file.path, file.size);
   }
 }

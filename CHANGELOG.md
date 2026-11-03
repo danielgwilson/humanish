@@ -8,6 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Fixed
+
+- A remote run survives the machine that follows it sleeping or being stopped. Before, the first
+  read that failed after 120 s without an answer ended the run and reclaimed its sandboxes, and
+  that count included the time this machine was asleep, so a run could end on waking while its
+  runner was still working. Now a sleep or stop of 30 s or more does not count, and each wake starts
+  the count over. Each evidence file the runner sends counts as an answer, so a long catch-up after
+  a wake does too. A runner that has really stopped answering still ends the run after 120 s awake.
+
 ## 0.155.0: Studies with an email catch you host run remotely (2026-11-02)
 
 humanish 0.155.0 runs a computer-use study with `comms.email.external` remotely by default when
