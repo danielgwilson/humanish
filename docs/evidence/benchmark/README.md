@@ -251,6 +251,12 @@ stayed open", and D2 matches a cut-off errand or reminder and a day name cut sho
 about where the text ends ("ended at Thursd"). The version 4 cases in `tests/bench/score.test.ts`
 quote 2026-10-24 and 2026-10-25 reports and analyses, each with a near miss that must not match.
 
+Rubric version 5 reads three more ways an analysis says the editor outlived Save: Save before a row
+that "stayed open" or "remained an input", "no visible exit from editing", and a row left "with a
+Save button afterward" or "with Save still present". The 2026-11-03 pointer comparison quotes six of
+them in `tests/bench/score.test.ts`. A sentence where the box stayed open and the participant then
+clicked Save, or where the row stays open until Save, is not D5.
+
 Before 2026-10-26 the bench read participant items from run.json only. From run bundle v2 those
 items live in the trace file (`actor.json`), so on every saved v2 to v4 run the D2 engagement flag,
 narration-based engagement and the provider-stall and failed-action facts read an empty list.
@@ -335,9 +341,9 @@ clean arm invented nothing. The report dip is all D5, 2/12 against 6/12; every p
 Save in edit mode, the analyses found D5 in 10 of 12 runs, and the 0.151.0 old-persona arm also
 had 2/12.
 [2026-11-03-pointer-glide.md](2026-11-03-pointer-glide.md) compares `execution.pointer: glide`
-with `jump` on the same code, 24 planted and 24 clean runs per mode. Reports found 57/120 in both
-modes. Analyses found 65/120 with jump and 54/115 with glide, all of it D5 (17/24 against 8/23), so
-`jump` stays the default.
+with `jump` on the same code, 24 planted and 24 clean runs per mode. Rescored with rubric 5,
+reports found 57/120 and 59/120 and analyses 70/120 and 69/115; the D5 gap rubric 4 showed (17/24
+against 8/23) was analysis wording its rules did not read.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where

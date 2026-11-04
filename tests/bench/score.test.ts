@@ -338,6 +338,13 @@ describe("the Taskly scorer on analysis wordings of D1 and D5", () => {
       "Edited task names are not saved and revert to their original text",
       "Task edits fail to save and revert after subsequent actions",
       "Save button failure and edit reversion",
+      // Wordings from the 2026-11-03 pointer comparison that rubric 4 missed.
+      "Saving an edit left it open and the original wording returned",
+      "The edited row remained an input with a Save button afterward",
+      "Clicking Save did not produce a visible exit from editing",
+      "After clicking Save, the editor remained open with those details afterward",
+      "The row stayed editable with Save still present afterward",
+      "The task still showed Friday with a Save button afterward",
     ]) {
       expect(scored(title, "planted"), title).toMatchObject({
         verdict: "planted",
