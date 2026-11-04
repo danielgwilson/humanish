@@ -181,7 +181,10 @@ export function loopResult(
       idleWaitMs: session.waits.idleWaitMs,
       settleWaitMs: session.waits.settleWaitMs,
     },
-    ...(session.pointerMotion === "glide" ? { pointerMotion: "glide" as const } : {}),
+    // Recorded only where glides could be sent: the setting and an executor that can glide.
+    ...(session.pointerMotion === "glide" && session.executor.glide !== undefined
+      ? { pointerMotion: "glide" as const }
+      : {}),
     counts,
     items: recorder.items,
     ...(session.finalPage === undefined ? {} : { finalPage: session.finalPage }),

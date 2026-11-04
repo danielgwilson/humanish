@@ -15,12 +15,13 @@ export interface PointerGlide {
 }
 
 // Fitts's law: movement time = a + b * log2(distance / width + 1), for a 16 px target. The clamp keeps a short hop
-// visible and a long move under half a second, so the move never dominates a participant's step.
-const FITTS_INTERCEPT_MS = 90;
-const FITTS_SLOPE_MS = 65;
+// visible and a long move near a third of a second: a glide adds to every pointer action, and an app
+// that takes several clicks a turn pays it several times.
+const FITTS_INTERCEPT_MS = 70;
+const FITTS_SLOPE_MS = 55;
 const TARGET_WIDTH_PX = 16;
-const MIN_DURATION_MS = 150;
-const MAX_DURATION_MS = 500;
+const MIN_DURATION_MS = 120;
+const MAX_DURATION_MS = 380;
 // A hand's path bows off the straight line; a bow above about 24 px reads as a detour.
 const BOW_SHARE = 0.08;
 const MAX_BOW_PX = 24;

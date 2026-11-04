@@ -149,7 +149,7 @@ export class LoopSession {
       now,
       signal,
       idleSteps = DEFAULT_IDLE_STEPS,
-      pointer = "jump",
+      pointer = "glide",
       noProgressSteps = DEFAULT_NO_PROGRESS_STEPS,
       maxWaitMs,
       idleWaitMs,

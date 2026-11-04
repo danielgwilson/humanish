@@ -642,7 +642,7 @@ export interface StudyExecution {
   network?: StudyNetworkCapture;
   /**
    * How a computer-use participant's pointer reaches each target on a hosted desktop: `glide`
-   * moves it along a curve timed by Fitts's law, `jump` moves it in one step. Absent: jump.
+   * moves it along a curve timed by Fitts's law, `jump` moves it in one step. Absent: glide.
    */
   pointer?: "glide" | "jump";
   /** `terminal-product` route: the terminal transport + stdin posture. Consumed on that route. */

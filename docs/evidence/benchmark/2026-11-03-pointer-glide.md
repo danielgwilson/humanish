@@ -47,6 +47,15 @@ adds those wordings, with a test per sentence; it reads no D5 in any clean-arm r
   to all, and refreshed the page", not a participant inventing a defect.
 - Glide costs time per step on a click-dense app: about 0.4 s a capture here.
 
+## Quicker glides and the default
+
+0.157.0 shortens each glide to 120 to 380 ms and makes `glide` the default. One more glide batch at
+that timing, 12 planted and 12 clean runs scored with rubric 5
+([glide 3](2026-11-03-pointer-glide3.json)), found reports 31/60 and analyses 31/55 (D5 9/11), with
+participants giving up in 18 of 24 sessions. A step between captures took a median of 3.91 s
+against 3.61 s with jump (means 4.42 s and 4.09 s), 8% longer; the mean glide was 252 ms, against
+309 ms at the first timing.
+
 ## Spend
 
 About $4.4 to $4.6 per batch of 24 runs: participants about $1.8, desktops about $0.3, analysis

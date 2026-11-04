@@ -17,6 +17,14 @@ The Unreleased section holds the full notes for the next version until it is tag
   blooms and fades. While a replay plays, each pin shrinks to the mark a press left and its label
   waits for a pause, so labels no longer cover the pointer. Reduced motion keeps it upright and
   still.
+- A computer-use participant's pointer glides to each target by default on E2B and Modal desktops
+  (`execution.pointer: glide`); set `execution.pointer: jump` to move it in one step as before.
+  Each glide now takes 120 to 380 ms, down from 150 to 500 ms. On the Taskly benchmark, 24 planted
+  and 24 clean runs per mode, reports found 57/120 with jump and 59/120 with glide and analyses
+  70/120 and 69/115, with no more participants giving up; a third glide batch at the new timing
+  found 31/60 and 31/55, and a step took 8% longer than with jump (median 3.91 s against 3.61 s). A
+  trace with glides says `pointerMotion: "glide"`. Benchmark results from before this release ran
+  with `jump`.
 
 ## 0.156.0: Replays show each participant's pointer moving (2026-11-03)
 
