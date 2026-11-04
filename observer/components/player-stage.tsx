@@ -301,6 +301,9 @@ function RecordedImage({
         <div
           className="pins"
           aria-hidden="true"
+          // While the drawn pointer plays, each pin stays as the mark a press left and its label
+          // waits for a pause, so labels do not cover the pointer.
+          data-pointer-playing={pointer?.playing ? "" : undefined}
           style={{ visibility: status === "ready" ? "visible" : "hidden" }}
         >
           {pins.map((row) => {

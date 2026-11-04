@@ -9,7 +9,7 @@ import {
 import { frameHoldMs, type PlayerModel, type PlayerRow } from "./player-model";
 
 /** How long a press ring shows after the press lands. */
-export const PRESS_RING_MS = 600;
+export const PRESS_RING_MS = 450;
 
 /** One action's pointer movement within a capture interval, in ms after the capture. */
 interface PointerMove {
