@@ -1,0 +1,2753 @@
+{
+  "schema": "humanish.bench-result.v1",
+  "createdAt": "2026-11-04T00:28:43.721Z",
+  "humanish": {
+    "version": "0.155.0",
+    "source": "this checkout at b3453ff7f, src/ as of b3453ff7f"
+  },
+  "rubric": {
+    "id": "taskly-rubric",
+    "version": 4,
+    "sha256": "91f411fe2c9c423d1b36d76b9ff066bb31a666b984c10489368d5d1a59f32257"
+  },
+  "fixture": {
+    "id": "taskly",
+    "digests": {
+      "plantedAppJs": "81d287dc902f0c27893c6d73f3b7bceceeed7310c18f6667e2b71449e34682e8",
+      "cleanAppJs": "7f9f16923c0fc87224b5d7447e87ce10f5963266b5f28eb909b497a31c7a2733",
+      "indexHtml": "ea196a9b8915c8e9f94dd70eb349111cd3fb072abb21bea4f63bf614479c4a13",
+      "persona": "e99887ad1f46cafec7f3520be2703cf4ce218f4a770483c5997df4f367517a88"
+    },
+    "persona": "synthetic-new-user"
+  },
+  "participant": {
+    "model": "gpt-6.1-sol",
+    "reasoningEffort": "medium"
+  },
+  "pointer": "jump",
+  "mission": {
+    "id": "neutral",
+    "sha256": "989a6bde7cfc3406e32805c67f698c211fdb9731793c09c7adc10da886c7117f",
+    "text": "You are trying Taskly, a small web app for keeping a to-do list, for the first time. You have a handful of errands and chores to keep track of this week. Use Taskly for them the way you would actually use a list app, until you have decided whether you would keep using it. Report what worked, and describe anything that behaved differently from what you expected, in plain terms, saying what you did and what you saw."
+  },
+  "runsPerArm": 12,
+  "budget": {
+    "maxUsdPerBrain": 20,
+    "participantCapUsd": 1.5,
+    "analysisMaxUsd": 20,
+    "analysisAutoCap": true,
+    "worstCaseDesktopMinutes": 50,
+    "analysis": true
+  },
+  "brains": [
+    {
+      "brain": "computer-use",
+      "participantModels": [
+        "gpt-6.1-sol"
+      ],
+      "analysis": {
+        "provider": "openai",
+        "model": "gpt-6.1-sol",
+        "promptVersion": "study-evidence-8",
+        "maxCostUsd": 0.236055,
+        "maxOutputTokens": 16384
+      },
+      "stopped": null,
+      "spentUsd": {
+        "participant": 1.7905,
+        "desktop": 0.2885,
+        "analysis": 2.3948,
+        "total": 4.4738,
+        "unpricedRuns": 0
+      },
+      "runs": [
+        {
+          "arm": "planted",
+          "index": 1,
+          "runId": "cua-2026-11-03T23-26-23-319Z-925de70c",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.080586,
+            "desktopUsd": 0.011557,
+            "analysisUsd": 0.117686,
+            "totalUsd": 0.2098
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "on first opening, the list said undefined.",
+                "D3": "active showed only the checked-off recycling task."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added five sample errands and chores: groceries, library books, laundry, recycling, and vacuuming. adding with either add or enter was easy. checking off recycling crossed it out and changed the count from 5 lef..."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-6c657bc1-b8ef-4397-8daf-356573d925ac",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D4": "friction",
+              "D3": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The five-task list was no longer displayed after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "Repeated grocery-edit attempts did not yield a retained visible change",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              },
+              {
+                "id": "F3",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The empty list displayed an unexplained “undefined” value",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 1,
+          "runId": "cua-2026-11-03T23-29-01-337Z-e9e5f720",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.076823,
+            "desktopUsd": 0.010395,
+            "analysisUsd": 0.097563,
+            "totalUsd": 0.1848
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added five sample errands and chores: groceries, library books, laundry, vacuuming, and recycling. adding with either the add button or enter was easy. i edited the grocery task to include a few items, marked la...",
+                "i hesitated over scheduling because i didn't see a date option, so i put weekdays directly in the task names. in the completed view, 4 left briefly confused me because only one finished task was showing; i understood it as the total stil..."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-66bcdeb1-d1de-4a7f-bd62-73f8c7a709f5",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The list was empty after refresh, and the participant rejected continued use",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "The global remaining count briefly confused the participant in Completed",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B4"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F3",
+                "title": "The participant used task names for weekdays after not finding scheduling",
+                "impact": "friction",
+                "confidence": "medium",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 2,
+          "runId": "cua-2026-11-03T23-31-11-106Z-0d2ed5c9",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.07115,
+            "desktopUsd": 0.010696,
+            "analysisUsd": 0.106395,
+            "totalUsd": 0.1882
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the list initially said undefined.",
+                "D3": "active showed only the checked-off laundry task."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-ca179e7e-c41d-4e1b-b81a-51a92215dbc0",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Tasks were absent from the list after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Repeated grocery edits did not visibly settle into a saved row",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              },
+              {
+                "id": "F3",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The empty list displayed “undefined” and prompted reported hesitation",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 2,
+          "runId": "cua-2026-11-03T23-33-48-003Z-755d011a",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.077284,
+            "desktopUsd": 0.013394,
+            "analysisUsd": 0.095398,
+            "totalUsd": 0.1861
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "the simple layout felt approachable, but losing the list after a refresh was enough for me to stop."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "the big surprise was refreshing the page. all five tasks disappeared. the screen said nothing here yet. add your first task above and 0 left. i waited and switched between active and all, but nothing returned. i expected my list to stay ...",
+                "i hesitated over planning by day. i didn't see a date or reminder control, so i put thursday and friday directly in the task names."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-c030c07a-8ad6-40e8-9e26-cb0d7de5408d",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Five tasks were no longer displayed after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Participant reported using task names to plan by weekday",
+                "impact": "friction",
+                "confidence": "medium",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 3,
+          "runId": "cua-2026-11-03T23-36-34-581Z-dcea6600",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.072866,
+            "desktopUsd": 0.012791,
+            "analysisUsd": 0.108193,
+            "totalUsd": 0.1939
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the list initially said undefined.",
+                "D3": "active showed only the checked-off plants task."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added five sample errands and chores: groceries, library books, laundry, recycling, and watering plants. adding was straightforward - both add and enter worked. checking off water plants crossed it out and chang..."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-91307d0f-346b-44fc-8527-97443750afa8",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": true
+            },
+            "impactByDefect": {
+              "D5": "friction",
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Tasks disappeared from the All view after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "The laundry edit did not survive switching views",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The empty list displayed “undefined” and prompted reported hesitation",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 3,
+          "runId": "cua-2026-11-03T23-39-30-194Z-b015ffbb",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.076946,
+            "desktopUsd": 0.013647,
+            "analysisUsd": 0.093015,
+            "totalUsd": 0.1836
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": true,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added five sample errands and chores for the week: groceries, library books, laundry, recycling, and vacuuming.",
+                "the big surprise came when i returned to all and refreshed the page. the list was empty, with nothing here yet. add your first task above and 0 left. i expected the four unfinished tasks to still be there.",
+                "i also hesitated over planning by day: i didn't see a date option, so i put weekdays directly in the task names."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-5834190b-7410-4588-83b7-34bc2f7071c7",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Unfinished tasks were no longer visible after returning to All and refreshing",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Reported uncertainty about dates led to weekday text in task names",
+                "impact": "friction",
+                "confidence": "medium",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 4,
+          "runId": "cua-2026-11-03T23-42-17-667Z-69c255ef",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.077265,
+            "desktopUsd": 0.013753,
+            "analysisUsd": 0.105868,
+            "totalUsd": 0.1969
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the starting list said undefined.",
+                "D3": "active showed only the checked-off recycling task."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added four sample chores and errands: groceries, laundry, returning library books, and recycling. adding was straightforward, and pressing enter worked too. checking off recycling crossed it out and changed 4 le...",
+                "i would stop here and keep using my notebook. the basic entry was easy, but i couldn't trust the app to keep my list or show what still needed doing."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-0fb5ad04-36c3-4e81-b83d-0dd90731f759",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": true
+            },
+            "impactByDefect": {
+              "D5": "friction",
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Previously visible tasks were absent after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Save left the edited row open and the changed text later reverted",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The empty list displayed unexplained “undefined” text",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 4,
+          "runId": "cua-2026-11-03T23-45-16-458Z-bfd49fa3",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.069525,
+            "desktopUsd": 0.01048,
+            "analysisUsd": 0.087113,
+            "totalUsd": 0.1671
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal.",
+                "the big surprise came when i refreshed the page. all five tasks disappeared, and taskly showed nothing here yet. add your first task above and 0 left. i waited briefly, but nothing returned. i expected my list to stay without needing a s...",
+                "i also didn't see a place to set dates, so i put weekdays directly in the task names. that was manageable; losing the list wasn't. i hesitated at the empty screen because i couldn't tell whether anything had been saved. i stopped rather ..."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-b7bd21d8-3633-4626-8916-4344f43c206a",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The displayed list disappeared after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "The participant used task names as a date workaround",
+                "impact": "friction",
+                "confidence": "medium",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 5,
+          "runId": "cua-2026-11-03T23-47-24-588Z-a7f69312",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.076732,
+            "desktopUsd": 0.013663,
+            "analysisUsd": 0.106513,
+            "totalUsd": 0.1969
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "detectedQuotes": {
+                "D4": "the list initially said undefined.",
+                "D5": "clicking save left the editing box open, and switching views brought back the original wording.",
+                "D3": "active showed only the checked-off recycling task."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal.",
+                "i would stop here and keep using my notebook. the simple layout was welcoming, but i couldn't trust that my list or changes would still be there later."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-eaa587b1-23cd-438a-acda-bd2861238804",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": true
+            },
+            "impactByDefect": {
+              "D4": "friction",
+              "D5": "friction",
+              "D3": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Tasks were no longer visible after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "Repeated Save attempts did not retain the grocery edit across views",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The empty list displayed an unexplained “undefined” value",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 5,
+          "runId": "cua-2026-11-03T23-50-27-044Z-8dfcf844",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.069505,
+            "desktopUsd": 0.009428,
+            "analysisUsd": 0.08929,
+            "totalUsd": 0.1682
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": true,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added five sample errands and chores: groceries, library books, laundry, recycling, and vacuuming. adding with the add button or enter was straightforward. i edited the grocery task to include a few items, and m...",
+                "i hesitated over planning days because i didn't see a date option, so i put weekdays directly in the task names. otherwise, the screen was easy to understand without instructions."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-cd217fdf-f67e-4e72-8cda-fe57dbd2002f",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The list appeared empty after refresh, prompting a decision against continued use",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "The participant reported a date-planning gap and used task names as a workaround",
+                "impact": "friction",
+                "confidence": "medium",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 6,
+          "runId": "cua-2026-11-03T23-52-31-519Z-3222b1b9",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.077498,
+            "desktopUsd": 0.010933,
+            "analysisUsd": 0.108808,
+            "totalUsd": 0.1972
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the starting list said undefined.",
+                "D3": "active showed only the checked-off recycling task."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added five sample errands and chores: groceries, laundry, library books, recycling, and vacuuming. adding was straightforward - both add and enter worked. checking off recycling crossed it out and changed 5 left...",
+                "i would not keep using it right now. entering tasks was easy, but i couldn't trust it to keep my list or show what still needed doing. i'd go back to my notebook rather than re-enter everything."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-33c02d66-2976-4af0-9fbb-131066511107",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": true
+            },
+            "impactByDefect": {
+              "D3": "friction",
+              "D5": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Five entered tasks were absent from the All view after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Active and Completed displayed task states opposite to their labels",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "Save left the task in editing mode and the revised wording disappeared after filtering",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The empty list displayed “undefined” and prompted reported hesitation",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 6,
+          "runId": "cua-2026-11-03T23-55-12-025Z-3ef5ed19",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.077712,
+            "desktopUsd": 0.014303,
+            "analysisUsd": 0.104563,
+            "totalUsd": 0.1966
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": true,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "i also hesitated at 4 left while viewing completed - it meant unfinished tasks elsewhere, not the number on that screen. i didn't see a separate place for due dates, so i put weekdays directly in the task names. the basic controls were e..."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-107aebd4-b640-450a-ba14-04e55875702b",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Unfinished tasks were absent after the clear, filter, and refresh sequence",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "The global remaining count caused reported hesitation in Completed",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              },
+              {
+                "id": "F3",
+                "title": "The participant reported putting weekdays in names because they did not find due dates",
+                "impact": "friction",
+                "confidence": "medium",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 7,
+          "runId": "cua-2026-11-03T23-58-20-339Z-8b46d0ff",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.076708,
+            "desktopUsd": 0.010936,
+            "analysisUsd": 0.10662,
+            "totalUsd": 0.1943
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the starting list said undefined, rather than explaining that it was empty.",
+                "D3": "active showed only the checked-off recycling task, while completed showed the three unchecked tasks - the opposite of what i expected."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added four sample tasks: groceries, returning library books, laundry, and recycling. adding was straightforward - both add and enter worked. checking off recycling crossed it out and changed 4 left to 3 left.",
+                "i stopped there. i wouldn't keep using taskly as it behaved in this trial: entering tasks was easy, but i couldn't rely on my list still being there when i came back."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-4cf762d7-f2cd-4d46-87e3-1311e14119bd",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": true
+            },
+            "impactByDefect": {
+              "D5": "friction",
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Four errands disappeared from the displayed list after refresh",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Laundry edit remained open and reverted after Save attempts",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "Active and Completed displayed the opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "Empty list displayed “undefined” instead of an explanation",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 7,
+          "runId": "cua-2026-11-04T00-00-52-103Z-fac5ee5f",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.076805,
+            "desktopUsd": 0.013627,
+            "analysisUsd": 0.091073,
+            "totalUsd": 0.1815
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "the big surprise came when i refreshed the page: all five tasks disappeared."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added five sample errands and chores for the week: groceries, library books, laundry, recycling, and vacuuming. the starting screen was clear, and both the add button and pressing enter worked. i edited the groc...",
+                "i briefly hesitated over 4 left in the completed view, since only one finished task was showing, but understood it as the total still unfinished."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-04d5281e-538c-40e3-b751-f890a4598e94",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The populated list was empty after refresh, prompting rejection of continued use",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "The global remaining count caused reported hesitation in Completed",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B4"
+                ],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 8,
+          "runId": "cua-2026-11-04T00-03-31-579Z-3bf76e6b",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.077551,
+            "desktopUsd": 0.013595,
+            "analysisUsd": 0.103235,
+            "totalUsd": 0.1944
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "on arrival, the list said undefined.",
+                "D3": "active showed only the checked-off recycling task."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal.",
+                "i hesitated at save because there was no clear sign it worked. i stopped after refreshing: i wouldn't keep using taskly if i couldn't trust my weekly list to still be there. the simple layout was welcoming, but i'd return to my notebook ..."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-dc3c7e0a-abcb-4b4c-9f8b-c44bca1c626c",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": true
+            },
+            "impactByDefect": {
+              "D4": "friction",
+              "D5": "friction",
+              "D3": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The five-task list was no longer visible after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "A laundry edit remained open after Save and reverted after changing views",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The empty list displayed “undefined”",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 8,
+          "runId": "cua-2026-11-04T00-06-22-581Z-59fc0dad",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.069828,
+            "desktopUsd": 0.010882,
+            "analysisUsd": 0.094913,
+            "totalUsd": 0.1756
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "what surprised me: after returning to all, i refreshed the page. all five tasks disappeared. the screen said nothing here yet. add your first task above and 0 left. i waited briefly, but nothing came back. i expected my list to stay save...",
+                "i hesitated about how to put days on tasks because i didn't see a date option, so i included them in the wording. that was manageable. losing the whole list on refresh was where i stopped - it wouldn't replace my notebook if i couldn't t..."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-5bf721b5-9c69-453e-94b1-e7530207a559",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Five tasks were absent from the All view after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Reported uncertainty about dates was resolved with task wording",
+                "impact": "friction",
+                "confidence": "medium",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 9,
+          "runId": "cua-2026-11-04T00-08-33-915Z-09b70db6",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.08009,
+            "desktopUsd": 0.011113,
+            "analysisUsd": 0.10624,
+            "totalUsd": 0.1974
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the empty list initially said undefined, which meant nothing to me.",
+                "D3": "active showed only the checked-off recycling task."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "after refreshing, all my tasks disappeared from view, and i saw undefined and 0 left again."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added four sample chores: buying groceries, returning library books, doing laundry, and taking out recycling.",
+                "i hesitated at save and the filters because i couldn't tell whether my changes were being kept. i would stop here and keep using my notebook: entering tasks was easy, but i wouldn't trust this list to keep my plans for the week."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-749cfa18-0e9f-4280-8830-35ef892b0c50",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Tasks disappeared from the All view after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "A saved-looking edit reverted after changing views",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              },
+              {
+                "id": "F3",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The empty-list display contained “undefined”",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 9,
+          "runId": "cua-2026-11-04T00-11-05-120Z-7c92f0ca",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.070539,
+            "desktopUsd": 0.013049,
+            "analysisUsd": 0.092593,
+            "totalUsd": 0.1762
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": true,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "the big surprise came when i refreshed the page: all five tasks disappeared."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "i hesitated about planning by day because i didn't see a date option, so i typed weekdays into the task names."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-5bb23a00-3a07-45f7-b6e1-00728029bec9",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Previously visible tasks were absent after refresh in this trial",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Reported date-planning uncertainty led to weekday labels in task names",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 10,
+          "runId": "cua-2026-11-04T00-13-47-319Z-a2fffe8f",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.078118,
+            "desktopUsd": 0.01071,
+            "analysisUsd": 0.107525,
+            "totalUsd": 0.1964
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "before i added anything, the list said undefined.",
+                "D3": "active showed only the checked-off recycling task."
+              },
+              "falseAssurance": [
+                {
+                  "classId": "D5",
+                  "quote": "i tried adding grocery details using edit and save."
+                }
+              ],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added five sample errands and chores for the week: groceries, library books, laundry, recycling, and vacuuming.",
+                "what confused me:",
+                "i would not keep using it right now. adding tasks was straightforward, but i hesitated over whether changes were saved, and after refreshing i couldn't trust it to keep my weekly list."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-1468718c-f02a-400e-a339-7e4ddcda1a22",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": true
+            },
+            "impactByDefect": {
+              "D4": "friction",
+              "D5": "friction",
+              "D3": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Five tasks were no longer displayed after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "Repeated Save attempts did not retain grocery details across views",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The empty list displayed unexplained “undefined” text",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 10,
+          "runId": "cua-2026-11-04T00-16-15-780Z-31f54a83",
+          "ok": true,
+          "error": null,
+          "costs": {
+            "participantUsd": 0.069421,
+            "desktopUsd": 0.012453,
+            "analysisUsd": 0.087783,
+            "totalUsd": 0.1697
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "the biggest surprise came when i refreshed the page: all five tasks disappeared."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "i also hesitated over planning by day: i didn't see a date control, so i put weekdays directly into the task names. that was manageable, but losing the whole list on refresh made me stop rather than enter everything again."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "passed",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-61105e53-c5e7-476c-9cb1-8e3f6c9579ad",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The entered list was absent after refresh, and the participant reported losing trust",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "The participant reported using task names to work around a missing visible date control",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 11,
+          "runId": "cua-2026-11-04T00-18-52-553Z-339eac98",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.077382,
+            "desktopUsd": 0.010991,
+            "analysisUsd": 0.10572,
+            "totalUsd": 0.1941
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "detectedQuotes": {
+                "D4": "the list initially said undefined.",
+                "D5": "after clicking save, it stayed in an editing box.",
+                "D3": "active showed only the checked-off recycling task."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "after refreshing the page, all five tasks disappeared from view."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added five sample errands and chores for the week: groceries, library books, laundry, recycling, and vacuuming.",
+                "i would stop here and keep using my notebook. entering tasks was straightforward, but i couldn't trust the app to keep my list or show what still needed doing."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-5e5427ca-e9db-438f-9339-79a140459259",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": true
+            },
+            "impactByDefect": {
+              "D4": "friction",
+              "D3": "friction",
+              "D5": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Five tasks were no longer visible after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              },
+              {
+                "id": "F2",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F3",
+                "title": "The laundry edit did not survive switching filters",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The initial empty list displayed “undefined”",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 11,
+          "runId": "cua-2026-11-04T00-21-21-903Z-1514e549",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.063554,
+            "desktopUsd": 0.01261,
+            "analysisUsd": 0.08153,
+            "totalUsd": 0.1577
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "the big surprise came when i refreshed the page: the whole list disappeared."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added five sample errands and chores for the week: groceries, library books, laundry, recycling, and vacuuming. adding them was straightforward, and pressing enter worked as well as clicking add.",
+                "i hesitated over how to assign days because i didn't see a date option, so i put weekdays in the task names. that was manageable; losing everything after a refresh wasn't. i stopped rather than enter it all again. i wouldn't keep using t..."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-87419efd-e84b-4d55-b6b8-947ead8ea87d",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The populated list became empty after refresh",
+                "impact": "blocked_task",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "Reported day-assignment uncertainty was resolved with task-name text",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        },
+        {
+          "arm": "planted",
+          "index": 12,
+          "runId": "cua-2026-11-04T00-23-51-323Z-c8e0d884",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.077119,
+            "desktopUsd": 0.012966,
+            "analysisUsd": 0.109023,
+            "totalUsd": 0.1991
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": false
+              },
+              "detectedQuotes": {
+                "D4": "the list initially said undefined, which made me hesitate, although adding my first task replaced it.",
+                "D3": "active showed only the checked-off recycling task."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added four sample tasks: buying groceries, returning library books, doing laundry, and taking out recycling.",
+                "i stopped there. i wouldn't keep using it for my weekly list because i couldn't trust my tasks or changes to stay saved."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-2fa55261-a475-4b1e-89a2-5391603fe7f7",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": true,
+              "D4": true,
+              "D5": false
+            },
+            "impactByDefect": {
+              "D3": "friction",
+              "D4": "friction"
+            },
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "Added tasks were absent after a page refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "A laundry edit remained open after Save and later reverted",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              },
+              {
+                "id": "F3",
+                "title": "Active and Completed displayed opposite completion states",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D3"
+                ],
+                "defects": [
+                  "D3"
+                ]
+              },
+              {
+                "id": "F4",
+                "title": "The empty list displayed an unexplained “undefined” value",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "planted",
+                "classes": [
+                  "D4"
+                ],
+                "defects": [
+                  "D4"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "arm": "clean",
+          "index": 12,
+          "runId": "cua-2026-11-04T00-26-32-850Z-71a3e82d",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.069485,
+            "desktopUsd": 0.010523,
+            "analysisUsd": 0.088135,
+            "totalUsd": 0.1681
+          },
+          "analysisState": "complete",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": true,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "the simple layout made a good first impression, but i wouldn't keep using it after losing the list on refresh."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal.",
+                "that was where i stopped. i didn't see a separate way to save the list, and i wouldn't want to retype my chores each time. i also didn't see date controls, so i put the days directly in the task names."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": {
+            "analysisId": "analysis-87745bbb-9b3f-4e10-91e0-b38e5a993146",
+            "listed": {
+              "D1": false,
+              "D2": false,
+              "D3": false,
+              "D4": false,
+              "D5": false
+            },
+            "impactByDefect": {},
+            "d2Mechanism": null,
+            "falseAssurance": [],
+            "findings": [
+              {
+                "id": "F1",
+                "title": "The entered list was no longer displayed after refresh",
+                "impact": "friction",
+                "confidence": "high",
+                "verdict": "supported",
+                "classes": [
+                  "B10"
+                ],
+                "defects": []
+              },
+              {
+                "id": "F2",
+                "title": "The participant reported using task text instead of a date control",
+                "impact": "friction",
+                "confidence": "medium",
+                "verdict": "unresolved",
+                "classes": [],
+                "defects": []
+              }
+            ]
+          }
+        }
+      ],
+      "summary": {
+        "report": {
+          "plantedUnits": 12,
+          "cleanUnits": 12,
+          "recall": {
+            "D1": {
+              "hits": 0,
+              "of": 12
+            },
+            "D2": {
+              "hits": 0,
+              "of": 12
+            },
+            "D3": {
+              "hits": 12,
+              "of": 12
+            },
+            "D4": {
+              "hits": 12,
+              "of": 12
+            },
+            "D5": {
+              "hits": 2,
+              "of": 12
+            },
+            "total": {
+              "hits": 26,
+              "of": 60,
+              "wilson95": [
+                0.3157,
+                0.559
+              ]
+            }
+          },
+          "d2Mechanism": {
+            "data_loss": 0,
+            "display": 0,
+            "ambiguous": 0,
+            "unspecified": 0
+          },
+          "falseAssurance": {
+            "claims": 1,
+            "unitsWith": 1
+          },
+          "invented": {
+            "planted": 0,
+            "clean": 0,
+            "unitsWith": 0
+          },
+          "harness": 0,
+          "unresolved": 45,
+          "supported": 8,
+          "engaged": {
+            "D1": {
+              "hits": 0,
+              "of": 12
+            },
+            "D2": {
+              "hits": 6,
+              "of": 12
+            },
+            "D3": {
+              "hits": 10,
+              "of": 12
+            },
+            "D4": {
+              "hits": 12,
+              "of": 12
+            },
+            "D5": {
+              "hits": 12,
+              "of": 12
+            }
+          }
+        },
+        "analysis": {
+          "plantedUnits": 12,
+          "cleanUnits": 12,
+          "recall": {
+            "D1": {
+              "hits": 0,
+              "of": 12
+            },
+            "D2": {
+              "hits": 0,
+              "of": 12
+            },
+            "D3": {
+              "hits": 12,
+              "of": 12
+            },
+            "D4": {
+              "hits": 12,
+              "of": 12
+            },
+            "D5": {
+              "hits": 8,
+              "of": 12
+            },
+            "total": {
+              "hits": 32,
+              "of": 60,
+              "wilson95": [
+                0.4089,
+                0.6537
+              ]
+            }
+          },
+          "d2Mechanism": {
+            "data_loss": 0,
+            "display": 0,
+            "ambiguous": 0,
+            "unspecified": 0
+          },
+          "falseAssurance": {
+            "claims": 0,
+            "unitsWith": 0
+          },
+          "invented": {
+            "planted": 0,
+            "clean": 0,
+            "unitsWith": 0
+          },
+          "harness": 0,
+          "unresolved": 19,
+          "supported": 18
+        }
+      }
+    }
+  ]
+}
