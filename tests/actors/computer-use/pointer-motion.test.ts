@@ -25,8 +25,8 @@ describe("planPointerGlide", () => {
     const short = planPointerGlide(from, { x: 130, y: 100 }, "s").durationMs;
     const long = planPointerGlide(from, { x: 1900, y: 1000 }, "s").durationMs;
     expect(short).toBeLessThan(long);
-    expect(short).toBeGreaterThanOrEqual(150);
-    expect(long).toBeLessThanOrEqual(500);
+    expect(short).toBeGreaterThanOrEqual(120);
+    expect(long).toBeLessThanOrEqual(380);
   });
 
   it("does not move for a target where the pointer already is", () => {

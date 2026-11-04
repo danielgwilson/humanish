@@ -107,12 +107,13 @@ const settle = async () => {
     await new Promise((resolve) => realImmediate(resolve));
   }
 };
+// Each fake second lets real file reads and writes finish before the next one: the copy back writes
+// each sent file to disk, and on a busy machine one event-loop turn is not enough for that write.
 const pass = async (ms: number) => {
   for (let passed = 0; passed < ms && outcome === undefined; passed += SECOND) {
     await vi.advanceTimersByTimeAsync(SECOND);
-    await new Promise((resolve) => realImmediate(resolve));
+    await settle();
   }
-  await settle();
 };
 /** The read in flight when this machine stopped settles as it resumes, before any timer runs. */
 const sleepThroughRead = async (

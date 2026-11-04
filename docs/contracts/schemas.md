@@ -1148,8 +1148,9 @@ Core-owned fields:
   pointer's position is known, an executor without `glide`, the local VM, a
   glide that failed and was noted), other producers and older bundles
 - optional `pointerMotion: "glide"` on the computer-use trace, beside
-  `waitSettings`, when the study set `execution.pointer: glide`. Absent when
-  the pointer moved in one step, on other producers and on older bundles
+  `waitSettings`, when the loop glided the pointer: `execution.pointer: glide`,
+  the default from 0.157.0. Absent when the study set `jump`, on other
+  producers and on older bundles
 - optional `items[].page` and `finalPage` (`{ origin, path }`, `TracePage` in
   `src/actors/contract.ts`): where a computer-use participant's browser was. The loop puts `page`
   on the `screenshot` item of each observation that read a URL: `turn-00-start` is the page before

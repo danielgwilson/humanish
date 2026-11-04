@@ -363,7 +363,7 @@ describe("gliding the pointer to each target", () => {
     expect(moved?.pointerApproach?.[0]).toEqual({ x: 10, y: 20 });
   });
 
-  it("sends no glide by default or to an executor that cannot glide", async () => {
+  it("glides by default, and sends no glide with jump or to an executor that cannot glide", async () => {
     const glide = vi.fn(async () => {});
     const twoClicks = () =>
       scripted([
@@ -374,9 +374,14 @@ describe("gliding the pointer to each target", () => {
           ],
         }),
       ]).provider;
-    const jumped = await run(twoClicks(), gliding(glide));
-    const unable = await run(twoClicks(), desktop(), { pointer: "glide" });
+    const byDefault = await run(twoClicks(), gliding(glide));
+    expect(glide).toHaveBeenCalledTimes(1);
+    expect(byDefault.trace.pointerMotion).toBe("glide");
+    glide.mockClear();
+    const jumped = await run(twoClicks(), gliding(glide), { pointer: "jump" });
+    const unable = await run(twoClicks(), desktop());
     expect(glide).not.toHaveBeenCalled();
+    expect(unable.trace.pointerMotion).toBeUndefined();
     for (const result of [jumped, unable])
       expect(result.trace.items.some((item) => item.pointerApproach !== undefined)).toBe(false);
   });

@@ -186,6 +186,7 @@
       "idleWaitMs": 5000,
       "settleWaitMs": 500
     },
+    "pointerMotion": "glide",
     "counts": {
       "turns": 2,
       "actions": 1,
@@ -659,6 +660,7 @@
             "idleWaitMs": 5000,
             "settleWaitMs": 500
           },
+          "pointerMotion": "glide",
           "counts": {
             "turns": 2,
             "actions": 1,

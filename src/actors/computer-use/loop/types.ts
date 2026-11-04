@@ -465,7 +465,7 @@ export interface CuaLoopOptions {
    * How the pointer reaches each action's target: the study's execution.pointer. `glide` moves it
    * along a curve timed by Fitts's law, as a hand would, before the action makes its last move, when
    * the executor has `glide` and the pointer's position is known; the trace records the path on
-   * the action's `pointerApproach`. `jump`, the default, moves it there in one step.
+   * the action's `pointerApproach`; it is the default. `jump` moves it there in one step.
    */
   pointer?: "glide" | "jump";
   /**

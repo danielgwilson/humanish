@@ -343,7 +343,8 @@ had 2/12.
 [2026-11-03-pointer-glide.md](2026-11-03-pointer-glide.md) compares `execution.pointer: glide`
 with `jump` on the same code, 24 planted and 24 clean runs per mode. Rescored with rubric 5,
 reports found 57/120 and 59/120 and analyses 70/120 and 69/115; the D5 gap rubric 4 showed (17/24
-against 8/23) was analysis wording its rules did not read.
+against 8/23) was analysis wording its rules did not read. A third glide batch at the shorter 0.157.0 timing
+found 31/60 and 31/55 with steps 8% longer than jump, and `glide` became the default.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
