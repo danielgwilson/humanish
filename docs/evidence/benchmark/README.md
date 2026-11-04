@@ -334,6 +334,10 @@ version bump). Report recall was 26/60 against 30/60, analysis recall 34/60 agai
 clean arm invented nothing. The report dip is all D5, 2/12 against 6/12; every participant used
 Save in edit mode, the analyses found D5 in 10 of 12 runs, and the 0.151.0 old-persona arm also
 had 2/12.
+[2026-11-03-pointer-glide.md](2026-11-03-pointer-glide.md) compares `execution.pointer: glide`
+with `jump` on the same code, 24 planted and 24 clean runs per mode. Reports found 57/120 in both
+modes. Analyses found 65/120 with jump and 54/115 with glide, all of it D5 (17/24 against 8/23), so
+`jump` stays the default.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where
