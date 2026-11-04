@@ -1,14 +1,14 @@
 {
   "schema": "humanish.bench-result.v1",
-  "createdAt": "2026-11-04T00:28:43.721Z",
+  "createdAt": "2026-11-04T01:55:15.243Z",
   "humanish": {
     "version": "0.155.0",
     "source": "this checkout at b3453ff7f, src/ as of b3453ff7f"
   },
   "rubric": {
     "id": "taskly-rubric",
-    "version": 4,
-    "sha256": "91f411fe2c9c423d1b36d76b9ff066bb31a666b984c10489368d5d1a59f32257"
+    "version": 5,
+    "sha256": "967025f9514ec8c393d3ecf87d85cf4ec2f4b285573a35b54751982aa46d5102"
   },
   "fixture": {
     "id": "taskly",
@@ -120,10 +120,11 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
               "D4": "friction",
+              "D5": "friction",
               "D3": "friction"
             },
             "d2Mechanism": null,
@@ -147,9 +148,13 @@
                 "title": "Repeated grocery-edit attempts did not yield a retained visible change",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -1821,9 +1826,10 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
+              "D5": "friction",
               "D3": "friction",
               "D4": "friction"
             },
@@ -1846,9 +1852,13 @@
                 "title": "A saved-looking edit reverted after changing views",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -2470,9 +2480,10 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
+              "D5": "friction",
               "D3": "friction",
               "D4": "friction"
             },
@@ -2495,9 +2506,13 @@
                 "title": "A laundry edit remained open after Save and later reverted",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -2716,15 +2731,15 @@
               "of": 12
             },
             "D5": {
-              "hits": 8,
+              "hits": 11,
               "of": 12
             },
             "total": {
-              "hits": 32,
+              "hits": 35,
               "of": 60,
               "wilson95": [
-                0.4089,
-                0.6537
+                0.4573,
+                0.6994
               ]
             }
           },
@@ -2744,7 +2759,7 @@
             "unitsWith": 0
           },
           "harness": 0,
-          "unresolved": 19,
+          "unresolved": 16,
           "supported": 18
         }
       }

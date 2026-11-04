@@ -8,7 +8,7 @@
 // value is a new rubric version, and results carry the version and a digest of this file.
 
 export const RUBRIC_ID = "taskly-rubric";
-export const RUBRIC_VERSION = 4;
+export const RUBRIC_VERSION = 5;
 
 export type Arm = "planted" | "clean";
 export type DefectId = "D1" | "D2" | "D3" | "D4" | "D5";
@@ -196,6 +196,12 @@ export const PLANTED: readonly PlantedDefect[] = [
       re(String.raw`\bsave (?:attempts?|clicks?)\b[^.]{0,20}\b(?:did not|didn't|failed to) (?:retain|keep|commit|save)\b`),
       re(String.raw`${NOT_ENTER}.*?\bedit(?:s|ed)?\b[^.]{0,30}\b(?:fail(?:s|ed)? to (?:save|commit|persist)|(?:are|were|was|is) not saved|(?:do|does|did) not (?:persist|save))\b`),
       re(String.raw`\bsave button failure\b`),
+      // The editor outlived Save, in the analysis wordings rubric 4 missed: "saving an edit left it
+      // open", "remained an input with a Save button afterward". Save comes first: a box that stayed
+      // open so the participant then clicked Save, or stays open until Save, is the editor working.
+      re(String.raw`${NOT_ENTER}(?!.*\buntil\b).*?\bsav(?:e|es|ed|ing)\b.*?\b(?:remain(?:s|ed)?|stay(?:s|ed)?|still (?:showed|shows|displayed|in)|left|leaves|kept)\b(?: \w+){0,3} (?:open|an? (?:open )?(?:input|editor|edit(?:ing)? field)|in (?:an? |the )?(?:open )?(?:input|editor|edit(?:ing)? field)|editable)\b`),
+      re(String.raw`${NOT_ENTER}(?=.*\bsav(?:e|ed|ing)\b).*\b(?:no|did not produce an?|without an?) (?:visible )?exit from edit(?:ing)?\b`),
+      re(String.raw`${NOT_ENTER}.*?\bwith (?:a |the )?save(?: button| control)? (?:still (?:present|visible|showing)|afterward)\b`),
     ],
     assurance: [
       re(

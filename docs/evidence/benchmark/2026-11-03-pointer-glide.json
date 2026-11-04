@@ -1,14 +1,14 @@
 {
   "schema": "humanish.bench-result.v1",
-  "createdAt": "2026-11-03T23:25:06.186Z",
+  "createdAt": "2026-11-04T01:55:16.433Z",
   "humanish": {
     "version": "0.155.0",
     "source": "this checkout at 052621f74, src/ as of 07a447923"
   },
   "rubric": {
     "id": "taskly-rubric",
-    "version": 4,
-    "sha256": "91f411fe2c9c423d1b36d76b9ff066bb31a666b984c10489368d5d1a59f32257"
+    "version": 5,
+    "sha256": "967025f9514ec8c393d3ecf87d85cf4ec2f4b285573a35b54751982aa46d5102"
   },
   "fixture": {
     "id": "taskly",
@@ -762,10 +762,11 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
               "D4": "friction",
+              "D5": "friction",
               "D3": "friction"
             },
             "d2Mechanism": null,
@@ -789,9 +790,13 @@
                 "title": "Grocery edits remained in edit mode and later reverted",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -978,9 +983,10 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
+              "D5": "friction",
               "D3": "friction",
               "D4": "friction"
             },
@@ -1003,9 +1009,13 @@
                 "title": "An attempted library-task edit reverted after switching views",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -1186,10 +1196,11 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
               "D4": "friction",
+              "D5": "friction",
               "D3": "friction"
             },
             "d2Mechanism": null,
@@ -1213,9 +1224,13 @@
                 "title": "A saved library-task edit reverted after switching filters",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -1755,9 +1770,10 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
+              "D5": "friction",
               "D3": "friction",
               "D4": "friction"
             },
@@ -1780,9 +1796,13 @@
                 "title": "A groceries edit remained open and later reverted",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -1925,10 +1945,11 @@
                 "D2": false,
                 "D3": true,
                 "D4": true,
-                "D5": false
+                "D5": true
               },
               "detectedQuotes": {
                 "D4": "the list initially said undefined.",
+                "D5": "it stayed in an editable box with save still showing.",
                 "D3": "active showed only the checked-off recycling task."
               },
               "falseAssurance": [],
@@ -2176,10 +2197,11 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
               "D4": "friction",
+              "D5": "friction",
               "D3": "friction"
             },
             "d2Mechanism": null,
@@ -2203,9 +2225,13 @@
                 "title": "The attempted laundry edit remained open and later reverted",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -2384,9 +2410,10 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
+              "D5": "friction",
               "D3": "friction",
               "D4": "friction"
             },
@@ -2409,9 +2436,13 @@
                 "title": "Attempted Save left the editor open and the wording later reverted",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -2542,15 +2573,15 @@
               "of": 12
             },
             "D5": {
-              "hits": 3,
+              "hits": 4,
               "of": 12
             },
             "total": {
-              "hits": 28,
+              "hits": 29,
               "of": 60,
               "wilson95": [
-                0.3463,
-                0.5911
+                0.3617,
+                0.6069
               ]
             }
           },
@@ -2616,15 +2647,15 @@
               "of": 11
             },
             "D5": {
-              "hits": 5,
+              "hits": 11,
               "of": 11
             },
             "total": {
-              "hits": 27,
+              "hits": 33,
               "of": 55,
               "wilson95": [
-                0.3638,
-                0.6192
+                0.4681,
+                0.7188
               ]
             }
           },
@@ -2644,7 +2675,7 @@
             "unitsWith": 0
           },
           "harness": 0,
-          "unresolved": 19,
+          "unresolved": 13,
           "supported": 14
         }
       }

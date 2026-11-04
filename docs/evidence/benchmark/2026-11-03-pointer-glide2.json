@@ -1,14 +1,14 @@
 {
   "schema": "humanish.bench-result.v1",
-  "createdAt": "2026-11-04T00:25:58.993Z",
+  "createdAt": "2026-11-04T01:55:17.602Z",
   "humanish": {
     "version": "0.155.0",
     "source": "this checkout at b3453ff7f, src/ as of b3453ff7f"
   },
   "rubric": {
     "id": "taskly-rubric",
-    "version": 4,
-    "sha256": "91f411fe2c9c423d1b36d76b9ff066bb31a666b984c10489368d5d1a59f32257"
+    "version": 5,
+    "sha256": "967025f9514ec8c393d3ecf87d85cf4ec2f4b285573a35b54751982aa46d5102"
   },
   "fixture": {
     "id": "taskly",
@@ -122,10 +122,11 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
               "D4": "friction",
+              "D5": "friction",
               "D3": "friction"
             },
             "d2Mechanism": null,
@@ -149,9 +150,13 @@
                 "title": "An attempted rename reverted after switching views",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -338,9 +343,10 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
+              "D5": "friction",
               "D3": "friction",
               "D4": "friction"
             },
@@ -363,9 +369,13 @@
                 "title": "The Friday edit remained open and reverted after filtering",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -546,9 +556,10 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
+              "D5": "friction",
               "D3": "friction",
               "D4": "friction"
             },
@@ -571,9 +582,13 @@
                 "title": "The grocery edit remained open and reverted after switching views",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -744,10 +759,11 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
               "D4": "friction",
+              "D5": "friction",
               "D3": "friction"
             },
             "d2Mechanism": null,
@@ -771,9 +787,13 @@
                 "title": "Repeated Save attempts did not yield a retained groceries edit",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -1375,9 +1395,10 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
+              "D5": "friction",
               "D3": "friction",
               "D4": "friction"
             },
@@ -1400,9 +1421,13 @@
                 "title": "The library-task edit remained open and later reverted",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -1544,10 +1569,11 @@
                 "D2": false,
                 "D3": true,
                 "D4": true,
-                "D5": false
+                "D5": true
               },
               "detectedQuotes": {
                 "D4": "the opening list said undefined.",
+                "D5": "it stayed in the editing box with save still showing.",
                 "D3": "active showed only the checked-off recycling task."
               },
               "falseAssurance": [],
@@ -1578,9 +1604,10 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
+              "D5": "friction",
               "D3": "friction",
               "D4": "friction"
             },
@@ -1603,9 +1630,13 @@
                 "title": "Grocery edits remained in edit mode and reverted after changing views",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -1771,10 +1802,11 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
               "D4": "friction",
+              "D5": "friction",
               "D3": "friction"
             },
             "d2Mechanism": null,
@@ -1798,9 +1830,13 @@
                 "title": "Saving an edit left it open and the original wording returned",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -1978,10 +2014,11 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
               "D4": "friction",
+              "D5": "friction",
               "D3": "friction"
             },
             "d2Mechanism": null,
@@ -2005,9 +2042,13 @@
                 "title": "Laundry edit remained open and reverted after changing views",
                 "impact": "friction",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -2407,9 +2448,10 @@
               "D2": false,
               "D3": true,
               "D4": true,
-              "D5": false
+              "D5": true
             },
             "impactByDefect": {
+              "D5": "blocked_task",
               "D3": "friction",
               "D4": "friction"
             },
@@ -2432,9 +2474,13 @@
                 "title": "The grocery revision did not survive Save and a view change",
                 "impact": "blocked_task",
                 "confidence": "high",
-                "verdict": "unresolved",
-                "classes": [],
-                "defects": []
+                "verdict": "planted",
+                "classes": [
+                  "D5"
+                ],
+                "defects": [
+                  "D5"
+                ]
               },
               {
                 "id": "F3",
@@ -2570,15 +2616,15 @@
               "of": 12
             },
             "D5": {
-              "hits": 5,
+              "hits": 6,
               "of": 12
             },
             "total": {
-              "hits": 29,
+              "hits": 30,
               "of": 60,
               "wilson95": [
-                0.3617,
-                0.6069
+                0.3773,
+                0.6227
               ]
             }
           },
@@ -2644,15 +2690,15 @@
               "of": 12
             },
             "D5": {
-              "hits": 3,
+              "hits": 12,
               "of": 12
             },
             "total": {
-              "hits": 27,
+              "hits": 36,
               "of": 60,
               "wilson95": [
-                0.3309,
-                0.5751
+                0.4737,
+                0.7143
               ]
             }
           },
@@ -2672,7 +2718,7 @@
             "unitsWith": 0
           },
           "harness": 0,
-          "unresolved": 21,
+          "unresolved": 12,
           "supported": 16
         }
       }
