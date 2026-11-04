@@ -8,23 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.157.0: The pointer glides and looks like a hand's (2026-11-04)
 
-- The participant's drawn pointer in the Observer is a dark arrowhead with a light edge and a glow
-  that is the same in both Observer themes. It has no tail, so it reads on any app and is never
-  mistaken for the real pointer each capture shows. It fades and grows in where it first appears,
-  leans across its heading while it moves, and dips and springs back as a press lands, where a ring
-  blooms and fades. While a replay plays, each pin shrinks to the mark a press left and its label
-  waits for a pause, so labels no longer cover the pointer. Reduced motion keeps it upright and
-  still.
-- A computer-use participant's pointer glides to each target by default on E2B and Modal desktops
-  (`execution.pointer: glide`); set `execution.pointer: jump` to move it in one step as before.
-  Each glide now takes 120 to 380 ms, down from 150 to 500 ms. On the Taskly benchmark, 24 planted
-  and 24 clean runs per mode, reports found 57/120 with jump and 59/120 with glide and analyses
-  70/120 and 69/115, with no more participants giving up; a third glide batch at the new timing
-  found 31/60 and 31/55, and a step took 8% longer than with jump (median 3.91 s against 3.61 s). A
-  trace with glides says `pointerMotion: "glide"`. Benchmark results from before this release ran
-  with `jump`.
+humanish 0.157.0 makes the replay pointer look and move like a hand. The Observer draws each
+participant's pointer as a dark arrowhead with a light edge and a glow, leaning into its travel and
+dipping as a press lands, and computer-use participants on E2B and Modal desktops now glide their
+real pointer to each target by default, in 120 to 380 ms a move, so the live view and desktop video
+show the motion too. `execution.pointer: jump` keeps the old one-step move.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.157.0)
 
 ## 0.156.0: Replays show each participant's pointer moving (2026-11-03)
 
