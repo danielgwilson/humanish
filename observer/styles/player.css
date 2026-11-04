@@ -592,6 +592,9 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .pointer-cursor {
+    transition: none;
+  }
   .evidence-player * {
     scroll-behavior: auto;
     animation: none;
@@ -676,57 +679,81 @@
   color: var(--muted);
   font: 11px/1.4 var(--sans);
 }
-/* The participant's drawn pointer: the arrow's tip is the pointer's position, as a pin's center
-   is. It sits above the pins and never takes input. */
+/* The participant's drawn pointer: the arrowhead's tip is the pointer's position, as a pin's
+   center is. A dark arrowhead with a light edge reads on any app's pixels; its glow is one color in
+   both Observer themes, since the frames under it are the app's own. */
 .pointer-cursor {
+  --pointer-glow: var(--accent-dz);
   position: absolute;
-  width: 18px;
-  height: 24px;
+  width: 23px;
+  height: 25px;
   visibility: hidden;
+  opacity: 0;
   pointer-events: none;
   z-index: 2;
+  transform: scale(0.85);
+  transform-origin: 0 0;
+  transition:
+    opacity 0.16s cubic-bezier(0.23, 1, 0.32, 1),
+    transform 0.16s cubic-bezier(0.23, 1, 0.32, 1);
+}
+@supports (color: oklch(from red l c h)) {
+  .pointer-cursor {
+    --pointer-glow: oklch(from var(--accent-dz) 0.68 0.19 h);
+  }
 }
 /* Placed: shown unless the layer it sits in is hidden while its capture loads. */
 .pointer-cursor[data-placed] {
   visibility: inherit;
-}
-.pointer-cursor[data-held] .pointer-arrow {
-  transform: scale(0.85);
-  transform-origin: 0 0;
+  opacity: 1;
+  transform: none;
 }
 .pointer-arrow {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
+  left: -3.45px;
+  top: -3.22px;
+  width: 23px;
+  height: 25px;
   overflow: visible;
-  filter: drop-shadow(0 0 3px var(--accent)) drop-shadow(0 1px 2px var(--dz));
+  transform-origin: 3.45px 3.22px;
+  filter: drop-shadow(0 0 6px color-mix(in oklab, var(--pointer-glow) 80%, transparent))
+    drop-shadow(0 0 15px color-mix(in oklab, var(--pointer-glow) 40%, transparent))
+    drop-shadow(0 1px 1px color-mix(in srgb, var(--dz) 50%, transparent));
 }
 .pointer-arrow path {
-  fill: var(--accent);
-  /* Frames are the app's own pixels in either Observer theme, so the outline stays light. */
+  fill: var(--dz);
   stroke: var(--dz-ink);
-  stroke-width: 1.4;
+  /* Painted under the fill, so half of it shows: a 1.5 px edge. */
+  stroke-width: 3;
   stroke-linejoin: round;
+  paint-order: stroke fill;
+}
+.pointer-cursor[data-held] .pointer-arrow path {
+  fill: var(--pointer-glow);
 }
 .pointer-ring {
   position: absolute;
   left: 0;
   top: 0;
-  width: 30px;
-  height: 30px;
-  border: 2px solid var(--accent);
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid var(--pointer-glow);
   border-radius: var(--radius-round);
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.4);
 }
-/* A grid tile is a fraction of the stage's width, so its pointer is smaller. */
-.card .pointer-cursor {
-  width: 12px;
-  height: 16px;
+/* A grid tile is a fraction of the stage's width, so its pointer is smaller with a firmer edge. */
+.card .pointer-cursor[data-placed] {
+  transform: scale(0.72);
 }
-.card .pointer-ring {
-  width: 20px;
-  height: 20px;
+.card .pointer-arrow path {
+  stroke-width: 3.5;
+}
+
+.pins[data-pointer-playing] .spin .tip {
+  display: none;
+}
+.pins[data-pointer-playing] .spin {
+  opacity: 0.6;
+  transform: translate(-50%, -50%) scale(0.55);
 }

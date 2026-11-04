@@ -8,6 +8,16 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- The participant's drawn pointer in the Observer is a dark arrowhead with a light edge and a glow
+  that is the same in both Observer themes. It has no tail, so it reads on any app and is never
+  mistaken for the real pointer each capture shows. It fades and grows in where it first appears,
+  leans across its heading while it moves, and dips and springs back as a press lands, where a ring
+  blooms and fades. While a replay plays, each pin shrinks to the mark a press left and its label
+  waits for a pause, so labels no longer cover the pointer. Reduced motion keeps it upright and
+  still.
+
 ## 0.156.0: Replays show each participant's pointer moving (2026-11-03)
 
 humanish 0.156.0 shows each computer-use participant's pointer moving through a replay. The

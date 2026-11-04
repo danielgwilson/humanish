@@ -1,12 +1,7 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import { frameHoldMs, type PlayerModel } from "@/lib/player-model";
-import {
-  framePointers,
-  nextChangeMs,
-  pointerAt,
-  PRESS_RING_MS,
-  type FramePointer,
-} from "@/lib/pointer-track";
+import { pointerPose } from "@/lib/pointer-pose";
+import { framePointers, nextChangeMs, type FramePointer } from "@/lib/pointer-track";
 import type { GridMoment, GridRecording } from "@/lib/grid-recording";
 import type { PlayerPlayback } from "@/lib/use-player-playback";
 import type { StudyPlayerControl } from "@/lib/use-study-playback";
@@ -129,23 +124,26 @@ function clockPointerView(
 }
 
 /**
- * The participant's pointer over a recorded capture: an arrow at the pointer's position, gliding
- * between recorded positions and ringing where a press landed. It is drawn from the action trace
- * in the same desktop-pixel box as the pins. The frames already show the real pointer where it was
- * at each capture; this one moves in between.
+ * The participant's pointer over a recorded capture: a dark arrowhead with a light edge and a glow,
+ * gliding between recorded positions. It has no tail, so it never reads as the real pointer each
+ * capture already shows. It leans into its travel and squishes as a press lands, where a ring
+ * blooms. It is drawn from the action trace in the same desktop-pixel box as the pins, and moves
+ * between the positions the captures show.
  */
 export function PointerCursor({ view, viewport }: { view: PointerView; viewport: Size }) {
-  const arrowRef = useRef<HTMLDivElement>(null);
-  const ringRef = useRef<HTMLSpanElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   // When this anchor began, kept across re-renders that bring an equal anchor, such as a poll
   // that rebuilds the same participant's frames, so the pointer does not restart mid-move.
   const clock = useRef<{ anchor: string; at: number } | null>(null);
   const { frame, ageMs, playing, speed, limitMs, anchor } = view;
   const { width, height } = viewport;
-  useEffect(() => {
-    const arrow = arrowRef.current;
-    const ring = ringRef.current;
-    if (!arrow || !ring) return;
+  // Drawn before paint: a pointer remounted on the next capture appears where it is, and only a
+  // pointer appearing for the first time fades in.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    const arrow = root?.querySelector<SVGElement>(".pointer-arrow");
+    const ring = root?.querySelector<HTMLElement>(".pointer-ring");
+    if (!root || !arrow || !ring) return;
     if (clock.current?.anchor !== anchor) clock.current = { anchor, at: performance.now() };
     const started = clock.current.at;
     const still =
@@ -154,18 +152,19 @@ export function PointerCursor({ view, viewport }: { view: PointerView; viewport:
     const draw = (age: number) => {
       const moment = Math.min(limitMs, Math.max(0, age));
       // Reduced motion shows each move where it ends, from the moment it starts.
-      const state = pointerAt(frame, still ? endOfCurrentMove(frame, moment) : moment);
-      const position = state.point ? pinPosition(state.point, { width, height }) : null;
-      arrow.toggleAttribute("data-placed", position !== null);
+      const pose = pointerPose(frame, still ? endOfCurrentMove(frame, moment) : moment, still);
+      const position = pose.point ? pinPosition(pose.point, { width, height }) : null;
+      root.toggleAttribute("data-placed", position !== null);
       if (position) {
-        arrow.style.left = String(position.left);
-        arrow.style.top = String(position.top);
+        root.style.left = String(position.left);
+        root.style.top = String(position.top);
       }
-      arrow.toggleAttribute("data-held", state.held);
-      const pressed = state.pressedAgoMs;
-      const progress = pressed === null ? 1 : pressed / PRESS_RING_MS;
-      ring.style.opacity = progress < 1 ? String(0.7 * (1 - progress)) : "0";
-      ring.style.transform = `translate(-50%, -50%) scale(${still ? 1 : 0.4 + 1.2 * Math.min(1, progress)})`;
+      root.toggleAttribute("data-held", pose.held);
+      root.toggleAttribute("data-moving", pose.moving);
+      root.toggleAttribute("data-pressed", pose.ring.opacity > 0);
+      arrow.style.transform = `rotate(${pose.leanDeg.toFixed(2)}deg) scale(${pose.squish.toFixed(3)})`;
+      ring.style.opacity = pose.ring.opacity.toFixed(3);
+      ring.style.transform = `translate(-50%, -50%) scale(${pose.ring.scale.toFixed(3)})`;
       return moment;
     };
     const now = () => ageMs + (performance.now() - started) * speed;
@@ -190,10 +189,10 @@ export function PointerCursor({ view, viewport }: { view: PointerView; viewport:
     };
   }, [frame, ageMs, playing, speed, limitMs, anchor, width, height]);
   return (
-    <div className="pointer-cursor" ref={arrowRef} aria-hidden="true" data-testid="pointer-cursor">
-      <span className="pointer-ring" ref={ringRef} />
-      <svg className="pointer-arrow" viewBox="0 0 16 22" focusable="false">
-        <path d="M1.5 1.5 L1.5 17.5 L5.8 13.6 L8.6 20.2 L11.4 19 L8.6 12.5 L14.2 12.5 Z" />
+    <div className="pointer-cursor" ref={rootRef} aria-hidden="true" data-testid="pointer-cursor">
+      <span className="pointer-ring" />
+      <svg className="pointer-arrow" viewBox="0 0 20 22" focusable="false">
+        <path d="M3 2.8 L17 9.2 Q18 9.7 17 10.1 L10.7 12 Q10.2 12.15 10.05 12.65 L8.1 19.1 Q7.75 20.1 7.35 19.1 Z" />
       </svg>
     </div>
   );
