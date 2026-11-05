@@ -139,6 +139,7 @@ function fromSpec(spec: DesktopParticipantRun) {
       dwell: spec.planned.limits.dwell,
       reasoningEffort: spec.planned.limits.reasoningEffort,
       maxOutputTokens: spec.planned.limits.maxOutputTokens,
+      pointer: spec.planned.limits.pointer,
     },
     tasks: spec.planned.tasks,
     targetUrl: spec.planned.targetUrl,

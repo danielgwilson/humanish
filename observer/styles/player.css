@@ -787,9 +787,14 @@
 .pointer-cursor[data-captioned] .pointer-caption {
   display: block;
 }
+/* Flipped sides clear the arrowhead, which reaches right and down from the tip. */
 .pointer-cursor[data-caption-left] .pointer-caption {
   left: auto;
-  right: 12px;
+  right: calc(100% + var(--space-4));
+}
+.pointer-cursor[data-caption-above] .pointer-caption {
+  top: auto;
+  bottom: calc(100% + var(--space-4));
 }
 .card .pointer-caption {
   display: none;

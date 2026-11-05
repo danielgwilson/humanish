@@ -38,8 +38,13 @@ export function usePointerView(
   const frame = playback.frame >= 0 ? frames[playback.frame] : undefined;
   if (!enabled || playback.live !== null || !frame) return null;
   const limitMs = frameHoldMs(model, playback.frame);
+  // Paused on a selected entry, the pointer is where that entry's move ended, whichever clock runs.
+  const selected = playback.selectedRow
+    ? frame.moves.find((move) => move.rowId === playback.selectedRow?.id)
+    : undefined;
   if (studyPlayback) {
-    const ageMs = studyPlayback.moment.kind === "capture" ? studyPlayback.moment.ageMs : 0;
+    const clockAge = studyPlayback.moment.kind === "capture" ? studyPlayback.moment.ageMs : 0;
+    const ageMs = !studyPlayback.playing && selected ? selected.endMs : clockAge;
     return clockPointerView(
       frame,
       `${playback.frame}`,
@@ -49,9 +54,6 @@ export function usePointerView(
       studyPlayback.speed,
     );
   }
-  const selected = playback.selectedRow
-    ? frame.moves.find((move) => move.rowId === playback.selectedRow?.id)
-    : undefined;
   const ageMs = !playback.playing && selected ? selected.endMs : 0;
   return {
     frame,
@@ -165,7 +167,10 @@ export function PointerCursor({ view, viewport }: { view: PointerView; viewport:
       const label = playing || !pose.point ? null : lastLabelAt(frame, moment);
       caption.textContent = label ?? "";
       root.toggleAttribute("data-captioned", label !== null);
-      if (pose.point) root.toggleAttribute("data-caption-left", pose.point.x / width > 0.6);
+      if (pose.point) {
+        root.toggleAttribute("data-caption-left", pose.point.x / width > 0.6);
+        root.toggleAttribute("data-caption-above", pose.point.y / height > 0.75);
+      }
       root.toggleAttribute("data-held", pose.held);
       root.toggleAttribute("data-moving", pose.moving);
       root.toggleAttribute("data-pressed", pose.ring.opacity > 0);

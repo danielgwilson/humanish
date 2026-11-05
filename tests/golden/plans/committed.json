@@ -841,7 +841,9 @@
                 896
               ]
             },
-            "limits": {},
+            "limits": {
+              "pointer": "jump"
+            },
             "schedule": {}
           },
           {
@@ -866,7 +868,9 @@
                 740
               ]
             },
-            "limits": {},
+            "limits": {
+              "pointer": "jump"
+            },
             "schedule": {}
           },
           {
@@ -1278,7 +1282,8 @@
               ]
             },
             "limits": {
-              "maxOutputTokens": 8192
+              "maxOutputTokens": 8192,
+              "pointer": "jump"
             },
             "schedule": {},
             "tasks": [
@@ -1397,7 +1402,9 @@
                 896
               ]
             },
-            "limits": {},
+            "limits": {
+              "pointer": "jump"
+            },
             "schedule": {},
             "host": true
           },
@@ -1423,7 +1430,9 @@
                 896
               ]
             },
-            "limits": {},
+            "limits": {
+              "pointer": "jump"
+            },
             "schedule": {},
             "host": false
           },
@@ -1449,7 +1458,9 @@
                 740
               ]
             },
-            "limits": {},
+            "limits": {
+              "pointer": "jump"
+            },
             "schedule": {},
             "host": false
           }
@@ -1968,7 +1979,9 @@
                 896
               ]
             },
-            "limits": {},
+            "limits": {
+              "pointer": "jump"
+            },
             "schedule": {},
             "entry": "/feed"
           }
@@ -2158,7 +2171,9 @@
                 896
               ]
             },
-            "limits": {},
+            "limits": {
+              "pointer": "jump"
+            },
             "schedule": {}
           }
         ]
