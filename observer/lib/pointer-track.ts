@@ -18,6 +18,8 @@ interface PointerMove {
   readonly endMs: number;
   /** The action pressed a button where the move ended: a click, or a press at a point. */
   readonly press: boolean;
+  /** What the action did, shown beside the pointer when playback pauses on it. */
+  readonly label: string;
   /** For a drag: the fraction of the move from which the button is held. */
   readonly heldFrom?: number;
   /** Where the pointer is at `fraction` of this move. */
@@ -32,6 +34,8 @@ export interface FramePointer {
   /** Shown only at each press and its ring. A bundle from before pointer paths recorded clicks
    *  alone, so where its pointer was between them is unknown. */
   readonly pressesOnly: boolean;
+  /** A touch screen: a fingertip shows only while it touches, so nothing travels between presses. */
+  readonly touch: boolean;
 }
 
 /** Where the pointer is drawn at a moment, how long ago its last press landed, and whether a
@@ -47,7 +51,9 @@ export interface PointerState {
  * lands when the participant clicked, and its planned glide starts before that. An action recorded
  * before the capture moves only where the pointer rests on it; a capture or action without a
  * recorded time draws no movement. `seed` keeps one participant's glides apart from another's and
- * identical across replays.
+ * identical across replays. On a touch screen a finger lands where it presses and lifts after, so
+ * a press has no approach, a drag follows only its own path, and a move without a press draws
+ * nothing.
  */
 export function framePointers(model: PlayerModel, seed: string): FramePointer[] {
   const recorded = model.rows.some((row) => row.pointerPath !== undefined);
@@ -76,6 +82,23 @@ export function framePointers(model: PlayerModel, seed: string): FramePointer[] 
         continue;
       }
       const endMs = Math.max(previousEnd, Math.min(hold, offset));
+      const press = row.coord !== undefined && !/^mouse up/i.test(row.title);
+      if (model.touch) {
+        last = target;
+        if (!press && path.length === 1) continue;
+        const motion = path.length === 1 ? still(target) : { ...polyline(path), heldFrom: 0 };
+        moves.push({
+          rowId: row.id,
+          label: row.title,
+          startMs: Math.max(previousEnd, endMs - motion.durationMs),
+          endMs,
+          press,
+          ...(path.length === 1 ? {} : { heldFrom: 0 }),
+          position: motion.position,
+        });
+        previousEnd = endMs;
+        continue;
+      }
       const start = recorded ? (last ?? path[0]!) : target;
       // A recorded glide is drawn from its own points; otherwise the glide is planned.
       const approach =
@@ -86,22 +109,29 @@ export function framePointers(model: PlayerModel, seed: string): FramePointer[] 
         path.length === 1 ? approach : dragMotion(approach, path);
       moves.push({
         rowId: row.id,
+        label: row.title,
         startMs: Math.max(previousEnd, endMs - motion.durationMs),
         endMs,
-        press: row.coord !== undefined && !/^mouse up/i.test(row.title),
+        press,
         ...(motion.heldFrom === undefined ? {} : { heldFrom: motion.heldFrom }),
         position: motion.position,
       });
       previousEnd = endMs;
       last = target;
     }
-    return { rest: recorded ? rest : null, moves, pressesOnly: !recorded };
+    return {
+      rest: recorded && !model.touch ? rest : null,
+      moves,
+      pressesOnly: !recorded,
+      touch: model.touch,
+    };
   });
 }
 
 /** The pointer at `ageMs` after the capture: resting, moving, or where its last move ended. */
 export function pointerAt(frame: FramePointer, ageMs: number): PointerState {
-  let point = frame.pressesOnly ? null : frame.rest;
+  const fleeting = frame.pressesOnly || frame.touch;
+  let point = fleeting ? null : frame.rest;
   let pressedAgoMs: number | null = null;
   let held = false;
   for (const move of frame.moves) {
@@ -111,7 +141,7 @@ export function pointerAt(frame: FramePointer, ageMs: number): PointerState {
     point = move.position(fraction);
     held = move.heldFrom !== undefined && fraction >= move.heldFrom && fraction < 1;
     if (ageMs >= move.endMs && move.press) pressedAgoMs = ageMs - move.endMs;
-    if (frame.pressesOnly && ageMs >= move.endMs + PRESS_RING_MS) point = null;
+    if (fleeting && ageMs >= move.endMs + PRESS_RING_MS) point = null;
   }
   return { point, pressedAgoMs, held };
 }
@@ -126,6 +156,21 @@ export function nextChangeMs(frame: FramePointer, ageMs: number): number | null 
     if (ageMs < move.endMs + PRESS_RING_MS) return 0;
   }
   return null;
+}
+
+/** A press with no travel: the point it lands on. */
+function still(point: PointerPoint): PointerGlide {
+  return { durationMs: 0, position: () => point };
+}
+
+/** What the last action to finish by `ageMs` did, or null before the first one finishes. */
+export function lastLabelAt(frame: FramePointer, ageMs: number): string | null {
+  let label: string | null = null;
+  for (const move of frame.moves) {
+    if (ageMs < move.endMs) break;
+    label = move.label;
+  }
+  return label;
 }
 
 /** A drag: the glide to where the button goes down, then the dragged path with the button held. */

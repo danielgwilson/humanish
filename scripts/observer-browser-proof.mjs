@@ -2154,6 +2154,8 @@ try {
       Math.abs(record.checks.double.width - 2 * record.checks.double.natural) <= 2,
       "200% zoom did not scale the recording",
     );
+    // The pin's placement under zoom is checked with the drawn pointer off, where pins show.
+    await page.getByRole("checkbox", { name: "Pointer", exact: true }).uncheck();
     record.checks.pin = await page.locator(".stage-box").evaluate((stage) => {
       const image = stage.querySelector("img").getBoundingClientRect(),
         pin = stage.querySelector(".spin").getBoundingClientRect();
@@ -3357,10 +3359,19 @@ try {
         await openLane(page);
         const captured = await displayedFrame(page);
         await page.locator('[data-entry-id="lane-1-action-1"]').click();
-        assert.equal(await page.locator(".pins .spin").count(), 1);
+        // With the drawn pointer on, it names the selected action and no pin is drawn under it.
+        const caption = page.locator(".pointer-cursor[data-captioned] .pointer-caption");
+        await caption.waitFor();
+        assert.equal(await page.locator(".pins .spin").count(), 0);
         await page.locator('[data-entry-id="second-click"]').click();
         assert.equal(await displayedFrame(page), captured);
+        await page
+          .locator(".pointer-caption", { hasText: "click (240, 480)" })
+          .waitFor({ timeout: 5000 });
+        assert.equal(await page.locator(".pins .spin").count(), 0);
+        await page.getByRole("checkbox", { name: "Pointer", exact: true }).uncheck();
         assert.equal(await page.locator(".pins .spin").count(), 1);
+        // The rest of this case reads the pins, so the pointer stays off.
         assert.equal(await page.locator(".pins .tip").innerText(), "click (240, 480)");
         assert.equal(await page.locator('.acts [aria-current="true"]').count(), 1);
         assert(

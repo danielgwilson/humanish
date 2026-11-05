@@ -6,8 +6,11 @@ export interface PointerPose {
   readonly point: PointerPoint | null;
   /** Degrees the arrowhead leans across its heading; 0 at rest. */
   readonly leanDeg: number;
-  /** The arrowhead's scale: a short dip and a slight overshoot as a press lands, then 1. */
+  /** The mark's scale: for the arrowhead a short dip and a slight overshoot as a press lands, for
+   *  a fingertip a quick grow as it touches down. */
   readonly squish: number;
+  /** The mark's opacity: 1, except a fingertip fading as it lifts. */
+  readonly fade: number;
   /** The press ring's scale and opacity, growing and fading after a press. */
   readonly ring: { readonly scale: number; readonly opacity: number };
   readonly held: boolean;
@@ -25,6 +28,9 @@ const TIP_AXIS_RAD = Math.atan2(-9.6, -7.1);
 const SQUISH_DOWN_MS = 60;
 const SQUISH_UP_MS = 180;
 const SQUISH_DEPTH = 0.12;
+const TOUCH_DOWN_MS = 90;
+// A fingertip stays at full strength this long after it lands, then fades by the ring's end.
+const TOUCH_HOLD_MS = 150;
 
 const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 const easeOutCubic = (t: number) => 1 - (1 - t) ** 3;
@@ -58,6 +64,14 @@ export function pointerPose(frame: FramePointer, ageMs: number, still = false): 
   }
   const pressed = state.pressedAgoMs;
   const ringProgress = pressed === null ? 1 : clamp01(pressed / PRESS_RING_MS);
+  const ring = {
+    scale: still ? 1 : 0.4 + 0.8 * easeOutExpo(ringProgress),
+    opacity: ringProgress >= 1 ? 0 : 0.6 * (1 - ringProgress) ** 2,
+  };
+  if (frame.touch) {
+    const touch = touchMark(frame, ageMs, pressed, still);
+    return { point: state.point, leanDeg: 0, ...touch, ring, held: state.held, moving };
+  }
   let squish = 1;
   if (pressed !== null && !still) {
     if (pressed < SQUISH_DOWN_MS)
@@ -70,11 +84,31 @@ export function pointerPose(frame: FramePointer, ageMs: number, still = false): 
     point: state.point,
     leanDeg,
     squish,
-    ring: {
-      scale: still ? 1 : 0.4 + 0.8 * easeOutExpo(ringProgress),
-      opacity: ringProgress >= 1 ? 0 : 0.6 * (1 - ringProgress) ** 2,
-    },
+    fade: 1,
+    ring,
     held: state.held,
     moving,
   };
+}
+
+/**
+ * A fingertip's scale and opacity: it grows in as it touches down, at the start of a drag or as a
+ * tap lands, holds while the finger is down, and fades as it lifts. Reduced motion shows it whole
+ * until it goes.
+ */
+function touchMark(
+  frame: FramePointer,
+  ageMs: number,
+  pressed: number | null,
+  still: boolean,
+): { squish: number; fade: number } {
+  if (still) return { squish: 1, fade: 1 };
+  const touching = frame.moves.find((move) => ageMs >= move.startMs && ageMs <= move.endMs);
+  // Down since the touch began: a tap lands where it ends, a drag where its path starts.
+  const began = touching ?? frame.moves.findLast((move) => move.endMs <= ageMs);
+  const downFor = began ? ageMs - began.startMs : 0;
+  const squish = 0.7 + 0.3 * easeOutCubic(clamp01(downFor / TOUCH_DOWN_MS));
+  if (touching || pressed === null || pressed < TOUCH_HOLD_MS) return { squish, fade: 1 };
+  const lifting = clamp01((pressed - TOUCH_HOLD_MS) / (PRESS_RING_MS - TOUCH_HOLD_MS));
+  return { squish, fade: 1 - easeOutCubic(lifting) };
 }

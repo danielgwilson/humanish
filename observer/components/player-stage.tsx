@@ -301,12 +301,11 @@ function RecordedImage({
         <div
           className="pins"
           aria-hidden="true"
-          // While the drawn pointer plays, each pin stays as the mark a press left and its label
-          // waits for a pause, so labels do not cover the pointer.
-          data-pointer-playing={pointer?.playing ? "" : undefined}
           style={{ visibility: status === "ready" ? "visible" : "hidden" }}
         >
-          {pins.map((row) => {
+          {/* With the drawn pointer on, its press ring marks each press and its caption names the
+            action, so the pins would mark the same presses twice. */}
+          {(pointer ? [] : pins).map((row) => {
             const position = row.coord ? pinPosition(row.coord, viewport) : null;
             const fraction = (row.coord?.x ?? 0) / viewport.width;
             const side = fraction > 0.5 ? "left" : "right";

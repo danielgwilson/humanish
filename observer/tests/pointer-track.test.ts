@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { PlayerModel, PlayerRow } from "../lib/player-model";
-import { framePointers, nextChangeMs, pointerAt, PRESS_RING_MS } from "../lib/pointer-track";
+import {
+  framePointers,
+  lastLabelAt,
+  nextChangeMs,
+  pointerAt,
+  PRESS_RING_MS,
+} from "../lib/pointer-track";
 
 const frames = [0, 1, 2].map((index) => ({
   index,
@@ -20,6 +26,7 @@ function model(rows: PlayerRow[], timed = true): PlayerModel {
     rows,
     avgFrameMs: 10_000,
     paced: timed ? "recorded" : "avg",
+    touch: false,
   };
 }
 
@@ -205,5 +212,65 @@ describe("framePointers at the edges of the evidence", () => {
     const [one, two] = first!.moves;
     expect(two!.startMs).toBeGreaterThanOrEqual(one!.endMs);
     expect(two!.endMs).toBeGreaterThanOrEqual(two!.startMs);
+  });
+});
+
+describe("framePointers on a touch screen", () => {
+  const touchModel = (rows: PlayerRow[]): PlayerModel => ({ ...model(rows), touch: true });
+  const tap = row({
+    id: "tap",
+    title: "click (400, 300)",
+    frameIndex: 0,
+    atMs: 18_000,
+    coord: { x: 400, y: 300 },
+    pointerPath: [{ x: 400, y: 300 }],
+    pointerApproach: [
+      { x: 100, y: 100 },
+      { x: 250, y: 200 },
+    ],
+  });
+  const hover = row({
+    id: "hover",
+    frameIndex: 1,
+    atMs: 22_000,
+    pointerPath: [{ x: 600, y: 500 }],
+  });
+  const swipe = row({
+    id: "swipe",
+    title: "drag (100, 700) to (100, 200)",
+    frameIndex: 1,
+    atMs: 26_000,
+    coord: { x: 100, y: 700 },
+    pointerPath: [
+      { x: 100, y: 700 },
+      { x: 100, y: 200 },
+    ],
+  });
+
+  it("shows a fingertip only where a tap lands, with no approach, until its ring ends", () => {
+    const [first] = framePointers(touchModel([tap]), "p1");
+    expect(first!.rest).toBeNull();
+    expect(pointerAt(first!, 7_999).point).toBeNull();
+    expect(pointerAt(first!, 8_000).point).toEqual({ x: 400, y: 300 });
+    expect(pointerAt(first!, 8_000 + PRESS_RING_MS - 1).point).toEqual({ x: 400, y: 300 });
+    expect(pointerAt(first!, 8_000 + PRESS_RING_MS).point).toBeNull();
+  });
+
+  it("draws nothing for a move without a press and follows a drag held from its first point", () => {
+    const [, second] = framePointers(touchModel([tap, hover, swipe]), "p1");
+    expect(second!.moves.map((move) => move.rowId)).toEqual(["swipe"]);
+    expect(pointerAt(second!, 0).point).toBeNull();
+    const drag = second!.moves[0]!;
+    expect(pointerAt(second!, drag.startMs)).toMatchObject({
+      point: { x: 100, y: 700 },
+      held: true,
+    });
+    expect(pointerAt(second!, drag.endMs).point).toEqual({ x: 100, y: 200 });
+  });
+
+  it("names the action the pointer last finished", () => {
+    const [first] = framePointers(model([tap]), "p1");
+    expect(lastLabelAt(first!, 7_000)).toBeNull();
+    expect(lastLabelAt(first!, 8_000)).toBe("click (400, 300)");
   });
 });

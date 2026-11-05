@@ -53,7 +53,8 @@ export interface DesktopParticipant extends Participant {
     readonly serviceTier?: "fast";
     /** actor.maxWaitMs: the longest one wait or one turn of only waits lasts. */
     readonly maxWaitMs?: number;
-    /** execution.pointer: how the pointer reaches each target on a desktop that can glide. */
+    /** execution.pointer, else `jump` on a phone: how the pointer reaches each target on a
+     *  desktop that can glide. */
     readonly pointer?: "glide" | "jump";
     /**
      * The participant's idleWaitMs, else actor.idleWaitMs: how long a wait with no duration lasts
@@ -127,7 +128,9 @@ function desktopParticipant(
   const maxOutputTokens = actor?.maxOutputTokens;
   const serviceTier = actor?.serviceTier;
   const maxWaitMs = actor?.maxWaitMs;
-  const pointer = config.execution?.pointer;
+  // A finger lands on each target and lifts, so a phone participant's pointer jumps unless the
+  // study asks for a glide.
+  const pointer = config.execution?.pointer ?? (device.preset.isMobile ? "jump" : undefined);
   const idleWaitMs = entry?.idleWaitMs ?? actor?.idleWaitMs;
   const timeZone = entry?.clock?.timeZone ?? actor?.clock?.timeZone;
   return {

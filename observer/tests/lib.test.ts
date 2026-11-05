@@ -8,7 +8,7 @@ import {
 } from "../lib/artifact-href";
 import { fetchHistoryIndex, fetchObserverData, followTarget, liveEmbedUrl } from "../lib/live";
 import type { ObserverData, ObserverStream } from "../lib/observer-data";
-import { buildPlayerModel, frameHoldMs, parseClickCoord } from "../lib/player-model";
+import { buildPlayerModel, frameHoldMs, parseClickCoord, usesTouch } from "../lib/player-model";
 import { formatHash, parseHash } from "../lib/route";
 import { NOTABLE_COMPLETION } from "../lib/signal";
 import { buildTally, gridSummary } from "../components/study-grid";
@@ -106,6 +106,31 @@ describe("player model", () => {
   function streamWith(items: unknown[], durationMs = 20_000): ObserverStream {
     return { actor: { items, durationMs } } as unknown as ObserverStream;
   }
+
+  it("reads a touch screen from a phone viewport, touch emulation or a phone preset", () => {
+    const geometry = (patch: object) =>
+      ({
+        desktopGeometry: { screen: { requested: { width: 500, height: 896 }, ...patch } },
+      }) as unknown as ObserverStream;
+    expect(
+      usesTouch({ viewport: { width: 414, height: 896, isMobile: true } } as ObserverStream),
+    ).toBe(true);
+    expect(
+      usesTouch(geometry({ declared: { width: 360, height: 740, preset: "small-mobile" } })),
+    ).toBe(true);
+    expect(
+      usesTouch({
+        desktopGeometry: {
+          screen: { requested: { width: 500, height: 896 } },
+          fidelity: { tier: "mobile-emulated", requested: { touch: true } },
+        },
+      } as unknown as ObserverStream),
+    ).toBe(true);
+    expect(usesTouch(geometry({}))).toBe(false);
+    expect(
+      usesTouch({ viewport: { width: 820, height: 1180, isMobile: false } } as ObserverStream),
+    ).toBe(false);
+  });
 
   it("parses recorded click coordinates from action titles, nothing else", () => {
     expect(parseClickCoord("click (700, 420)")).toEqual({ x: 700, y: 420 });

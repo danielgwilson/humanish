@@ -5,9 +5,11 @@ import type { FramePointer } from "../lib/pointer-track";
 const frame = (fromX: number, toX: number): FramePointer => ({
   rest: { x: fromX, y: 300 },
   pressesOnly: false,
+  touch: false,
   moves: [
     {
       rowId: "click",
+      label: "click",
       startMs: 1_000,
       endMs: 1_400,
       press: true,
@@ -42,9 +44,11 @@ describe("pointerPose", () => {
     const down: FramePointer = {
       rest: { x: 300, y: 100 },
       pressesOnly: false,
+      touch: false,
       moves: [
         {
           rowId: "move",
+          label: "move",
           startMs: 0,
           endMs: 400,
           press: false,
@@ -59,5 +63,38 @@ describe("pointerPose", () => {
     const pose = pointerPose(frame(100, 900), 1_200, true);
     expect(pose.leanDeg).toBe(0);
     expect(pointerPose(frame(100, 900), 1_450, true).ring.scale).toBe(1);
+  });
+});
+
+describe("pointerPose on a touch screen", () => {
+  const tap: FramePointer = {
+    rest: null,
+    pressesOnly: false,
+    touch: true,
+    moves: [
+      {
+        rowId: "tap",
+        label: "tap",
+        startMs: 1_000,
+        endMs: 1_000,
+        press: true,
+        position: () => ({ x: 400, y: 300 }),
+      },
+    ],
+  };
+
+  it("grows in as the fingertip lands, holds, and fades as it lifts, without leaning", () => {
+    const landing = pointerPose(tap, 1_000);
+    const down = pointerPose(tap, 1_120);
+    const lifting = pointerPose(tap, 1_300);
+    expect(landing.squish).toBeLessThan(down.squish);
+    expect([down.squish, down.fade, down.leanDeg]).toEqual([1, 1, 0]);
+    expect(lifting.fade).toBeGreaterThan(0);
+    expect(lifting.fade).toBeLessThan(1);
+    expect(pointerPose(tap, 1_449).fade).toBeLessThan(0.01);
+  });
+
+  it("shows the fingertip whole until it goes under reduced motion", () => {
+    expect(pointerPose(tap, 1_300, true)).toMatchObject({ squish: 1, fade: 1 });
   });
 });

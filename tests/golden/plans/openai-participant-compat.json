@@ -866,8 +866,12 @@
       }
     ],
     "participants": {
-      "mobile-newcomer": {},
-      "small-mobile-skimmer": {},
+      "mobile-newcomer": {
+        "pointer": "jump"
+      },
+      "small-mobile-skimmer": {
+        "pointer": "jump"
+      },
       "desktop-power": {},
       "wide-researcher": {}
     },
@@ -1565,7 +1569,8 @@
     ],
     "participants": {
       "phone-newcomer": {
-        "maxOutputTokens": 8192
+        "maxOutputTokens": 8192,
+        "pointer": "jump"
       }
     },
     "sessions": {
@@ -1647,9 +1652,15 @@
       }
     ],
     "participants": {
-      "host": {},
-      "player-2": {},
-      "player-3": {}
+      "host": {
+        "pointer": "jump"
+      },
+      "player-2": {
+        "pointer": "jump"
+      },
+      "player-3": {
+        "pointer": "jump"
+      }
     }
   },
   "participant-camera": {
@@ -1905,7 +1916,9 @@
     "participants": {
       "persona-author": {},
       "persona-reviewer": {},
-      "persona-skimmer": {}
+      "persona-skimmer": {
+        "pointer": "jump"
+      }
     }
   },
   "shared-world-concurrent-live": {
@@ -1924,7 +1937,9 @@
     "participants": {
       "persona-planner": {},
       "persona-coordinator": {},
-      "persona-mobile": {}
+      "persona-mobile": {
+        "pointer": "jump"
+      }
     }
   },
   "signup-email-verify": {

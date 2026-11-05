@@ -150,7 +150,11 @@ in the player and on grid tiles: it glides from where the last action left it to
 next click, scroll or drag, lands at the time that action was recorded, and rings
 where a press landed. The positions are recorded. With `execution.pointer: glide`
 the path is the one the desktop pointer took; otherwise the desktop pointer jumps and
-the path between positions is drawn. **Pointer** hides it. **Next action**, **Next flagged frame**, activity
+the path between positions is drawn. Paused, it names the action it last finished;
+with it on, the click pins are not drawn. A participant on a phone, or with touch
+emulation, shows a fingertip instead: it appears where each tap or drag touches down and
+fades as it lifts, and nothing travels between them. **Pointer** hides it and brings the
+pins back. **Next action**, **Next flagged frame**, activity
 filters and grouped waits make long traces easier to inspect without deleting events.
 Older unstamped recordings use labeled estimated pacing. Long feeds, filmstrips,
 terminal output and event lists stay bounded while earlier/later content remains
