@@ -158,15 +158,16 @@ describe("the pointer view on a selected entry", () => {
       playing: false,
       speed: 1,
     } as unknown as StudyPlayerControl;
-    let seen: PointerView | null = null;
     function Probe() {
-      seen = usePointerView(model, "p1", playback, clock, 1, true);
-      return null;
+      const view = usePointerView(model, "p1", playback, clock, 1, true);
+      return <output data-age={view?.ageMs} data-playing={String(view?.playing)} />;
     }
     (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
-    const root = createRoot(document.createElement("div"));
+    const host = document.createElement("div");
+    const root = createRoot(host);
     await act(async () => root.render(<Probe />));
-    expect(seen).toMatchObject({ ageMs: 4_000, playing: false });
+    const shown = host.querySelector("output")!;
+    expect([shown.dataset.age, shown.dataset.playing]).toEqual(["4000", "false"]);
     await act(async () => root.unmount());
   });
 });
