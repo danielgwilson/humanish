@@ -208,6 +208,8 @@ describe("Player projects the shared study clock", () => {
   });
 
   it("labels held-frame age and excludes future action pins until explicitly selected", async () => {
+    // Pins mark clicks while the drawn pointer is off.
+    localStorage.setItem("humanish-player-v1", JSON.stringify({ pointer: false }));
     const playback = control(0, {
       moment: { kind: "capture", frame: model.frames[0]!, ageMs: 500, coverage: "within" },
     });

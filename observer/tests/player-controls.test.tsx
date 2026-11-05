@@ -206,6 +206,8 @@ describe("player review controls", () => {
     await act(async () => row.click());
   }
   it("distinguishes two actions after one capture and retains the chosen action across polls", async () => {
+    // Pins mark clicks while the drawn pointer is off.
+    localStorage.setItem("humanish-player-v1", JSON.stringify({ pointer: false }));
     intervalEntries();
     await render({ initialFrame: 0 });
     expect(container.querySelectorAll(".pins .spin")).toHaveLength(2);
@@ -250,6 +252,8 @@ describe("player review controls", () => {
     expect(container.querySelectorAll('[aria-current="true"]')).toHaveLength(0);
   });
   it("restores event addresses and does not substitute another event when evidence disappears", async () => {
+    // Pins mark clicks while the drawn pointer is off.
+    localStorage.setItem("humanish-player-v1", JSON.stringify({ pointer: false }));
     intervalEntries();
     await render({ initialFrame: 0, initialEventId: "ui_action-017" });
     expect(container.querySelector(".pins .tip")?.textContent).toBe("click (999, 686)");
@@ -612,6 +616,8 @@ describe("player review controls", () => {
     expect(counter()).toBe("501 / 1000");
   });
   it("maps desktop click coordinates using the verified screen, not the CSS viewport", async () => {
+    // Pins mark clicks while the drawn pointer is off.
+    localStorage.setItem("humanish-player-v1", JSON.stringify({ pointer: false }));
     stream = {
       ...stream,
       viewport: { width: 414, height: 740 },
@@ -641,6 +647,8 @@ describe("player review controls", () => {
     expect(pin?.style.top).toBe("50%");
   });
   it("places edge click labels toward the available image area", async () => {
+    // Pins mark clicks while the drawn pointer is off.
+    localStorage.setItem("humanish-player-v1", JSON.stringify({ pointer: false }));
     stream = { ...stream, viewport: { width: 390, height: 844 } };
     model = {
       ...model,

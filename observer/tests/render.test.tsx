@@ -494,6 +494,8 @@ describe("observer scaffold rendering a live-shaped participant", () => {
   });
 
   it("opens into the review player: stage, filmstrip seek, pins, tabs", async () => {
+    // Pins mark clicks while the drawn pointer is off.
+    localStorage.setItem("humanish-player-v1", JSON.stringify({ pointer: false }));
     await mount(<App data={liveShapedData()} />);
     await click(container.querySelector(".open-overlay") as Element);
 
