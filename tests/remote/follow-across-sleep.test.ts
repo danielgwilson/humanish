@@ -27,6 +27,7 @@ const READ_MS = 5 * SECOND;
 const FINISHED = { exitCode: 0, result: { ok: true } };
 
 const realImmediate = setImmediate;
+const realTimeout = setTimeout;
 
 /** What the runner's next read does: answers with this run, or does not answer. */
 type Reply = "unanswered" | { state?: string; result?: typeof FINISHED };
@@ -59,29 +60,37 @@ let settledListing: string;
 let sendFileMs: number;
 let filesSent: number;
 let reads: number;
+/** How many times the runner has answered a listing of settled evidence. */
+let listings: number;
+/** A sent file the follower is still writing to disk, until it next calls into the runner. */
+let writing: boolean;
 let outcome: RemoteOutcome | undefined;
 
 const runner = {
   sandbox: {
     files: {
       read: async function* () {
+        writing = false;
         await new Promise((resolve) => setTimeout(resolve, sendFileMs));
         filesSent += 1;
         yield new Uint8Array([1]);
+        writing = true;
       },
     },
   },
   shell: {
     run: (command: string) => {
+      writing = false;
       // Every other command, such as the copy back's listing, finds nothing to copy.
-      if (!command.includes("alive()"))
-        return reply === "unanswered"
-          ? Promise.reject(new Error("no route to the runner"))
-          : Promise.resolve({
-              exitCode: 0,
-              stdout: command.includes("-newermt") ? settledListing : "",
-              stderr: "",
-            });
+      if (!command.includes("alive()")) {
+        if (reply === "unanswered") return Promise.reject(new Error("no route to the runner"));
+        if (command.includes("-newermt")) listings += 1;
+        return Promise.resolve({
+          exitCode: 0,
+          stdout: command.includes("-newermt") ? settledListing : "",
+          stderr: "",
+        });
+      }
       reads += 1;
       return new Promise((resolve, reject) => {
         if (holdReads) {
@@ -107,12 +116,21 @@ const settle = async () => {
     await new Promise((resolve) => realImmediate(resolve));
   }
 };
-// Each fake second lets real file reads and writes finish before the next one: the copy back writes
-// each sent file to disk, and on a busy machine one event-loop turn is not enough for that write.
+/**
+ * Wait in real time while the follower writes a sent file to disk: the write takes no fake time in
+ * the runner it models, and on a busy machine it can outlast many fake seconds.
+ */
+const finishWrite = async () => {
+  for (let waited = 0; writing && outcome === undefined && waited < 10_000; waited += 5)
+    await new Promise((resolve) => realTimeout(resolve, 5));
+  await settle();
+};
+// Each fake second lets real file reads and writes finish before the next one.
 const pass = async (ms: number) => {
   for (let passed = 0; passed < ms && outcome === undefined; passed += SECOND) {
     await vi.advanceTimersByTimeAsync(SECOND);
     await settle();
+    await finishWrite();
   }
 };
 /** The read in flight when this machine stopped settles as it resumes, before any timer runs. */
@@ -168,6 +186,8 @@ describe("following a remote run while this machine sleeps", () => {
     sendFileMs = 0;
     filesSent = 0;
     reads = 0;
+    listings = 0;
+    writing = false;
     outcome = undefined;
   });
 
@@ -284,7 +304,9 @@ describe("following a remote run while this machine sleeps", () => {
     settledListing = "screenshots/a.png\t1\nscreenshots/b.png\t1\nscreenshots/c.png\t1\n";
     sendFileMs = 50 * SECOND;
     follow();
-    await pass(35 * SECOND);
+    // The runner stops answering reads once it has listed the files to catch up on. Waiting on the
+    // listing itself, not a fixed time, keeps a busy machine's slow file writes from moving it.
+    while (listings === 0 && outcome === undefined) await pass(SECOND);
     reply = "unanswered";
     while (filesSent < 3 && outcome === undefined) await pass(SECOND);
     const readsBefore = reads;
