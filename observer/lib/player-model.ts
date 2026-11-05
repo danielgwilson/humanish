@@ -44,6 +44,8 @@ export interface PlayerModel {
   /** "recorded" when every frame carries an `at` stamp so playback can run at the
    *  participant's real pace; "avg" for older bundles, and the transport says which. */
   paced: "recorded" | "avg";
+  /** The participant used a touch screen: its presses are drawn as a fingertip, not an arrow. */
+  touch: boolean;
 }
 
 const CLICK_COORD = /^(?:double[- ])?click \((\d+),\s*(\d+)\)/;
@@ -131,7 +133,22 @@ export function buildPlayerModel(stream: ObserverStream): PlayerModel | null {
     rows,
     avgFrameMs: durationMs > 0 ? durationMs / frames.length : 1500,
     paced: recorded ? "recorded" : "avg",
+    touch: usesTouch(stream),
   };
+}
+
+/**
+ * Whether the participant was on a touch screen: a phone preset, or touch emulation applied.
+ * Every phone preset renders on a wider screen than it names, so a bundle without a measured
+ * viewport still records the phone in `screen.declared`.
+ */
+export function usesTouch(stream: ObserverStream): boolean {
+  const geometry = stream.desktopGeometry;
+  return (
+    stream.viewport?.isMobile === true ||
+    geometry?.fidelity?.requested.touch === true ||
+    /(?:^|-)mobile$/.test(geometry?.screen.declared?.preset ?? "")
+  );
 }
 
 /** Time this frame holds on screen at 1× under recorded pacing (until the next stamp). */

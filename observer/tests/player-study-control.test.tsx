@@ -285,7 +285,10 @@ describe("Player projects the shared study clock", () => {
         moment: { kind: "no-captures" },
         atMs: Date.parse(mediaOnly.recording.startedAt) + 5000,
       }),
-      { stream: mediaOnly, model: { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" } },
+      {
+        stream: mediaOnly,
+        model: { frames: [], rows: [], avgFrameMs: 1500, paced: "avg", touch: false },
+      },
     );
 
     expect(container.querySelector("video")).not.toBeNull();

@@ -32,6 +32,16 @@ describe("execution.pointer", () => {
     expect(computerUseParticipants(absent.config)[0]?.limits.pointer).toBeUndefined();
   });
 
+  it("jumps a phone participant's pointer unless the study asks for a glide", () => {
+    const phones = (execution: Record<string, unknown>) => {
+      const parsed = parseStudy(study({ ...execution, desktop: { device: "mobile" } }));
+      if (!parsed.ok) throw new Error(parsed.error.message);
+      return computerUseParticipants(parsed.config).map((entry) => entry.limits.pointer);
+    };
+    expect(phones({})).toEqual(["jump", "jump"]);
+    expect(phones({ pointer: "glide" })).toEqual(["glide", "glide"]);
+  });
+
   it("refuses a value other than glide or jump, naming both", () => {
     const parsed = parseStudy(study({ pointer: "smooth" }));
     expect(parsed.ok).toBe(false);

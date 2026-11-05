@@ -18,6 +18,7 @@ import { pinPosition } from "../lib/stage-geometry";
 function model(count = 3): PlayerModel {
   return {
     paced: "recorded",
+    touch: false,
     avgFrameMs: 1000,
     rows: [],
     frames: Array.from({ length: count }, (_, index) => ({

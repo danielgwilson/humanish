@@ -178,7 +178,7 @@ describe("the live view's proportions", () => {
 describe("the drawn pointer on a recorded capture", () => {
   it("is drawn only once the selected capture has loaded", async () => {
     const view = {
-      frame: { rest: { x: 640, y: 400 }, moves: [], pressesOnly: false },
+      frame: { rest: { x: 640, y: 400 }, moves: [], pressesOnly: false, touch: false },
       ageMs: 0,
       playing: false,
       speed: 1,
@@ -199,5 +199,30 @@ describe("the drawn pointer on a recorded capture", () => {
       frame: { ...frame, itemId: "next", href: "../screenshots/next.png" },
     });
     expect(drawn()).toBeNull();
+  });
+
+  it("draws the click pins only while the pointer is off", async () => {
+    const pins = [
+      {
+        id: "click-1",
+        kind: "ui_action",
+        title: "click (640, 400)",
+        frameIndex: 0,
+        isFrame: false,
+        coord: { x: 640, y: 400 },
+      },
+    ];
+    const view = {
+      frame: { rest: { x: 640, y: 400 }, moves: [], pressesOnly: false, touch: false },
+      ageMs: 0,
+      playing: false,
+      speed: 1,
+      limitMs: 1_000,
+      anchor: "a",
+    };
+    await render({ zoom: "fit", pins, pointer: view });
+    expect(container.querySelectorAll(".spin")).toHaveLength(0);
+    await render({ zoom: "fit", pins, pointer: null });
+    expect(container.querySelectorAll(".spin")).toHaveLength(1);
   });
 });

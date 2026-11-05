@@ -8,9 +8,11 @@ import type { FramePointer } from "../lib/pointer-track";
 const frame: FramePointer = {
   rest: { x: 200, y: 100 },
   pressesOnly: false,
+  touch: false,
   moves: [
     {
       rowId: "click-1",
+      label: "click-1",
       startMs: 4_000,
       endMs: 4_400,
       press: true,
@@ -66,7 +68,7 @@ describe("the drawn pointer", () => {
 
   it("is hidden before any recorded position", async () => {
     const { arrow, cleanup } = await render({
-      frame: { rest: null, moves: [], pressesOnly: false },
+      frame: { rest: null, moves: [], pressesOnly: false, touch: false },
     });
     expect(arrow.hasAttribute("data-placed")).toBe(false);
     await cleanup();
@@ -76,5 +78,45 @@ describe("the drawn pointer", () => {
     const { arrow, cleanup } = await render({ ageMs: 4_200, limitMs: 4_000 });
     expect([arrow.style.left, arrow.style.top]).toEqual(["20%", "20%"]);
     await cleanup();
+  });
+});
+
+describe("what the drawn pointer shows beside the arrow", () => {
+  it("names the action it last finished while paused, and nothing while playing", async () => {
+    const paused = await render({ ageMs: 4_500 });
+    const caption = () => paused.arrow.querySelector(".pointer-caption")!;
+    expect([paused.arrow.hasAttribute("data-captioned"), caption().textContent]).toEqual([
+      true,
+      "click-1",
+    ]);
+    expect(paused.arrow.hasAttribute("data-caption-left")).toBe(true);
+    await paused.cleanup();
+    const before = await render({ ageMs: 1_000 });
+    expect(before.arrow.hasAttribute("data-captioned")).toBe(false);
+    await before.cleanup();
+    const playing = await render({ ageMs: 4_500, playing: true, limitMs: 4_500 });
+    expect(playing.arrow.hasAttribute("data-captioned")).toBe(false);
+    await playing.cleanup();
+  });
+
+  it("draws a fingertip on a touch screen, only around a press", async () => {
+    const touch: FramePointer = {
+      rest: null,
+      pressesOnly: false,
+      touch: true,
+      moves: [{ ...frame.moves[0]!, startMs: 4_400 }],
+    };
+    const away = await render({ frame: touch, ageMs: 1_000 });
+    expect(away.arrow.getAttribute("data-input")).toBe("touch");
+    expect(away.arrow.querySelector(".pointer-touch")).not.toBeNull();
+    expect(away.arrow.querySelector(".pointer-arrow")).toBeNull();
+    expect(away.arrow.hasAttribute("data-placed")).toBe(false);
+    await away.cleanup();
+    const tapped = await render({ frame: touch, ageMs: 4_450 });
+    expect([tapped.arrow.hasAttribute("data-placed"), tapped.arrow.style.left]).toEqual([
+      true,
+      "80%",
+    ]);
+    await tapped.cleanup();
   });
 });

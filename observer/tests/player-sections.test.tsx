@@ -111,6 +111,7 @@ beforeEach(() => {
   } as ObserverStream;
   model = {
     paced: "recorded",
+    touch: false,
     avgFrameMs: 1000,
     rows: [],
     frames: Array.from({ length: 3 }, (_, index) => ({
@@ -464,6 +465,7 @@ describe("the evidence notes", () => {
     model = {
       ...model,
       paced: "avg",
+      touch: false,
       frames: model.frames.map(({ atMs: _atMs, ...frame }) => frame),
       rows: [row({ id: "untimed", title: "click (3, 3)" })],
     };

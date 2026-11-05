@@ -742,18 +742,62 @@
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.4);
 }
+/* A fingertip on a touch screen, as a phone's own show-touches setting draws one: a translucent
+   light disc with a soft edge, the arrowhead's glow, and a tint while it drags. */
+.pointer-touch {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  translate: -50% -50%;
+  border-radius: var(--radius-round);
+  background: color-mix(in oklab, var(--dz-ink) 62%, transparent);
+  border: 1.5px solid color-mix(in oklab, var(--dz) 40%, transparent);
+  box-shadow:
+    0 0 8px color-mix(in oklab, var(--pointer-glow) 70%, transparent),
+    0 0 20px color-mix(in oklab, var(--pointer-glow) 35%, transparent);
+}
+.pointer-cursor[data-held] .pointer-touch {
+  background: color-mix(in oklab, var(--pointer-glow) 55%, transparent);
+}
+.pointer-cursor[data-input="touch"] .pointer-ring {
+  width: 44px;
+  height: 44px;
+}
+/* What the pointer last did, beside it while paused: the label a click pin used to carry. */
+.pointer-caption {
+  position: absolute;
+  left: 22px;
+  top: 16px;
+  display: none;
+  width: max-content;
+  max-width: 180px;
+  font-family: var(--mono);
+  font-size: var(--text-11);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-6);
+  padding: var(--space-2) var(--space-6);
+  box-shadow: var(--sh-panel);
+}
+.pointer-cursor[data-captioned] .pointer-caption {
+  display: block;
+}
+.pointer-cursor[data-caption-left] .pointer-caption {
+  left: auto;
+  right: 12px;
+}
+.card .pointer-caption {
+  display: none;
+}
 /* A grid tile is a fraction of the stage's width, so its pointer is smaller with a firmer edge. */
 .card .pointer-cursor[data-placed] {
   transform: scale(0.72);
 }
 .card .pointer-arrow path {
   stroke-width: 3.5;
-}
-
-.pins[data-pointer-playing] .spin .tip {
-  display: none;
-}
-.pins[data-pointer-playing] .spin {
-  opacity: 0.6;
-  transform: translate(-50%, -50%) scale(0.55);
 }

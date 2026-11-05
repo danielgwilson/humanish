@@ -30,7 +30,7 @@ export function useParticipantPlayer(
           (selected.recording ||
           (isActiveStream(selected) && ["browser", "ui", "codex-ui"].includes(selected.kind)) ||
           (isServedOrigin(window.location.protocol) && liveEmbedUrl(selected) !== null)
-            ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const }
+            ? { frames: [], rows: [], avgFrameMs: 1500, paced: "avg" as const, touch: false }
             : null))
         : null,
     [selected, route.eventId, route.frame],

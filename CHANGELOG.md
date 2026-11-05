@@ -8,6 +8,20 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+### Changed
+
+- **A participant on a phone shows a fingertip.** In the Observer, a computer-use participant on a
+  phone preset, or with touch emulation, is drawn as a translucent fingertip where each tap or drag
+  touches down, fading as it lifts, with nothing travelling between touches. Chrome's device mode
+  turns its cursor into a circle under touch emulation, and phones' own show-touches settings draw
+  the same mark. A tablet keeps the arrowhead.
+- **A phone participant's pointer jumps.** `execution.pointer` now defaults to `jump` for a
+  participant on a phone preset, since a finger lands on each target, and to `glide` for every
+  other device. A study that sets `execution.pointer` gets what it sets.
+- **The click pins give way to the pointer.** With the pointer on, the player no longer draws a
+  circle at each click under the arrowhead. Paused, the pointer names the action it last finished
+  beside it. Turning **Pointer** off brings the pins back.
+
 ## 0.157.0: The pointer glides and looks like a hand's (2026-11-04)
 
 humanish 0.157.0 makes the replay pointer look and move like a hand. The Observer draws each

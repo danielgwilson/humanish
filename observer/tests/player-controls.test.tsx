@@ -83,6 +83,7 @@ beforeEach(() => {
   } as ObserverStream;
   model = {
     paced: "recorded",
+    touch: false,
     avgFrameMs: 1000,
     rows: [],
     frames: Array.from({ length: 3 }, (_, index) => ({

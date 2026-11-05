@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { frameHoldMs, type PlayerModel } from "@/lib/player-model";
 import { pointerPose } from "@/lib/pointer-pose";
-import { framePointers, nextChangeMs, type FramePointer } from "@/lib/pointer-track";
+import { framePointers, lastLabelAt, nextChangeMs, type FramePointer } from "@/lib/pointer-track";
 import type { GridMoment, GridRecording } from "@/lib/grid-recording";
 import type { PlayerPlayback } from "@/lib/use-player-playback";
 import type { StudyPlayerControl } from "@/lib/use-study-playback";
@@ -127,8 +127,9 @@ function clockPointerView(
  * The participant's pointer over a recorded capture: a dark arrowhead with a light edge and a glow,
  * gliding between recorded positions. It has no tail, so it never reads as the real pointer each
  * capture already shows. It leans into its travel and squishes as a press lands, where a ring
- * blooms. It is drawn from the action trace in the same desktop-pixel box as the pins, and moves
- * between the positions the captures show.
+ * blooms. On a touch screen it is a fingertip instead, shown only while it touches. Paused, it
+ * names the action it last finished. It is drawn from the action trace in the desktop-pixel box
+ * of the capture, and moves between the positions the captures show.
  */
 export function PointerCursor({ view, viewport }: { view: PointerView; viewport: Size }) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -141,9 +142,10 @@ export function PointerCursor({ view, viewport }: { view: PointerView; viewport:
   // pointer appearing for the first time fades in.
   useLayoutEffect(() => {
     const root = rootRef.current;
-    const arrow = root?.querySelector<SVGElement>(".pointer-arrow");
+    const mark = root?.querySelector<HTMLElement | SVGElement>(".pointer-arrow, .pointer-touch");
     const ring = root?.querySelector<HTMLElement>(".pointer-ring");
-    if (!root || !arrow || !ring) return;
+    const caption = root?.querySelector<HTMLElement>(".pointer-caption");
+    if (!root || !mark || !ring || !caption) return;
     if (clock.current?.anchor !== anchor) clock.current = { anchor, at: performance.now() };
     const started = clock.current.at;
     const still =
@@ -159,10 +161,16 @@ export function PointerCursor({ view, viewport }: { view: PointerView; viewport:
         root.style.left = String(position.left);
         root.style.top = String(position.top);
       }
+      // Paused, the pointer names what it last did, on the side with room.
+      const label = playing || !pose.point ? null : lastLabelAt(frame, moment);
+      caption.textContent = label ?? "";
+      root.toggleAttribute("data-captioned", label !== null);
+      if (pose.point) root.toggleAttribute("data-caption-left", pose.point.x / width > 0.6);
       root.toggleAttribute("data-held", pose.held);
       root.toggleAttribute("data-moving", pose.moving);
       root.toggleAttribute("data-pressed", pose.ring.opacity > 0);
-      arrow.style.transform = `rotate(${pose.leanDeg.toFixed(2)}deg) scale(${pose.squish.toFixed(3)})`;
+      mark.style.transform = `rotate(${pose.leanDeg.toFixed(2)}deg) scale(${pose.squish.toFixed(3)})`;
+      mark.style.opacity = pose.fade.toFixed(3);
       ring.style.opacity = pose.ring.opacity.toFixed(3);
       ring.style.transform = `translate(-50%, -50%) scale(${pose.ring.scale.toFixed(3)})`;
       return moment;
@@ -189,11 +197,22 @@ export function PointerCursor({ view, viewport }: { view: PointerView; viewport:
     };
   }, [frame, ageMs, playing, speed, limitMs, anchor, width, height]);
   return (
-    <div className="pointer-cursor" ref={rootRef} aria-hidden="true" data-testid="pointer-cursor">
+    <div
+      className="pointer-cursor"
+      ref={rootRef}
+      aria-hidden="true"
+      data-testid="pointer-cursor"
+      data-input={frame.touch ? "touch" : "mouse"}
+    >
       <span className="pointer-ring" />
-      <svg className="pointer-arrow" viewBox="0 0 20 22" focusable="false">
-        <path d="M3 2.8 L17 9.2 Q18 9.7 17 10.1 L10.7 12 Q10.2 12.15 10.05 12.65 L8.1 19.1 Q7.75 20.1 7.35 19.1 Z" />
-      </svg>
+      {frame.touch ? (
+        <span className="pointer-touch" />
+      ) : (
+        <svg className="pointer-arrow" viewBox="0 0 20 22" focusable="false">
+          <path d="M3 2.8 L17 9.2 Q18 9.7 17 10.1 L10.7 12 Q10.2 12.15 10.05 12.65 L8.1 19.1 Q7.75 20.1 7.35 19.1 Z" />
+        </svg>
+      )}
+      <span className="pointer-caption" />
     </div>
   );
 }
