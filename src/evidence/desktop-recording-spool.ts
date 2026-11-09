@@ -1,4 +1,5 @@
 import { createReadStream } from "node:fs";
+import { rmSync } from "node:fs";
 import { mkdtemp, open, rm, type FileHandle } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -38,6 +39,20 @@ export function parseRecordingPlaylist(text: string): RecordingPlaylist {
 }
 
 const INIT_NAME = "init.mp4";
+/** How far a fragment's time may run past the wall clock before it is not believed. */
+const CLOCK_ALLOWANCE_MS = 60_000;
+
+// One listener for every participant: a listener each would pass Node's warning count.
+const liveDirectories = new Set<string>();
+let exitCleanupInstalled = false;
+function removeOnExit(directory: string): void {
+  liveDirectories.add(directory);
+  if (exitCleanupInstalled) return;
+  exitCleanupInstalled = true;
+  process.once("exit", () => {
+    for (const live of liveDirectories) rmSync(live, { recursive: true, force: true });
+  });
+}
 
 /** What a sandbox offers the spool. Every method may reject while the sandbox is unreachable. */
 export interface RecordingPieces {
@@ -72,7 +87,13 @@ export async function createRecordingSpool(options: {
   const { pieces, maxBytes } = options;
   const directory = await mkdtemp(path.join(tmpdir(), "humanish-recording-"));
   const file = path.join(directory, "desktop.mp4");
-  const handle = await open(file, "wx", 0o600);
+  // Append mode, so writes after a truncate land at the new end and leave no hole.
+  const handle = await open(file, "ax", 0o600).catch(async (error: unknown) => {
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  });
+  removeOnExit(directory);
+  const startedAtMs = Date.now();
   let bytes = 0;
   let kept = 0;
   let init: Buffer | undefined;
@@ -108,10 +129,11 @@ export async function createRecordingSpool(options: {
   };
 
   const measureEnd = (added: readonly RecordingSegment[], lastData: Buffer): void => {
+    const read = fragmentEndMs(init!, lastData);
+    const believable =
+      read !== undefined && read > 0 && read <= Date.now() - startedAtMs + CLOCK_ALLOWANCE_MS;
     // Playlist lengths run short when unchanged frames are dropped, so they are only a fallback.
-    endMs =
-      fragmentEndMs(init!, lastData) ??
-      endMs + added.reduce((total, segment) => total + segment.durationMs, 0);
+    endMs = believable ? read : endMs + added.reduce((sum, segment) => sum + segment.durationMs, 0);
   };
 
   const keepSegments = async (
@@ -164,10 +186,11 @@ export async function createRecordingSpool(options: {
         await handle.close();
         if (kept === 0) throw new Error("Desktop recording produced no video.");
         await pipeline(createReadStream(file), destination);
-        return { bytes, durationMs: endMs, ended };
+        return { bytes, durationMs: Math.max(1, endMs), ended };
       } finally {
         await handle.close().catch(() => {});
         await rm(directory, { recursive: true, force: true });
+        liveDirectories.delete(directory);
       }
     },
   };

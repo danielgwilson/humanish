@@ -22,6 +22,8 @@ const OUTPUT_DIRECTORY = "/tmp/humanish-desktop-recording";
 const PID_PATH = "/tmp/humanish-desktop-recording.pid";
 const PULSE_RUNTIME = "/tmp/humanish-recording-runtime";
 const FINALIZE_TIMEOUT_MS = 10_000;
+/** Shorter than a segment, so a lost sandbox costs about one segment of video. */
+const PULL_INTERVAL_MS = 10_000;
 const FORCE_REAP_TIMEOUT_MS = 5_000;
 
 const baseEnv = Object.freeze({
@@ -104,6 +106,7 @@ interface RecordingOptions {
   audio: boolean;
   pulseEnv?: Readonly<Record<string, string>>;
   requestTimeoutMs: number;
+  maxBytes?: number;
 }
 
 async function launchRecorder(
@@ -217,10 +220,22 @@ async function stopRecorder(
   return { forced };
 }
 
+/** Rejects when a sandbox call outlives its deadline: some providers ignore their own timeouts. */
+async function withinDeadline<T>(work: Promise<T>, deadlineMs: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  return Promise.race([
+    work,
+    new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error("Sandbox call timed out.")), deadlineMs);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
+
 /** Reads one piece of the recording into memory; a piece is one short segment of video. */
 async function readPiece(
   desktop: E2BDesktopSandbox,
   name: string,
+  maxBytes: number,
   requestTimeoutMs: number,
 ): Promise<Buffer> {
   const web = await desktop.files.read!(`${OUTPUT_DIRECTORY}/${name}`, {
@@ -230,31 +245,45 @@ async function readPiece(
     signal: AbortSignal.timeout(requestTimeoutMs),
   });
   const chunks: Buffer[] = [];
-  for await (const chunk of Readable.fromWeb(web)) chunks.push(Buffer.from(chunk as Uint8Array));
+  let bytes = 0;
+  for await (const chunk of Readable.fromWeb(web)) {
+    const piece = Buffer.from(chunk as Uint8Array);
+    bytes += piece.length;
+    if (bytes > maxBytes) throw new Error("Recording segment exceeds the size limit.");
+    chunks.push(piece);
+  }
   return Buffer.concat(chunks);
 }
 
 function sandboxPieces(
   desktop: E2BDesktopSandbox,
   shell: Shell,
+  maxBytes: number,
   requestTimeoutMs: number,
 ): RecordingPieces {
   const options = { timeoutMs: 15_000, requestTimeoutMs };
   return {
     playlist: async () =>
       (
-        await runOrThrow(
-          shell,
-          `cat ${shellQuote(`${OUTPUT_DIRECTORY}/${FRAGMENTED_RECORDING.playlist}`)}`,
-          options,
+        await withinDeadline(
+          runOrThrow(
+            shell,
+            `cat ${shellQuote(`${OUTPUT_DIRECTORY}/${FRAGMENTED_RECORDING.playlist}`)}`,
+            options,
+          ),
+          requestTimeoutMs,
         )
       ).stdout,
-    read: (name) => readPiece(desktop, name, requestTimeoutMs),
+    read: (name) =>
+      withinDeadline(readPiece(desktop, name, maxBytes, requestTimeoutMs), requestTimeoutMs),
     remove: async (names) => {
-      await runOrThrow(
-        shell,
-        `rm -f -- ${names.map((name) => shellQuote(`${OUTPUT_DIRECTORY}/${name}`)).join(" ")}`,
-        options,
+      await withinDeadline(
+        runOrThrow(
+          shell,
+          `rm -f -- ${names.map((name) => shellQuote(`${OUTPUT_DIRECTORY}/${name}`)).join(" ")}`,
+          options,
+        ),
+        requestTimeoutMs,
       );
     },
   };
@@ -269,11 +298,24 @@ function startPulling(
   const pull = async (): Promise<void> => {
     const { full } = await spool.pull();
     if (full && !stopped) {
-      stopped = true;
-      await stopForSize().catch(() => {});
+      await stopForSize().then(
+        () => {
+          stopped = true;
+        },
+        () => {},
+      );
     }
   };
-  const timer = setInterval(() => void pull(), FRAGMENTED_RECORDING.segmentSeconds * 1000);
+  // A sandbox slower than the timer would otherwise queue pulls that finish must then drain.
+  let running = false;
+  const tick = async (): Promise<void> => {
+    if (running) return;
+    running = true;
+    await pull().finally(() => {
+      running = false;
+    });
+  };
+  const timer = setInterval(() => void tick(), PULL_INTERVAL_MS);
   timer.unref();
   return { stop: () => clearInterval(timer), pull };
 }
@@ -293,6 +335,7 @@ export async function startE2BDesktopRecording(
     ? ["microphone-input", "speaker-output"]
     : [];
   const requestTimeoutMs = options.requestTimeoutMs;
+  const maxBytes = options.maxBytes ?? HOSTED_DESKTOP_RECORDING_MAX_BYTES;
   // Recorder setup and finalization fail on any non-zero exit; runOrThrow says so with the tail.
   const shell = e2bShell(options.desktop);
   const ownsPulse = options.audio && options.pulseEnv === undefined;
@@ -327,8 +370,8 @@ export async function startE2BDesktopRecording(
     failStartup(error, recorder),
   );
   const spool = await createRecordingSpool({
-    pieces: sandboxPieces(options.desktop, shell, requestTimeoutMs),
-    maxBytes: HOSTED_DESKTOP_RECORDING_MAX_BYTES,
+    pieces: sandboxPieces(options.desktop, shell, maxBytes, requestTimeoutMs),
+    maxBytes,
   }).catch((error: unknown) => failStartup(error, recorder));
   const pulling = startPulling(spool, () =>
     runOrThrow(shell, `kill -INT -- ${recorderPid}`, { timeoutMs: 5_000, requestTimeoutMs }),

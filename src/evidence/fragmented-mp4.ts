@@ -103,6 +103,17 @@ function walkRun(
   let at = trun.body + 8;
   if (flags & TRUN_DATA_OFFSET) at += 4;
   if (flags & TRUN_FIRST_FLAGS) at += 4;
+  const width =
+    (flags & TRUN_DURATION ? 4 : 0) +
+    (flags & TRUN_SIZE ? 4 : 0) +
+    (flags & TRUN_FLAGS ? 4 : 0) +
+    (flags & TRUN_COMPOSITION ? 4 : 0);
+  // These bytes come from a sandbox, so a count must fit the box that claims it.
+  if (count * width > trun.end - at) throw new RangeError("Malformed sample run.");
+  if (width === 0) {
+    const last = count === 0 ? undefined : firstDecode + (count - 1) * defaultDuration;
+    return { decode: firstDecode + count * defaultDuration, latest: last };
+  }
   let decode = firstDecode;
   let latest: number | undefined;
   for (let sample = 0; sample < count; sample++) {

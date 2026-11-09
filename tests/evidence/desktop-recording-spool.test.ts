@@ -5,7 +5,7 @@ import {
   parseRecordingPlaylist,
   type RecordingPieces,
 } from "../../src/evidence/desktop-recording-spool.js";
-import { VIDEO_INIT, VIDEO_LAST } from "../helpers/fragmented-mp4-fixtures.js";
+import { AUDIO_LAST, VIDEO_INIT, VIDEO_LAST } from "../helpers/fragmented-mp4-fixtures.js";
 
 // Captured from FFmpeg 4.4's hls muxer on a hosted desktop.
 const ENDED = `#EXTM3U
@@ -52,7 +52,9 @@ describe("recording playlist", () => {
   });
 
   it("refuses a segment name that the recorder could not have written", () => {
-    expect(() => parseRecordingPlaylist("#EXTM3U\n#EXTINF:1.0,\n../../etc/passwd\n")).toThrow();
+    expect(() => parseRecordingPlaylist("#EXTM3U\n#EXTINF:1.0,\n../../etc/passwd\n")).toThrow(
+      "playlist was invalid",
+    );
   });
 });
 
@@ -126,6 +128,23 @@ describe("recording spool", () => {
     const spool = await createRecordingSpool({
       pieces: pieces({ list: playlist([6, 0.5], true) }),
       maxBytes: 1000,
+    });
+    await spool.pull();
+    expect((await spool.finish(sink().destination)).durationMs).toBe(6500);
+  });
+
+  it("ignores a fragment time later than the recording could have reached", async () => {
+    const spool = await createRecordingSpool({
+      pieces: pieces({
+        list: playlist([6, 0.5], true),
+        read: async (name) =>
+          name === "init.mp4"
+            ? VIDEO_INIT
+            : name === "seg000001.m4s"
+              ? AUDIO_LAST
+              : Buffer.from("x"),
+      }),
+      maxBytes: 100_000,
     });
     await spool.pull();
     expect((await spool.finish(sink().destination)).durationMs).toBe(6500);
@@ -230,6 +249,6 @@ describe("recording spool", () => {
       maxBytes: 1000,
     });
     await spool.pull();
-    await expect(spool.finish(sink().destination)).rejects.toThrow();
+    await expect(spool.finish(sink().destination)).rejects.toThrow("produced no video");
   });
 });

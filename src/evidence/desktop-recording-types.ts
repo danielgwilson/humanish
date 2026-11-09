@@ -2,8 +2,8 @@ import { z } from "zod";
 
 /** Leaves room for Chromium on the local guest's shared 512 MiB state disk. */
 export const DESKTOP_RECORDING_MAX_BYTES = 128 * 1024 * 1024;
-/** A hosted recording is copied off the sandbox as it grows, so only this machine's disk bounds it. */
-export const HOSTED_DESKTOP_RECORDING_MAX_BYTES = 2 * 1024 * 1024 * 1024;
+/** A remote run copies each evidence file back through memory, which bounds a hosted recording. */
+export const HOSTED_DESKTOP_RECORDING_MAX_BYTES = 256 * 1024 * 1024;
 
 const DESKTOP_RECORDING_AUDIO_SOURCES = ["microphone-input", "speaker-output"] as const;
 export type DesktopRecordingAudioSource = (typeof DESKTOP_RECORDING_AUDIO_SOURCES)[number];

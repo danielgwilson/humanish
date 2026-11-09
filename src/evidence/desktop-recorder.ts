@@ -186,7 +186,7 @@ export function buildFragmentedRecorderCommand(
   const seconds = FRAGMENTED_RECORDING.segmentSeconds;
   args.push(
     "-vf",
-    "mpdecimate=max=15,pad=ceil(iw/2)*2:ceil(ih/2)*2",
+    "mpdecimate=max=14,pad=ceil(iw/2)*2:ceil(ih/2)*2",
     "-c:v",
     "libx264",
     "-enc_time_base:v",

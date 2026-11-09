@@ -73,7 +73,7 @@ local server.
 
 ## Not measured
 
-- A real 8-hour recording. At these rates one would be about 0.7 to 1.1 GB, under the 2 GiB limit.
+- A recording long enough to reach the 256 MiB limit, about 2 to 3 hours at these rates.
 - Modal's CPU ceiling. The sandbox requests 2 cores and shows 18, so its row may include bursting.
 - Seek time over a remote connection.
 - Whether continuous video changes participant behavior. It is opt-in and off by default.
