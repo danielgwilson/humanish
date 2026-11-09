@@ -54,11 +54,12 @@ Each run was one participant playing a public web game on the finished code for 
 
 | Provider | Audio | Video | Size | `verify` |
 | --- | --- | --- | --- | --- |
-| E2B | yes | 180.0 s, last frame matches `durationMs` | 92 MB/h | `local_only` |
-| Modal | no | 171.4 s, last frame matches `durationMs` | 81 MB/h | `local_only` |
+| E2B | yes | 177.4 s, last frame matches `durationMs` | 76 MB/h | `local_only` |
+| Modal | no | 168.2 s, last frame matches `durationMs` | 85 MB/h | `local_only` |
 
-An earlier build of the same recipe ran on E2B with its sandbox killed 94 s into the video. The run
-kept 83.8 s of playable H.264, recorded `complete: false`, and passed `verify` as `local_only`.
+A third run on E2B had its sandbox killed 97 s into the video. The run kept 61.3 s of playable
+H.264, recorded `complete: false`, and passed `verify` as `local_only`. It lost about 36 s: the
+30-second segment being written and the time since the last copy.
 
 ## Timing
 
