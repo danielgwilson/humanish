@@ -2,6 +2,8 @@ import { z } from "zod";
 
 /** Leaves room for Chromium on the local guest's shared 512 MiB state disk. */
 export const DESKTOP_RECORDING_MAX_BYTES = 128 * 1024 * 1024;
+/** A remote run copies each evidence file back through memory, which bounds a hosted recording. */
+export const HOSTED_DESKTOP_RECORDING_MAX_BYTES = 256 * 1024 * 1024;
 
 const DESKTOP_RECORDING_AUDIO_SOURCES = ["microphone-input", "speaker-output"] as const;
 export type DesktopRecordingAudioSource = (typeof DESKTOP_RECORDING_AUDIO_SOURCES)[number];
@@ -10,7 +12,7 @@ export const desktopRecordingMetadataSchema = z.strictObject({
   mimeType: z.literal("video/mp4"),
   startedAt: z.iso.datetime(),
   durationMs: z.number().finite().positive(),
-  bytes: z.number().int().positive().max(DESKTOP_RECORDING_MAX_BYTES),
+  bytes: z.number().int().positive().max(HOSTED_DESKTOP_RECORDING_MAX_BYTES),
   audioSources: z
     .array(z.enum(DESKTOP_RECORDING_AUDIO_SOURCES))
     .max(2)
@@ -19,6 +21,11 @@ export const desktopRecordingMetadataSchema = z.strictObject({
 });
 
 export type DesktopRecordingMetadata = z.infer<typeof desktopRecordingMetadataSchema>;
+
+/** The local guest's channel carries the whole file at once, under its own smaller limit. */
+export const guestDesktopRecordingMetadataSchema = desktopRecordingMetadataSchema.extend({
+  bytes: z.number().int().positive().max(DESKTOP_RECORDING_MAX_BYTES),
+});
 
 /** A desktop recording as recorded in run.json: its metadata and the run-relative MP4 path. */
 export interface RunDesktopRecording extends DesktopRecordingMetadata {

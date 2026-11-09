@@ -1,6 +1,7 @@
 // `humanish run|watch <study> --remote`: run the study's own process in a runner sandbox on its
 // participants' provider, follow it from here, and copy the finished run back. This machine only
 // plans, launches and watches, so it may sleep or lose its network while the study goes on.
+import { HOSTED_DESKTOP_RECORDING_MAX_BYTES } from "../evidence/desktop-recording-types.js";
 import { execFile } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -68,7 +69,7 @@ const SYNC_EVERY_MS = 30_000;
 /** How long a screenshot or recording must be unchanged before it is copied mid-run. */
 const SETTLED_SECONDS = 10;
 /** The largest file read back to compare digests: a recording's own limit, with room. */
-const LARGEST_FILE_BYTES = 256 * 1024 * 1024;
+const LARGEST_FILE_BYTES = HOSTED_DESKTOP_RECORDING_MAX_BYTES;
 /** How long a stopped run has to end and write its result. */
 const STOP_DEADLINE_MS = 2 * 60_000;
 

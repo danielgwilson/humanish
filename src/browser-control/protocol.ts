@@ -15,7 +15,7 @@ import {
   CUA_DIAGNOSTIC_STEPS,
   type CuaExecutorDiagnostic,
 } from "../actors/computer-use/executor-diagnostic.js";
-import { desktopRecordingMetadataSchema } from "../evidence/desktop-recording-types.js";
+import { guestDesktopRecordingMetadataSchema } from "../evidence/desktop-recording-types.js";
 
 export const BROWSER_CONTROL_VERSION = 1;
 export const BROWSER_CONTROL_LIMITS = Object.freeze({
@@ -335,7 +335,7 @@ const replySchema = z.discriminatedUnion("ok", [
     ...replyBase,
     ok: z.literal(true),
     observation: observationSchema.optional(),
-    recording: desktopRecordingMetadataSchema.optional(),
+    recording: guestDesktopRecordingMetadataSchema.optional(),
     result: resultSchema.optional(),
   }),
   z.strictObject({

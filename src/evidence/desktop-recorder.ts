@@ -60,14 +60,12 @@ function validate(options: DesktopRecorderCommandOptions): readonly DesktopRecor
   return sources;
 }
 
-/** One fixed, ordinary FFmpeg recipe. Adapters own process transport and the output path. */
-export function buildDesktopRecorderCommand(
-  options: DesktopRecorderCommandOptions,
-  startedAtMs: number,
-): { binary: "/usr/bin/ffmpeg"; args: string[] } {
+/** Both recipes capture the same inputs. Validates the options it is given. */
+function captureArgs(options: DesktopRecorderCommandOptions): {
+  sources: readonly DesktopRecordingAudioSource[];
+  args: string[];
+} {
   const sources = validate(options);
-  if (!Number.isSafeInteger(startedAtMs) || startedAtMs < 1)
-    throw new Error("Invalid desktop recording start time.");
   // Both live inputs use wall-clock timestamps; one output origin preserves their offset.
   // Bound raw video buffering separately from the much smaller audio packets.
   // The shared spelling supports E2B's FFmpeg 4.4 as well as the local runtime.
@@ -118,6 +116,21 @@ export function buildDesktopRecorderCommand(
     );
   if (devices.length === 1) args.push("-map", "0:v", "-map", "1:a");
   else args.push("-map", "0:v");
+  return { sources, args };
+}
+
+function assertStartTime(startedAtMs: number): void {
+  if (!Number.isSafeInteger(startedAtMs) || startedAtMs < 1)
+    throw new Error("Invalid desktop recording start time.");
+}
+
+/** One fixed, ordinary FFmpeg recipe. Adapters own process transport and the output path. */
+export function buildDesktopRecorderCommand(
+  options: DesktopRecorderCommandOptions,
+  startedAtMs: number,
+): { binary: "/usr/bin/ffmpeg"; args: string[] } {
+  const { sources, args } = captureArgs(options);
+  assertStartTime(startedAtMs);
   // X11 timestamps are microseconds. The encoder's default 1/framerate grid
   // rounds those times and drops distinct captures after an input stall.
   args.push(
@@ -143,6 +156,73 @@ export function buildDesktopRecorderCommand(
     "-output_ts_offset",
     String(-startedAtMs / 1000),
     options.outputPath,
+  );
+  return { binary: "/usr/bin/ffmpeg", args };
+}
+
+/** Where a fragmented recording's pieces sit, and what names the recorder gives them. */
+export const FRAGMENTED_RECORDING = Object.freeze({
+  playlist: "index.m3u8",
+  init: "init.mp4",
+  // Each segment opens with a keyframe. At 10 s those keyframes outweigh a still screen's video.
+  segmentSeconds: 30,
+});
+
+/**
+ * The hosted recipe: finished fragments the host copies while the recorder runs, so a lost sandbox
+ * loses at most the segment being written. Dropping unchanged frames keeps a still screen cheap,
+ * and the 1 fps floor keeps a slow clock or spinner moving.
+ */
+export function buildFragmentedRecorderCommand(
+  options: Omit<DesktopRecorderCommandOptions, "outputPath"> & { directory: string },
+  startedAtMs: number,
+): { binary: "/usr/bin/ffmpeg"; args: string[] } {
+  const { directory, ...capture } = options;
+  const { sources, args } = captureArgs({
+    ...capture,
+    outputPath: `${directory}/${FRAGMENTED_RECORDING.playlist}`,
+  });
+  assertStartTime(startedAtMs);
+  const seconds = FRAGMENTED_RECORDING.segmentSeconds;
+  args.push(
+    "-vf",
+    "mpdecimate=max=14,pad=ceil(iw/2)*2:ceil(ih/2)*2",
+    "-c:v",
+    "libx264",
+    "-enc_time_base:v",
+    "1:1000000",
+    "-preset",
+    "veryfast",
+    "-tune",
+    "stillimage",
+    "-crf",
+    "23",
+    "-pix_fmt",
+    "yuv420p",
+    "-force_key_frames",
+    `expr:isnan(prev_forced_t)+gte(t-prev_forced_t,${seconds})`,
+  );
+  if (sources.length > 0) args.push("-c:a", "aac");
+  args.push(
+    "-output_ts_offset",
+    String(-startedAtMs / 1000),
+    "-f",
+    "hls",
+    "-hls_segment_type",
+    "fmp4",
+    "-hls_time",
+    String(seconds),
+    "-hls_list_size",
+    "0",
+    "-hls_playlist_type",
+    "event",
+    "-hls_flags",
+    "temp_file",
+    "-hls_fmp4_init_filename",
+    FRAGMENTED_RECORDING.init,
+    "-hls_segment_filename",
+    `${directory}/seg%06d.m4s`,
+    `${directory}/${FRAGMENTED_RECORDING.playlist}`,
   );
   return { binary: "/usr/bin/ffmpeg", args };
 }

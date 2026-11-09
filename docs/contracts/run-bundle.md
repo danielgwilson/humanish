@@ -509,7 +509,8 @@ recording:
 
 The stream registers the same path as an artifact with `kind: recording`.
 `durationMs` comes from the retained file, not the participant's lifetime.
-`complete: false` means the retained media stopped early. Audio sources describe
+`complete: false` means the retained media stopped early, including a sandbox lost
+mid-run. E2B and Modal recordings are fragmented MP4. Audio sources describe
 capture points, not remote delivery; an empty list means screen-only. No recording
 field means no retained video, not proof that nothing happened between captures.
 

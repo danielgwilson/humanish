@@ -4,7 +4,7 @@ import { Writable } from "node:stream";
 import { finished } from "node:stream/promises";
 import {
   desktopRecordingMetadataSchema,
-  DESKTOP_RECORDING_MAX_BYTES,
+  HOSTED_DESKTOP_RECORDING_MAX_BYTES,
   type DesktopRecordingMetadata,
   type RunDesktopRecording,
 } from "./desktop-recording-types.js";
@@ -31,7 +31,7 @@ export async function collectDesktopRecording(
   let bytes = 0;
   const destination = new Writable({
     write(chunk: Buffer, _encoding, callback) {
-      if (bytes + chunk.length > DESKTOP_RECORDING_MAX_BYTES) {
+      if (bytes + chunk.length > HOSTED_DESKTOP_RECORDING_MAX_BYTES) {
         callback(new Error("Recording exceeds the size limit."));
         return;
       }
