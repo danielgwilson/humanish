@@ -1,13 +1,16 @@
-import { Readable, Transform, type Writable } from "node:stream";
-import { pipeline } from "node:stream/promises";
+import { Readable, type Writable } from "node:stream";
 import {
-  buildDesktopRecorderCommand,
   buildDesktopRecorderPulseSetupCommands,
-  buildDesktopRecorderProbeCommand,
-  parseDesktopRecorderDuration,
+  buildFragmentedRecorderCommand,
+  FRAGMENTED_RECORDING,
 } from "../../evidence/desktop-recorder.js";
 import {
-  DESKTOP_RECORDING_MAX_BYTES,
+  createRecordingSpool,
+  type RecordingPieces,
+  type RecordingSpool,
+} from "../../evidence/desktop-recording-spool.js";
+import {
+  HOSTED_DESKTOP_RECORDING_MAX_BYTES,
   type DesktopRecordingAudioSource,
   type DesktopRecordingMetadata,
 } from "../../evidence/desktop-recording-types.js";
@@ -15,7 +18,7 @@ import { runOrThrow, shellQuote, type Shell } from "../shell.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "./sdk.js";
 import { e2bShell } from "./shell.js";
 
-const OUTPUT_PATH = "/tmp/humanish-desktop-recording.mp4";
+const OUTPUT_DIRECTORY = "/tmp/humanish-desktop-recording";
 const PID_PATH = "/tmp/humanish-desktop-recording.pid";
 const PULSE_RUNTIME = "/tmp/humanish-recording-runtime";
 const FINALIZE_TIMEOUT_MS = 10_000;
@@ -109,18 +112,18 @@ async function launchRecorder(
   audioSources: DesktopRecordingAudioSource[],
 ): Promise<{ handle: E2BCommandResult; startedAt: string }> {
   const startedAtMs = Date.now();
-  const command = buildDesktopRecorderCommand(
+  const command = buildFragmentedRecorderCommand(
     {
       display: ":0",
       width: options.width,
       height: options.height,
-      outputPath: OUTPUT_PATH,
+      directory: OUTPUT_DIRECTORY,
       audioSources,
     },
     startedAtMs,
   );
   const launch =
-    `set -eu; rm -f ${shellQuote(PID_PATH)}; /usr/bin/env --default-signal=INT,TERM ${commandLine(command)} & ` +
+    `set -eu; rm -f ${shellQuote(PID_PATH)}; rm -rf ${shellQuote(OUTPUT_DIRECTORY)}; install -d -m 0700 ${shellQuote(OUTPUT_DIRECTORY)}; /usr/bin/env --default-signal=INT,TERM ${commandLine(command)} & ` +
     `child=$!; printf '%s\\n' "$child" > ${shellQuote(PID_PATH)}; wait "$child"`;
   // The host launch boundary is the only clock shared with later run events. Capture it before
   // the provider RPC so startup transport latency is not silently removed from the timeline.
@@ -214,45 +217,65 @@ async function stopRecorder(
   return { forced };
 }
 
-async function probeDuration(shell: Shell, requestTimeoutMs: number): Promise<number> {
-  const probe = await runOrThrow(
-    shell,
-    commandLine(buildDesktopRecorderProbeCommand(OUTPUT_PATH)),
-    {
-      timeoutMs: 30_000,
-      requestTimeoutMs,
-    },
-  );
-  return parseDesktopRecorderDuration(probe.stdout);
-}
-
-/** Stream the finished file to the destination under the size limit; returns the byte count. */
-async function transferRecording(
+/** Reads one piece of the recording into memory; a piece is one short segment of video. */
+async function readPiece(
   desktop: E2BDesktopSandbox,
-  destination: Writable,
+  name: string,
   requestTimeoutMs: number,
-): Promise<number> {
-  const transferSignal = AbortSignal.timeout(requestTimeoutMs);
-  const web = await desktop.files.read!(OUTPUT_PATH, {
+): Promise<Buffer> {
+  const web = await desktop.files.read!(`${OUTPUT_DIRECTORY}/${name}`, {
     format: "stream",
     requestTimeoutMs,
     streamIdleTimeoutMs: requestTimeoutMs,
-    signal: transferSignal,
+    signal: AbortSignal.timeout(requestTimeoutMs),
   });
-  let transferred = 0;
-  const count = new Transform({
-    transform(chunk: Buffer, _encoding, callback) {
-      if (transferred + chunk.length > DESKTOP_RECORDING_MAX_BYTES) {
-        callback(new Error("E2B recording exceeds the size limit."));
-        return;
-      }
-      transferred += chunk.length;
-      callback(undefined, chunk);
+  const chunks: Buffer[] = [];
+  for await (const chunk of Readable.fromWeb(web)) chunks.push(Buffer.from(chunk as Uint8Array));
+  return Buffer.concat(chunks);
+}
+
+function sandboxPieces(
+  desktop: E2BDesktopSandbox,
+  shell: Shell,
+  requestTimeoutMs: number,
+): RecordingPieces {
+  const options = { timeoutMs: 15_000, requestTimeoutMs };
+  return {
+    playlist: async () =>
+      (
+        await runOrThrow(
+          shell,
+          `cat ${shellQuote(`${OUTPUT_DIRECTORY}/${FRAGMENTED_RECORDING.playlist}`)}`,
+          options,
+        )
+      ).stdout,
+    read: (name) => readPiece(desktop, name, requestTimeoutMs),
+    remove: async (names) => {
+      await runOrThrow(
+        shell,
+        `rm -f -- ${names.map((name) => shellQuote(`${OUTPUT_DIRECTORY}/${name}`)).join(" ")}`,
+        options,
+      );
     },
-  });
-  await pipeline(Readable.fromWeb(web), count, destination, { signal: transferSignal });
-  if (transferred < 1) throw new Error("E2B desktop recorder produced empty output.");
-  return transferred;
+  };
+}
+
+/** Copies finished segments off the sandbox on a timer, and stops the recorder at the size limit. */
+function startPulling(
+  spool: RecordingSpool,
+  stopForSize: () => Promise<unknown>,
+): { stop(): void; pull(): Promise<void> } {
+  let stopped = false;
+  const pull = async (): Promise<void> => {
+    const { full } = await spool.pull();
+    if (full && !stopped) {
+      stopped = true;
+      await stopForSize().catch(() => {});
+    }
+  };
+  const timer = setInterval(() => void pull(), FRAGMENTED_RECORDING.segmentSeconds * 1000);
+  timer.unref();
+  return { stop: () => clearInterval(timer), pull };
 }
 
 export interface E2BDesktopRecording {
@@ -303,22 +326,34 @@ export async function startE2BDesktopRecording(
   const recorderPid = await readRecorderPid(shell, requestTimeoutMs).catch((error: unknown) =>
     failStartup(error, recorder),
   );
+  const spool = await createRecordingSpool({
+    pieces: sandboxPieces(options.desktop, shell, requestTimeoutMs),
+    maxBytes: HOSTED_DESKTOP_RECORDING_MAX_BYTES,
+  }).catch((error: unknown) => failStartup(error, recorder));
+  const pulling = startPulling(spool, () =>
+    runOrThrow(shell, `kill -INT -- ${recorderPid}`, { timeoutMs: 5_000, requestTimeoutMs }),
+  );
   let finishing: Promise<DesktopRecordingMetadata> | undefined;
   return {
     env,
     finish: (destination) =>
       (finishing ??= (async () => {
+        pulling.stop();
         try {
-          const { forced } = await stopRecorder(shell, recorder, recorderPid, requestTimeoutMs);
-          const durationMs = await probeDuration(shell, requestTimeoutMs);
-          const bytes = await transferRecording(options.desktop, destination, requestTimeoutMs);
+          // A sandbox that is already gone cannot stop or list anything, and what was copied
+          // before it went is still the participant's video.
+          const stopped = await stopRecorder(shell, recorder, recorderPid, requestTimeoutMs).catch(
+            () => ({ forced: true }),
+          );
+          await pulling.pull();
+          const { bytes, durationMs, ended } = await spool.finish(destination);
           return {
             mimeType: "video/mp4" as const,
             startedAt,
             durationMs,
             bytes,
             audioSources,
-            complete: !recorder.exitedEarly() && !forced,
+            complete: ended && !recorder.exitedEarly() && !stopped.forced,
           };
         } catch {
           throw new Error("E2B desktop recording failed.");

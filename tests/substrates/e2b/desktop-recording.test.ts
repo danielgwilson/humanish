@@ -12,7 +12,15 @@ function destination(chunks: Buffer[]): Writable {
   });
 }
 
-function recordingDesktop(contents = Buffer.from("abcdef")): {
+const PLAYLIST = `#EXTM3U
+#EXT-X-VERSION:7
+#EXT-X-MAP:URI="init.mp4"
+#EXTINF:0.250000,
+seg000000.m4s
+#EXT-X-ENDLIST
+`;
+
+function recordingDesktop(): {
   desktop: E2BDesktopSandbox;
   commands: string[];
   kill: ReturnType<typeof vi.fn>;
@@ -38,7 +46,8 @@ function recordingDesktop(contents = Buffer.from("abcdef")): {
       finishProcess?.({ exitCode: 255 });
       return { exitCode: 0 };
     }
-    if (command.startsWith("'/usr/bin/ffprobe'")) return { exitCode: 0, stdout: "1.250000\n" };
+    if (command === "cat '/tmp/humanish-desktop-recording/index.m3u8'")
+      return { exitCode: 0, stdout: PLAYLIST };
     return { exitCode: 0 };
   });
   const desktop = {
@@ -46,10 +55,10 @@ function recordingDesktop(contents = Buffer.from("abcdef")): {
     commands: { run },
     files: {
       read: vi.fn(
-        async () =>
+        async (path: string) =>
           new ReadableStream<Uint8Array>({
             start(controller) {
-              controller.enqueue(contents);
+              controller.enqueue(Buffer.from(path.endsWith("init.mp4") ? "abc" : "def"));
               controller.close();
             },
           }),
@@ -80,7 +89,7 @@ describe("E2B desktop recording", () => {
     expect(Buffer.concat(chunks).toString()).toBe("abcdef");
     expect(metadata).toMatchObject({
       mimeType: "video/mp4",
-      durationMs: 1250,
+      durationMs: 250,
       bytes: 6,
       audioSources: ["microphone-input", "speaker-output"],
       complete: true,
@@ -99,14 +108,44 @@ describe("E2B desktop recording", () => {
       ),
     ).toBe(true);
     expect(commands).toContain("kill -INT -- 742");
-    expect(commands.findIndex((command) => command === "kill -INT -- 742")).toBeLessThan(
-      commands.findIndex((command) => command.startsWith("'/usr/bin/ffprobe'")),
+    expect(commands.indexOf("kill -INT -- 742")).toBeLessThan(
+      commands.lastIndexOf("cat '/tmp/humanish-desktop-recording/index.m3u8'"),
     );
     expect(kill).not.toHaveBeenCalled();
   });
 
+  it("delivers the segments it copied when the sandbox dies before the stop", async () => {
+    vi.useFakeTimers();
+    try {
+      const { desktop, run, kill, commands } = recordingDesktop();
+      const recording = await startE2BDesktopRecording({
+        desktop,
+        width: 960,
+        height: 720,
+        audio: false,
+        requestTimeoutMs: 10_000,
+      });
+      await vi.advanceTimersByTimeAsync(30_000);
+      await vi.waitFor(() =>
+        expect(commands.some((command) => command.startsWith("rm -f --"))).toBe(true),
+      );
+      run.mockRejectedValue(new Error("sandbox is gone"));
+      kill.mockRejectedValue(new Error("sandbox is gone"));
+      const chunks: Buffer[] = [];
+      const finished = recording.finish(destination(chunks));
+      await vi.advanceTimersByTimeAsync(20_000);
+      vi.useRealTimers();
+      const metadata = await finished;
+
+      expect(Buffer.concat(chunks).toString()).toBe("abcdef");
+      expect(metadata).toMatchObject({ bytes: 6, durationMs: 250, complete: false });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("records video without starting Pulse or adding audio inputs", async () => {
-    const { desktop, commands } = recordingDesktop(Buffer.from("video"));
+    const { desktop, commands } = recordingDesktop();
     const recording = await startE2BDesktopRecording({
       desktop,
       width: 640,

@@ -17,7 +17,7 @@ import {
 import { BrowserControlTransport } from "./transport.js";
 import { sendBrowserControlRecording } from "./recording-transfer.js";
 import {
-  desktopRecordingMetadataSchema,
+  guestDesktopRecordingMetadataSchema,
   type DesktopRecordingMetadata,
 } from "../evidence/desktop-recording-types.js";
 
@@ -276,7 +276,7 @@ async function finishRecording(
     const recording = await options.finishRecording();
     let metadata: DesktopRecordingMetadata;
     try {
-      metadata = desktopRecordingMetadataSchema.parse(recording.metadata);
+      metadata = guestDesktopRecordingMetadataSchema.parse(recording.metadata);
     } catch (error) {
       recording.stream.destroy();
       throw error;
