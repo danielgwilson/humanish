@@ -1,4 +1,4 @@
-// Reads the few ISO BMFF boxes that say when a recording's last frame falls. FFmpeg 4.4's ffprobe
+// Reads the few MP4 boxes that say when a recording's last frame falls. FFmpeg 4.4's ffprobe
 // misreports the times of a fragment probed apart from its recording, and a lost sandbox cannot
 // be asked at all, so the host reads the headers of the bytes it already holds.
 

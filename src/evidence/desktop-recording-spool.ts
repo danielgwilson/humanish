@@ -9,7 +9,7 @@ import { fragmentEndMs } from "./fragmented-mp4.js";
 
 const SEGMENT_NAME = /^seg[0-9]{6}\.m4s$/;
 
-export interface RecordingSegment {
+interface RecordingSegment {
   name: string;
   durationMs: number;
 }
@@ -19,7 +19,7 @@ export interface RecordingPlaylist {
   ended: boolean;
 }
 
-/** The recorder's HLS playlist: only finished segments are listed, oldest first. */
+/** The recorder's segment playlist: only finished segments are listed, oldest first. */
 export function parseRecordingPlaylist(text: string): RecordingPlaylist {
   const segments: RecordingSegment[] = [];
   let ended = false;
@@ -61,7 +61,7 @@ export interface RecordingPieces {
   remove(names: readonly string[]): Promise<void>;
 }
 
-export interface RecordingSpoolResult {
+interface RecordingSpoolResult {
   bytes: number;
   durationMs: number;
   /** True only when the recorder closed the video and every segment was kept. */
