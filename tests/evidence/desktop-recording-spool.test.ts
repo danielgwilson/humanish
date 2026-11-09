@@ -191,7 +191,9 @@ describe("recording spool", () => {
     expect(result.ended).toBe(false);
     expect(result.durationMs).toBe(6000);
   });
+});
 
+describe("recording spool limits", () => {
   it("stops at the byte budget and never ends a video it cut short", async () => {
     const spool = await createRecordingSpool({
       pieces: pieces({ list: playlist([6, 6, 6], true) }),

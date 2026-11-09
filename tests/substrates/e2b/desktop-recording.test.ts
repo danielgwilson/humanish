@@ -21,6 +21,7 @@ seg000000.m4s
 `;
 
 function recordingDesktop(playlist = PLAYLIST): {
+  hangPlaylist: () => void;
   desktop: E2BDesktopSandbox;
   commands: string[];
   kill: ReturnType<typeof vi.fn>;
@@ -35,8 +36,11 @@ function recordingDesktop(playlist = PLAYLIST): {
     finishProcess?.({ exitCode: 137 });
     return true;
   });
+  let playlistHangs = false;
   const run = vi.fn(async (command: string): Promise<E2BCommandResult> => {
     commands.push(command);
+    if (playlistHangs && command.includes("index.m3u8") && command.startsWith("cat "))
+      return new Promise<E2BCommandResult>(() => {});
     if (command.includes("'/usr/bin/ffmpeg' '-nostdin'")) {
       return { pid: 741, wait: () => processExit, kill };
     }
@@ -70,7 +74,15 @@ function recordingDesktop(playlist = PLAYLIST): {
     screenshot: vi.fn(),
     stream: { getAuthKey: vi.fn(), getUrl: vi.fn(), start: vi.fn() },
   } as unknown as E2BDesktopSandbox;
-  return { desktop, commands, kill, run };
+  return {
+    desktop,
+    commands,
+    kill,
+    run,
+    hangPlaylist: () => {
+      playlistHangs = true;
+    },
+  };
 }
 
 describe("E2B desktop recording", () => {
@@ -173,7 +185,9 @@ describe("E2B desktop recording", () => {
   it("finishes when a sandbox call never answers", async () => {
     vi.useFakeTimers();
     try {
-      const { desktop, run, commands } = recordingDesktop(PLAYLIST.replace("#EXT-X-ENDLIST\n", ""));
+      const { desktop, hangPlaylist, commands } = recordingDesktop(
+        PLAYLIST.replace("#EXT-X-ENDLIST\n", ""),
+      );
       const recording = await startE2BDesktopRecording({
         desktop,
         width: 960,
@@ -185,14 +199,7 @@ describe("E2B desktop recording", () => {
       await vi.waitFor(() =>
         expect(commands.some((command) => command.startsWith("rm -f --"))).toBe(true),
       );
-      const answered = run.getMockImplementation() as (
-        command: string,
-      ) => Promise<E2BCommandResult>;
-      run.mockImplementation((command: string) =>
-        command.startsWith("cat '/tmp/humanish-desktop-recording/index")
-          ? new Promise<E2BCommandResult>(() => {})
-          : answered(command),
-      );
+      hangPlaylist();
       const chunks: Buffer[] = [];
       const finished = recording.finish(destination(chunks));
       await vi.advanceTimersByTimeAsync(20_000);
@@ -204,7 +211,9 @@ describe("E2B desktop recording", () => {
       vi.useRealTimers();
     }
   });
+});
 
+describe("E2B desktop recording setup", () => {
   it("records video without starting Pulse or adding audio inputs", async () => {
     const { desktop, commands } = recordingDesktop();
     const recording = await startE2BDesktopRecording({
