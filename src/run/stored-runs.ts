@@ -1,6 +1,7 @@
 import { lstat, readdir } from "node:fs/promises";
 import path from "node:path";
 import { redactText } from "../evidence/redaction.js";
+import { directoryBytes } from "./run-bytes.js";
 import {
   bindExistingRunArtifactPaths,
   RUNS_RELATIVE_ROOT,
@@ -51,11 +52,15 @@ export interface RunsResult {
     createdAt: string | null;
     mode: string | null;
     path: string;
+    /** The disk the run's files take, when the listing was asked for sizes. */
+    bytes?: number;
     /** How the run reads (runDisplay in src/run/display.ts); absent when it has no readable run.json. */
     display?: RunDisplay;
     /** The automatic analysis its own process started after the run ended, from status.json. */
     analysis?: RunAnalysisPhase;
   }>;
+  /** The disk all the listed runs take, when the listing was asked for sizes. */
+  totalBytes?: number;
   latest: string | null;
   error?: {
     code: "HUMANISH_RUNS_UNAVAILABLE";
@@ -63,7 +68,11 @@ export interface RunsResult {
   };
 }
 
-export async function listRuns(cwdInput: string): Promise<RunsResult> {
+export async function listRuns(
+  cwdInput: string,
+  // Off by default: the Observer lists runs on every poll, and a size reads every file of every run.
+  options: { sizes?: boolean } = {},
+): Promise<RunsResult> {
   const cwd = path.resolve(cwdInput);
   const runsRootPath = resolveRunsRoot(cwd);
 
@@ -132,6 +141,9 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
       createdAt: isRecord(bundle) && typeof bundle.createdAt === "string" ? bundle.createdAt : null,
       mode: isRecord(bundle) && typeof bundle.mode === "string" ? bundle.mode : null,
       path: path.join(RUNS_RELATIVE_ROOT, entryName),
+      ...(options.sizes === true
+        ? { bytes: await directoryBytes(entryRunPaths.physicalRunRoot) }
+        : {}),
       ...(await listedRunDisplay(entryRunPaths, bundle)),
     });
   }
@@ -149,6 +161,9 @@ export async function listRuns(cwdInput: string): Promise<RunsResult> {
     ok: true,
     cwd,
     runs: runs.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
+    ...(options.sizes === true
+      ? { totalBytes: runs.reduce((sum, run) => sum + (run.bytes ?? 0), 0) }
+      : {}),
     latest: latest?.runId ?? null,
   };
 }

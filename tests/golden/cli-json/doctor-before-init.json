@@ -19,6 +19,7 @@
       "package.json",
       "humanish source",
       "runtime ignore",
+      "run storage",
       "e2b desktop sdk",
       "e2b sandbox ceiling",
       "e2b concurrent sandboxes",

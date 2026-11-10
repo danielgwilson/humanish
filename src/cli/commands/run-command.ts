@@ -2,6 +2,8 @@
 // commands cannot drift apart.
 import { Option, type Command } from "commander";
 import { runDryRun } from "../../run/dry-run.js";
+import { runStorageNotice } from "../../run/prune.js";
+import { listRuns } from "../../run/stored-runs.js";
 import type { RunResult } from "../../run/results.js";
 import { runStudyCommand } from "./study-run.js";
 import {
@@ -122,6 +124,7 @@ export async function handleRun(
 
   if (study !== undefined) {
     await runStudyCommand({ command, io, study, mode: "run", options });
+    await noteRunStorage(io, options.cwd);
     return;
   }
 
@@ -146,4 +149,11 @@ export async function handleRun(
   });
   writeResult(command, io, result, formatRunHuman);
   io.setExitCode(result.ok ? 0 : 2);
+}
+
+/** After a study, says how much its project's runs hold once that is worth noticing. */
+async function noteRunStorage(io: CliIo, cwd: string): Promise<void> {
+  const listed = await listRuns(cwd, { sizes: true }).catch(() => undefined);
+  const notice = listed && runStorageNotice(listed.totalBytes ?? 0, listed.runs.length);
+  if (notice !== undefined) io.writeErr(`${notice}\n`);
 }

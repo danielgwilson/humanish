@@ -432,11 +432,27 @@ humanish export [options]
 List this project's runs and which one is latest.
 
 ```text
-humanish runs [options]
+humanish runs [options] [command]
 ```
 
 | Option | Description |
 | --- | --- |
+| `--cwd <path>` | Project directory. (default: ".") |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+### humanish runs prune
+
+Remove this project's runs older than --older-than and print what they held. Without --yes it only reports. It keeps the latest run, a run still going, a remote run not yet copied back, and a run whose sandboxes were never confirmed stopped.
+
+```text
+humanish runs prune [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--older-than <age>` | Age of the runs to remove, in days or hours, such as 30d or 12h. At least 1h. |
+| `--yes` | Remove them. Without it nothing is deleted. |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |

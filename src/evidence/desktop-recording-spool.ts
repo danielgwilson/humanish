@@ -1,6 +1,16 @@
 import { createReadStream } from "node:fs";
 import { rmSync } from "node:fs";
-import { mkdtemp, open, rm, statfs, type FileHandle } from "node:fs/promises";
+import {
+  lstat,
+  mkdtemp,
+  open,
+  readFile,
+  readdir,
+  rm,
+  statfs,
+  writeFile,
+  type FileHandle,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Writable } from "node:stream";
@@ -65,6 +75,47 @@ function removeOnExit(directory: string): void {
   });
 }
 
+const SPOOL_PREFIX = "humanish-recording-";
+const SPOOL_OWNER_FILE = "owner";
+/** For a spool from a version that recorded no owner: it was written to every few seconds. */
+const ABANDONED_SPOOL_MS = 24 * 3_600_000;
+
+function pidIsAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/** Whether nothing can still be using this spool: its owner is gone, or it has none and is old. */
+async function spoolIsAbandoned(directory: string): Promise<boolean> {
+  const owner = Number(
+    await readFile(path.join(directory, SPOOL_OWNER_FILE), "utf8").catch(() => ""),
+  );
+  if (Number.isInteger(owner) && owner > 0) return !pidIsAlive(owner);
+  const written = await lstat(path.join(directory, "desktop.mp4"))
+    .catch(() => lstat(directory))
+    .then((stats) => stats.mtimeMs)
+    .catch(() => Date.now());
+  return Date.now() - written > ABANDONED_SPOOL_MS;
+}
+
+/**
+ * Removes spools a killed process could not clean up. Each can hold a whole video, and the exit
+ * handler above never runs for a SIGKILL, an out-of-memory kill or a lost machine.
+ */
+async function removeAbandonedSpools(root: string): Promise<void> {
+  const names = await readdir(root).catch(() => [] as string[]);
+  for (const name of names) {
+    if (!name.startsWith(SPOOL_PREFIX)) continue;
+    const directory = path.join(root, name);
+    if (await spoolIsAbandoned(directory))
+      await rm(directory, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
 /** What a sandbox offers the spool. Every method may reject while the sandbox is unreachable. */
 export interface RecordingPieces {
   playlist(): Promise<string>;
@@ -98,7 +149,9 @@ export async function createRecordingSpool(options: {
   freeBytes?: (directory: string) => Promise<number>;
 }): Promise<RecordingSpool> {
   const { pieces, maxBytes, freeBytes = statfsFreeBytes } = options;
-  const directory = await mkdtemp(path.join(tmpdir(), "humanish-recording-"));
+  await removeAbandonedSpools(tmpdir());
+  const directory = await mkdtemp(path.join(tmpdir(), SPOOL_PREFIX));
+  await writeFile(path.join(directory, SPOOL_OWNER_FILE), String(process.pid), { mode: 0o600 });
   const file = path.join(directory, "desktop.mp4");
   // Append mode, so writes after a truncate land at the new end and leave no hole.
   const handle = await open(file, "ax", 0o600).catch(async (error: unknown) => {

@@ -8,6 +8,13 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+`humanish runs` now shows each run's size and the project's total, and `humanish doctor` shows the
+total beside the free disk. `humanish runs prune --older-than 30d` lists the old runs it would
+remove and deletes nothing until you add `--yes`. It keeps the latest run, a run still going, a
+remote run not yet copied back, and a recent run whose sandboxes were never confirmed stopped. A
+run that ends with more than 5 GB of runs in its project says so. A recording's temporary copy
+that a killed process left behind is now removed the next time a recording starts.
+
 ## 0.159.0: A hosted recording survives a lost sandbox and covers an 8-hour session (2026-11-10)
 
 humanish 0.159.0 keeps long desktop recordings on E2B and Modal. A recording is copied off its

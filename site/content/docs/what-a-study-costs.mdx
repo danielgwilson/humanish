@@ -154,3 +154,18 @@ Shared-world participants and their provisioned subject desktop, a scripted-brow
 - Model usage of a signed-in `local-agent` participant, which stays unpriced by design. A dollar cap does not bound plan usage; [use a local coding agent](/docs/local-agents) has the setup and limits.
 
 Every kept bundle carries its own `cost` block with the same breakdown, and `npx humanish stats --study <id> --json` rolls them up per study.
+
+## Disk space
+
+Runs stay in `.humanish/runs` until you remove them. Nothing deletes a run on its own.
+
+| What a participant keeps                                | Measured size                                                               |
+| ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Screenshots, one lossless frame a turn                  | about 45 MB an hour; 362 MB for one 8-hour participant                      |
+| Desktop video, when `execution.desktop.recording` is on | about 99 MB an hour for an ordinary session, 2 GiB at most on E2B and Modal |
+
+A study of 30 participants working 8 hours keeps about 11 GB of screenshots, and about 24 GB more with video.
+
+`npx humanish runs` lists each run's size and the project's total, and `npx humanish doctor` shows the total beside the free disk. A run that ends with more than 5 GB in the project says so.
+
+`npx humanish runs prune --older-than 30d` lists what it would remove and deletes nothing. Add `--yes` to remove those runs. It keeps the latest run, a run still going, a remote run not yet copied back, and a run from the past week whose sandboxes were never confirmed stopped.

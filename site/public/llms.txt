@@ -83,6 +83,7 @@ This command index is generated from the shipped CLI. Full arguments and options
 - `humanish feedback issue-url`: Print a prefilled public issue URL. Does not mutate GitHub.
 - `humanish export`: Export a run as self-contained Observer HTML, or a separately verified redacted bundle workspace. HTML requires share_ready unless --local-only; bundle format requires --redact-screenshots and preserves the original.
 - `humanish runs`: List this project's runs and which one is latest.
+- `humanish runs prune`: Remove this project's runs older than --older-than and print what they held. Without --yes it only reports. It keeps the latest run, a run still going, a remote run not yet copied back, and a run whose sandboxes were never confirmed stopped.
 - `humanish stats`: Cost, outcome, and duration roll-ups across run history. Estimates stay labelled; unknown costs count as unknown.
 - `humanish study`: List, show and check studies in humanish/studies/.
 - `humanish study list`: List the studies in this project, committed and local.
