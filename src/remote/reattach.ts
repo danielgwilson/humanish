@@ -14,6 +14,7 @@ import { e2bConnection } from "../substrates/e2b/connection.js";
 import { isSandboxNotFoundError } from "../substrates/e2b/sdk.js";
 import { loadModalShellModule } from "../substrates/modal/sandbox.js";
 import { followRemoteRun, watchSignals, type RemoteContext, type RemoteOutcome } from "./launch.js";
+import { giveUpCopy } from "./copy-back.js";
 import { serveObserverProxy } from "./observer-proxy.js";
 import { RUNNER_OBSERVER_PORT, runnerOf } from "./runner.js";
 
@@ -28,8 +29,10 @@ export interface RemoteRunHere {
 }
 
 /**
- * The remote run `runId` names, when its directory here has a remote.json and no run.json yet;
- * undefined for any other run, which the Observer serves from its files as before.
+ * The remote run `runId` names, when its directory here has a remote.json and its copy has not
+ * finished: run.json can be here already, since a run's small files arrive before its video. A
+ * record written before copyPending existed has only run.json to go by. Undefined for any other
+ * run, which the Observer serves from its files as before.
  */
 export async function remoteRunHere(
   cwd: string,
@@ -41,16 +44,21 @@ export async function remoteRunHere(
   } catch {
     return undefined;
   }
-  if ((await readText(paths, "run.json")) !== undefined) return undefined;
   const record = await readText(paths, "remote.json");
   if (record === undefined) return undefined;
-  const { provider, route } = JSON.parse(record) as { provider?: unknown; route?: unknown };
+  const { provider, route, copyPending } = JSON.parse(record) as {
+    provider?: unknown;
+    route?: unknown;
+    copyPending?: unknown;
+  };
+  const pending = copyPending === true;
+  if (!pending && (await readText(paths, "run.json")) !== undefined) return undefined;
   if (typeof provider !== "string" || !isSandboxProviderId(provider)) return undefined;
   const journal = (await readText(paths, SANDBOX_RECEIPTS_ARTIFACT)) ?? "";
-  // Until the run is copied back, this directory's journal holds one receipt: the runner's, the
-  // only sandbox this machine creates for a remote run.
+  // The runner is the only sandbox this machine creates, so its receipt comes first. A copy that
+  // stopped partway has added the participants' receipts after it.
   const [runner, ...others] = parseSandboxReceipts(journal);
-  if (runner === undefined || others.length > 0) return undefined;
+  if (runner === undefined || (!pending && others.length > 0)) return undefined;
   return {
     paths,
     runId,
@@ -82,10 +90,11 @@ export async function reattachRemoteRun(
     sandbox = await module.Sandbox.connect!(run.runnerId, e2bConnection(context.env));
   } catch (error) {
     if (!isSandboxNotFoundError(error)) throw error;
+    const lost = await giveUpCopy(run.paths);
     return {
       runId: run.runId,
       exitCode: 2,
-      error: `its runner sandbox is gone, so the run was not copied back. Stop anything it left with humanish reclaim --run ${run.runId}`,
+      error: `its runner sandbox is gone, so what had not been copied back is lost${lost.length === 0 ? "" : ` (${lost.join(", ")})`}. Anything already copied is in its run directory, and humanish observe --run ${run.runId} opens a run whose findings arrived. Stop anything it left with humanish reclaim --run ${run.runId}`,
     };
   }
   const runner = runnerOf(sandbox);

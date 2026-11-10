@@ -15,6 +15,13 @@ remote run not yet copied back, and a recent run whose sandboxes were never conf
 run that ends with more than 5 GB of runs in its project says so. A recording's temporary copy
 that a killed process left behind is now removed the next time a recording starts.
 
+A remote run whose copy back stops partway now finishes with `humanish observe --run <id>`. The copy
+continues from its last whole 64 MiB piece, rides out a dropped connection for two minutes, and
+leaves no partial file once it is done. Before, a launcher killed during the copy left a hidden
+partial file, a run that would not open, and no way to retry. A copy also checks this machine's free
+disk before a large file and leaves 1 GiB free; when there is no room, the rest of the run is copied
+and the video stays on the runner until you free space and finish.
+
 ## 0.159.0: A hosted recording survives a lost sandbox and covers an 8-hour session (2026-11-10)
 
 humanish 0.159.0 keeps long desktop recordings on E2B and Modal. A recording is copied off its

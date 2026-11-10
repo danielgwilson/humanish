@@ -10,7 +10,11 @@ import {
   validatePreparedRunArtifactPaths,
   type PreparedRunArtifactPaths,
 } from "../run/paths.js";
-import { openContainedRegularFile, RUN_ARTIFACT_MAX_BYTES } from "../run/contained-output.js";
+import {
+  readContainedRegularFile,
+  openContainedRegularFile,
+  RUN_ARTIFACT_MAX_BYTES,
+} from "../run/contained-output.js";
 import { holdsKeyedSandboxId } from "../run/sandbox-ids.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import { mapWithConcurrency } from "../run/concurrency.js";
@@ -85,6 +89,29 @@ function listed(paths: readonly string[]): string {
 }
 
 /**
+ * The recordings this run's remote.json says were lost with its runner before they were copied.
+ * Only a recording can be excused this way: its absence leaves the run's findings intact.
+ */
+export async function recordingsLostInCopy(
+  runPaths: PreparedRunArtifactPaths,
+): Promise<ReadonlySet<string>> {
+  const read = await readContainedRegularFile(runPaths, "remote.json", 1024 * 1024);
+  if (read.status !== "read") return new Set();
+  try {
+    const { lostInCopy } = JSON.parse(Buffer.from(read.bytes).toString("utf8")) as {
+      lostInCopy?: unknown;
+    };
+    return new Set(
+      Array.isArray(lostInCopy)
+        ? lostInCopy.filter((entry): entry is string => typeof entry === "string")
+        : [],
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+/**
  * Why each local evidence path the bundle requires is missing or unusable. A path in
  * `pastReadLimit` is a trace verify found larger than it reads, which verify lists as unscanned so
  * the run grades local_only. It meets a requirement only while it is still past the limit when
@@ -94,6 +121,7 @@ export async function missingLocalEvidenceArtifacts(
   runPaths: PreparedRunArtifactPaths,
   bundle: RunBundle,
   pastReadLimit: ReadonlySet<string>,
+  lostInCopy: ReadonlySet<string> = new Set(),
 ): Promise<string[]> {
   const recordings = new Map(
     bundle.streams.flatMap((stream) =>
@@ -183,7 +211,9 @@ export async function missingLocalEvidenceArtifacts(
 
   // Reads overlap, so one frame's file system calls run while another frame's PNG is checked.
   const found = await mapWithConcurrency(
-    [...requiredPaths],
+    [...requiredPaths].filter(
+      ([artifactPath]) => !(recordings.has(artifactPath) && lostInCopy.has(artifactPath)),
+    ),
     EVIDENCE_READ_CONCURRENCY,
     ([artifactPath, requirements]) =>
       missingArtifact(

@@ -445,6 +445,13 @@ When the run ends, its bundle is copied into `.humanish/runs/YOUR_RUN_ID`, each 
 against the runner's digest, and `verify`, `review` and `analyze` work on it as on a local run.
 The command exits with the run's own code.
 
+If that copy stops partway, because the command was killed, the connection stayed down for more
+than two minutes, or this machine ran short of disk, the runner keeps the evidence until the
+deadline in the run's `remote.json`. `npx humanish observe --run YOUR_RUN_ID` finishes the copy
+from the last whole piece that arrived. If the runner sandbox itself is lost before the run ends,
+only the screenshots already copied remain: the trace, the findings and any video in progress are
+lost with it.
+
 The runner receives the study file, the persona files and each `participants[].files` entry, in
 your own E2B or Modal account. Its run uses only the keys its plan reads. On E2B, the OpenAI,
 Gemini and E2B keys stay in E2B's egress proxy, which adds each one to the runner's requests to

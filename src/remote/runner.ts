@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, realpath } from "node:fs/promises";
 import path from "node:path";
 
-import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
+import { isSandboxNotFoundError, type E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import { e2bShell } from "../substrates/e2b/shell.js";
 import { shellQuote, withinDeadline, type Shell, type ShellResult } from "../substrates/shell.js";
 import { tailOf } from "../substrates/shell.js";
@@ -443,9 +443,13 @@ async function readRunnerBytes(runner: Runner, file: string): Promise<Uint8Array
  * memory. A file past this is copied a range of this size at a time.
  */
 export const COPY_BATCH_BYTES = 64 * 1024 * 1024;
-/** How many times one range is read before the copy gives up, for a network that drops a read. */
-const RANGE_ATTEMPTS = 3;
-const RANGE_RETRY_MS = 1_000;
+/** How long one range keeps being retried, and how long it waits between tries. */
+export interface RangeRetry {
+  windowMs: number;
+  delayMs: number;
+}
+/** Long enough to ride out a laptop changing networks, as following the run does. */
+const RANGE_RETRY: RangeRetry = { windowMs: 120_000, delayMs: 2_000 };
 /** A range takes seconds; past this its connection has stalled, which no SDK timeout covers. */
 const RANGE_DEADLINE_MS = 300_000;
 /** The most files one batch of a copy names on its command line. */
@@ -495,28 +499,43 @@ export async function readRemoteFiles(
       .catch(() => undefined);
 }
 
+/** The whole of a copied file did not match its listed digest, so what is saved cannot be reused. */
+export class CopiedFileDamagedError extends Error {}
+
 /**
- * Hand `take` one file of the runner's run directory in order, a range at a time. Each range is
- * checked against a digest the runner takes of it and read again if it arrived damaged; the whole
- * file is then checked against its listed digest.
+ * Hand `take` one file of the runner's run directory in order, a range at a time, from `firstRange`
+ * on. Each range is checked against a digest the runner takes of it and read again if it arrived
+ * damaged. A copy from the first range is then checked against the listed digest; one that started
+ * later has not seen the whole file, so its caller checks what it saved.
  */
 export async function readRemoteFileInRanges(
   runner: Runner,
   runId: string,
   file: RemoteFile,
   take: (range: Uint8Array) => Promise<void>,
+  options: { firstRange?: number; retry?: RangeRetry } = {},
 ): Promise<void> {
   const dir = `${RUNNER_PROJECT}/.humanish/runs/${runId}`;
   const whole = createHash("sha256");
+  const firstRange = options.firstRange ?? 0;
   const ranges = Math.ceil(file.size / COPY_BATCH_BYTES);
-  for (let index = 0; index < ranges; index += 1) {
+  for (let index = firstRange; index < ranges; index += 1) {
     const expected = Math.min(COPY_BATCH_BYTES, file.size - index * COPY_BATCH_BYTES);
-    const range = await readRangeWithRetries(runner, dir, file.path, index, expected);
+    const range = await readRangeWithRetries(
+      runner,
+      dir,
+      file.path,
+      index,
+      expected,
+      options.retry ?? RANGE_RETRY,
+    );
     whole.update(range);
     await take(range);
   }
-  if (whole.digest("hex") !== file.sha256)
-    throw new Error(`${file.path} changed or arrived damaged while it was copied from the runner.`);
+  if (firstRange === 0 && whole.digest("hex") !== file.sha256)
+    throw new CopiedFileDamagedError(
+      `${file.path} changed or arrived damaged while it was copied from the runner.`,
+    );
   await runner.shell
     .run(`rm -f "$HOME/${COPY_FILE}"`, { timeoutMs: 30_000 })
     .catch(() => undefined);
@@ -528,13 +547,15 @@ async function readRangeWithRetries(
   file: string,
   index: number,
   expected: number,
+  retry: RangeRetry,
 ): Promise<Uint8Array> {
-  for (let attempt = 1; ; attempt += 1) {
+  const giveUpAt = Date.now() + retry.windowMs;
+  for (;;) {
     try {
       return await readRange(runner, dir, file, index, expected);
     } catch (error) {
-      if (attempt >= RANGE_ATTEMPTS) throw error;
-      await new Promise((resolve) => setTimeout(resolve, RANGE_RETRY_MS));
+      if (isSandboxNotFoundError(error) || Date.now() >= giveUpAt) throw error;
+      await new Promise((resolve) => setTimeout(resolve, retry.delayMs));
     }
   }
 }
