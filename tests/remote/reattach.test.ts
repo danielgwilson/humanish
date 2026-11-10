@@ -36,6 +36,15 @@ describe("finding a remote run to follow", () => {
     });
   });
 
+  it("offers to finish a copy that stopped after the run's small files arrived", async () => {
+    await remoteRun("cua-partway", {
+      "remote.json": JSON.stringify({ provider: "modal", copyPending: true }),
+      "sandbox-receipts.ndjson": `${RUNNER_RECEIPT}${RUNNER_RECEIPT.replace("fake-sb-runner", "fake-sb-participant")}`,
+      "run.json": "{}",
+    });
+    expect(await remoteRunHere(cwd, "cua-partway")).toMatchObject({ runnerId: "fake-sb-runner" });
+  });
+
   it("leaves a copied-back run, a local run and a missing run to the Observer", async () => {
     await remoteRun("cua-copied", {
       "remote.json": RECORD,

@@ -44,6 +44,7 @@ import {
   invalidRunEvidenceReferences,
   MAX_REPORTED_FINDINGS,
   missingLocalEvidenceArtifacts,
+  recordingsLostInCopy,
   rawScreenshotPostureWarnings,
   rawScreenshotStreamIds,
   redactedShapeFramePaths,
@@ -221,8 +222,9 @@ export async function verifyResolvedRun(
         ? "no run text artifact or public-proof path matches a known secret or browser-profile pattern"
         : `public-safety findings: ${publicSafetyFindings.slice(0, 5).join(", ")}`,
   });
+  const lostInCopy = await recordingsLostInCopy(runPaths);
   const missingEvidenceArtifacts = bundle
-    ? await missingLocalEvidenceArtifacts(runPaths, bundle, traces.pastReadLimit)
+    ? await missingLocalEvidenceArtifacts(runPaths, bundle, traces.pastReadLimit, lostInCopy)
     : [];
   const redactedShapeFrames = bundle
     ? await redactedShapeFramePaths(runPaths, bundle)
@@ -260,6 +262,7 @@ export async function verifyResolvedRun(
         ...desktopGeometryWarnings(bundle),
         ...flatContextWarnings(bundle),
         ...notFinished.warnings,
+        ...lostInCopyWarnings(lostInCopy),
       ]
     : [];
   const shareSafety = bundle
@@ -407,6 +410,9 @@ async function pastReadLimit(runPaths: PreparedRunArtifactPaths, file: string): 
   const read = await readContainedRegularFile(runPaths, file, RUN_ARTIFACT_MAX_BYTES);
   return read.status === "refused" && read.reason === "too-large";
 }
+
+const lostInCopyWarnings = (files: ReadonlySet<string>): string[] =>
+  [...files].map((file) => `${file} was lost with the run's runner before it was copied here.`);
 
 /** The continuous recordings the bundle registers, which CONTINUOUS_MEDIA grades. */
 const recordingPaths = (bundle: RunBundle | undefined): Set<string> =>

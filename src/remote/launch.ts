@@ -142,6 +142,7 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
       provider: remote.provider,
       route: remote.route,
       deadline: new Date(Date.now() + remote.runnerMs).toISOString(),
+      copyPending: true,
     });
     // Bound before the run starts, so a taken --port fails before any participant exists. A
     // terminal run has no live Observer, here or locally: it renders one when it ends.
@@ -310,7 +311,7 @@ async function followUntilEnd(args: FollowArgs, heartbeat: Heartbeat): Promise<R
         return {
           runId,
           exitCode: 2,
-          error: `copying the evidence back failed (${message(copied.error)}). The runner keeps it until the deadline in its remote.json; stop it sooner with humanish reclaim --run ${runId}`,
+          error: `copying the evidence back failed (${message(copied.error)}). The runner keeps it until the deadline in its remote.json. Finish the copy with humanish observe --run ${runId}, or stop the runner with humanish reclaim --run ${runId}`,
         };
       return await endRun(launch, runId, {
         // A run stopped from here exits as a local one does on that signal.
@@ -442,7 +443,14 @@ function message(error: unknown): string {
  */
 async function writeRemoteRecord(
   paths: PreparedRunArtifactPaths,
-  record: { runId: string; provider: string; route: string; deadline: string },
+  record: {
+    runId: string;
+    provider: string;
+    route: string;
+    deadline: string;
+    /** Until every file has arrived; `humanish observe` finishes the copy while this is set. */
+    copyPending: true;
+  },
 ): Promise<void> {
   await writeContainedOutputFile(
     paths,
