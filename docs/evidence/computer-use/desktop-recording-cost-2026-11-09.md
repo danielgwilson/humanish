@@ -76,7 +76,7 @@ local server.
 
 A remote run now copies a file over 64 MiB in checked ranges, and the limit is 2 GiB. To reach that
 size in minutes, these runs recorded a page that repaints every pixel with noise, which encodes at
-about 6 MB/s. Ordinary sessions in this page's first table are about 200 times smaller per hour.
+about 6 MB/s. Ordinary sessions on this page are about 200 times smaller per hour.
 
 | Provider | Recording copied back | Complete | Launcher peak memory | Result |
 |-|-|-|-|-|
@@ -94,7 +94,7 @@ on E2B.
 
 A 1.9 GB video at an ordinary bitrate, 22 hours long and fragmented every 30 s, took 10 of 10 Chrome
 seeks without a failure, in 72 to 647 ms from a local server. The noise recordings are different: at
-sizes from about 1.3 GB, seeking crashed the Chrome page in 10 of 26 tries, while a 559 MB and a 939 MB
+sizes from about 1.3 GB, seeking crashed the Chrome page in 10 of 21 tries, while a 559 MB and a 939 MB
 prefix of the same file did not crash in 11 tries. Those files hold 180 MB in each 30-second fragment,
 which no ordinary session approaches. The cause was not found.
 
