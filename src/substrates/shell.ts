@@ -68,3 +68,14 @@ export function shellArg(value: string): string {
 export function tailOf(value: string | undefined): string {
   return (value ?? "").trim().replace(/\s+/g, " ").slice(-240);
 }
+
+/** Rejects when a sandbox call outlives its deadline: some providers ignore their own timeouts. */
+export async function withinDeadline<T>(work: Promise<T>, deadlineMs: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  return Promise.race([
+    work,
+    new Promise<never>((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error("Sandbox call timed out.")), deadlineMs);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}

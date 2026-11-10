@@ -77,9 +77,12 @@ does not inspect the MP4.
 
 Video and audio are raw local evidence. `policies.redactScreenshots` does not redact
 them, and verification keeps a run with continuous media `local_only`. The local
-recorder has a 128 MiB per-participant file limit. E2B and Modal recordings stop at 256 MiB,
-about 2 to 3 hours of an ordinary session. A retained size-limited recording is
-partial.
+recorder has a 128 MiB per-participant file limit. E2B and Modal recordings stop at 2 GiB, which
+covers more than 8 hours of an ordinary session and about 5 minutes of full-screen motion on every
+pixel.
+They also stop when the disk has less than 1 GiB free beyond the room the videos in progress need,
+so a long recording never takes the space the run's screenshots and traces need. A recording
+stopped either way is kept and marked partial.
 Encoding consumes additional CPU, memory and disk, so snapshots remain the default.
 
 `humanish export --local-only` produces the existing portable HTML with screenshots

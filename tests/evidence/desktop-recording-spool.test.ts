@@ -90,6 +90,8 @@ function pieces(overrides: Partial<RecordingPieces> & { list: string }): Recordi
   };
 }
 
+const GIB = 1024 ** 3;
+
 describe("recording spool", () => {
   it("joins the init piece and each segment once, in order, across pulls", async () => {
     let list = playlist([6]);
@@ -204,6 +206,58 @@ describe("recording spool limits", () => {
     const result = await spool.finish(out.destination);
     expect(out.text()).toBe("[init.mp4][seg000000.m4s]");
     expect(result).toMatchObject({ bytes: 25, ended: false });
+  });
+
+  it("stops before the disk fills and never ends a video it cut short", async () => {
+    let free = 8 * GIB;
+    const spool = await createRecordingSpool({
+      pieces: {
+        playlist: async () => playlist([6, 6]),
+        read: async (name) => Buffer.from(`[${name}]`),
+        remove: async () => {},
+      },
+      maxBytes: 1000,
+      freeBytes: async () => {
+        const now = free;
+        free = GIB - 1;
+        return now;
+      },
+    });
+    expect(await spool.pull()).toEqual({ full: true });
+    const out = sink();
+    const result = await spool.finish(out.destination);
+    expect(out.text()).toBe("[init.mp4][seg000000.m4s]");
+    expect(result.ended).toBe(false);
+  });
+
+  it("checks each segment of a backlog against the room left", async () => {
+    let free = GIB + 200;
+    const spool = await createRecordingSpool({
+      pieces: pieces({ list: playlist([6, 6, 6, 6, 6, 6, 6, 6]) }),
+      maxBytes: 1000,
+      freeBytes: async () => {
+        const now = free;
+        free -= 15;
+        return now;
+      },
+    });
+    expect(await spool.pull()).toEqual({ full: true });
+    const out = sink();
+    await spool.finish(out.destination);
+    // Each 15-byte segment takes 15 now and leaves 15 for the write out, with init held too.
+    const kept = out.text().match(/seg/g)?.length ?? 0;
+    expect(kept).toBeGreaterThan(0);
+    expect(kept).toBeLessThan(8);
+  });
+
+  it("keeps recording when the free space cannot be read", async () => {
+    const spool = await createRecordingSpool({
+      pieces: pieces({ list: playlist([6], false) }),
+      maxBytes: 1000,
+      freeBytes: () => Promise.reject(new Error("statfs failed")),
+    });
+    expect(await spool.pull()).toEqual({ full: false });
+    await spool.finish(sink().destination);
   });
 
   it("removes a segment from the sandbox only after it is kept", async () => {

@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
 import { rmSync } from "node:fs";
-import { mkdtemp, open, rm, type FileHandle } from "node:fs/promises";
+import { mkdtemp, open, rm, statfs, type FileHandle } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Writable } from "node:stream";
@@ -41,6 +41,17 @@ export function parseRecordingPlaylist(text: string): RecordingPlaylist {
 const INIT_NAME = "init.mp4";
 /** How far a fragment's time may run past the wall clock before it is not believed. */
 const CLOCK_ALLOWANCE_MS = 60_000;
+
+/** Left free for the run's screenshots and traces, which matter more than its video. */
+const RESERVED_DISK_BYTES = 1024 ** 3;
+// Every video held here is written out once more when its participant ends, so each spool leaves
+// room for all of them.
+let heldBytes = 0;
+
+const statfsFreeBytes = async (directory: string): Promise<number> => {
+  const { bavail, bsize } = await statfs(directory);
+  return bavail * bsize;
+};
 
 // One listener for every participant: a listener each would pass Node's warning count.
 const liveDirectories = new Set<string>();
@@ -83,8 +94,10 @@ export interface RecordingSpool {
 export async function createRecordingSpool(options: {
   pieces: RecordingPieces;
   maxBytes: number;
+  /** The space free on the disk that holds the spool. */
+  freeBytes?: (directory: string) => Promise<number>;
 }): Promise<RecordingSpool> {
-  const { pieces, maxBytes } = options;
+  const { pieces, maxBytes, freeBytes = statfsFreeBytes } = options;
   const directory = await mkdtemp(path.join(tmpdir(), "humanish-recording-"));
   const file = path.join(directory, "desktop.mp4");
   // Append mode, so writes after a truncate land at the new end and leave no hole.
@@ -106,6 +119,7 @@ export async function createRecordingSpool(options: {
     try {
       await target.appendFile(data);
       bytes += data.length;
+      heldBytes += data.length;
     } catch (error) {
       // A partly written piece would corrupt every piece after it.
       await target.truncate(bytes);
@@ -114,6 +128,13 @@ export async function createRecordingSpool(options: {
   };
 
   const fits = (size: number): boolean => bytes + size <= maxBytes;
+
+  // A piece takes its size twice: here now, and again when the video is written out. A disk whose
+  // free space cannot be read records as it would have without this check.
+  const diskHasRoom = async (size: number): Promise<boolean> => {
+    const free = await freeBytes(directory).catch(() => Number.POSITIVE_INFINITY);
+    return free - RESERVED_DISK_BYTES - size >= heldBytes + size;
+  };
 
   const keepInit = async (): Promise<boolean> => {
     if (init) return true;
@@ -144,7 +165,7 @@ export async function createRecordingSpool(options: {
     for (const segment of segments.slice(kept)) {
       const data = await pieces.read(segment.name).catch(() => undefined);
       if (!data || data.length === 0) break;
-      if (!fits(data.length)) {
+      if (!fits(data.length) || !(await diskHasRoom(data.length))) {
         full = true;
         break;
       }
@@ -191,6 +212,7 @@ export async function createRecordingSpool(options: {
         await handle.close().catch(() => {});
         await rm(directory, { recursive: true, force: true });
         liveDirectories.delete(directory);
+        heldBytes -= bytes;
       }
     },
   };
