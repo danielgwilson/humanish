@@ -4,6 +4,7 @@ import { shellArg } from "../../substrates/shell.js";
 import { computeStats, formatStatsHuman } from "../../run/stats.js";
 import { DEFAULT_EXPORT_MAX_BYTES, exportRun, formatExportHuman } from "../../feedback/export.js";
 import { listRuns, readReview } from "../../run/stored-runs.js";
+import { parseRunAge, pruneRuns, type KeptReason, type PruneResult } from "../../run/prune.js";
 import { verifyRun } from "../../verify/verify.js";
 import {
   reclaimPreflightSandboxes,
@@ -179,16 +180,74 @@ export function registerStatsCommand(parent: Command, io: CliIo): void {
 }
 
 export function registerRunsCommand(parent: Command, io: CliIo): void {
-  parent
+  const runs = parent
     .command("runs")
     .description("List this project's runs and which one is latest.")
     .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
     .option("--json", JSON_OPTION_DESCRIPTION)
     .action(async (options: { cwd: string; json?: boolean }, command) => {
-      const result = await listRuns(options.cwd);
+      const result = await listRuns(options.cwd, { sizes: true });
       writeResult(command, io, result, formatRunsHuman);
       io.setExitCode(result.ok ? 0 : 2);
     });
+  runs
+    .command("prune")
+    .description(
+      "Remove this project's runs older than --older-than and print what they held. Without --yes it only reports. It keeps the latest run, a run still going, a remote run not yet copied back, and a run whose sandboxes were never confirmed stopped.",
+    )
+    .summary("Free disk by removing old runs.")
+    .requiredOption(
+      "--older-than <age>",
+      "Age of the runs to remove, in days or hours, such as 30d or 12h. At least 1h.",
+      runAge,
+    )
+    .option("--yes", "Remove them. Without it nothing is deleted.")
+    .option("--cwd <path>", CWD_OPTION_DESCRIPTION, ".")
+    .option("--json", JSON_OPTION_DESCRIPTION)
+    .action(async (_options: unknown, command: Command) => {
+      // `runs` declares --cwd too and commander hands it the flag, so this reads both levels.
+      const options = command.optsWithGlobals<{ olderThan: number; yes?: boolean; cwd: string }>();
+      const result = await pruneRuns(options.cwd, {
+        olderThanMs: options.olderThan,
+        apply: options.yes === true,
+      });
+      writeResult(command, io, result, formatPruneHuman);
+      io.setExitCode(result.ok ? 0 : 2);
+    });
+}
+
+function runAge(text: string): number {
+  const parsed = parseRunAge(text);
+  if (parsed === null)
+    throw new InvalidArgumentError("Give an age of at least 1h in days or hours, such as 30d.");
+  return parsed;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  if (bytes >= 1024 ** 2) return `${Math.round(bytes / 1024 ** 2)} MB`;
+  return `${Math.ceil(bytes / 1024)} KB`;
+}
+
+const KEPT_LABEL: Record<KeptReason, string> = {
+  latest: "the latest run",
+  running: "still running",
+  "not-copied-back": "not copied back from its runner yet",
+  "sandboxes-unconfirmed": `its sandboxes were never confirmed stopped; run ${cli("reclaim --run <id>")} first`,
+};
+
+function formatPruneHuman(result: PruneResult): HumanOutput {
+  if (!result.ok && result.error) return humanError(result.error);
+  const count = plural(result.removable.length, "run");
+  const lines = [
+    ...result.removable.map((run) => `- ${run.runId} ${formatBytes(run.bytes)} ${run.createdAt}`),
+    ...result.kept.map((run) => `kept ${run.runId}: ${KEPT_LABEL[run.reason]}`),
+    ...result.failed.map((run) => `could not remove ${run.runId}: ${run.message}`),
+    result.applied
+      ? `Removed ${count}, freeing ${formatBytes(result.freedBytes)}.`
+      : `Would remove ${count}, freeing ${formatBytes(result.freedBytes)}. Nothing was deleted; add --yes to remove them.`,
+  ];
+  return `${lines.join("\n")}\n`;
 }
 
 /** A whole number of GiB or CPUs above zero, for `runtime setup --memory` and `--cpus`. */
@@ -526,8 +585,9 @@ function formatRunsHuman(result: RunsResult): HumanOutput {
       ...result.runs.map((run) => {
         const analysis = analysisPhaseLabel(run.analysis);
         const label = `${run.display?.label ?? "unreadable"}${analysis === undefined ? "" : `, ${analysis}`}`;
-        return `- ${run.runId} ${run.mode ?? "unknown"} ${label} ${run.createdAt ?? "unknown"} ${run.path}`;
+        return `- ${run.runId} ${run.mode ?? "unknown"} ${label} ${formatBytes(run.bytes ?? 0)} ${run.createdAt ?? "unknown"} ${run.path}`;
       }),
+      `${plural(result.runs.length, "run")}, ${formatBytes(result.totalBytes ?? 0)}. Free disk with ${cli("runs prune --older-than 30d")}.`,
     ].join("\n") + "\n"
   );
 }

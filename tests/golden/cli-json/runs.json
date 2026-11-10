@@ -6,6 +6,7 @@
     "ok": "boolean",
     "runs": [
       {
+        "bytes": "number",
         "createdAt": "string",
         "display": {
           "label": "string",
@@ -17,7 +18,8 @@
         "runId": "string"
       }
     ],
-    "schema": "string"
+    "schema": "string",
+    "totalBytes": "number"
   },
   "pinned": {
     "modes": [

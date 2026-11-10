@@ -1,7 +1,9 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, statfs } from "node:fs/promises";
 import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { plural } from "../run/text.js";
+import { listRuns } from "../run/stored-runs.js";
 import {
   DOCTOR_KEYS,
   analysisKeyNames,
@@ -286,6 +288,7 @@ async function projectChecks(projectRoot: PreparedSelectedOutputDirectory): Prom
     })(),
     await sourceCheck(projectRoot),
     await runtimeIgnoreCheck(projectRoot),
+    await runStorageCheck(projectRoot.physicalPath),
   ];
 }
 
@@ -299,6 +302,24 @@ async function sourceCheck(projectRoot: PreparedSelectedOutputDirectory) {
       ? "committed humanish/ source directory is present and safe to read"
       : `no readable humanish/ source directory; run ${cli("init --yes")}`,
   };
+}
+
+/** Never fails doctor: the disk a project's runs take is for its owner to judge. */
+async function runStorageCheck(projectRoot: string): Promise<DoctorCheck> {
+  const listed = await listRuns(projectRoot, { sizes: true });
+  const free = await statfs(projectRoot).then(
+    ({ bavail, bsize }) => `, ${gigabytes(bavail * bsize)} free on this disk`,
+    () => "",
+  );
+  return {
+    name: "run storage",
+    ok: true,
+    message: `${plural(listed.runs.length, "run")} in .humanish/runs take ${gigabytes(listed.totalBytes ?? 0)}${free}; ${cli("runs prune --older-than 30d")} previews a cleanup`,
+  };
+}
+
+function gigabytes(bytes: number): string {
+  return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
 
 async function runtimeIgnoreCheck(projectRoot: PreparedSelectedOutputDirectory) {

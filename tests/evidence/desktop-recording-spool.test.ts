@@ -1,3 +1,6 @@
+import { mkdir, mkdtemp, readdir, rm, utimes, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { Writable } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -306,5 +309,80 @@ describe("recording spool limits", () => {
     });
     await spool.pull();
     await expect(spool.finish(sink().destination)).rejects.toThrow("produced no video");
+  });
+});
+
+describe("recording spools a killed process left behind", () => {
+  const pieces: RecordingPieces = {
+    playlist: async () => "#EXTM3U\n",
+    read: async () => Buffer.alloc(0),
+    remove: async () => undefined,
+  };
+
+  async function withTemp(run: (root: string) => Promise<void>): Promise<void> {
+    const root = await mkdtemp(path.join(tmpdir(), "spool-sweep-"));
+    vi.stubEnv("TMPDIR", root);
+    try {
+      await run(root);
+    } finally {
+      vi.unstubAllEnvs();
+      await rm(root, { recursive: true, force: true });
+    }
+  }
+
+  async function leftover(
+    root: string,
+    name: string,
+    ageMs: number,
+    owner?: number,
+  ): Promise<void> {
+    const directory = path.join(root, name);
+    await mkdir(directory);
+    if (owner !== undefined) await writeFile(path.join(directory, "owner"), String(owner));
+    const file = path.join(directory, "desktop.mp4");
+    await writeFile(file, Buffer.alloc(16));
+    const when = new Date(Date.now() - ageMs);
+    await utimes(file, when, when);
+    await utimes(directory, when, when);
+  }
+
+  it("removes a spool nothing has written to for a day when the next one starts", async () => {
+    await withTemp(async (root) => {
+      await leftover(root, "humanish-recording-old", 25 * 3_600_000);
+      await createRecordingSpool({ pieces, maxBytes: 1024 });
+      expect(await readdir(root)).not.toContain("humanish-recording-old");
+    });
+  });
+
+  it("leaves a spool another run is still writing to", async () => {
+    await withTemp(async (root) => {
+      await leftover(root, "humanish-recording-active", 60_000);
+      await createRecordingSpool({ pieces, maxBytes: 1024 });
+      expect(await readdir(root)).toContain("humanish-recording-active");
+    });
+  });
+
+  it("removes a spool whose process has died, however recent", async () => {
+    await withTemp(async (root) => {
+      await leftover(root, "humanish-recording-dead", 60_000, 2_147_483_646);
+      await createRecordingSpool({ pieces, maxBytes: 1024 });
+      expect(await readdir(root)).not.toContain("humanish-recording-dead");
+    });
+  });
+
+  it("leaves a spool whose process is alive, however old", async () => {
+    await withTemp(async (root) => {
+      await leftover(root, "humanish-recording-paused", 72 * 3_600_000, process.pid);
+      await createRecordingSpool({ pieces, maxBytes: 1024 });
+      expect(await readdir(root)).toContain("humanish-recording-paused");
+    });
+  });
+
+  it("leaves other programs' folders alone", async () => {
+    await withTemp(async (root) => {
+      await leftover(root, "someone-else", 25 * 3_600_000);
+      await createRecordingSpool({ pieces, maxBytes: 1024 });
+      expect(await readdir(root)).toContain("someone-else");
+    });
   });
 });
