@@ -8,19 +8,14 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-`humanish runs` now shows each run's size and the project's total, and `humanish doctor` shows the
-total beside the free disk. `humanish runs prune --older-than 30d` lists the old runs it would
-remove and deletes nothing until you add `--yes`. It keeps the latest run, a run still going, a
-remote run not yet copied back, and a recent run whose sandboxes were never confirmed stopped. A
-run that ends with more than 5 GB of runs in its project says so. A recording's temporary copy
-that a killed process left behind is now removed the next time a recording starts.
+## 0.160.0: See what your runs keep on disk, and finish a remote copy that stopped (2026-11-10)
 
-A remote run whose copy back stops partway now finishes with `humanish observe --run <id>`. The copy
-continues from its last whole 64 MiB piece, rides out a dropped connection for two minutes, and
-leaves no partial file once it is done. Before, a launcher killed during the copy left a hidden
-partial file, a run that would not open, and no way to retry. A copy also checks this machine's free
-disk before a large file and leaves 1 GiB free; when there is no room, the rest of the run is copied
-and the video stays on the runner until you free space and finish.
+humanish 0.160.0 shows what your runs keep on disk and lets you clear old ones. `humanish runs`
+lists each run's size, and `humanish runs prune` removes old runs after you confirm. A remote run
+whose copy back stops partway can now be finished, so a killed terminal or a dropped connection no
+longer strands a long recording.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.160.0)
 
 ## 0.159.0: A hosted recording survives a lost sandbox and covers an 8-hour session (2026-11-10)
 
