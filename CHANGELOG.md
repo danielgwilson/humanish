@@ -8,19 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-### Changed
+## 0.159.0: A hosted recording survives a lost sandbox and covers an 8-hour session (2026-11-10)
 
-- Desktop recordings on E2B and Modal are copied off the sandbox while the
-  participant runs. A sandbox lost mid-run now leaves a playable partial video, and the limit per
-  participant rises from 128 MiB to 2 GiB, enough for more than 8 hours of an ordinary session.
-  Unchanged frames are dropped, with at least one frame a second. The file is still
-  `recordings/<participant>/desktop.mp4`. Recording stays opt-in and `local_only`, and local VM
-  recordings are unchanged.
-- A remote run copies a file larger than 64 MiB back one checked range at a time, so a long
-  recording no longer has to fit in memory on either machine. The runner stays up four minutes
-  longer per recording to leave time for the copy.
-- A recording stops, and is marked partial, when the disk it is kept on has less than 1 GiB free
-  beyond the room the videos in progress need.
+humanish 0.159.0 keeps long desktop recordings on E2B and Modal. A recording is copied off its
+sandbox while the participant runs, so a sandbox lost mid-run still leaves a playable video. The
+limit per participant rises from 128 MiB to 2 GiB, more than 8 hours of an ordinary session, and a
+remote run brings a file that large back a checked range at a time. Recording stays opt-in and
+`local_only`.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.159.0)
 
 ## 0.158.0: A participant on a phone shows a fingertip (2026-11-05)
 
