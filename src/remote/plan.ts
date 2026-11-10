@@ -17,6 +17,9 @@ const RUNNER_SETUP_MS = 10 * 60_000;
 /** Time the runner needs after the study ends: syncing the run back and a margin. */
 const RUNNER_TEARDOWN_MS = 15 * 60_000;
 
+/** Time to copy back one recording at its size limit, at the 10 MiB/s of a slow E2B read. */
+const RUNNER_RECORDING_COPY_MS = 4 * 60_000;
+
 /** Settings the plan reads from the environment, which the remote run must read the same way. */
 const PLAN_SETTINGS = [
   "HUMANISH_E2B_MAX_SANDBOX_MINUTES",
@@ -113,7 +116,11 @@ export function planRemoteRun(args: {
       ? { HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES: String(args.concurrentSandboxes - 1) }
       : {};
   const runnerMs =
-    RUNNER_SETUP_MS + route.studyMs + (plan.analysis?.config.timeoutMs ?? 0) + RUNNER_TEARDOWN_MS;
+    RUNNER_SETUP_MS +
+    route.studyMs +
+    (plan.analysis?.config.timeoutMs ?? 0) +
+    RUNNER_TEARDOWN_MS +
+    route.recordings * RUNNER_RECORDING_COPY_MS;
   if (runnerMs > args.ceilingMs)
     return refuse(
       `the study needs its runner for up to ${minutes(runnerMs)} minutes, longer than the ${minutes(args.ceilingMs)} minutes ${route.provider === "modal" ? "Modal" : "E2B"} keeps a sandbox.`,
@@ -145,6 +152,8 @@ interface RemoteRoute {
   sandboxes: number;
   /** How long the study itself can run: its participants' last end. */
   studyMs: number;
+  /** How many desktop recordings the run can leave for the copy back. */
+  recordings: number;
   /** Project-relative files the study reads, beyond the study file and participant files. */
   uploads: string[];
   /** Key names of which the run reads only the first one set. */
@@ -185,6 +194,7 @@ function computerUseRoute(config: StudyConfig, plan: ComputerUsePlan): RemoteRou
     // which delays no one while the schedule's peak fits under it.
     sandboxes: config.execution?.concurrency === undefined ? plan.arrivals.peak : plan.concurrency,
     studyMs: plan.arrivals.lastEndMs,
+    recordings: config.execution?.desktop?.recording === undefined ? 0 : runner.participants.length,
     uploads: [],
     alternatives: [],
     plainKeys: [],
@@ -234,6 +244,7 @@ function terminalRoute(
     route: "terminal",
     provider: plan.sandboxProvider,
     sandboxes: 1,
+    recordings: 0,
     studyMs: terminalSandboxTimeoutMs({
       maxMinutes: plan.caps.maxMinutes,
       productInstall: plan.product.install !== undefined,

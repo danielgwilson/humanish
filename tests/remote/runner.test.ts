@@ -1,20 +1,14 @@
-import { execFile, spawn } from "node:child_process";
-import { createReadStream } from "node:fs";
+import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Readable } from "node:stream";
 
 import { describe, expect, it } from "vitest";
 
 import type { Sandbox } from "@e2b/desktop";
 
-import {
-  followRemoteRun,
-  joinJournals,
-  runnerKeys,
-  watchSignals,
-} from "../../src/remote/launch.js";
+import { followRemoteRun, runnerKeys, watchSignals } from "../../src/remote/launch.js";
+import { joinJournals } from "../../src/remote/copy-back.js";
 import {
   listRemoteRun,
   parseDigests,
@@ -27,6 +21,7 @@ import {
   type Runner,
 } from "../../src/remote/runner.js";
 import { createRunArtifactPaths } from "../../src/run/paths.js";
+import { localRunner } from "../helpers/local-runner.js";
 import { E2B_SYSTEM_CA_BUNDLE, EGRESS_PLACEHOLDER } from "../../src/substrates/e2b/egress-keys.js";
 
 // The runner's network is checked against the installed Desktop SDK's create overload.
@@ -172,39 +167,6 @@ describe("setting up a runner", () => {
     ).rejects.toThrow(/Installing Node failed in the runner sandbox \(exit 22\).*503/);
   });
 });
-
-/** A runner whose commands and file reads run on this machine, in a home directory of their own. */
-async function localRunner() {
-  const home = await mkdtemp(path.join(tmpdir(), "humanish-runner-home-"));
-  const runner = {
-    sandbox: {
-      files: {
-        read: async (file: string) =>
-          Readable.toWeb(createReadStream(path.join(home, file))) as ReadableStream<Uint8Array>,
-      },
-    },
-    shell: {
-      run: (command: string) =>
-        new Promise((resolve) => {
-          execFile(
-            "bash",
-            ["-c", command],
-            { cwd: home, env: { ...process.env, HOME: home }, encoding: "utf8" },
-            (error, stdout, stderr) =>
-              resolve({
-                exitCode: error === null ? 0 : typeof error.code === "number" ? error.code : 1,
-                stdout,
-                stderr,
-              }),
-          );
-        }),
-    },
-  } as unknown as Runner;
-  const runDir = path.join(home, "project", ".humanish", "runs", "cua-remote");
-  await mkdir(runDir, { recursive: true });
-  await mkdir(path.join(home, ".humanish-remote"), { recursive: true });
-  return { home, runner, runDir };
-}
 
 describe("waiting on the runner's run", () => {
   it("answers as soon as the run writes its result, well before the wait ends", async () => {

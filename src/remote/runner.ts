@@ -7,7 +7,7 @@ import path from "node:path";
 
 import type { E2BDesktopSandbox } from "../substrates/e2b/sdk.js";
 import { e2bShell } from "../substrates/e2b/shell.js";
-import { shellQuote, type Shell, type ShellResult } from "../substrates/shell.js";
+import { shellQuote, withinDeadline, type Shell, type ShellResult } from "../substrates/shell.js";
 import { tailOf } from "../substrates/shell.js";
 
 /** The project directory in the runner, under the sandbox user's home on both providers. */
@@ -438,8 +438,16 @@ async function readRunnerBytes(runner: Runner, file: string): Promise<Uint8Array
   return Buffer.concat(parts);
 }
 
-/** The most bytes one batch of a copy joins into one runner file. */
-const COPY_BATCH_BYTES = 64 * 1024 * 1024;
+/**
+ * The most bytes one batch of a copy joins into one runner file, and so the most a copy holds in
+ * memory. A file past this is copied a range of this size at a time.
+ */
+export const COPY_BATCH_BYTES = 64 * 1024 * 1024;
+/** How many times one range is read before the copy gives up, for a network that drops a read. */
+const RANGE_ATTEMPTS = 3;
+const RANGE_RETRY_MS = 1_000;
+/** A range takes seconds; past this its connection has stalled, which no SDK timeout covers. */
+const RANGE_DEADLINE_MS = 300_000;
 /** The most files one batch of a copy names on its command line. */
 const COPY_BATCH_FILES = 200;
 /** The runner file a batch is joined into, under the sandbox user's home. */
@@ -485,6 +493,72 @@ export async function readRemoteFiles(
     await runner.shell
       .run(`rm -f "$HOME/${COPY_FILE}"`, { timeoutMs: 30_000 })
       .catch(() => undefined);
+}
+
+/**
+ * Hand `take` one file of the runner's run directory in order, a range at a time. Each range is
+ * checked against a digest the runner takes of it and read again if it arrived damaged; the whole
+ * file is then checked against its listed digest.
+ */
+export async function readRemoteFileInRanges(
+  runner: Runner,
+  runId: string,
+  file: RemoteFile,
+  take: (range: Uint8Array) => Promise<void>,
+): Promise<void> {
+  const dir = `${RUNNER_PROJECT}/.humanish/runs/${runId}`;
+  const whole = createHash("sha256");
+  const ranges = Math.ceil(file.size / COPY_BATCH_BYTES);
+  for (let index = 0; index < ranges; index += 1) {
+    const expected = Math.min(COPY_BATCH_BYTES, file.size - index * COPY_BATCH_BYTES);
+    const range = await readRangeWithRetries(runner, dir, file.path, index, expected);
+    whole.update(range);
+    await take(range);
+  }
+  if (whole.digest("hex") !== file.sha256)
+    throw new Error(`${file.path} changed or arrived damaged while it was copied from the runner.`);
+  await runner.shell
+    .run(`rm -f "$HOME/${COPY_FILE}"`, { timeoutMs: 30_000 })
+    .catch(() => undefined);
+}
+
+async function readRangeWithRetries(
+  runner: Runner,
+  dir: string,
+  file: string,
+  index: number,
+  expected: number,
+): Promise<Uint8Array> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await readRange(runner, dir, file, index, expected);
+    } catch (error) {
+      if (attempt >= RANGE_ATTEMPTS) throw error;
+      await new Promise((resolve) => setTimeout(resolve, RANGE_RETRY_MS));
+    }
+  }
+}
+
+async function readRange(
+  runner: Runner,
+  dir: string,
+  file: string,
+  index: number,
+  expected: number,
+): Promise<Uint8Array> {
+  const cut = await runOrFail(
+    runner,
+    "Copying the run",
+    `cd ${shellQuote(dir)} && dd if=${shellQuote(file)} of="$HOME/${COPY_FILE}" bs=${COPY_BATCH_BYTES} skip=${index} count=1 iflag=fullblock status=none && sha256sum < "$HOME/${COPY_FILE}"`,
+    RANGE_DEADLINE_MS,
+  );
+  const bytes = await withinDeadline(readRunnerBytes(runner, COPY_FILE), RANGE_DEADLINE_MS);
+  if (
+    bytes.byteLength !== expected ||
+    createHash("sha256").update(bytes).digest("hex") !== cut.stdout.trim().split(/\s/)[0]
+  )
+    throw new Error(`${file} changed or arrived damaged while it was copied from the runner.`);
+  return bytes;
 }
 
 function batches(files: readonly RemoteFile[]): RemoteFile[][] {

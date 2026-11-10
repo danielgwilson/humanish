@@ -14,7 +14,7 @@ import {
   type DesktopRecordingAudioSource,
   type DesktopRecordingMetadata,
 } from "../../evidence/desktop-recording-types.js";
-import { runOrThrow, shellQuote, type Shell } from "../shell.js";
+import { runOrThrow, shellQuote, withinDeadline, type Shell } from "../shell.js";
 import type { E2BCommandResult, E2BDesktopSandbox } from "./sdk.js";
 import { e2bShell } from "./shell.js";
 
@@ -220,22 +220,13 @@ async function stopRecorder(
   return { forced };
 }
 
-/** Rejects when a sandbox call outlives its deadline: some providers ignore their own timeouts. */
-async function withinDeadline<T>(work: Promise<T>, deadlineMs: number): Promise<T> {
-  let timer: NodeJS.Timeout | undefined;
-  return Promise.race([
-    work,
-    new Promise<never>((_resolve, reject) => {
-      timer = setTimeout(() => reject(new Error("Sandbox call timed out.")), deadlineMs);
-    }),
-  ]).finally(() => clearTimeout(timer));
-}
+/** Past 30 s of full-screen noise at 1080p, the most the encoder produced; a piece sits in memory. */
+const LARGEST_PIECE_BYTES = 512 * 1024 * 1024;
 
 /** Reads one piece of the recording into memory; a piece is one short segment of video. */
 async function readPiece(
   desktop: E2BDesktopSandbox,
   name: string,
-  maxBytes: number,
   requestTimeoutMs: number,
 ): Promise<Buffer> {
   const web = await desktop.files.read!(`${OUTPUT_DIRECTORY}/${name}`, {
@@ -249,7 +240,7 @@ async function readPiece(
   for await (const chunk of Readable.fromWeb(web)) {
     const piece = Buffer.from(chunk as Uint8Array);
     bytes += piece.length;
-    if (bytes > maxBytes) throw new Error("Recording segment exceeds the size limit.");
+    if (bytes > LARGEST_PIECE_BYTES) throw new Error("Recording segment exceeds the size limit.");
     chunks.push(piece);
   }
   return Buffer.concat(chunks);
@@ -258,7 +249,6 @@ async function readPiece(
 function sandboxPieces(
   desktop: E2BDesktopSandbox,
   shell: Shell,
-  maxBytes: number,
   requestTimeoutMs: number,
 ): RecordingPieces {
   const options = { timeoutMs: 15_000, requestTimeoutMs };
@@ -274,8 +264,7 @@ function sandboxPieces(
           requestTimeoutMs,
         )
       ).stdout,
-    read: (name) =>
-      withinDeadline(readPiece(desktop, name, maxBytes, requestTimeoutMs), requestTimeoutMs),
+    read: (name) => withinDeadline(readPiece(desktop, name, requestTimeoutMs), requestTimeoutMs),
     remove: async (names) => {
       await withinDeadline(
         runOrThrow(
@@ -370,7 +359,7 @@ export async function startE2BDesktopRecording(
     failStartup(error, recorder),
   );
   const spool = await createRecordingSpool({
-    pieces: sandboxPieces(options.desktop, shell, maxBytes, requestTimeoutMs),
+    pieces: sandboxPieces(options.desktop, shell, requestTimeoutMs),
     maxBytes,
   }).catch((error: unknown) => failStartup(error, recorder));
   const pulling = startPulling(spool, () =>

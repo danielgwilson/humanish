@@ -95,6 +95,24 @@ describe("a computer-use study on hosted desktops with a public app", () => {
     );
   });
 
+  it("keeps the runner long enough to copy back one full recording per participant", () => {
+    const execution = { target: "e2b-desktop", timeoutMs: 600_000 } as const;
+    const plain = study("cuAppUrl", { ...PUBLIC_APP, execution });
+    const recorded = study("cuAppUrl", {
+      ...PUBLIC_APP,
+      execution: { ...execution, desktop: { recording: { audio: false } } },
+    });
+    const without = remote(plain);
+    const withVideo = remote(recorded);
+    if (!without.ok || !withVideo.ok) throw new Error("not remote");
+    const planned = planStudy(recorded, { cwd, dryRun: false });
+    if (!planned.ok || planned.planned.plan.route !== "computer-use")
+      throw new Error("not planned");
+    expect(withVideo.plan.runnerMs - without.plan.runnerMs).toBe(
+      planned.planned.plan.runner.participants.length * 4 * 60_000,
+    );
+  });
+
   it("is refused when its runner would outlive the provider's sandbox lifetime", () => {
     const result = remote(
       study("cuAppUrl", {

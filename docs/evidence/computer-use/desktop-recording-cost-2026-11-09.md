@@ -72,9 +72,37 @@ time, on the old single-file format and on the fragments joined.
 A joined recording of 4 hours and 717 MB opened in Chrome in 2 s and seeked in 76 to 820 ms from a
 local server.
 
+## Long recordings on a remote run (2026-11-10)
+
+A remote run now copies a file over 64 MiB in checked ranges, and the limit is 2 GiB. To reach that
+size in minutes, these runs recorded a page that repaints every pixel with noise, which encodes at
+about 6 MB/s. Ordinary sessions on this page are about 200 times smaller per hour.
+
+| Provider | Recording copied back | Complete | Launcher peak memory | Result |
+|-|-|-|-|-|
+| E2B | 2,019 MiB, 342 s | yes | 452 MB | `verify` ok, `local_only` |
+| Modal | 1,181 MiB, 198 s | yes | 545 MB | `verify` ok, `local_only` |
+| E2B, 12 min page | 1,913 MiB, 331 s | no, reached the limit | 447 MB | `verify` ok, `local_only` |
+| Modal, 12 min page | 1,984 MiB, 331 s | no, reached the limit | 505 MB | `verify` ok, `local_only` |
+
+The first two rows ran on the final code. The last two ran before two review fixes and show a
+recording stopping at the limit while its participant goes on.
+
+A runner sandbox has 21 GB free on E2B and 504 GB on Modal. A 512 MiB read took 37 s on E2B (14 MiB/s)
+and 3.7 s on Modal (139 MiB/s). A recording at the limit therefore copies back in about 2.5 minutes
+on E2B.
+
+A 1.9 GB video at an ordinary bitrate, 22 hours long and fragmented every 30 s, took 10 of 10 Chrome
+seeks without a failure, in 72 to 647 ms from a local server. The noise recordings are different: at
+sizes from about 1.3 GB, seeking crashed the Chrome page in 10 of 21 tries, while a 559 MB and a 939 MB
+prefix of the same file did not crash in 11 tries. Those files hold 180 MB in each 30-second fragment,
+which no ordinary session approaches. The cause was not found.
+
 ## Not measured
 
-- A recording long enough to reach the 256 MiB limit, about 2 to 3 hours at these rates.
+- An 8-hour recording at its real length. The sizes above are reached by bitrate, and the 22-hour
+  file was built by looping a real recording.
+- A disk that really fills. The stop is tested against a reported free-space figure.
 - Modal's CPU ceiling. The sandbox requests 2 cores and shows 18, so its row may include bursting.
 - Seek time over a remote connection.
 - Whether continuous video changes participant behavior. It is opt-in and off by default.
