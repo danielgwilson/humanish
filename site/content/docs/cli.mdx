@@ -37,6 +37,7 @@ humanish [options] [command]
 - [humanish runs](#humanish-runs): List this project's runs and which one is latest.
 - [humanish stats](#humanish-stats): Show cost, outcomes and durations across runs.
 - [humanish study](#humanish-study): List, show and check studies in humanish/studies/.
+- [humanish personas](#humanish-personas): Build persona files from an export of real sessions.
 - [humanish migrate](#humanish-migrate): Convert v2 study files to v3.
 - [humanish comms](#humanish-comms): Catch the email an app sends, for email-gated flows.
 - [humanish runtime](#humanish-runtime): Prepare or inspect the local browser runtime.
@@ -535,6 +536,43 @@ humanish study check [options] <study>
 | `--reachability <mode>` | Reachability mode. (choices: "metadata", "public-preview", "sandbox-loopback", "prepared-host", default: "metadata") |
 | `--timeout-ms <ms>` | Target reachability timeout. (default: "30000") |
 | `--dotenv <path>` | Load unset variables from this dotenv file. Values are never printed or saved. |
+| `--json` | Print a machine-readable JSON response. |
+| `-h, --help` | Show help for this command. |
+
+## humanish personas
+
+Build persona files from an export of real sessions.
+
+```text
+humanish personas [options] [command]
+```
+
+| Option | Description |
+| --- | --- |
+| `-h, --help` | Show help for this command. |
+
+### humanish personas build
+
+Build one persona file per drawn session from an export of real sessions, JSON Lines or one JSON array of flat objects. Only fields whose values are numbers or true and false are read; text, nested values and fields named like an identifier or a time are skipped and listed. Prints the participants block that gives each participant one of the personas.
+
+```text
+humanish personas build [options] <sessions-file>
+```
+
+| Argument | Description |
+| --- | --- |
+| `sessions-file` | The export: one session per line, or one JSON array. |
+
+| Option | Description |
+| --- | --- |
+| `--count <n>` | How many personas to build. Default: every session, up to 50. |
+| `--seed <n>` | Which sessions are drawn; the same seed draws the same ones. (default: "1") |
+| `--measures <fields>` | Comma-separated fields to read; the others are skipped. |
+| `--habits <file>` | A humanish.habits.v1 YAML file with your own sentence for each measure. |
+| `--prefix <id>` | The start of each persona id and file name. (default: "visitor") |
+| `--out <dir>` | Where to write the files. (default: ".humanish/local/personas") |
+| `--force` | Replace persona files that are already there. |
+| `--cwd <path>` | Project directory. (default: ".") |
 | `--json` | Print a machine-readable JSON response. |
 | `-h, --help` | Show help for this command. |
 

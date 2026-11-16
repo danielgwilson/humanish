@@ -24,6 +24,7 @@ import { registerStudyCommands } from "./commands/study.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
 import { registerNotesCommand } from "./commands/notes.js";
 import { registerObserveCommand } from "./commands/observe.js";
+import { registerPersonasCommands } from "./commands/personas.js";
 import {
   registerExportCommand,
   registerReclaimCommand,
@@ -488,6 +489,7 @@ export function createProgram(
   registerRunsCommand(program, cliIo);
   registerStatsCommand(program, cliIo);
   registerStudyCommands(program, cliIo);
+  registerPersonasCommands(program, cliIo);
   registerMigrateCommand(program, cliIo);
   registerCommsCommands(program, cliIo);
   registerRuntimeCommands(program, cliIo);

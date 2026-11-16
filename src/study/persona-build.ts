@@ -10,11 +10,11 @@ import { personaTitleFromId } from "./persona-resolve.js";
 /** The most sessions drawn when `--count` is not given. */
 export const DEFAULT_PERSONA_COUNT = 50;
 /** A study has at most 100 participants, so a build has at most 100 personas. */
-export const MAX_PERSONA_COUNT = 100;
+const MAX_PERSONA_COUNT = 100;
 export const DEFAULT_PERSONA_SEED = 1;
 export const DEFAULT_PERSONA_PREFIX = "visitor";
 
-// prose-check: model prompt
+// The first line of each background when no habits file gives an intro. Participants read it.
 const DEFAULT_INTRO =
   "How this person used this app on an earlier visit, which is how they use it now:";
 
@@ -30,7 +30,7 @@ export interface PersonaBuildInput {
   habitsText?: string;
 }
 
-export type MeasureKind = "number" | "yes/no";
+type MeasureKind = "number" | "yes/no";
 
 /** Why a field in the export is not read into any persona. */
 export type SkipReason =
@@ -53,7 +53,7 @@ export type PersonaBuildErrorCode =
   | "HUMANISH_PERSONAS_INVALID_OPTION"
   | "HUMANISH_PERSONAS_INVALID_HABITS";
 
-export interface PersonaBuildError {
+interface PersonaBuildError {
   code: PersonaBuildErrorCode;
   message: string;
   /** The line of the sessions file that is not a session. */
