@@ -39,7 +39,7 @@
             960,
             720
           ],
-          "instructionDigest": "9cd5cf5309bc5e74",
+          "instructionDigest": "b01104d16d4ad8a7",
           "reasoningEffort": "low"
         }
       ]
@@ -146,7 +146,7 @@
     "persona": {
       "id": "cua-operator",
       "traitsApplied": [],
-      "promptDigest": "9cd5cf5309bc5e74"
+      "promptDigest": "b01104d16d4ad8a7"
     },
     "redaction": {
       "status": "passed",
@@ -311,14 +311,14 @@
         "id": "cua-operator",
         "name": "Computer-use operator (cua-operator)",
         "source": "study:local-vm-golden",
-        "sourceDigest": "9cd5cf5309bc5e74"
+        "sourceDigest": "b01104d16d4ad8a7"
       },
       "scenario": {
         "id": "cua-local-vm-golden",
         "title": "Computer-use run: local-vm-golden",
-        "goal": "You are a desktop user (custom, 960x720).\n\nSave a synthetic note.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "goal": "You are a desktop user (custom, 960x720).\n\nSave a synthetic note.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
         "source": "study:local-vm-golden",
-        "sourceDigest": "9cd5cf5309bc5e74"
+        "sourceDigest": "b01104d16d4ad8a7"
       },
       "packageName": "humanish",
       "redaction": {
@@ -475,14 +475,14 @@
       "id": "cua-operator",
       "name": "Computer-use operator (cua-operator)",
       "source": "study:local-vm-golden",
-      "sourceDigest": "9cd5cf5309bc5e74"
+      "sourceDigest": "b01104d16d4ad8a7"
     },
     "scenario": {
       "id": "cua-local-vm-golden",
       "title": "Computer-use run: local-vm-golden",
-      "goal": "You are a desktop user (custom, 960x720).\n\nSave a synthetic note.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "goal": "You are a desktop user (custom, 960x720).\n\nSave a synthetic note.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
       "source": "study:local-vm-golden",
-      "sourceDigest": "9cd5cf5309bc5e74"
+      "sourceDigest": "b01104d16d4ad8a7"
     },
     "lifecycle": [
       {
@@ -516,7 +516,8 @@
         "simId": "sim-001",
         "laneId": "lane-01",
         "assignment": {
-          "mission": "Save a synthetic note."
+          "mission": "Save a synthetic note.",
+          "typing": "When you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up."
         },
         "kind": "browser",
         "label": "Cua operator",
@@ -557,7 +558,7 @@
           "persona": {
             "id": "cua-operator",
             "traitsApplied": [],
-            "promptDigest": "9cd5cf5309bc5e74"
+            "promptDigest": "b01104d16d4ad8a7"
           },
           "redaction": {
             "status": "passed",

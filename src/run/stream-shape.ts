@@ -71,8 +71,9 @@ function isRunDesktopRecording(value: unknown): value is RunDesktopRecording {
 function isRunParticipantAssignment(value: unknown): value is RunParticipantAssignment {
   return (
     isRecord(value) &&
-    Object.keys(value).every((key) => key === "mission" || key === "focus" || key === "tasks") &&
+    Object.keys(value).every((key) => ["mission", "typing", "focus", "tasks"].includes(key)) &&
     typeof value.mission === "string" &&
+    (value.typing === undefined || value.typing === false || typeof value.typing === "string") &&
     (value.focus === undefined || typeof value.focus === "string") &&
     (value.tasks === undefined ||
       (Array.isArray(value.tasks) &&

@@ -59,6 +59,7 @@ import {
   type ObserverServer,
 } from "../../../src/observer/render.js";
 import type { LocalTreeArchive } from "../../../src/subject/local-tree-archive.js";
+import { DEFAULT_TYPING } from "../../../src/routes/computer-use/participant-prompt.js";
 import { runSharedWorld } from "../../helpers/route-run.js";
 import {
   baseSeams,
@@ -126,6 +127,7 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
     expect(bundle.streams.map((stream) => stream.assignment)).toEqual(
       [1, 2, 3].map((i) => ({
         mission: "Use the shared app with [REDACTED_SECRET].",
+        typing: DEFAULT_TYPING,
         focus: `Review section ${i}.`,
       })),
     );
@@ -914,9 +916,9 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
       expect(
         (JSON.parse(persistedRunText) as RunBundle).streams.map((stream) => stream.assignment),
       ).toEqual([
-        { mission: "Use the shared app with [REDACTED_SECRET]." },
-        { mission: "Use the shared app with [REDACTED_SECRET]." },
-        { mission: "Use the shared app with [REDACTED_SECRET]." },
+        { mission: "Use the shared app with [REDACTED_SECRET].", typing: DEFAULT_TYPING },
+        { mission: "Use the shared app with [REDACTED_SECRET].", typing: DEFAULT_TYPING },
+        { mission: "Use the shared app with [REDACTED_SECRET].", typing: DEFAULT_TYPING },
       ]);
       expect(persistedRunText).not.toContain("test-openai-key");
       expect(persistedRunText).not.toContain("fake-auth-key");

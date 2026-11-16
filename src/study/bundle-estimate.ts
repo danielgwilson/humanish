@@ -8,9 +8,9 @@
 // passes verify's 32 MiB long before run.json passes analysis's 16 MiB: at these rates, 20
 // participants working 8 hours. From run bundle v4 run.json grows by participant, not by model
 // request: each participant's per-request lists are only in its trace. run.json holds each
-// participant's text, its mission, its instruction and its task goals, in its stream and again in
-// the feedback candidate of a participant that reports friction or stops, and the first
-// participant's once more in the scenario goal. A synthetic live run of 3 participants that all
+// participant's text, its mission, its typing text, its instruction and its task goals, in its
+// stream and again in the feedback candidate of a participant that reports friction or stops, and
+// the first participant's once more in the scenario goal. A synthetic live run of 3 participants that all
 // reported friction held their instructions 3, 2 and 2 times, and the mission and each of 2 task
 // goals 7 times. None of the three fields is capped, and the estimate counts the feedback
 // candidate's copy for every participant, so it warns at 100 participants with 75,238 bytes of
@@ -125,7 +125,12 @@ const MIB = 1024 * 1024;
 export interface EstimatedParticipant {
   readonly schedule: ParticipantSchedule;
   readonly limits: { readonly dwell?: DwellWindow };
-  readonly assignment: { readonly mission?: string; readonly focus?: string };
+  readonly assignment: {
+    readonly mission?: string;
+    /** actor.typing. Only declared text is counted: the built-in paragraph is about 300 bytes. */
+    readonly typing?: string | false;
+    readonly focus?: string;
+  };
   readonly tasks?: readonly { readonly goal: string }[];
 }
 
@@ -135,6 +140,7 @@ export interface EstimatedParticipant {
  */
 const COPIED_FIELDS = Object.freeze({
   mission: "shorten the mission (actor.mission)",
+  typing: "shorten the paragraph on typing (actor.typing)",
   focus:
     "shorten the participants' instructions (participants.instruction or participants[].instruction)",
   tasks: "shorten the task goals (actor.tasks[].goal)",
@@ -186,7 +192,7 @@ export function estimateBundle(
   let traces = 0;
   let largestTrace = 0;
   // The bytes of each copied field over all participants, and the longest participant's text.
-  const fieldBytes: Record<CopiedField, number> = { mission: 0, focus: 0, tasks: 0 };
+  const fieldBytes: Record<CopiedField, number> = { mission: 0, typing: 0, focus: 0, tasks: 0 };
   let longestText = 0;
   let longestWindowMs = 0;
   // The longest any participant without an end is counted, for the messages.
@@ -215,14 +221,16 @@ export function estimateBundle(
     traces += trace;
     largestTrace = Math.max(largestTrace, trace);
     const mission = storedBytes(assignment.mission);
+    const typing = storedBytes(assignment.typing === false ? undefined : assignment.typing);
     const focus = storedBytes(assignment.focus);
     const goals = tasks.reduce((sum, task) => sum + storedBytes(task.goal), 0);
     fieldBytes.mission += mission;
+    fieldBytes.typing += typing;
     fieldBytes.focus += focus;
     fieldBytes.tasks += goals;
-    longestText = Math.max(longestText, mission + focus + goals);
+    longestText = Math.max(longestText, mission + typing + focus + goals);
   }
-  const textBytes = fieldBytes.mission + fieldBytes.focus + fieldBytes.tasks;
+  const textBytes = fieldBytes.mission + fieldBytes.typing + fieldBytes.focus + fieldBytes.tasks;
   // Sorting is stable, so of fields with equal bytes the first declared is named.
   const [largestField] = (Object.keys(fieldBytes) as CopiedField[])
     .filter((field) => fieldBytes[field] > 0)
@@ -279,7 +287,7 @@ export function bundleLimitReason(estimate: BundleEstimate): string | undefined 
   const passed = [
     ...(runFile
       ? [
-          `This study's run.json may grow to about ${mib(estimate.runFileBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads. It holds the mission, the task goals and each participant's instruction in that participant's stream, and again in the feedback candidate of each participant that reports friction or stops. It holds the first participant's mission, instruction and task goals once more for the run, and the estimate counts a feedback candidate for every participant.`,
+          `This study's run.json may grow to about ${mib(estimate.runFileBytes)}, past the ${mib(EVIDENCE_LIMITS.sourceBytes)} analysis reads. It holds the mission, the paragraph on typing, the task goals and each participant's instruction in that participant's stream, and again in the feedback candidate of each participant that reports friction or stops. It holds the first participant's mission, paragraph on typing, instruction and task goals once more for the run, and the estimate counts a feedback candidate for every participant.`,
         ]
       : []),
     ...(estimate.largestTraceBytes > RUN_ARTIFACT_MAX_BYTES

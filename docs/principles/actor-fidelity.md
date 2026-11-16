@@ -88,6 +88,16 @@ contract (large, cheap, replicated), and grounding a persona in specifics rather
 than exhorting it to be faithful (interview-grounded personas measurably beat prose
 descriptions).
 
+The paragraph on typing that every computer-use and shared-world participant reads after
+its mission (`DEFAULT_TYPING` in `src/routes/computer-use/participant-prompt.ts`, set per
+study with `actor.typing`) is a narrow instruction of the countable kind. It names what
+people type: a few plain words, often no greeting or thank-you, one thing at a time, and a
+search only as long as the result needs. The same Sim2Real paper reports that simulated
+users are more polite, write longer turns and give their information up front. In support
+chat tasks with the paragraph, participants' turn length, opening message and details per
+turn moved close to people's. How they used the rest of the app did not change, and their
+search queries stayed longer than people's.
+
 ### Outcome-only scoring cannot see modality
 
 WebArena's URL evaluator scores on the final page URL, so a single `goto` to the

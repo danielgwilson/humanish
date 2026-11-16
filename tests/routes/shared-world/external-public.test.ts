@@ -30,6 +30,7 @@ import {
   createE2BDesktopExecutor,
   type E2BDesktopLike,
 } from "../../../src/substrates/e2b/desktop-executor.js";
+import { DEFAULT_TYPING } from "../../../src/routes/computer-use/participant-prompt.js";
 import { admitSharedWorldPlan } from "../../../src/routes/shared-world/route.js";
 import { planSharedWorldStudy } from "../../../src/routes/shared-world/plan.js";
 import { extractLobbyCode } from "../../../src/routes/shared-world/lobby-code.js";
@@ -696,6 +697,7 @@ describe("host-first handoff barrier + convergence", () => {
     expect(assigned).toEqual(
       participantList(config)!.map((lane) => ({
         mission: actor.mission,
+        typing: DEFAULT_TYPING,
         ...(lane.instruction === undefined ? {} : { focus: lane.instruction }),
       })),
     );
