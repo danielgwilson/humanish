@@ -1026,20 +1026,21 @@ each persona's `background`; a run never reads it.
 
 ```yaml
 schema: humanish.habits.v1
-intro: "How this person plays the photo quiz:" # optional, one line
+intro: "How this person plans a trip:" # optional, one line
 measures: # optional; a field it does not list keeps the default line
-  rounds_played: # a number field: zero, one, other
-    zero: they leave before finishing a round
-    one: they play one round
-    other: they play about {value} rounds
-  used_a_hint: # a true/false field: "true", "false"
-    "true": they use a hint when a photo is hard
-    "false": they never use a hint
+  stops_added: # a number field: zero, one, other
+    zero: they leave before adding a stop
+    one: they add one stop
+    other: they add about {value} stops
+  shared_the_plan: # a true/false field: "true", "false"
+    "true": they share the plan with a friend
+    "false": they keep the plan to themselves
 ```
 
 `{value}` is the rounded value and the only placeholder, and only number forms
-take it. A number uses `zero` or `one` when the rounded value is 0 or 1 and the
-form is there, otherwise `other`, otherwise the default line. Each text is one
+take it. A number uses `zero` when the value is exactly 0 and `one` when it
+rounds to 1, when the file gives that form; otherwise `other`, otherwise the
+default line. A `{` or `}` outside `{value}` is refused. Each text is one
 line of at most 280 characters. An unknown key, an unknown form, a form that
 does not fit the field's values, or any other placeholder refuses the build
 with `HUMANISH_PERSONAS_INVALID_HABITS`. A listed field the build does not use

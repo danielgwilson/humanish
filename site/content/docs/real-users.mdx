@@ -3,51 +3,54 @@ title: Make participants behave like your users
 description: Build personas from your real sessions, and choose the mission and typing setting your users need.
 ---
 
-A persona that states what one real person did changes how a participant uses your app. A persona that describes who someone is changes it very little. This page covers what our runs showed, how to build personas from an export of your own sessions, and what to keep out of that export.
+In our runs, a persona that stated what one real person did changed how participants used the app, and a persona that described who someone was changed it very little. This page covers what those runs showed, how to build personas from an export of your own sessions, and what to keep out of that export.
 
-## Our runs showed four things about personas and missions
+## What our runs showed about personas and missions
 
-**State what the person does and knows.** Adding four written personas to a 24-participant study left path, pace, help use and retries within the spread between reruns. A background or a list of adjectives did the same. When each of 24 participants instead got a persona built from one real session (how many items that person looked at before answering, how often they used a hint, how many rounds they played, whether they started again), participants followed those habits closely. Measures the personas never mentioned, such as skips, back steps and games finished, moved toward the real users' values too.
+These are observations from our own studies of one app, with 24 participants a run. Other apps and other models may behave differently.
 
-**A persona that names a feature sends every participant to that feature.** If one persona says the person likes the saved-recipes page, expect each participant with it to open that page. Name a feature only when the real person used it.
+**Stating what the person does and knows moved behavior; a written background did not.** Adding four written personas left path, pace, help use and retries within the spread between reruns, and a list of adjectives did the same. When each participant instead got a persona built from one real session (how much of the app that person looked at, which help they used, how long they stayed, whether they came back), participants followed those habits closely. Measures the personas never mentioned, such as skips and back steps, moved toward the real users' values too.
 
-**Holding a participant for a real session's length keeps it in the app.** It does not make the participant use the app the way the real person did. `participants[].maxSessionMs` and `endAfterMs` set how long a session lasts; the persona's habits decide what happens in it.
+**A persona that named a feature sent participants to that feature.** In our runs, each participant whose persona mentioned a page went to that page. Name a feature in a persona only when the real person used it.
 
-**Check the typing setting and the mission.** Participants get a short paragraph about typing as people do: a few plain words, one thing at a time. `actor.typing` replaces that paragraph with your own text, and `false` drops it. Replace it for a persona who writes formally, or for a form that needs long answers. A study with no `actor.mission` gives each participant the built-in mission: try the app for the first time, for a real first sitting, long enough to get what they came for and to know whether they would come back. Write your own mission when your users arrive with a job, such as booking a table or finishing a quiz they were sent.
+**Holding a participant for a real session's length kept it in the app.** It did not make the participant use the app the way the real person did. `participants[].maxSessionMs` and `endAfterMs` set how long a session lasts; in our runs, what happened in that time came from the persona's habits and the mission.
+
+**Check the typing setting and the mission.** Participants get a short paragraph about typing as people do: a few plain words, one thing at a time. `actor.typing` replaces that paragraph with your own text, and `false` drops it. Replace it for a persona who writes formally, or for a form that needs long answers. A study with no `actor.mission` gives each participant the built-in mission: try the app for the first time, for a real first sitting, long enough to get what they came for and to know whether they would come back. Write your own mission when your users arrive with a job, such as booking a table or planning a trip a friend shared.
 
 ## Build personas from an export of your sessions
 
-Export one row per session, with only numbers and true/false columns. Any analytics tool that can export a table works. A sketch for an events table:
+Export one row per session, with only the columns that are measures: numbers and true/false values. Any analytics tool that can export a table works. A sketch for a trip planner's events table, in the PostgreSQL dialect (`FILTER` and `BOOL_OR`):
 
 ```sql
 SELECT
-  COUNT(*) FILTER (WHERE event = 'round_finished')                        AS rounds_played,
-  COUNT(*) FILTER (WHERE event = 'photo_viewed') * 1.0
-    / NULLIF(COUNT(*) FILTER (WHERE event = 'round_started'), 0)          AS photos_viewed_per_round,
-  BOOL_OR(event = 'hint_used')                                            AS used_a_hint,
-  COUNT(*) FILTER (WHERE event = 'game_started') > 1                      AS started_another_game
+  COUNT(*) FILTER (WHERE event = 'stop_added')                            AS stops_added,
+  COUNT(*) FILTER (WHERE event = 'route_compared')                        AS routes_compared,
+  BOOL_OR(event = 'plan_shared')                                          AS shared_the_plan
 FROM events
 GROUP BY session_key;
 ```
 
-The query groups by a session key but does not select it. Save the result as JSON Lines, one session per line, or as one JSON array:
+The query groups by a session key and does not select it. Save the result as JSON Lines, one session per line, or as one JSON array:
 
 ```text title="sessions.jsonl"
-{"rounds_played": 3, "photos_viewed_per_round": 2.1, "used_a_hint": false, "started_another_game": true}
-{"rounds_played": 1, "photos_viewed_per_round": 4, "used_a_hint": true, "started_another_game": false}
+{"stops_added": 3, "routes_compared": 2.1, "shared_the_plan": false}
+{"stops_added": 1, "routes_compared": 4, "shared_the_plan": true}
 ```
 
-Then build the personas:
+Look at what the personas would say first, then build them:
 
 ```bash
+npx humanish personas build sessions.jsonl --dry-run
 npx humanish personas build sessions.jsonl --count 24
 ```
 
-The command reads fields whose values are all numbers or all true and false. `null` means the session has no value, and that line is left out of its persona. It skips text, lists and objects, and any field named like an identifier or a time (`id`, `session_id`, `userId`, `uuid`, `email`, `ip`, `timestamp`, `created_at`, `date`, `visit_date`, and a field named just `session`, `user` or `time`), even when its values are numbers. Before it writes, it prints each field it used and each it skipped, with the reason. `--measures rounds_played,used_a_hint` reads only the fields you name, and naming one it cannot read is an error that says why.
+`--dry-run` prints each field the command would use and each it would skip, with the reason, and the first persona's text, and writes nothing. The build prints the same list before it writes.
+
+The command reads fields whose values are all numbers or all true and false. `null` means the session has no value, and that line is left out of its persona. It skips text, lists and objects. It also skips a field whose name looks like an identifier, a time, a place or a person (`session_id`, `userid`, `api_token`, `created_at`, `start_time`, `epoch_ms`, `phone`, `zip`, `display_name`, and a field named just `session` or `user`), and a field with a whole number of a billion or more in any session, which is usually an id or a time. These checks catch common names only, so a numeric id under an ordinary name still gets through: export only the columns that are measures. `--measures stops_added,shared_the_plan` reads only the fields you name, including one these checks would skip, and naming a text field is an error that says why.
 
 It draws `--count` sessions, every session up to 50 by default, with `--seed` (default 1). The same export and seed give the same files. When `--count` is above the number of sessions, sessions are used more than once, evenly, and the output says so.
 
-Each persona goes to `.humanish/local/personas/visitor-001.yaml` and on, which git ignores. `--prefix` changes `visitor`, `--out` the folder, and `--force` replaces files that are already there. A file holds a neutral name and a background built from that session's measures, and nothing else from the export:
+Each persona goes to `.humanish/local/personas/visitor-001.yaml` and on, a folder `humanish init` adds to `.gitignore`; when your `.gitignore` does not list `.humanish/`, the command says so. `--prefix` changes `visitor`, and `--force` replaces files that are already there. A file holds a neutral name and a background built from that session's measures, and nothing else from the export:
 
 ```yaml title=".humanish/local/personas/visitor-001.yaml"
 schema: humanish.persona.v1
@@ -55,17 +58,18 @@ id: visitor-001
 name: Visitor 1
 background: |-
   How this person used this app on an earlier visit, which is how they use it now:
-  - rounds played: about 3
-  - photos viewed per round: about 2.1
-  - used a hint: no
-  - started another game: yes
+  - stops added: about 3
+  - routes compared: about 2.1
+  - shared the plan: no
 ```
 
-A field name becomes words, from `snake_case` or `camelCase`. A number is rounded to a whole number, or to one decimal below 10. An exact 0 reads `0`, and any other number reads `about` and the rounded value. The command ends with a `participants:` block that gives each participant one persona. Paste it into your study file and run `npx humanish study check <study>`.
+A field name becomes words, from `snake_case` or `camelCase`. Below 1,000, a number is rounded to a whole number, or to one decimal below 10; from 1,000 it keeps three significant digits. An exact 0 reads `0`, and any other number reads `about` and the rounded value. The command ends with a `participants:` block that gives each participant one persona. Paste it into your study file and run `npx humanish study check <study>`.
+
+The persona's text goes to the participant's model provider with every request, and the run bundle keeps it in each participant's persona brief.
 
 ## Phrase each habit in your own words with a habits file
 
-`--habits habits.yaml` gives your own intro and a sentence for each measure. A number takes a sentence for zero, for one and for any other value, and `{value}` is the rounded value. A true/false field takes a sentence for true and for false. A measure the file does not list keeps the default line. A recipe site's file might read:
+`--habits habits.yaml` gives your own intro and a sentence for each measure. A number takes a sentence for zero, used for an exact 0, for one, used when the value rounds to 1, and for any other value; `{value}` is the rounded value. A true/false field takes a sentence for true and for false. A measure the file does not list keeps the default line. A recipe site's file might read:
 
 ```yaml title="habits.yaml"
 schema: humanish.habits.v1
@@ -80,12 +84,12 @@ measures:
     "false": they never save a recipe
 ```
 
-Quote `"true"` and `"false"` so YAML reads them as names. Each sentence is one line of at most 280 characters. A key, a form or a placeholder the file does not take is an error, and so is a form that does not fit the field, such as `one` on a true/false field.
+Quote `"true"` and `"false"` so YAML reads them as names. Each sentence is one line of at most 280 characters. A key, a form, a placeholder or a brace the file does not take is an error, and so is a form that does not fit the field, such as `one` on a true/false field.
 
 ## Show how a person writes with writing samples
 
-When participants type into your app, a persona's `writing_samples` gives a few short messages the real person typed, so the participant writes in their manner. Remove names, addresses and anything that identifies someone, and keep such personas in `.humanish/local/personas/`. [Persona files](/docs/study-files#describe-a-participant-in-a-persona-file) lists the field.
+The builder never reads text. Writing samples are a separate step you take on purpose. When participants type into your app, a persona's `writing_samples` gives a few short messages a real person typed, so the participant writes in their manner. Choose them by hand, remove names, addresses and anything else that identifies someone, and keep such personas in `.humanish/local/personas/`. [Persona files](/docs/study-files#describe-a-participant-in-a-persona-file) lists the field.
 
 ## Keep people out of the export
 
-The builder reads only numbers and true/false values, but your export is still yours to check. Do not export names, emails, user ids, session ids, IP addresses, timestamps, free text people typed, or anything else that identifies a person. Keep the export and the built personas out of git; `.humanish/` is ignored for that reason.
+The builder reads only numbers and true/false values, and checks names and sizes for ids, but your export is still yours to check. Do not export names, emails, user ids, session ids, IP addresses, timestamps, free text people typed, or anything else that identifies a person. Keep the export and the built personas out of git: `humanish init` adds `.humanish/` to `.gitignore`, and the export file belongs there too.
