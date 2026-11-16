@@ -77,7 +77,6 @@ import {
   receivingEmailValidationReason,
   smtpValidationReason,
   taskProtocolValidationReason,
-  typingValidationReason,
   waitLimitValidationReason,
 } from "./validation.js";
 import { forwardDeclaredWarnings, inertFieldLabels, inertFieldPaths } from "./warnings.js";
@@ -343,8 +342,6 @@ function checkStudyConfig(config: StudyConfig): StudyParseResult {
 
   const tasksReason = taskProtocolValidationReason(config);
   if (tasksReason) return invalid(tasksReason);
-  const typingReason = typingValidationReason(config);
-  if (typingReason) return invalid(typingReason);
 
   const analysisReason = automaticAnalysisRouteReason(config);
   if (analysisReason) return invalid(analysisReason);

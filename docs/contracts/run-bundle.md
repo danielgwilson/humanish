@@ -465,13 +465,18 @@ billing attestation, and generic historical errors are not reclassified. See
 ```yaml
 assignment:
   mission: "Try the settings screen."
+  typing: "Type a few plain words at a time."
   focus: "Use the keyboard."
   tasks:
     - id: save-setting
       goal: "Save a setting."
 ```
 
-`mission` is the authored mission, or the runner's default when omitted. `focus` is the
+`mission` is the authored mission, or the runner's default when omitted. `typing` is the
+paragraph on typing composed after the mission: `actor.typing`, or the built-in paragraph when
+the study sets none. It is `false` when the study set `actor.typing: false` and no paragraph was
+sent. Computer-use and shared-world runners record it; bundles from before the field, and the
+terminal route, omit it. `focus` is the
 participant's original instruction when one was supplied. `tasks` contains only the IDs and
 goals actually composed into participant instructions; hidden success criteria are excluded.
 Computer-use single/fan-out, shared-world, and terminal-product

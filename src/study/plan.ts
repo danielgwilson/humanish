@@ -76,7 +76,7 @@ function planPreview(
   if (unsupported) return refuse("HUMANISH_STUDY_ANALYSIS_UNSUPPORTED", unsupported);
   const tasksReason = taskProtocolValidationReason(config);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
-  const typingReason = typingValidationReason(config, false);
+  const typingReason = typingValidationReason(config);
   if (typingReason) return refuse("HUMANISH_STUDY_TYPING_UNSUPPORTED", typingReason);
   const participantCount = options.count ?? declaredParticipantCount(config) ?? 4;
   if (!Number.isSafeInteger(participantCount) || participantCount < 1)

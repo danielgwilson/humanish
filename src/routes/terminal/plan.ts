@@ -96,7 +96,7 @@ export function planTerminalStudy(
   if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
-  const typingReason = typingValidationReason(config, false);
+  const typingReason = typingValidationReason(config);
   if (typingReason) return refuse("HUMANISH_STUDY_TYPING_UNSUPPORTED", typingReason);
 
   const actorType = config.actor?.type ?? "";

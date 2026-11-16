@@ -310,13 +310,11 @@ export function taskProtocolValidationReason(
   return null;
 }
 
-/** Refuse `actor.typing` on a route whose participants never read the computer-use prompt.
- * Direct runners pass their actual support rather than trusting the config's dispatch shape. */
-export function typingValidationReason(
-  config: StudyConfig,
-  readsTyping = isComputerUseComposition(config),
-): string | null {
-  if (config.actor?.typing === undefined || readsTyping) return null;
+/** Refuse `actor.typing` on a route whose participants never read the computer-use prompt. The
+ * terminal, scripted and preview planners call it for a library config, which skips parseStudy's
+ * check of the fields a route reads. */
+export function typingValidationReason(config: StudyConfig): string | null {
+  if (config.actor?.typing === undefined) return null;
   return "`actor.typing` is read only by computer-use and shared-world participants. This study's participants would never see it: terminal participants type commands, scripted participants follow their scenario steps, and a preview run has no participant model. Remove `actor.typing`.";
 }
 

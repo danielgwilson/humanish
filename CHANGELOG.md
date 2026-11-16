@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+Computer-use and shared-world participants now read a short paragraph on typing after their
+mission: type as this person would, in a few plain words, one thing at a time. Without it,
+participants wrote into chat boxes and search fields like an assistant, with full sentences, a
+greeting and a thank-you, and the whole request in the first message. In support chat tasks
+with it, their turns came close to what people type. `actor.typing: false` leaves the paragraph
+out, and `actor.typing: "<text>"` replaces it, for a persona who writes formally or a form that
+needs long answers. Each participant's `streams[].assignment.typing` records the text it read,
+or `false`. Terminal, scripted and preview studies refuse `actor.typing`; a library caller gets
+`HUMANISH_STUDY_TYPING_UNSUPPORTED`. The new paragraph changes every computer-use and
+shared-world prompt digest.
+
 ## 0.160.0: See what your runs keep on disk, and finish a remote copy that stopped (2026-11-10)
 
 humanish 0.160.0 shows what your runs keep on disk and lets you clear old ones. `humanish runs`

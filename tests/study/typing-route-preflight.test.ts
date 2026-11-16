@@ -52,7 +52,7 @@ describe("actor.typing admission", () => {
       if (result.ok) expect(result.config.actor.typing).toBe(typing);
       else {
         expect(result.error.code).toBe("HUMANISH_STUDY_INVALID");
-        expect(result.error.message).toMatch(/^`actor\.typing`/);
+        expect(result.error.message).toMatch(/^route: \S+ does not read actor\.typing /);
         expect(result.error.message).not.toContain(OWN_TYPING);
       }
     }
