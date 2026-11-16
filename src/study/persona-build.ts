@@ -2,7 +2,7 @@
 // states that session's measures, and the `participants:` block that assigns them. Pure: the
 // `humanish personas build` command reads the files and writes the results.
 import { createHash } from "node:crypto";
-import { stringify } from "yaml";
+import { parse as parseYaml, stringify } from "yaml";
 
 import { isRecord } from "../run/type-guards.js";
 import { personaTitleFromId } from "./persona-resolve.js";
@@ -26,6 +26,8 @@ export interface PersonaBuildInput {
   /** Only these fields become measures. */
   measures?: readonly string[];
   prefix?: string;
+  /** A `humanish.habits.v1` YAML file: the adopter's own intro and sentence for each measure. */
+  habitsText?: string;
 }
 
 export type MeasureKind = "number" | "yes/no";
@@ -48,7 +50,8 @@ export type PersonaBuildErrorCode =
   | "HUMANISH_PERSONAS_INVALID_SESSIONS"
   | "HUMANISH_PERSONAS_INVALID_MEASURE"
   | "HUMANISH_PERSONAS_NO_MEASURES"
-  | "HUMANISH_PERSONAS_INVALID_OPTION";
+  | "HUMANISH_PERSONAS_INVALID_OPTION"
+  | "HUMANISH_PERSONAS_INVALID_HABITS";
 
 export interface PersonaBuildError {
   code: PersonaBuildErrorCode;
@@ -70,6 +73,7 @@ export type PersonaBuild =
       files: Array<{ id: string; name: string; contents: string }>;
       /** A `participants:` block that gives each participant one built persona. */
       roster: string;
+      warnings: string[];
     }
   | { ok: false; error: PersonaBuildError; fields: FieldReport[] };
 
@@ -89,6 +93,9 @@ export function buildPersonas(input: PersonaBuildInput): PersonaBuild {
   });
   const option = optionError(input);
   if (option) return fail({ code: "HUMANISH_PERSONAS_INVALID_OPTION", message: option });
+  const habits = input.habitsText === undefined ? undefined : parseHabits(input.habitsText);
+  if (typeof habits === "string")
+    return fail({ code: "HUMANISH_PERSONAS_INVALID_HABITS", message: habits });
   const sessions = parseSessions(input.sessionsText);
   if (!Array.isArray(sessions))
     return fail({ code: "HUMANISH_PERSONAS_INVALID_SESSIONS", ...sessions });
@@ -105,6 +112,9 @@ export function buildPersonas(input: PersonaBuildInput): PersonaBuild {
       },
       narrowed,
     );
+  const kindError = habits && habitKindError(habits, measures);
+  if (kindError)
+    return fail({ code: "HUMANISH_PERSONAS_INVALID_HABITS", message: kindError }, narrowed);
   const hasValue = (session: Session, name: string) =>
     session.get(name) !== null && session.get(name) !== undefined;
   const usable = sessions.filter((session) => measures.some(({ name }) => hasValue(session, name)));
@@ -115,13 +125,15 @@ export function buildPersonas(input: PersonaBuildInput): PersonaBuild {
     const number = index + 1;
     const id = `${prefix}-${String(number).padStart(3, "0")}`;
     const lines = measures.flatMap(({ name, kind }) =>
-      hasValue(session, name) ? [measureLine(name, session.get(name) as Value, kind)] : [],
+      hasValue(session, name)
+        ? [measureLine(name, session.get(name) as Value, kind, habits?.measures.get(name))]
+        : [],
     );
     const persona = {
       schema: "humanish.persona.v1",
       id,
       name: `${personaTitleFromId(prefix)} ${number}`,
-      background: [DEFAULT_INTRO, ...lines].join("\n"),
+      background: [habits?.intro ?? DEFAULT_INTRO, ...lines].join("\n"),
     };
     return { id, name: `${id}.yaml`, contents: stringify(persona, { lineWidth: 0 }) };
   });
@@ -132,6 +144,12 @@ export function buildPersonas(input: PersonaBuildInput): PersonaBuild {
     sampling: { drawn: files.length, seed, reused: count > usable.length },
     files,
     roster: rosterBlock(files.map((file) => file.id)),
+    warnings: [...(habits?.measures.keys() ?? [])]
+      .filter((name) => !measures.some((measure) => measure.name === name))
+      .map(
+        (name) =>
+          `The habits file phrases ${name}, which is not a measure in this build, so its sentences are not used. Check the name against the fields listed above.`,
+      ),
   };
 }
 
@@ -282,11 +300,109 @@ function roundValue(value: number): number {
   return rounded === 0 ? 0 : rounded;
 }
 
-/** `- rounds played: about 3`; an exact 0 is not approximate, so it reads `0`. */
-function measureLine(name: string, value: Value, kind: MeasureKind): string {
-  if (kind === "yes/no") return `- ${fieldWords(name)}: ${value ? "yes" : "no"}`;
-  const number = value as number;
-  return `- ${fieldWords(name)}: ${number === 0 ? "0" : `about ${roundValue(number)}`}`;
+/**
+ * `- rounds played: about 3`, or the habits file's sentence for the value. An exact 0 is not
+ * approximate, so by default it reads `0`.
+ */
+function measureLine(name: string, value: Value, kind: MeasureKind, forms?: HabitForms): string {
+  if (kind === "yes/no") {
+    const sentence = forms?.[value ? "true" : "false"];
+    return `- ${sentence ?? `${fieldWords(name)}: ${value ? "yes" : "no"}`}`;
+  }
+  const rounded = roundValue(value as number);
+  const form =
+    (rounded === 0 ? forms?.zero : rounded === 1 ? forms?.one : undefined) ?? forms?.other;
+  if (form !== undefined) return `- ${form.replaceAll("{value}", String(rounded))}`;
+  return `- ${fieldWords(name)}: ${value === 0 ? "0" : `about ${rounded}`}`;
+}
+
+const HABITS_SCHEMA = "humanish.habits.v1";
+const HABITS_KEYS = new Set(["schema", "intro", "measures"]);
+const NUMBER_FORMS = ["zero", "one", "other"] as const;
+const YES_NO_FORMS = ["true", "false"] as const;
+const HABIT_TEXT_MAX_CHARS = 280;
+
+type HabitForms = Partial<
+  Record<(typeof NUMBER_FORMS)[number] | (typeof YES_NO_FORMS)[number], string>
+>;
+interface Habits {
+  intro?: string;
+  measures: Map<string, HabitForms>;
+}
+
+/** The habits file, checked; a message naming the first problem otherwise. */
+function parseHabits(text: string): Habits | string {
+  let raw: unknown;
+  try {
+    raw = parseYaml(text);
+  } catch (error) {
+    return `The habits file is not valid YAML: ${(error as Error).message}`;
+  }
+  if (!isRecord(raw) || raw.schema !== HABITS_SCHEMA)
+    return `The habits file must start with \`schema: ${HABITS_SCHEMA}\`.`;
+  const unknown = Object.keys(raw).find((key) => !HABITS_KEYS.has(key));
+  if (unknown !== undefined)
+    return `The habits file has an unknown key ${JSON.stringify(unknown)}. It takes schema, intro and measures.`;
+  const intro = raw.intro === undefined ? undefined : habitText(raw.intro, "intro", false);
+  if (intro !== undefined && !intro.ok) return intro.message;
+  if (raw.measures !== undefined && !isRecord(raw.measures))
+    return "measures in the habits file must be a mapping from a field name to its sentences.";
+  const measures = new Map<string, HabitForms>();
+  for (const [name, entry] of Object.entries(raw.measures ?? {})) {
+    if (!isRecord(entry))
+      return `measures.${name} in the habits file must be a mapping of forms: zero, one and other for a number, true and false for a true/false field.`;
+    const forms: HabitForms = {};
+    for (const [form, value] of Object.entries(entry)) {
+      const isNumberForm = (NUMBER_FORMS as readonly string[]).includes(form);
+      if (!isNumberForm && !(YES_NO_FORMS as readonly string[]).includes(form))
+        return `measures.${name}.${form} in the habits file is not a form. A number takes zero, one and other; a true/false field takes true and false.`;
+      const checked = habitText(value, `measures.${name}.${form}`, isNumberForm);
+      if (!checked.ok) return checked.message;
+      forms[form as keyof HabitForms] = checked.text;
+    }
+    measures.set(name, forms);
+  }
+  return { ...(intro === undefined ? {} : { intro: intro.text }), measures };
+}
+
+/** One line of text, at most 280 characters, whose only placeholder is `{value}` where allowed. */
+function habitText(
+  value: unknown,
+  where: string,
+  takesValue: boolean,
+): { ok: true; text: string } | { ok: false; message: string } {
+  const fail = (problem: string) => ({
+    ok: false as const,
+    message: `${where} in the habits file ${problem}`,
+  });
+  if (typeof value !== "string" || !value.trim()) return fail("must be text.");
+  const text = value.trim();
+  if (/[\r\n]/.test(text))
+    return fail("must be one line; each sentence is one line of the persona.");
+  if (text.length > HABIT_TEXT_MAX_CHARS)
+    return fail(`is over ${HABIT_TEXT_MAX_CHARS} characters; shorten it.`);
+  const placeholders = text.match(/\{[^}]*\}/g) ?? [];
+  const other = placeholders.find((placeholder) => placeholder !== "{value}");
+  if (other !== undefined)
+    return fail(`uses ${other}. The only placeholder is {value}, the rounded value.`);
+  if (!takesValue && placeholders.length > 0)
+    return fail("uses {value}, which only a number form can fill.");
+  return { ok: true, text };
+}
+
+/** A number measure phrased with true/false forms, or the other way round. */
+function habitKindError(
+  habits: Habits,
+  measures: ReadonlyArray<{ name: string; kind: MeasureKind }>,
+): string | undefined {
+  for (const { name, kind } of measures) {
+    const forms = Object.keys(habits.measures.get(name) ?? {});
+    const expected: readonly string[] = kind === "yes/no" ? YES_NO_FORMS : NUMBER_FORMS;
+    const wrong = forms.find((form) => !expected.includes(form));
+    if (wrong !== undefined)
+      return `measures.${name}.${wrong} in the habits file does not fit ${name}, whose values are ${kind === "yes/no" ? "true and false; use the true and false forms" : "numbers; use the zero, one and other forms"}.`;
+  }
+  return undefined;
 }
 
 /** Sessions ranked by a digest of the seed and their position, then the first `count`. */

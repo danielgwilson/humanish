@@ -290,3 +290,109 @@ describe("the sessions file", () => {
     });
   });
 });
+
+describe("a habits file", () => {
+  const habitsText = [
+    "schema: humanish.habits.v1",
+    'intro: "How this cook uses the recipe site on any visit:"',
+    "measures:",
+    "  recipes_opened:",
+    '    other: "they open about {value} recipes before choosing one"',
+    '    one: "they open one recipe and cook it"',
+    '    zero: "they leave before opening a recipe"',
+    "  saved_a_recipe:",
+    '    "true": "they save the recipe they cook"',
+    '    "false": "they never save a recipe"',
+  ].join("\n");
+  const bodyOf = (records: unknown[], habits = habitsText) =>
+    built(
+      buildPersonas({ sessionsText: lines(...records), habitsText: habits, seed: 3 }),
+    ).files.map((file) => background(file.contents).split("\n"));
+
+  it("phrases each listed measure with its form for zero, one, any other value, true and false", () => {
+    const bodies = bodyOf([
+      { recipes_opened: 0, saved_a_recipe: true, minutes_reading: 4 },
+      { recipes_opened: 1.04, saved_a_recipe: false },
+      { recipes_opened: 3.46 },
+    ]).sort((a, b) => a[1]!.localeCompare(b[1]!));
+    expect(bodies).toEqual([
+      [
+        "How this cook uses the recipe site on any visit:",
+        "- they leave before opening a recipe",
+        "- they save the recipe they cook",
+        "- minutes reading: about 4",
+      ],
+      [
+        "How this cook uses the recipe site on any visit:",
+        "- they open about 3.5 recipes before choosing one",
+      ],
+      [
+        "How this cook uses the recipe site on any visit:",
+        "- they open one recipe and cook it",
+        "- they never save a recipe",
+      ],
+    ]);
+  });
+
+  it("uses the form for any other value when zero or one has none, and the default with no form", () => {
+    const habits = [
+      "schema: humanish.habits.v1",
+      "measures:",
+      '  photos_guessed: { other: "they guess about {value} photos" }',
+      '  hints_used: { one: "they use one hint" }',
+    ].join("\n");
+    expect(bodyOf([{ photos_guessed: 1, hints_used: 2 }], habits)).toEqual([
+      [
+        "How this person used this app on an earlier visit, which is how they use it now:",
+        "- they guess about 1 photos",
+        "- hints used: about 2",
+      ],
+    ]);
+  });
+
+  it("warns about a listed measure the build does not use", () => {
+    const result = built(
+      buildPersonas({
+        sessionsText: lines({ recipes_opened: 2 }),
+        habitsText,
+      }),
+    );
+    expect(result.warnings).toHaveLength(1);
+  });
+
+  it.each([
+    ["a missing schema", "measures: {}"],
+    ["another schema", "schema: humanish.persona.v1"],
+    ["an unknown top-level key", "schema: humanish.habits.v1\nintros: x"],
+    ["an unknown form", 'schema: humanish.habits.v1\nmeasures:\n  recipes_opened: { ohter: "x" }'],
+    [
+      "a placeholder other than {value}",
+      'schema: humanish.habits.v1\nmeasures:\n  recipes_opened: { other: "about {count} recipes" }',
+    ],
+    [
+      "{value} in a true or false form",
+      'schema: humanish.habits.v1\nmeasures:\n  saved_a_recipe: { "true": "saved {value}" }',
+    ],
+    [
+      "number forms on a true/false measure",
+      'schema: humanish.habits.v1\nmeasures:\n  saved_a_recipe: { other: "saved" }',
+    ],
+    [
+      "true and false forms on a number measure",
+      'schema: humanish.habits.v1\nmeasures:\n  recipes_opened: { "true": "opened" }',
+    ],
+    [
+      "a form that is not one line of text",
+      'schema: humanish.habits.v1\nmeasures:\n  recipes_opened: { other: "a\\nb" }',
+    ],
+    ["an intro over 280 characters", `schema: humanish.habits.v1\nintro: ${"x".repeat(281)}`],
+    ["text that is not YAML", "schema: [humanish"],
+  ])("refuses %s", (_case, habits) => {
+    expect(
+      buildPersonas({
+        sessionsText: lines({ recipes_opened: 2, saved_a_recipe: true }),
+        habitsText: habits,
+      }),
+    ).toMatchObject({ ok: false, error: { code: "HUMANISH_PERSONAS_INVALID_HABITS" } });
+  });
+});
