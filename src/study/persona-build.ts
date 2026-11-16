@@ -294,11 +294,15 @@ function readValues(values: readonly unknown[]): MeasureKind | SkipReason {
 // A word anywhere in the name that marks an identifier, a moment, a place or a person, such as
 // `session_id`, `api_token`, `start_time` or `display_name`. A measure's name rarely holds one, and
 // --measures reads one that does.
-const IDENTIFIER_WORDS = new Set([
-  ...["id", "uuid", "guid", "key", "token", "hash", "account", "email", "phone", "ip", "name"],
-  ...["timestamp", "date", "datetime", "time", "ts", "epoch"],
-  ...["address", "zip", "lat", "lng", "lon", "latitude", "longitude"],
-]);
+const IDENTIFIER_WORDS = new Set(
+  [
+    "id uuid guid key token hash account email phone ip name",
+    "timestamp date datetime time ts epoch",
+    "address zip lat lng lon latitude longitude",
+  ]
+    .join(" ")
+    .split(" "),
+);
 // Whole names that hold an identifier, though as one word of a longer name (`session_count`,
 // `user_rating`) they qualify a measure.
 const IDENTIFIER_NAMES = new Set(["session", "user"]);
