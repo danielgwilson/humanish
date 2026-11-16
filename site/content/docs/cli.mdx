@@ -553,7 +553,7 @@ humanish personas [options] [command]
 
 ### humanish personas build
 
-Build one persona file per drawn session from an export of real sessions, JSON Lines or one JSON array of flat objects. Only fields whose values are numbers or true and false are read; text, nested values and fields named like an identifier or a time are skipped and listed. Prints the participants block that gives each participant one of the personas.
+Build one persona file per drawn session from an export of real sessions, JSON Lines or one JSON array of flat objects, into .humanish/local/personas/. Only fields whose values are numbers or true and false are read; text, nested values, and fields whose name or values look like an identifier or a time are skipped and listed. Prints the participants block that gives each participant one of the personas.
 
 ```text
 humanish personas build [options] <sessions-file>
@@ -567,10 +567,10 @@ humanish personas build [options] <sessions-file>
 | --- | --- |
 | `--count <n>` | How many personas to build. Default: every session, up to 50. |
 | `--seed <n>` | Which sessions are drawn; the same seed draws the same ones. (default: "1") |
-| `--measures <fields>` | Comma-separated fields to read; the others are skipped. |
+| `--measures <fields>` | Comma-separated fields to read, even ones whose name or values look like an id; the others are skipped. |
 | `--habits <file>` | A humanish.habits.v1 YAML file with your own sentence for each measure. |
 | `--prefix <id>` | The start of each persona id and file name. (default: "visitor") |
-| `--out <dir>` | Where to write the files. (default: ".humanish/local/personas") |
+| `--dry-run` | Print the fields and the first persona, and write nothing. |
 | `--force` | Replace persona files that are already there. |
 | `--cwd <path>` | Project directory. (default: ".") |
 | `--json` | Print a machine-readable JSON response. |

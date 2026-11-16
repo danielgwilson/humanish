@@ -178,8 +178,8 @@ function optionError({ count, seed, prefix }: PersonaBuildInput): string | undef
     return "--count must be a whole number, 1 or more.";
   const tooMany = count === undefined ? undefined : participantCountReason(count);
   if (tooMany) return `--count is a participant count. ${tooMany}`;
-  if (seed !== undefined && !(Number.isSafeInteger(seed) && seed >= 0))
-    return "--seed must be a whole number, 0 or more.";
+  if (seed !== undefined && !(Number.isSafeInteger(seed) && seed >= 1))
+    return "--seed must be a whole number, 1 or more.";
   if (
     prefix !== undefined &&
     !(PERSONA_ID_PATTERN.test(prefix) && prefix.length <= PREFIX_MAX_CHARS)

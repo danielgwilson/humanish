@@ -45,6 +45,7 @@ import {
 import {
   implicitProjectDirectoryExists,
   readImplicitProjectFile,
+  gitignoreListsRuntime,
   validateCwd,
 } from "../run/project.js";
 import { cli } from "./invocation.js";
@@ -323,10 +324,7 @@ function gigabytes(bytes: number): string {
 }
 
 async function runtimeIgnoreCheck(projectRoot: PreparedSelectedOutputDirectory) {
-  const ok = await safeCheck(
-    async () =>
-      (await readImplicitProjectFile(projectRoot, ".gitignore"))?.includes(".humanish/") ?? false,
-  );
+  const ok = await gitignoreListsRuntime(projectRoot);
   return {
     name: "runtime ignore",
     ok,

@@ -97,6 +97,19 @@ export async function readImplicitProjectFile(
   return read.bytes.toString("utf8");
 }
 
+/** Whether the project's .gitignore lists `.humanish/`, the rule `humanish init` adds. */
+export async function gitignoreListsRuntime(
+  projectRoot: PreparedSelectedOutputDirectory,
+): Promise<boolean> {
+  try {
+    return (
+      (await readImplicitProjectFile(projectRoot, ".gitignore"))?.includes(".humanish/") ?? false
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function readPackageName(
   projectRoot: PreparedSelectedOutputDirectory,
 ): Promise<string | null> {
