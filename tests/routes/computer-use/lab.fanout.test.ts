@@ -17,6 +17,7 @@ import {
   type CuaActorSessionOptions,
 } from "../../../src/actors/computer-use/actor.js";
 import type { CuaProvider } from "../../../src/actors/computer-use/loop.js";
+import { DEFAULT_TYPING } from "../../../src/routes/computer-use/participant-prompt.js";
 import { buildCuaFanoutBundle } from "../../../src/routes/computer-use/fanout-bundle.js";
 import { participantFactsOf } from "../../../src/routes/computer-use/participant-facts.js";
 import { judgeParticipants } from "../../../src/run/judge.js";
@@ -794,8 +795,16 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
       expect(
         (JSON.parse(persistedRunText) as RunBundle).streams.map((stream) => stream.assignment),
       ).toEqual([
-        { mission: "Explore with [REDACTED_SECRET].", focus: "Explore role A." },
-        { mission: "Explore with [REDACTED_SECRET].", focus: "Explore role B." },
+        {
+          mission: "Explore with [REDACTED_SECRET].",
+          typing: DEFAULT_TYPING,
+          focus: "Explore role A.",
+        },
+        {
+          mission: "Explore with [REDACTED_SECRET].",
+          typing: DEFAULT_TYPING,
+          focus: "Explore role B.",
+        },
       ]);
       expect(persistedRunText).not.toContain("test-openai-key");
       expect(persistedRunText).not.toContain("fake-auth-key");

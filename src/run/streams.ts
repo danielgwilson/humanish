@@ -213,6 +213,9 @@ export interface LiveItemsIndex {
 /** The original participant-facing assignment, before runtime access/coordination details. */
 export interface RunParticipantAssignment {
   mission: string;
+  /** The paragraph on typing the participant read after the mission, or `false` when the study
+   *  left it out. Absent in bundles written before humanish sent one. */
+  typing?: string | false;
   focus?: string;
   tasks?: Array<{ id: string; goal: string }>;
 }

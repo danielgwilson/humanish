@@ -50,7 +50,7 @@ function config(persona: string | undefined): StudyConfig {
   });
 }
 
-async function writePersonaFile(): Promise<void> {
+async function writePersonaFile(extraLines: readonly string[] = []): Promise<void> {
   await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });
   await writeFile(
     path.join(cwd, "humanish", "personas", `${PERSONA_ID}.yaml`),
@@ -62,6 +62,7 @@ async function writePersonaFile(): Promise<void> {
       "  technical_confidence: high",
       "constraints:",
       "  - Only use public surfaces",
+      ...extraLines,
       "",
     ].join("\n"),
     "utf8",
@@ -136,6 +137,17 @@ describe("terminal persona parity between the dry and live paths", () => {
     expect(ref.traitsApplied).toEqual(expect.arrayContaining(["patience:low", "skill:high"]));
     expect(ref.brief).toBeDefined();
     expect(warnings).toEqual([]);
+  });
+
+  it("sends the persona's writing samples on both paths, from the shared persona section", async () => {
+    await writePersonaFile(["writing_samples:", '  - "how do i undo that"', '  - "ok it worked"']);
+    const { ref, personaLine } = await expectSamePersona(config(PERSONA_ID));
+
+    expect(personaLine.split("\n\n")[1]).toBe(
+      'These are messages this person typed earlier, about other things; the details in them do not apply now. They show how this person writes: (1) "how do i undo that" (2) "ok it worked"',
+    );
+    expect(ref.traitsApplied).toContain("writing_samples:2");
+    expect(ref.brief?.text).toBe(personaLine);
   });
 
   it("falls back to the persona id on both paths when no persona file is committed", async () => {

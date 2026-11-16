@@ -23,7 +23,11 @@ import { planBase } from "./plan-base.js";
 import type { StudyPlan, PlanRefusal, PlanResult, PreviewRefusalCode } from "./plan-types.js";
 import { routeOf, type StudyRoute } from "./routing.js";
 import type { StudyConfig } from "./types.js";
-import { automaticAnalysisRouteReason, taskProtocolValidationReason } from "./validation.js";
+import {
+  automaticAnalysisRouteReason,
+  taskProtocolValidationReason,
+  typingValidationReason,
+} from "./validation.js";
 import { declaredParticipantCount } from "./study-fields.js";
 import { recordedStudyWarnings } from "./warnings.js";
 import { plural } from "../run/text.js";
@@ -72,6 +76,8 @@ function planPreview(
   if (unsupported) return refuse("HUMANISH_STUDY_ANALYSIS_UNSUPPORTED", unsupported);
   const tasksReason = taskProtocolValidationReason(config);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
+  const typingReason = typingValidationReason(config);
+  if (typingReason) return refuse("HUMANISH_STUDY_TYPING_UNSUPPORTED", typingReason);
   const participantCount = options.count ?? declaredParticipantCount(config) ?? 4;
   if (!Number.isSafeInteger(participantCount) || participantCount < 1)
     return refuse("HUMANISH_INVALID_PARTICIPANT_COUNT", "count must be a positive integer.");

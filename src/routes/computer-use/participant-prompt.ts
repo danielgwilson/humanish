@@ -1,6 +1,7 @@
 // The prompt one computer-use participant reads: persona, device and surface lines, the mission,
-// the task goals, the per-participant focus and the closing-line directive. withInboxMission adds
-// the email inbox at run time. Shared by the computer-use and concurrent shared-world routes.
+// the typing paragraph, the task goals, the per-participant focus and the closing-line directive.
+// withInboxMission adds the email inbox at run time. Shared by the computer-use and concurrent
+// shared-world routes.
 
 import type { ActorPersonaRef } from "../../actors/contract.js";
 import { recipientInboxUrl } from "../../comms/capture-surface.js";
@@ -17,11 +18,20 @@ import type { DesktopParticipantRun } from "./types.js";
 
 // The missions a participant reads when its study names none. Each frames the participant as a
 // person using the app: told it is testing or being watched, a participant acts as a tester
-// whatever its persona says (docs/principles/actor-fidelity.md). The default follows the Taskly
-// benchmark's neutral mission: a mission that only says to do what one came to do ends after a
-// first action, and one that asks for a decision about the app keeps the participant using it.
+// whatever its persona says (docs/principles/actor-fidelity.md). The default names two ends for
+// the sitting. A mission that only says to do what one came to do ends after the first action on
+// a work tool, and one that only asks for a decision about the app ends after the first round of
+// a game. Getting what one came for and knowing whether one would come back covers both.
 export const DEFAULT_MISSION =
-  "You are trying a web app for the first time. The browser is already open at it. Use it the way you actually would, until you have decided whether you would keep using it, then stop. Stop sooner if you would give up.";
+  "You are trying a web app for the first time, on your own device and in your own time. The browser is already open at it. Use it the way you actually would, for a real first sitting: long enough to get what you came for and to know whether you would come back. Then stop. Stop sooner if you would give up.";
+
+// The paragraph on typing every computer-use and shared-world participant reads after its mission,
+// unless the study sets actor.typing. Simulated users write longer, more polite turns than people
+// and give everything up front (Mind the Sim2Real Gap, arXiv 2603.11245); with this paragraph,
+// participants' chat turns moved close to people's. It was written once before any run and is not
+// tuned to results.
+export const DEFAULT_TYPING =
+  "When you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.";
 
 /** The mission of a shared-world participant whose study names none. */
 export const SHARED_WORLD_MISSION =
@@ -43,10 +53,13 @@ export const CLOSING_LINE_DIRECTIVE =
 /** The persona id a computer-use participant gets when neither it nor its actor names one. */
 export const FALLBACK_PERSONA_ID = "cua-operator";
 
-/** Compose one participant's actor prompt: persona line + device line + mission + per-participant
- *  steer. At N=1 (homogeneous, no roster) this reproduces the prior composeInstructions byte-for-byte. */
+/** Compose one participant's actor prompt: persona line + device line + mission + typing paragraph
+ *  + tasks + per-participant steer + closing line. */
 export function composeParticipantInstructions(args: {
   mission: string;
+  /** The study's `actor.typing`: absent means DEFAULT_TYPING (none on a desktop-cli surface),
+   *  `false` leaves the paragraph out, and a string replaces it. It follows the mission. */
+  typing?: string | false;
   persona?: string;
   instruction?: string;
   /** The study's declared protocol. Only the participant-facing `goal` halves are rendered
@@ -67,7 +80,13 @@ export function composeParticipantInstructions(args: {
    * study is asking.
    */
   surface?: "desktop-cli";
-}): { instructions: string; persona: ActorPersonaRef } {
+}): {
+  instructions: string;
+  persona: ActorPersonaRef;
+  /** The paragraph on typing the instructions carry after the mission, or `false` for none. The
+   *  routes record this value, so the record and the prompt cannot disagree. */
+  typing: string | false;
+} {
   const { name, preset } = args.device;
   const deviceLine = preset.isMobile
     ? `You are a mobile user on a ${name} device (${preset.width}x${preset.height} @${preset.deviceScaleFactor}x). Expect a mobile/touch layout.`
@@ -91,11 +110,15 @@ export function composeParticipantInstructions(args: {
     args.surface === "desktop-cli"
       ? "A terminal window is already open on this desktop, and there is a terminal in the dock at the bottom of the screen if you want another. Everything you need is on this machine; there is no browser task here."
       : undefined;
+  // A participant at a terminal types commands, which the paragraph is not about; a study that
+  // wants one there sets actor.typing.
+  const typing = args.typing ?? (args.surface === "desktop-cli" ? false : DEFAULT_TYPING);
   const parts = [
     personaLine,
     deviceLine,
     surfaceLine,
     args.mission,
+    typing,
     taskLines,
     args.instruction ? `Your focus: ${args.instruction}` : undefined,
     CLOSING_LINE_DIRECTIVE,
@@ -109,6 +132,7 @@ export function composeParticipantInstructions(args: {
       ...(args.resolvedPersona ? { brief: personaBrief(args.resolvedPersona) } : {}),
       promptDigest: digestText(instructions, 16),
     },
+    typing,
   };
 }
 

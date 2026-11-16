@@ -1,14 +1,16 @@
-// The two missions the Taskly benchmark can send. Results record which one ran, with its digest.
+// The missions the Taskly benchmark can run. Results record which one ran, with the text and
+// digest the CLI under test reported.
 
-export type MissionId = "neutral" | "walked";
+export type MissionId = "neutral" | "walked" | "default";
 
 export interface Mission {
   id: MissionId;
-  text: string;
+  /** The study's `mission:`; null writes none, so the CLI's built-in mission runs. */
+  text: string | null;
   note: string;
 }
 
-export const MISSIONS: Record<MissionId, Mission> = {
+export const MISSIONS = {
   // The benchmark default. It names the app and asks for ordinary use, and it names no feature a
   // planted defect sits on, so recall here includes whether the participant found the feature.
   neutral: {
@@ -35,4 +37,11 @@ export const MISSIONS: Record<MissionId, Mission> = {
       "you did and what you saw.",
     note: "The September mission: one step per planted defect.",
   },
-};
+  // No mission line, so the benchmark measures what a study that names no mission gets from the
+  // CLI under test. That text belongs to the CLI, so a result reads it from the CLI's dry run.
+  default: {
+    id: "default",
+    text: null,
+    note: "No mission line: the CLI's built-in mission runs.",
+  },
+} satisfies Record<MissionId, Mission>;

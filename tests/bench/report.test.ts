@@ -362,3 +362,43 @@ it("scores each analysis model's own analysis of the same recorded runs", async 
     rmSync(project, { recursive: true, force: true });
   }
 });
+
+/** A manifest with no runs that ran `mission` with the text the CLI reported. */
+function missionManifest(mission: Manifest["mission"], missionText: string): Manifest {
+  return {
+    schema: "humanish.bench-manifest.v1",
+    createdAt: "2026-11-16T00:00:00Z",
+    humanish: { version: "0.0.0", source: "synthetic test" },
+    mission,
+    missionText,
+    brains: ["openai-computer-use"],
+    runsPerArm: 1,
+    budget: {
+      maxUsdPerBrain: 7,
+      participantCapUsd: 0.6,
+      analysisMaxUsd: 1.75,
+      worstCaseDesktopMinutes: 50,
+      analysis: false,
+    },
+    fixture: fixtureDigests(),
+    stopped: {},
+    runs: [],
+  };
+}
+
+it("records the mission text and digest the CLI under test reported", () => {
+  expect(buildResult("unused-project", missionManifest("default", "abc")).mission).toEqual({
+    id: "default",
+    text: "abc",
+    sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+  });
+});
+
+it("names the mission digest in the summary, and the text only for the built-in mission", () => {
+  const summary = (mission: Manifest["mission"]): string =>
+    summaryMarkdown(buildResult("unused-project", missionManifest(mission, "abc")), "result.json");
+  expect(summary("default")).toContain("`ba7816bf8f01`");
+  expect(summary("default")).toContain("`abc`");
+  expect(summary("neutral")).toContain("`ba7816bf8f01`");
+  expect(summary("neutral")).not.toContain("`abc`");
+});

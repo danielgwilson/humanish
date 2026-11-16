@@ -76,17 +76,17 @@ map each one to its v3 key.
 A study declares its route and composes code primitives; it is not a hardcoded kind. The
 top-level keys:
 
-| Key                                                               | Meaning                                                                                                                                                                                                  |
-| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `schema`, `id`, `title`, `description`                            | the document's identity                                                                                                                                                                                  |
-| `route`                                                           | required: `preview`, `computer-use`, `shared-world`, `terminal` or `scripted`                                                                                                                            |
-| `mode`                                                            | `dry-run` (the default) or `live`                                                                                                                                                                        |
-| `actor`                                                           | who drives it, one object: `type`, `model`, `provider`, `localAgent`, `persona`, `mission`, `tasks`, `maxOutputTokens`, `maxWaitMs`, `idleWaitMs`, `reasoningEffort`, `serviceTier`, `stopWhen`, `dwell` |
-| `participants`                                                    | a count, a homogeneous `{ count, instruction }`, or a list of entries (below)                                                                                                                            |
-| `surfaces`                                                        | scripted only: `[desktop]` or `[desktop, mobile]`                                                                                                                                                        |
-| `caps`                                                            | the route's budget (below)                                                                                                                                                                               |
-| `scenario`                                                        | scripted only: a committed scenario id or path                                                                                                                                                           |
-| `subject`, `execution`, `policies`, `review`, `defaults`, `comms` | as below                                                                                                                                                                                                 |
+| Key                                                               | Meaning                                                                                                                                                                                                            |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `schema`, `id`, `title`, `description`                            | the document's identity                                                                                                                                                                                            |
+| `route`                                                           | required: `preview`, `computer-use`, `shared-world`, `terminal` or `scripted`                                                                                                                                      |
+| `mode`                                                            | `dry-run` (the default) or `live`                                                                                                                                                                                  |
+| `actor`                                                           | who drives it, one object: `type`, `model`, `provider`, `localAgent`, `persona`, `mission`, `typing`, `tasks`, `maxOutputTokens`, `maxWaitMs`, `idleWaitMs`, `reasoningEffort`, `serviceTier`, `stopWhen`, `dwell` |
+| `participants`                                                    | a count, a homogeneous `{ count, instruction }`, or a list of entries (below)                                                                                                                                      |
+| `surfaces`                                                        | scripted only: `[desktop]` or `[desktop, mobile]`                                                                                                                                                                  |
+| `caps`                                                            | the route's budget (below)                                                                                                                                                                                         |
+| `scenario`                                                        | scripted only: a committed scenario id or path                                                                                                                                                                     |
+| `subject`, `execution`, `policies`, `review`, `defaults`, `comms` | as below                                                                                                                                                                                                           |
 
 The parser reads only the declared route's keys. A key that route never reads is an error that
 names the route, such as "route: computer-use does not read scenario. Remove it.", and an
@@ -983,6 +983,18 @@ existing marker/control-character sanitization still applies. Unknown persona
 fields and shortened legacy fields produce diagnostics. `summary` remains a
 280-character description; constraints retain their eight-item/160-character
 bounds with warnings.
+
+Optional `writing_samples` is a list of up to eight messages the person typed
+before, each up to 280 characters once whitespace is collapsed. Extra, longer
+and non-text entries warn as constraints do. The persona section renders them
+after the background as one sentence that numbers each sample and writes it as
+a JSON string. A sample warns when it looks like it holds an email address, a
+long number (seven digits, each apart from the next by at most one space, dot,
+dash or slash, which a date with a four-digit year also has), or text
+`redactEncodedText` would change. The participant reads it as written, and the
+brief redacts only the last kind. `traitsApplied` adds `writing_samples:<count>`.
+Persona compiler version 3 adds the samples; a persona without them renders the
+same text as version 2.
 
 Profiles with background do not acquire implicit patience or skill directives.
 Explicit traits still apply, with a reminder to review possible prose conflicts.
@@ -1914,6 +1926,9 @@ Refusals:
   `actor`. The message names each one's v3 field. The
   planners read only the v3 fields, so a budget left in `execution.caps` would otherwise run
   uncapped.
+- `HUMANISH_STUDY_TYPING_UNSUPPORTED`: the config sets `actor.typing` on the terminal, scripted
+  or preview route, whose participants never read the computer-use prompt. `parseStudy` refuses
+  the same file with `HUMANISH_STUDY_INVALID`.
 - `HUMANISH_STUDY_INVALID`: the config has no `actor` object, or its `route` is missing or is not
   the route its subject and actor take. The message is the one `parseStudy` gives.
 
