@@ -409,8 +409,8 @@ export function stopForError(session: LoopSession, error: unknown): Stop {
     };
   }
   if (isComputerUseOutOfCreditsError(error)) {
-    // The account's state, not this participant's: the run reads the stop cause and starts no one
-    // after it.
+    // The account's state, not this participant's: the run hears of it and starts no one after it.
+    session.settings.onOutOfCredits?.();
     const reason = `${error.message}; the request was not sent again`;
     return {
       completionReason: "actor_error",

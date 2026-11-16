@@ -99,6 +99,8 @@ export interface CuaActorSessionOptions {
   estimateTurnCostUsd?: (usage: ActorTokenUsage) => number | null;
   /** Run-level spend guard threaded to the loop. See CuaLoopOptions.overRunBudget. */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
+  /** Threaded to the loop. See CuaLoopOptions.onOutOfCredits. */
+  onOutOfCredits?: () => void;
   /** Stricter unknown-usage policy for capped sessions (see CuaLoopOptions); it also makes the
    *  `participant` provider send one HTTP dispatch per turn. Library-only. */
   requireReportedUsageForSpendCap?: boolean;
@@ -164,6 +166,7 @@ export async function runCuaActorSession(options: CuaActorSessionOptions): Promi
       ? {}
       : { estimateTurnCostUsd: options.estimateTurnCostUsd }),
     ...(options.overRunBudget === undefined ? {} : { overRunBudget: options.overRunBudget }),
+    ...(options.onOutOfCredits === undefined ? {} : { onOutOfCredits: options.onOutOfCredits }),
     ...(options.requireReportedUsageForSpendCap === undefined
       ? {}
       : { requireReportedUsageForSpendCap: options.requireReportedUsageForSpendCap }),

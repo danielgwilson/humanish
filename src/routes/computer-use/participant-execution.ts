@@ -69,11 +69,12 @@ export async function runCuaParticipant(
       `skipped: study budget reached before this participant started: ${crossed}; no desktop was created`,
     );
   }
-  const noCredits = deps.credits?.notStartedReason();
-  if (noCredits !== undefined) return skippedOutcome(spec, noCredits);
   // One that waited for a slot until its scheduled end would only be asked for its closing report.
   const pastEnd = pastEndReason(deps.end, deps.now());
   if (pastEnd !== undefined) return skippedOutcome(spec, pastEnd);
+  const noCredits = deps.credits?.notStartedReason();
+  if (noCredits !== undefined)
+    return { ...skippedOutcome(spec, noCredits), outOfCredits: "not_started" };
   let model: ParticipantModel = {};
   const warnings: string[] = [];
   const frames = participantFrames(deps.artifactRoot, spec, { blurred: deps.redactScreenshots });
@@ -82,6 +83,7 @@ export async function runCuaParticipant(
   let sessionError: string | undefined;
   let providerCleanupError: string | undefined;
   let providerPolicyError: string | undefined;
+  let ranOutOfCredits = false;
   const desktop =
     deps.createDesktop?.(spec, warnings, deps.artifactRoot) ??
     createE2BParticipantDesktop(spec, deps, warnings);
@@ -90,11 +92,13 @@ export async function runCuaParticipant(
     const ready = await desktop.openSession();
     model = await startParticipantModel(spec, deps, ready.executor);
     deps.signalReady?.();
-    session = await deps.runSession(
-      participantSessionOptions(spec, deps, ready, model.provider, writeScreenshot),
-    );
-    // Before this participant's teardown, so a participant waiting for its slot does not start.
-    deps.credits?.noteEnded(session.trace);
+    session = await deps.runSession({
+      ...participantSessionOptions(spec, deps, ready, model.provider, writeScreenshot),
+      onOutOfCredits: () => {
+        ranOutOfCredits = true;
+        deps.credits?.trip();
+      },
+    });
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
@@ -150,6 +154,7 @@ export async function runCuaParticipant(
     ...(sessionError === undefined ? {} : { sessionError }),
     ...(providerCleanupError === undefined ? {} : { providerCleanupError }),
     ...(providerPolicyError === undefined ? {} : { providerPolicyError }),
+    ...(ranOutOfCredits ? { outOfCredits: "ran_out" as const } : {}),
     ...desktopEvidence,
     killed: released,
     screenshots: frames.screenshots,

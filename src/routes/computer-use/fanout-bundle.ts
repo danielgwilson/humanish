@@ -1,4 +1,4 @@
-import { opening, outOfCreditsSummary } from "./out-of-credits.js";
+import { outOfCreditsSummary } from "./out-of-credits.js";
 import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
 import type { ActorStatus } from "../../actors/contract.js";
@@ -100,7 +100,8 @@ function fanoutSummary(
   const tasks = facts.tasks === undefined ? "" : ` Tasks: ${facts.tasks}.`;
   // A host suspension comes first: it may explain everything after it.
   const host = args.hostSuspension === undefined ? "" : `${args.hostSuspension.summary} `;
-  const credits = opening(outOfCreditsSummary(args.outcomes ?? []));
+  const outOfCredits = outOfCreditsSummary(args.outcomes ?? []);
+  const credits = outOfCredits === undefined ? "" : `${outOfCredits} `;
   const tookPart = count - facts.skipped;
   const outcomes = facts.outcomes ?? `0/${tookPart} finished a session`;
   const gaps = gapsListClause(tookPart - facts.passed, tookPart);

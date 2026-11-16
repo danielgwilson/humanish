@@ -569,6 +569,12 @@ export interface CuaLoopOptions {
    */
   overRunBudget?: (usage: ActorTokenUsage) => string | null;
   /**
+   * Called each time a provider request, a turn or a closing request, fails because the account
+   * is out of credits (ComputerUseOutOfCreditsError). A closing request that fails this way keeps
+   * the session's ending, so this is how a run learns of it. Default: no-op.
+   */
+  onOutOfCredits?: () => void;
+  /**
    * Stricter handling of unknown usage under a declared cap. Every capped session already stops
    * before its next request once a request's usage is unknown and unbounded, and resends a lost
    * request only when its worst case fits under the cap. With this option a reply with missing

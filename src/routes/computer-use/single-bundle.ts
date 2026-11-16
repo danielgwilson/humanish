@@ -1,4 +1,3 @@
-import { opening, outOfCreditsSummary } from "./out-of-credits.js";
 import type { BrowserNetworkIndex } from "../../evidence/browser-network.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
 import type { SubjectPhaseEvent } from "../../subject/steps.js";
@@ -431,7 +430,7 @@ function singleReview(
       ...(singleRunTasks === undefined ? {} : { tasks: singleRunTasks }),
       // A host suspension comes first: it may explain everything after it. An account out of
       // credits comes next: it explains why the session stopped.
-      summary: `${args.hostSuspension === undefined ? "" : `${args.hostSuspension.summary} `}${opening(outOfCreditsSummary([args.session === undefined ? undefined : { session: args.session }]))}${singleSummary(
+      summary: `${args.hostSuspension === undefined ? "" : `${args.hostSuspension.summary} `}${args.outOfCredits === undefined ? "" : `${args.outOfCredits} `}${singleSummary(
         args,
         view,
         {
@@ -540,6 +539,8 @@ export function buildSingleParticipantBundle(args: {
   desktopUsage?: DesktopUsage;
   /** The run's host suspensions and the failure they likely caused. */
   hostSuspension?: HostSuspensionReading;
+  /** The sentences on an account that ran out of credits (outOfCreditsSummary). */
+  outOfCredits?: string;
 }): RunBundle {
   const publicAppUrl = publicSafeAppUrlLabel(args.appUrl);
   const cost = runCost(args);

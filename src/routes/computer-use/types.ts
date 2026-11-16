@@ -615,6 +615,11 @@ export interface ParticipantRunOutcome {
   warnings: string[];
   /** Set when the pipeline gate or the study budget skipped the participant (a pinned reason). */
   skippedReason?: string;
+  /**
+   * The account's credits and this participant: one of its requests got the out-of-credits
+   * response, or it did not start because another's had.
+   */
+  outOfCredits?: "ran_out" | "not_started";
   /** When a fan-out participant was due and when its desktop was requested. */
   arrival?: ParticipantArrival;
   /**
