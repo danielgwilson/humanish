@@ -14,7 +14,8 @@ participants wrote into chat boxes and search fields like an assistant, with ful
 greeting and a thank-you, and the whole request in the first message. In support chat tasks
 with it, their turns came close to what people type. `actor.typing: false` leaves the paragraph
 out, and `actor.typing: "<text>"` replaces it, for a persona who writes formally or a form that
-needs long answers. Each participant's `streams[].assignment.typing` records the text it read,
+needs long answers. A participant at a `desktop-cli` subject's terminal types commands, so it
+gets no paragraph unless `actor.typing` is text. Each participant's `streams[].assignment.typing` records the text it read,
 or `false`. Terminal, scripted and preview studies refuse `actor.typing`; a library caller gets
 `HUMANISH_STUDY_TYPING_UNSUPPORTED`. The new paragraph changes every computer-use and
 shared-world prompt digest.

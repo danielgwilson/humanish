@@ -56,8 +56,8 @@ export const FALLBACK_PERSONA_ID = "cua-operator";
  *  + tasks + per-participant steer + closing line. */
 export function composeParticipantInstructions(args: {
   mission: string;
-  /** The study's `actor.typing`: absent means DEFAULT_TYPING, `false` leaves the paragraph out,
-   *  and a string replaces it. It follows the mission. */
+  /** The study's `actor.typing`: absent means DEFAULT_TYPING (none on a desktop-cli surface),
+   *  `false` leaves the paragraph out, and a string replaces it. It follows the mission. */
   typing?: string | false;
   persona?: string;
   instruction?: string;
@@ -79,7 +79,13 @@ export function composeParticipantInstructions(args: {
    * study is asking.
    */
   surface?: "desktop-cli";
-}): { instructions: string; persona: ActorPersonaRef } {
+}): {
+  instructions: string;
+  persona: ActorPersonaRef;
+  /** The paragraph on typing the instructions carry after the mission, or `false` for none. The
+   *  routes record this value, so the record and the prompt cannot disagree. */
+  typing: string | false;
+} {
   const { name, preset } = args.device;
   const deviceLine = preset.isMobile
     ? `You are a mobile user on a ${name} device (${preset.width}x${preset.height} @${preset.deviceScaleFactor}x). Expect a mobile/touch layout.`
@@ -103,12 +109,15 @@ export function composeParticipantInstructions(args: {
     args.surface === "desktop-cli"
       ? "A terminal window is already open on this desktop, and there is a terminal in the dock at the bottom of the screen if you want another. Everything you need is on this machine; there is no browser task here."
       : undefined;
+  // A participant at a terminal types commands, which the paragraph is not about; a study that
+  // wants one there sets actor.typing.
+  const typing = args.typing ?? (args.surface === "desktop-cli" ? false : DEFAULT_TYPING);
   const parts = [
     personaLine,
     deviceLine,
     surfaceLine,
     args.mission,
-    args.typing ?? DEFAULT_TYPING,
+    typing,
     taskLines,
     args.instruction ? `Your focus: ${args.instruction}` : undefined,
     CLOSING_LINE_DIRECTIVE,
@@ -122,6 +131,7 @@ export function composeParticipantInstructions(args: {
       ...(args.resolvedPersona ? { brief: personaBrief(args.resolvedPersona) } : {}),
       promptDigest: digestText(instructions, 16),
     },
+    typing,
   };
 }
 
