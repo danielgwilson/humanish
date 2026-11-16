@@ -1,6 +1,7 @@
 // Builds the run bundle for a concurrent shared-world run: per-participant simulations, streams and
 // events, the sharedWorld evidence block and the review summary.
 
+import { outOfCreditsSummary } from "../computer-use/out-of-credits.js";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
 import { redactEncodedText } from "../../evidence/encoded-text.js";
 import type { StudySubjectState } from "../../study/types.js";
@@ -166,6 +167,7 @@ function sharedWorldSummary(
       ? "The app's shared state did not change during the run."
       : `The app's shared state changed ${plural(facts.deltas, "time")} during the run.`;
   return [
+    outOfCreditsSummary(args.actorResults.map((ended) => ended.outcome)) ?? "",
     tookPart > 0
       ? `${plural(tookPart, "participant")} used ${app}${together}. ${reached} of ${tookPart} reached the goal${rest}.`
       : "",

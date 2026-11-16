@@ -3,6 +3,7 @@
 // shape's arguments. renderCuaReviewMarkdown writes review.md. shared-world/bundle.ts holds the
 // same for that route.
 
+import { outOfCreditsSummary } from "./out-of-credits.js";
 import type { ActorTrace } from "../../actors/contract.js";
 import type { CuaActorDescriptor } from "../../actors/registry.js";
 import type { ComputerUsePlan } from "../../study/plan-types.js";
@@ -124,6 +125,7 @@ function singleParticipantArgs(
   const outcome = state.outcomes?.[0];
   const { plan } = base;
   const desktopTemplate = e2bDesktopTemplate(plan.residual);
+  const outOfCredits = outOfCreditsSummary(state.outcomes ?? []);
   return {
     verdict: state.judgment.verdict,
     realEmail: plan.residual.comms?.email?.kind === "real",
@@ -175,6 +177,7 @@ function singleParticipantArgs(
     source: base.source,
     ...(state.inProgress === undefined ? {} : { inProgress: state.inProgress }),
     ...(state.hostSuspension === undefined ? {} : { hostSuspension: state.hostSuspension }),
+    ...(outOfCredits === undefined ? {} : { outOfCredits }),
     subject: state.aggregateSubject,
     ...(desktopTemplate === undefined ? {} : { desktopTemplate }),
     ...(outcome?.desktopBrowser === undefined ? {} : { desktopBrowser: outcome.desktopBrowser }),

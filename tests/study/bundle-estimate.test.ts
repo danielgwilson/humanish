@@ -62,7 +62,7 @@ function eventDay(hosts: number, hours: number, guests = 0): Patch {
 
 /**
  * `study check` on the study: whether it passes, its bundle size row and its warnings, apart from
- * the one each participant gets for the fixture persona's missing background.
+ * the ones for the fixture persona: it has no file, and so each participant has no background.
  */
 async function check(patch: Patch) {
   const cwd = await makeTestTempDir("humanish-bundle-check-");
@@ -74,7 +74,10 @@ async function check(patch: Patch) {
   return {
     ok: result.ok,
     row: result.checks.find((row) => row.name === "bundle size")?.message,
-    warnings: result.warnings.filter((warning) => !warning.includes("has no persona background")),
+    warnings: result.warnings.filter(
+      (warning) =>
+        !warning.includes("has no persona background") && !warning.includes("has no readable file"),
+    ),
   };
 }
 

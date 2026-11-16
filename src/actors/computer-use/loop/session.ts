@@ -46,6 +46,7 @@ export type LoopSettings = {
       | "tasks"
       | "maxUsd"
       | "overRunBudget"
+      | "onOutOfCredits"
       | "estimateTurnCostUsd"
       | "onObservedUrl"
       | "onMessage"
@@ -164,6 +165,7 @@ export class LoopSession {
       tasks,
       maxUsd,
       overRunBudget,
+      onOutOfCredits,
       estimateTurnCostUsd,
       requireReportedUsageForSpendCap = false,
       onObservedUrl,
@@ -183,6 +185,7 @@ export class LoopSession {
       tasks,
       maxUsd,
       overRunBudget,
+      onOutOfCredits,
       estimateTurnCostUsd,
       onObservedUrl,
       onMessage,

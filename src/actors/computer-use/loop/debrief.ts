@@ -1,6 +1,7 @@
 import { closingReportSchema, participantImpressionsSchema } from "../../closing-report.js";
 import type { ActorTrace } from "../../contract.js";
 import { isComputerUseAdmissionLimitError } from "../admission-limit.js";
+import { isComputerUseOutOfCreditsError } from "../provider-error.js";
 import { IMPRESSIONS_ASK, IMPRESSIONS_HINT, recordImpressions } from "./impressions.js";
 import { declaredOutcomeOf, type DebriefTrigger } from "./ending.js";
 import { singleDispatch } from "./provider-call.js";
@@ -258,7 +259,9 @@ async function sendClosing(
         : await raceSessionDeadline(send(request, scope.signal), boundMs, signal);
     return { turn, usageReported: recordClosingUsage(session, turn) };
   } catch (error) {
-    // A failed optional report cannot rewrite the already observed structured completion.
+    // A failed optional report cannot rewrite the already observed structured completion. An
+    // account out of credits still has to reach the run, which starts no one after it.
+    if (isComputerUseOutOfCreditsError(error)) session.settings.onOutOfCredits?.();
     if (isComputerUseAdmissionLimitError(error)) {
       return {
         status: "skipped",

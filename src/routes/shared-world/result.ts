@@ -20,6 +20,7 @@ import {
   participantExecutionFailures,
   participantFactsOf,
 } from "../computer-use/participant-facts.js";
+import { withOutOfCreditsSummary } from "../computer-use/out-of-credits.js";
 import { participantCapWarning } from "../computer-use/participant-model.js";
 import { resolveSubjectState } from "../computer-use/subject-projection.js";
 import {
@@ -120,8 +121,24 @@ function concurrentParticipantResults(
   });
 }
 
-/** The error a run that did not pass reports, most specific cause first. */
-function concurrentStudyError(args: {
+/**
+ * The error a run that did not pass reports, most specific cause first, after an account that ran
+ * out of credits.
+ */
+function concurrentStudyError(
+  args: Parameters<typeof studyErrorByCause>[0] & { actorResults: readonly ActorRunResult[] },
+): ConcurrentSharedWorldStudyResult["error"] | undefined {
+  const error = studyErrorByCause(args);
+  return (
+    error &&
+    withOutOfCreditsSummary(
+      error,
+      args.actorResults.map((ended) => ended.outcome),
+    )
+  );
+}
+
+function studyErrorByCause(args: {
   ok: boolean;
   handoffTimedOut: boolean;
   hostHandoffFailure: string | undefined;
@@ -390,6 +407,7 @@ export async function finishConcurrentRun(
     participantCount,
     shortfall: dryRun ? undefined : sharedWorldShortfall(judgment.world),
     executionFailure: execution.failures[0]?.message,
+    actorResults,
   });
 
   const result: ConcurrentSharedWorldStudyResult = {

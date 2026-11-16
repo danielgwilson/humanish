@@ -929,8 +929,8 @@ describe("createOpenAiResponsesProvider", () => {
   it("an exhausted 429 names a known code from the body, never the body itself", async () => {
     const body = JSON.stringify({
       error: {
-        code: "insufficient_quota",
-        message: "You exceeded your current quota, details: secret",
+        code: "rate_limit_exceeded",
+        message: "Rate limit reached for requests, details: secret",
       },
     });
     const fetchFn: FetchLike = async () => ({
@@ -951,7 +951,7 @@ describe("createOpenAiResponsesProvider", () => {
     } catch (error) {
       thrown = error;
     }
-    expect((thrown as Error).message).toBe("OpenAI Responses 429 insufficient_quota");
+    expect((thrown as Error).message).toBe("OpenAI Responses 429 rate_limit_exceeded");
     expect((thrown as Error).message).not.toContain("secret");
   });
 

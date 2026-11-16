@@ -176,8 +176,10 @@ export async function runStudyPreflight(
           if (error instanceof PersonaConfigError) return error;
           throw error;
         });
-  const personas =
-    personaResolution instanceof PersonaConfigError ? new Map() : personaResolution.personas;
+  const resolvedPersonas =
+    personaResolution instanceof PersonaConfigError
+      ? { personas: new Map<string, ResolvedPersona>(), warnings: [] }
+      : personaResolution;
   const env = options.env ?? process.env;
   const ctx: PreflightContext = {
     cwd,
@@ -199,7 +201,8 @@ export async function runStudyPreflight(
     sandbox: { created: false },
     warnings: [
       ...resolved.warnings,
-      ...personaBackgroundWarnings(resolved.config.id, participants, personas),
+      ...resolvedPersonas.warnings,
+      ...personaBackgroundWarnings(resolved.config.id, participants, resolvedPersonas.personas),
     ],
   };
 

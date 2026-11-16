@@ -27,7 +27,7 @@ cost projection. It needs no keys and spends nothing. The live command writes
 | `--brain <ids>`            | `openai-computer-use` | Comma-separated: `openai-computer-use`, `local-agent-claude`, `local-agent-codex` |
 | `--runs <n>`               | 3                     | Runs per arm per brain. Each run has one participant and one analysis         |
 | `--max-usd <usd>`          | 7                     | Cap on estimated spend per brain                                              |
-| `--mission <id>`           | `neutral`             | `neutral` or `walked` (below)                                                 |
+| `--mission <id>`           | `neutral`             | `neutral`, `walked` or `default` (below)                                      |
 | `--dry-run`                | off                   | Plan and estimate only                                                        |
 | `--dotenv <path>`          | none                  | Passed to `humanish run` and `humanish reclaim`; loaded by Node for `analyze`  |
 | `--cli <path>`             | `dist/cli.js`         | Another humanish build, such as an installed package's `dist/cli.js`          |
@@ -198,12 +198,18 @@ each run's manifest records the cap it used.
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------- |
 | `neutral` | Names the app and asks for ordinary use with a few errands until the participant decides whether to keep using it. It names no feature a defect sits on | The benchmark default                     |
 | `walked`  | The mission of `humanish/studies/detect-taskly-planted.yaml`: add a long task, try the filters, rename one, tidy up                                    | Comparison with the September 2026 results |
+| `default` | None. The generated studies have no `mission:` line, so the participant reads the CLI's built-in mission                                               | What a study that names no mission gets    |
 
 The walked mission puts one step on each planted defect. Its recall measures whether a participant
 notices a broken behavior on a step it was told to take. The neutral mission also measures
-whether the participant reaches the feature. Every result records the mission id, its text and
-its SHA-256. Both texts are in `bench/taskly/missions.ts`, and a test holds the walked text equal to
-the committed study.
+whether the participant reaches the feature. The default mission measures the built-in mission of
+the CLI under test, which names neither the app nor a feature. The neutral and walked texts are in
+`bench/taskly/missions.ts`, and a test holds the walked text equal to the committed study.
+
+Every result records the mission id, its text and its SHA-256. The text is the one the CLI's dry
+run of the generated studies recorded as each participant's mission, so `--cli` with another build
+records that build's built-in mission. The first line the benchmark prints names the mission and
+the first 12 characters of its SHA-256.
 
 ## What each score means
 

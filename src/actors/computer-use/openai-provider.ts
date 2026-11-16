@@ -3,7 +3,7 @@ import {
   ComputerUseAdmissionLimitError,
   isComputerUseAdmissionLimitError,
 } from "./admission-limit.js";
-import { ComputerUsePromptRefusedError } from "./provider-error.js";
+import { ComputerUseOutOfCreditsError, ComputerUsePromptRefusedError } from "./provider-error.js";
 import type { CuaProvider, CuaSpendGate, CuaTurn, CuaTurnRequest } from "./loop.js";
 import type { ClosingRequest } from "./closing-account.js";
 import {
@@ -78,6 +78,7 @@ const NAMED_PROVIDER_ERROR_CODES = [
   "server_is_overloaded",
   "rate_limit_exceeded",
   "insufficient_quota",
+  "credit_balance_exhausted",
   "model_not_found",
   "context_length_exceeded",
   // 400 codes seen on /v1/responses (docs, SDK types and user reports, researched 2026-09-30).
@@ -124,13 +125,24 @@ export function requestRejectionDetail(bodyText: string): string | undefined {
   return at === undefined ? named : `${named} at ${at}`;
 }
 
+/**
+ * The allowlisted `code` of a non-ok body, else its allowlisted `type`: a body can carry the name
+ * that matters in either field, as an out-of-credits 429 carries `insufficient_quota` as its type.
+ */
 export function namedProviderErrorCode(bodyText: string): string | undefined {
-  const match = /"code"\s*:\s*"([a-z_]+)"/.exec(bodyText);
-  const code = match?.[1];
-  return code !== undefined && (NAMED_PROVIDER_ERROR_CODES as readonly string[]).includes(code)
-    ? code
-    : undefined;
+  for (const field of [/"code"\s*:\s*"([a-z_]+)"/, /"type"\s*:\s*"([a-z_]+)"/]) {
+    const named = field.exec(bodyText)?.[1];
+    if (named !== undefined && (NAMED_PROVIDER_ERROR_CODES as readonly string[]).includes(named))
+      return named;
+  }
+  return undefined;
 }
+
+/** The codes that say the account itself cannot pay for another request. */
+const OUT_OF_CREDITS_CODES: ReadonlySet<string> = new Set([
+  "credit_balance_exhausted",
+  "insufficient_quota",
+]);
 
 export interface OpenAiResponsesProviderOptions {
   apiKey: string;
@@ -203,6 +215,7 @@ const OTHER_FAILURE_CODES: ReadonlySet<string> = new Set([
   "context_length_exceeded",
   "rate_limit_exceeded",
   "insufficient_quota",
+  "credit_balance_exhausted",
   "invalid_image",
   "invalid_image_format",
   "invalid_base64_image",
@@ -254,7 +267,8 @@ interface ResponsesTransport {
 }
 
 // POST the JSON body and return the parsed JSON on success. Retries on
-// transient statuses (408/409/429/>=500). Maps a ZDR-policy 400 to a typed
+// transient statuses (408/409/429/>=500), apart from a 429 that says the account is out of
+// credits, which throws a typed ComputerUseOutOfCreditsError at once. Maps a ZDR-policy 400 to a typed
 // ZdrError; any other non-ok status throws with the status only (never the
 // body, which can echo the input/screenshot).
 async function postResponse(
@@ -342,13 +356,17 @@ async function postResponse(
       }
       throw new Error("OpenAI Responses 403");
     }
+    const code = namedProviderErrorCode(await res.text().catch(() => ""));
+    // A 429 that says the account is out of credits answers every retry the same way.
+    if (res.status === 429 && code !== undefined && OUT_OF_CREDITS_CODES.has(code)) {
+      throw new ComputerUseOutOfCreditsError("OpenAI", `429 ${code}`);
+    }
     const retryable =
       res.status === 408 || res.status === 409 || res.status === 429 || res.status >= 500;
     if (retryable && attempt < retries) {
       await transport.delayFn(retryDelayMs(attempt, res.headers));
       continue;
     }
-    const code = namedProviderErrorCode(await res.text().catch(() => ""));
     throw new Error(`OpenAI Responses ${res.status}${code === undefined ? "" : ` ${code}`}`);
   }
   if (sawNetworkError) {

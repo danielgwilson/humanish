@@ -7,7 +7,11 @@ import type {
 import type { StopConditionMatch } from "../../stop-conditions.js";
 import { describeExecutorDiagnostic } from "../executor-diagnostic.js";
 import { isComputerUseExecutorError } from "../executor-error.js";
-import { isComputerUsePromptRefusedError, isComputerUseProviderError } from "../provider-error.js";
+import {
+  isComputerUseOutOfCreditsError,
+  isComputerUsePromptRefusedError,
+  isComputerUseProviderError,
+} from "../provider-error.js";
 import { CuaAbortError, CuaDeadlineError } from "./race.js";
 import type { LoopSession } from "./session.js";
 import { notice, type Evidence } from "./trace.js";
@@ -400,6 +404,21 @@ export function stopForError(session: LoopSession, error: unknown): Stop {
       evidence: noticeEvidence(
         "error",
         "provider refused the prompt",
+        `phase: ${redact(session.phase)}; ${reason}`,
+      ),
+    };
+  }
+  if (isComputerUseOutOfCreditsError(error)) {
+    // The account's state, not this participant's: the run hears of it and starts no one after it.
+    session.settings.onOutOfCredits?.();
+    const reason = `${error.message}; the request was not sent again`;
+    return {
+      completionReason: "actor_error",
+      reason,
+      stopCause: "provider_out_of_credits",
+      evidence: noticeEvidence(
+        "error",
+        "provider account out of credits",
         `phase: ${redact(session.phase)}; ${reason}`,
       ),
     };

@@ -66,6 +66,17 @@ describe("the generated benchmark studies", () => {
     }
   });
 
+  it("leave the mission out under the default mission, so the CLI's built-in one runs", () => {
+    const study = parse(
+      studyYaml(BRAINS["openai-computer-use"], "planted", MISSIONS.default, 0.6),
+    ) as {
+      actor: Record<string, unknown>;
+    };
+    expect(study.actor.type).toBe("openai-computer-use");
+    expect(study.actor.persona).toBe("synthetic-new-user");
+    expect(Object.keys(study.actor)).not.toContain("mission");
+  });
+
   it("sends a declared participant model, effort and service tier to the study", () => {
     const brain = withParticipant(
       BRAINS["openai-computer-use"],

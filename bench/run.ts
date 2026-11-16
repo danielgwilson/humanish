@@ -12,7 +12,6 @@ import { admissionFor, analyzeWithinBudget } from "./lib/analyze.js";
 import { readJson, readRunBundle, runCosts } from "./lib/bundle.js";
 import {
   interruptActive,
-  numberField,
   objectField,
   runCli,
   stringField,
@@ -41,8 +40,10 @@ import {
 import {
   DEFAULT_PERSONA_FILE,
   REPO_ROOT,
+  checkStudy,
   fixtureDigests,
   personaId,
+  sha256,
   studyId,
   writeProject,
 } from "./lib/project.js";
@@ -66,7 +67,7 @@ Runs the Taskly planted and clean builds through humanish and scores the reports
   --brain <ids>            openai-computer-use (default), computer-use, local-agent-claude, local-agent-codex; comma-separated
   --runs <n>               runs per arm per brain (default 3)
   --max-usd <usd>          hard cap on estimated spend per brain (default 7)
-  --mission <id>           neutral (default) or walked
+  --mission <id>           neutral (default), walked, or default: no mission line, so the CLI's built-in mission runs
   --dry-run                plan and estimate cost; no keys, no desktop, no spend
   --dotenv <path>          passed to the humanish CLI, which loads keys without printing them
   --cli <path>             humanish CLI to run (default: this checkout's dist/cli.js)
@@ -385,7 +386,7 @@ const personaFile = path.resolve(values.persona ?? DEFAULT_PERSONA_FILE);
 if (!existsSync(personaFile)) fail(`No persona file at ${personaFile}.`);
 const runsPerArm = Number(values.runs);
 if (!Number.isSafeInteger(runsPerArm) || runsPerArm < 1) fail(`--runs must be a whole number of at least 1.`);
-if (values.mission !== "neutral" && values.mission !== "walked") fail(`--mission must be neutral or walked.`);
+if (!Object.hasOwn(MISSIONS, values.mission)) fail(`--mission must be neutral, walked or default.`);
 const mission = MISSIONS[values.mission as MissionId];
 if (values.storage !== "memory" && values.storage !== "local") fail(`--storage must be memory or local.`);
 const storage: Storage = values.storage;
@@ -422,19 +423,32 @@ writeProject(
   pointer,
 );
 
-// The CLI's own dry run checks each generated study and reports its worst-case desktop minutes.
+// The CLI's own dry run checks each generated study, reports its worst-case desktop minutes and
+// records the mission it would send, so the result names the text this CLI ran.
 let worstCaseDesktopMinutes = 0;
+const missionsSent = new Set<string | null>();
 for (const brain of brains) {
   for (const arm of ["planted", "clean"] as const) {
     const id = studyId(brainFor(brain), arm);
-    const check = await runCli(cliPath, ["run", id, "--cwd", projectDir, "--dry-run", "--no-open", "--detach", "--json"], {
-      logFile,
-      timeoutMs: SHORT_TIMEOUT_MS,
-    });
-    if (check.code !== 0 || check.json?.ok !== true) fail(`The CLI refused study ${id}; see ${logFile}.`);
-    const minutes = numberField(objectField(check.json, "plan"), "worstCaseSandboxMinutes");
-    worstCaseDesktopMinutes = Math.max(worstCaseDesktopMinutes, minutes ?? 0);
+    const check = await checkStudy({ cliPath, projectDir, logFile, studyId: id });
+    if (!check.ok) {
+      fail(
+        check.reason === "refused"
+          ? `The CLI refused study ${id}; see ${logFile}.`
+          : `humanish ${version} answered ok for study ${id} but wrote no dry-run bundle, so the benchmark cannot ` +
+              `read which mission it would send. Check that --cli names a humanish build; its output is in ${logFile}.`,
+      );
+    }
+    missionsSent.add(check.mission);
+    worstCaseDesktopMinutes = Math.max(worstCaseDesktopMinutes, check.worstCaseSandboxMinutes ?? 0);
   }
+}
+const [missionText] = missionsSent;
+if (missionsSent.size !== 1 || missionText === undefined || missionText === null) {
+  fail(
+    `humanish ${version} did not record one mission across the dry runs of the generated studies, so the ` +
+      `results could not say which mission ran. See the bundles under ${path.join(projectDir, ".humanish", "runs")}.`,
+  );
 }
 
 const budget: BudgetSettings = {
@@ -447,7 +461,7 @@ const budget: BudgetSettings = {
 };
 
 process.stdout.write(
-  `humanish ${version} (${source}), mission ${mission.id}, ${storage === "local" ? "builds keeping tasks in localStorage, " : ""}${runsPerArm} run${runsPerArm === 1 ? "" : "s"} per arm, cap $${budget.maxUsdPerBrain} per brain` +
+  `humanish ${version} (${source}), mission ${mission.id} (sha256 ${sha256(missionText).slice(0, 12)}), ${storage === "local" ? "builds keeping tasks in localStorage, " : ""}${runsPerArm} run${runsPerArm === 1 ? "" : "s"} per arm, cap $${budget.maxUsdPerBrain} per brain` +
     (matrixMode
       ? ` and per analysis model, ${repeats} analys${repeats === 1 ? "is" : "es"} of each run per model after every participant has run\n`
       : "\n"),
@@ -496,6 +510,7 @@ const manifest: Manifest = {
   createdAt: new Date().toISOString(),
   humanish: { version, source },
   mission: mission.id,
+  missionText,
   brains,
   runsPerArm,
   budget,
