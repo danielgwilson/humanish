@@ -100,7 +100,7 @@ turn moved close to people's. How they used the rest of the app did not change, 
 search queries stayed longer than people's. A first wording covered any message, a search or
 a form answer. With it, participants also wrote shorter entries they meant to keep and shorter
 closing reports, and on the Taskly benchmark a defect that needs a long entry went unreached
-([2026-11-16-typing-paragraph.md](../evidence/benchmark/2026-11-16-typing-paragraph.md)). The
+([2026-11-16-typing-paragraph.md](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/benchmark/2026-11-16-typing-paragraph.md)). The
 paragraph now names chat and search only.
 
 ### Outcome-only scoring cannot see modality
