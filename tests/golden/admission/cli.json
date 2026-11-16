@@ -484,7 +484,7 @@
       "study": "adm-cu-persona-missing",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
       },
       "warnings": []
     },
@@ -501,7 +501,7 @@
       "study": "adm-cu-persona-missing",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
       },
       "warnings": []
     },
@@ -518,7 +518,7 @@
       "study": "adm-shared-persona-missing",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
       },
       "warnings": []
     },
@@ -535,7 +535,7 @@
       "study": "adm-terminal-persona-missing",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
       },
       "warnings": []
     },
@@ -581,7 +581,7 @@
         {
           "name": "persona",
           "ok": false,
-          "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+          "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml."
         }
       ],
       "targets": [
@@ -606,7 +606,7 @@
       "warnings": [],
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
       }
     },
     "stderr": "",
@@ -651,7 +651,7 @@
         {
           "name": "persona",
           "ok": false,
-          "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+          "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml."
         }
       ],
       "targets": [
@@ -673,12 +673,10 @@
         "e2bDesktop": false,
         "model": false
       },
-      "warnings": [
-        "Participant lane-01 has no persona background because persona weekend-planner has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show adm-cu-persona-missing --json to see what the participant receives."
-      ],
+      "warnings": [],
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
       }
     },
     "stderr": "",
@@ -695,7 +693,7 @@
       "study": "adm-shared-persona-missing",
       "error": {
         "code": "HUMANISH_STUDY_INVALID",
-        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
       },
       "warnings": []
     },

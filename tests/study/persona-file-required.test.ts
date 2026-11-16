@@ -8,9 +8,11 @@ import { describe, expect, it } from "vitest";
 import { PersonaConfigError } from "../../src/study/persona.js";
 import { resolveStudyPersonas } from "../../src/study/persona-resolve.js";
 import type { StudyConfig } from "../../src/study/types.js";
-import { stringify } from "yaml";
+import { parse as parseYaml, stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
+import { parseStudy } from "../../src/study/config.js";
+import { runStudyPreflight } from "../../src/study/preflight.js";
 import { lab, SCENARIO_YAML, type BaseName } from "../admission/fixtures.js";
 import { libraryConfig } from "../helpers/library-config.js";
 import { runComputerUse, runSharedWorld, runTerminal } from "../helpers/route-run.js";
@@ -77,6 +79,28 @@ describe.each(Object.keys(shapes))("a %s study", (route) => {
     });
     const error = await refusal(cwd, shapes[route]!("weekend-planner"));
     expect(error.message).toContain("humanish/personas/weekend-planner.yaml");
+  });
+
+  it.each([
+    ["is empty", ""],
+    ["holds only prose", "Sam plans trips with friends.\n"],
+  ])("stops on a named persona whose file %s and names that file", async (_case, text) => {
+    const cwd = await project({ "humanish/personas/weekend-planner.yaml": text });
+    const error = await refusal(cwd, shapes[route]!("weekend-planner"));
+    expect(error.message).toContain("humanish/personas/weekend-planner.yaml");
+  });
+
+  it("offers a file whose id reads back as the id when the id looks like a number", async () => {
+    const cwd = await project();
+    const error = await refusal(cwd, shapes[route]!("2024"));
+    const idLine = error.message.split("\n").find((line) => line.startsWith("id: "));
+    expect(parseYaml(idLine ?? "")).toEqual({ id: "2024" });
+  });
+
+  it("names where a file that is not YAML stopped, without a trailing colon", async () => {
+    const cwd = await project({ "humanish/personas/weekend-planner.yaml": "background: [a\n" });
+    const error = await refusal(cwd, shapes[route]!("weekend-planner"));
+    expect(error.message).not.toMatch(/:\)/);
   });
 
   it("stops on a named persona whose id cannot be a file name", async () => {
@@ -228,5 +252,57 @@ describe("a route that sends no persona", () => {
       ok: true,
       error: undefined,
     });
+  });
+});
+
+describe("a persona value that is not text", () => {
+  it.each([
+    ["a number", 123],
+    ["true", true],
+    ["an empty value", null],
+    ["a list", ["weekend-planner"]],
+  ])("is refused at parse on actor.persona when it is %s", (_case, value) => {
+    const parsed = parseStudy(lab("cuAppUrl", {}, { persona: value }));
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.error.message).toContain("actor.persona");
+  });
+
+  it("is refused at parse on a participant's persona", () => {
+    const parsed = parseStudy(
+      lab("cuAppUrl", { participants: [{ id: "first", persona: 2024 }, { id: "second" }] }),
+    );
+    expect(parsed.ok).toBe(false);
+    if (!parsed.ok) expect(parsed.error.message).toContain("participants[0].persona");
+  });
+});
+
+describe("study check on a persona that does not resolve", () => {
+  it("fails on the persona alone, with no background warning for the others", async () => {
+    const raw = lab(
+      "cuAppUrl",
+      {
+        participants: [
+          { id: "first", persona: "has-background" },
+          { id: "second", persona: "weekend-planner" },
+        ],
+      },
+      { persona: undefined },
+    );
+    const cwd = await project({
+      "humanish/personas/has-background.yaml":
+        "schema: humanish.persona.v1\nid: has-background\nbackground: Plans trips.\n",
+      "humanish/studies/example.yaml": stringify(raw),
+    });
+    const check = await runStudyPreflight({ cwd, study: "example" });
+    const row = check.checks.find((entry) => entry.name === "persona");
+    expect({
+      ok: check.ok,
+      code: check.error?.code,
+      row: row?.ok,
+      warnings: check.warnings,
+    }).toEqual({ ok: false, code: "HUMANISH_STUDY_INVALID", row: false, warnings: [] });
+    // The row names the problem; the error holds the file to paste, so it prints once.
+    expect(check.error?.message.startsWith(row?.message ?? "")).toBe(true);
+    expect(row?.message).not.toBe(check.error?.message);
   });
 });

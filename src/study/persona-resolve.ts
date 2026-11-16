@@ -1,5 +1,5 @@
 // Shared contained persona resolution for browser and terminal participants.
-import { parse as parseYaml } from "yaml";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import path from "node:path";
 
 import { parseResolvedPersona, PersonaConfigError, type ResolvedPersona } from "./persona.js";
@@ -11,6 +11,7 @@ import {
   type PreparedSelectedOutputDirectory,
 } from "../run/contained-output.js";
 import { digestText, redactText } from "../evidence/redaction.js";
+import { isRecord } from "../run/type-guards.js";
 import { realpath } from "node:fs/promises";
 import { participantList } from "./study-fields.js";
 import type { StudyConfig } from "./types.js";
@@ -45,12 +46,16 @@ interface PersonaResolveOptions {
   readonly required?: boolean;
 }
 
-/** The persona file a reader can paste for `personaId`: what the error message offers. */
+/**
+ * The persona file a reader can paste for `personaId`: what the error message offers. The id is
+ * quoted where YAML would read it as something other than text, such as `2024`.
+ */
 function pastePersonaFile(personaId: string): string {
+  const id = stringifyYaml(personaId).trimEnd();
   return [
     "schema: humanish.persona.v1",
-    `id: ${personaId}`,
-    `name: ${personaId}`,
+    `id: ${id}`,
+    `name: ${id}`,
     "# background: >-",
     "#   A short, fictional description of who this person is and what they want.",
   ].join("\n");
@@ -107,6 +112,10 @@ export async function resolveCommittedPersona(
         ],
       };
     }
+    if (required && !isRecord(raw))
+      throw new PersonaConfigError(
+        `Persona ${id}: ${candidate} holds no persona fields${raw === null ? ", because it is empty" : ""}. A persona file is a YAML mapping of fields such as id, name and background. Add them, or remove the persona line from the study.`,
+      );
     const warnings: string[] = [];
     const persona = parseResolvedPersona(
       raw,
@@ -122,7 +131,7 @@ export async function resolveCommittedPersona(
         `The study names persona ${id}, and it has no persona file, so its participants would get only the id. humanish looked for ${candidates.join(", ")}. The file name must be the persona id followed by .yaml.`,
         `Add the file, for example humanish/personas/${id}.yaml:`,
         pastePersonaFile(id),
-        "Or remove the persona line from the study.",
+        "That file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study.",
       ].join("\n\n"),
     );
   return {
@@ -136,7 +145,7 @@ export async function resolveCommittedPersona(
 /** The first line of a YAML parser error, which names the line and column it stopped at. */
 function yamlProblem(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  return redactText(message.split("\n")[0] ?? message);
+  return redactText((message.split("\n")[0] ?? message).replace(/:\s*$/, ""));
 }
 
 /**

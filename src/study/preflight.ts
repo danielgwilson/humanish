@@ -198,16 +198,29 @@ export async function runStudyPreflight(
     ],
     targets: collectTargets(resolved.config),
     sandbox: { created: false },
-    warnings: [
-      ...resolved.warnings,
-      ...resolvedPersonas.warnings,
-      ...personaBackgroundWarnings(resolved.config.id, participants, resolvedPersonas.personas),
-    ],
+    // A persona that did not resolve is the failure; the others' background warnings would be
+    // computed from personas that were never read.
+    warnings:
+      personaResolution instanceof PersonaConfigError
+        ? [...resolved.warnings]
+        : [
+            ...resolved.warnings,
+            ...resolvedPersonas.warnings,
+            ...personaBackgroundWarnings(
+              resolved.config.id,
+              participants,
+              resolvedPersonas.personas,
+            ),
+          ],
   };
 
   if (personaResolution instanceof PersonaConfigError) {
     const { message } = personaResolution;
-    return fail(ctx, "HUMANISH_STUDY_INVALID", message, [{ name: "persona", ok: false, message }]);
+    // The row says what failed; the error carries the rest, such as the file to paste.
+    const summary = message.split("\n\n")[0] ?? message;
+    return fail(ctx, "HUMANISH_STUDY_INVALID", message, [
+      { name: "persona", ok: false, message: summary },
+    ]);
   }
 
   // The plan `humanish run <study>` makes before it creates anything: no run options, so the file's

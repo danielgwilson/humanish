@@ -76,6 +76,21 @@ function parsePersonaId(
   raw: unknown,
   path: string,
 ): { ok: true; value: string | undefined } | StudyParseFailure {
+  if (raw !== undefined && typeof raw !== "string") {
+    const read =
+      raw === null
+        ? "an empty value"
+        : Array.isArray(raw)
+          ? "a list"
+          : typeof raw === "object"
+            ? "a mapping"
+            : `${typeof raw} ${String(raw)}`;
+    const example =
+      typeof raw === "number" || typeof raw === "boolean" ? String(raw) : "weekend-planner";
+    return invalid(
+      `\`${path}\` must be a persona id written as text, and YAML read it as ${read}. Put the id in quotes, such as persona: "${example}", or remove the line.`,
+    );
+  }
   const persona = str(raw);
   if (persona !== undefined && scanEncodedText(persona).sensitive) {
     return invalid(
