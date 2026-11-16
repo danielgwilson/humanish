@@ -2994,11 +2994,17 @@ fi
 # subject.source local-app in run.json, the result and each participant's subject, and verify
 # reads the run (#1733, #1716). 0.117.0 recorded app-url.
 cat >"$lib/local-app.mjs" <<'JS'
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseStudy, runStudy, verifyRun } from "humanish";
 const cwd = mkdtempSync(join(process.env.LOCAL_APP_DIR, "run-"));
+// The study names a persona, so the project holds its file.
+mkdirSync(join(cwd, "humanish/personas"), { recursive: true });
+writeFileSync(
+  join(cwd, "humanish/personas/first-time-visitor.yaml"),
+  "schema: humanish.persona.v1\nid: first-time-visitor\nbackground: Sam is trying the app for the first time.\n",
+);
 const parsed = parseStudy({
   schema: "humanish.study.v3",
   id: "local-app-dry",
