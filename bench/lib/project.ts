@@ -2,7 +2,8 @@
 // generated study per brain and arm. With local storage, each build's app.js comes from its
 // `-local` directory, which keeps tasks in localStorage across a page reload; index.html is shared. The builds are served from `build-a` and `build-b`, and study
 // ids use the same letters, so no file or id the participant's desktop or the analyst receives says
-// which arm it is. The manifest beside the project keeps the mapping.
+// which arm it is. The manifest beside the project keeps the mapping. checkStudy runs the CLI's
+// dry run of each study, which reads back the mission the CLI under test would send.
 
 import { createHash } from "node:crypto";
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -10,6 +11,8 @@ import path from "node:path";
 
 import type { Arm, Storage } from "../taskly/answer-key.js";
 import type { Mission } from "../taskly/missions.js";
+import { readRunBundle, type RunBundle } from "./bundle.js";
+import { numberField, objectField, runCli, stringField } from "./humanish-cli.js";
 import type { Brain } from "./plan.js";
 
 export const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
@@ -22,6 +25,9 @@ const BUILD_DIR: Record<Arm, string> = { planted: "build-a", clean: "build-b" };
 function appDir(arm: Arm, storage: Storage): string {
   return `bench/taskly-${arm}${storage === "local" ? "-local" : ""}`;
 }
+
+const CHECK_TIMEOUT_MS = 5 * 60_000;
+
 /** The participant's session limit, matching humanish/studies/detect-taskly-*.yaml. */
 export const SESSION_TIMEOUT_MS = 600_000;
 
@@ -88,8 +94,7 @@ subject:
 actor:
 ${actor}
   persona: ${persona}
-  mission: ${JSON.stringify(mission.text)}
-${caps}execution:
+${mission.text === null ? "" : `  mission: ${JSON.stringify(mission.text)}\n`}${caps}execution:
   target: e2b-desktop
 ${pointer === undefined ? "" : `  pointer: ${pointer}\n`}  timeoutMs: ${SESSION_TIMEOUT_MS}
 review:
@@ -129,4 +134,45 @@ export function writeProject(
       );
     }
   }
+}
+
+export type StudyCheck =
+  /** `refused`: the CLI refused the study. `no_bundle`: it answered ok but left no readable dry-run bundle. */
+  | { ok: false; reason: "refused" | "no_bundle" }
+  | {
+      ok: true;
+      /** The mission every participant of the dry run recorded, null when they differ or record none. */
+      mission: string | null;
+      worstCaseSandboxMinutes: number | null;
+    };
+
+/**
+ * The CLI's own dry run of one generated study. It checks the study, and its bundle records the
+ * mission the CLI under test would send, which for a study with no mission line is its built-in one.
+ */
+export async function checkStudy(
+  target: { cliPath: string; projectDir: string; logFile: string; studyId: string },
+  cli: typeof runCli = runCli,
+): Promise<StudyCheck> {
+  const check = await cli(
+    target.cliPath,
+    ["run", target.studyId, "--cwd", target.projectDir, "--dry-run", "--no-open", "--detach", "--json"],
+    { logFile: target.logFile, timeoutMs: CHECK_TIMEOUT_MS },
+  );
+  const runId = stringField(check.json, "runId");
+  if (check.code !== 0 || check.json?.ok !== true) return { ok: false, reason: "refused" };
+  let bundle: RunBundle | null = null;
+  try {
+    if (runId !== null) bundle = readRunBundle(target.projectDir, runId);
+  } catch {
+    // An unreadable bundle is reported as a missing one.
+  }
+  if (bundle === null) return { ok: false, reason: "no_bundle" };
+  const missions = new Set(bundle.streams.map((stream) => stream.assignment?.mission ?? null));
+  const [only] = missions;
+  return {
+    ok: true,
+    mission: missions.size === 1 ? (only ?? null) : null,
+    worstCaseSandboxMinutes: numberField(objectField(check.json, "plan"), "worstCaseSandboxMinutes"),
+  };
 }

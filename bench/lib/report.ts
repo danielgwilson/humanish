@@ -117,6 +117,11 @@ export interface Manifest {
   createdAt: string;
   humanish: { version: string; source: string };
   mission: MissionId;
+  /**
+   * The mission the CLI's dry run of the generated studies recorded. Manifests written before it
+   * existed ran a mission the benchmark wrote, and their results use that mission's text.
+   */
+  missionText?: string;
   brains: BrainId[];
   runsPerArm: number;
   budget: BudgetSettings;
@@ -361,12 +366,13 @@ function scoreAnalysisModels(projectDir: string, manifest: Manifest, brain: Brai
 
 /** Score every run the manifest records. */
 export function buildResult(projectDir: string, manifest: Manifest): BenchResult {
-  const mission = MISSIONS[manifest.mission];
+  const missionText = manifest.missionText ?? MISSIONS[manifest.mission].text;
+  if (missionText === null) throw new Error(`The manifest records no text for mission ${manifest.mission}.`);
   const answerKey = readFileSync(path.join(REPO_ROOT, "bench", "taskly", "answer-key.ts"));
   const brains = manifest.brains.map((brain): BrainResult => {
     const runs = manifest.runs
       .filter((record) => record.brain === brain)
-      .map((record) => scoreRun(projectDir, record, mission.text, manifest.budget, manifest.storage ?? "memory"));
+      .map((record) => scoreRun(projectDir, record, missionText, manifest.budget, manifest.storage ?? "memory"));
     const analyses = manifest.runs
       .filter((record) => record.brain === brain && record.analysis.state === "complete" && record.runId)
       .map((record) => readAnalysis(projectDir, record.runId ?? "", record.analysis.analysisId ?? undefined))
@@ -409,7 +415,7 @@ export function buildResult(projectDir: string, manifest: Manifest): BenchResult
           runs.flatMap((run) => (run.analysis ? [{ arm: run.arm, score: run.analysis }] : [])),
         ),
       },
-      ...(manifest.analysisMatrix ? { analysisModels: scoreAnalysisModels(projectDir, manifest, brain, mission.text) } : {}),
+      ...(manifest.analysisMatrix ? { analysisModels: scoreAnalysisModels(projectDir, manifest, brain, missionText) } : {}),
     };
   });
   return {
@@ -422,7 +428,7 @@ export function buildResult(projectDir: string, manifest: Manifest): BenchResult
       digests: manifest.fixture, persona: manifest.persona ?? "synthetic-new-user" },
     ...(manifest.participant === undefined ? {} : { participant: manifest.participant }),
     ...(manifest.pointer === undefined ? {} : { pointer: manifest.pointer }),
-    mission: { id: mission.id, sha256: sha256(mission.text), text: mission.text },
+    mission: { id: manifest.mission, sha256: sha256(missionText), text: missionText },
     runsPerArm: manifest.runsPerArm,
     budget: manifest.budget,
     brains,
@@ -515,11 +521,16 @@ export function summaryMarkdown(result: BenchResult, jsonName: string): string {
   const lines: string[] = [
     `# Taskly benchmark, ${date}, humanish ${result.humanish.version}`,
     "",
-    `Mission \`${result.mission.id}\`, ${result.runsPerArm} planned runs per arm, rubric ` +
+    `Mission \`${result.mission.id}\`, SHA-256 \`${result.mission.sha256.slice(0, 12)}\`, ` +
+      `${result.runsPerArm} planned runs per arm, rubric ` +
       `\`${result.rubric.id}\` version ${result.rubric.version}` +
       `${result.pointer === undefined ? "" : `, pointer ${result.pointer}`}. Built from ${result.humanish.source}. ` +
       `Full results: [${jsonName}](${jsonName}). Definitions: [README](README.md).`,
     "",
+    // The built-in mission's text is the CLI's, so the summary says which one this build sent.
+    ...(result.mission.id === "default"
+      ? [`The built-in mission of humanish ${result.humanish.version}: ${code(result.mission.text)}`, ""]
+      : []),
   ];
   for (const brain of result.brains) {
     const report = brain.summary.report;
