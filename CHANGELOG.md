@@ -8,16 +8,6 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-A run whose OpenAI account runs out of credits now stops starting participants. Before, each
-participant retried the 429 and failed with a bare `OpenAI Responses 429`, and the run kept
-creating a desktop for every participant still to come. Now the first participant to get the
-response ends with the stop cause `provider_out_of_credits`, and no participant starts after it,
-even when a later request succeeds. Those not started are recorded as `blocked`, with the reason
-and no desktop. The run fails, and its error and review summary say the account ran out of
-credits, how many participants ran and how many were not started, and to add credits before
-running the study again. A participant already running ends when one of its own requests gets
-the response.
-
 ## 0.160.0: See what your runs keep on disk, and finish a remote copy that stopped (2026-11-10)
 
 humanish 0.160.0 shows what your runs keep on disk and lets you clear old ones. `humanish runs`
