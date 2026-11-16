@@ -264,3 +264,22 @@ export async function resolveStudyPersonas(
     warnings: [...named.warnings, ...others.warnings],
   };
 }
+
+/**
+ * Why the study's personas stop it, or undefined: the message of the PersonaConfigError that
+ * `resolveStudyPersonas` throws, on a route that sends personas. `run`, `watch`, `doctor --study`
+ * and `migrate` report it as `study check` does.
+ */
+export async function studyPersonaFailure(
+  cwd: string,
+  config: StudyConfig,
+): Promise<string | undefined> {
+  if (!routeSendsPersonas(routeOf(config))) return undefined;
+  try {
+    await resolveStudyPersonas(cwd, config);
+    return undefined;
+  } catch (error) {
+    if (error instanceof PersonaConfigError) return error.message;
+    throw error;
+  }
+}

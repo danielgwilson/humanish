@@ -478,7 +478,7 @@ Each policy is `false` until the study sets it to an unquoted `true`.
 
 A persona file says who a participant is. humanish looks for `<id>.yaml` or `<id>.yml` in `humanish/personas/`, then in the ignored `.humanish/local/personas/`, and a committed file wins. A persona id uses letters, digits, `_` and `-`.
 
-On the computer-use, shared-world and terminal routes, every persona the study names on `actor.persona` or `participants[].persona` needs its file. When none of the four paths holds one, or the file is not valid YAML, `study check`, `run` and `watch` stop with `HUMANISH_STUDY_INVALID` before any sandbox or model call, a dry run included, and the message lists the paths it tried. The file name must be the id plus `.yaml`. Add the file or remove the persona line. The smallest file is three lines, `schema: humanish.persona.v1`, `id:` and `name:`; with no `background`, the participant gets its name and the medium patience and technical confidence sentences below. A study that names no persona needs no file: its participants get `cua-operator`, or `autonomous-terminal-agent` on the terminal route. A scripted study records its persona id and reads no file.
+On the computer-use, shared-world and terminal routes, every persona that reaches a participant, from `actor.persona` or `participants[].persona`, needs its file. An `actor.persona` that every participant overrides reaches no one and needs none. When none of the four paths holds the file, or the file is empty, not valid YAML or not a YAML mapping, `study check`, `run`, `watch` and `doctor --study` stop with `HUMANISH_STUDY_INVALID` before any sandbox or model call, a dry run included, and the message lists the paths it tried. A persona id is text: `persona: 2024` reads as a number and fails at parse, so quote it, as `persona: "2024"`. The file name must be the id plus `.yaml`. Add the file or remove the persona line. The smallest file is three lines, `schema: humanish.persona.v1`, `id:` and `name:`; with no `background`, the participant gets its name and the medium patience and technical confidence sentences below. A study that names no persona needs no file: its participants get `cua-operator`, or `autonomous-terminal-agent` on the terminal route. A scripted study records its persona id and reads no file.
 
 `humanish init` writes two examples:
 
@@ -667,4 +667,6 @@ dropped values, and writes nothing. `migrate` then rewrites each v2 file as v3 a
 moves it from `labs/` to the matching `studies/` folder; a v2 file outside `labs/` is
 rewritten in place. Comments move with their keys. A key the v2 file declared but its
 route never read is dropped and reported, and a file that uses YAML anchors is refused
-with the line number.
+with the line number. A v2 file could name a persona as a label with no file; for each
+persona the converted study names with no readable file, `migrate` says that `study check`
+will fail and lists the paths to add it at.

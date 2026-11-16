@@ -8,8 +8,7 @@ import {
 } from "../../analysis/automatic-config.js";
 import { warnAndQueue } from "../deprecations.js";
 import type { StudyResolveFailure } from "../../study/discover.js";
-import { PersonaConfigError } from "../../study/persona.js";
-import { resolveStudyPersonas, routeSendsPersonas } from "../../study/persona-resolve.js";
+import { studyPersonaFailure } from "../../study/persona-resolve.js";
 import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
 import type { PlanResult } from "../../study/plan-types.js";
 import { keyNamesOf } from "../../study/requirements.js";
@@ -313,21 +312,16 @@ async function refusedForPersona(
   args: { command: Command; io: CliIo; options: { cwd: string }; study: string },
   resolved: { readonly config: StudyConfig; readonly warnings: string[] },
 ): Promise<boolean> {
-  if (!routeSendsPersonas(routeOf(resolved.config))) return false;
-  try {
-    await resolveStudyPersonas(args.options.cwd, resolved.config);
-    return false;
-  } catch (error) {
-    if (!(error instanceof PersonaConfigError)) throw error;
-    const failure: StudyResolveFailure = {
-      ok: false,
-      cwd: resolve(args.options.cwd),
-      study: args.study,
-      error: { code: "HUMANISH_STUDY_INVALID", message: error.message },
-      warnings: resolved.warnings,
-    };
-    writeResult(args.command, args.io, failure, formatStudyResolveFailureHuman);
-    args.io.setExitCode(2);
-    return true;
-  }
+  const message = await studyPersonaFailure(args.options.cwd, resolved.config);
+  if (message === undefined) return false;
+  const failure: StudyResolveFailure = {
+    ok: false,
+    cwd: resolve(args.options.cwd),
+    study: args.study,
+    error: { code: "HUMANISH_STUDY_INVALID", message },
+    warnings: resolved.warnings,
+  };
+  writeResult(args.command, args.io, failure, formatStudyResolveFailureHuman);
+  args.io.setExitCode(2);
+  return true;
 }

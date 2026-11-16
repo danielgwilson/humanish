@@ -1,8 +1,9 @@
 // A persona the study names has to resolve to a readable persona file on every route that sends a
 // persona to its participants. An id the study did not name, the route's built-in fallback, needs
 // no file.
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { PersonaConfigError } from "../../src/study/persona.js";
@@ -12,6 +13,7 @@ import { parse as parseYaml, stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
 import { parseStudy } from "../../src/study/config.js";
+import { migrateStudies } from "../../src/study/migrate/migrate.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
 import { lab, SCENARIO_YAML, type BaseName } from "../admission/fixtures.js";
 import { libraryConfig } from "../helpers/library-config.js";
@@ -304,5 +306,53 @@ describe("study check on a persona that does not resolve", () => {
     // The row names the problem; the error holds the file to paste, so it prints once.
     expect(check.error?.message.startsWith(row?.message ?? "")).toBe(true);
     expect(row?.message).not.toBe(check.error?.message);
+  });
+});
+
+describe("a study migrated from v2 with a label persona", () => {
+  const fixture = path.join(
+    fileURLToPath(new URL("../..", import.meta.url)),
+    "tests/fixtures/labs-v2/terminal-product-demo.yaml",
+  );
+
+  it("is converted with the persona file it needs named", async () => {
+    const cwd = await project({ "humanish/labs/demo.yaml": await readFile(fixture, "utf8") });
+    const result = await migrateStudies({ cwd, dryRun: true });
+    expect(result.files[0]?.personaFailure).toContain(
+      "humanish/personas/autonomous-creative-agent.yaml",
+    );
+  });
+
+  it("is converted with nothing to add when its persona file is there", async () => {
+    const cwd = await project({
+      "humanish/labs/demo.yaml": await readFile(fixture, "utf8"),
+      "humanish/personas/autonomous-creative-agent.yaml":
+        "schema: humanish.persona.v1\nid: autonomous-creative-agent\nbackground: Explores tools.\n",
+    });
+    const result = await migrateStudies({ cwd, dryRun: true });
+    expect(result.files[0]?.personaFailure).toBeUndefined();
+  });
+});
+
+describe("humanish doctor --study on a persona that does not resolve", () => {
+  it("fails the persona row as study check does", async () => {
+    const raw = lab("terminal", {}, { persona: "weekend-planner" });
+    const cwd = await project({ [`humanish/studies/${String(raw.id)}.yaml`]: stringify(raw) });
+    let exitCode = 0;
+    const stdout: string[] = [];
+    const program = createProgram({
+      writeOut: (text) => stdout.push(text),
+      writeErr: () => undefined,
+      setExitCode: (code) => {
+        exitCode = code;
+      },
+    });
+    await program.parseAsync(
+      ["node", "humanish", "doctor", "--study", String(raw.id), "--cwd", cwd, "--json"],
+      { from: "node" },
+    );
+    const result = JSON.parse(stdout.join("")) as { checks: { name: string; ok: boolean }[] };
+    expect(exitCode).not.toBe(0);
+    expect(result.checks.find((check) => check.name === "persona")?.ok).toBe(false);
   });
 });

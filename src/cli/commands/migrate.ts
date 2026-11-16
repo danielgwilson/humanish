@@ -39,6 +39,9 @@ function formatMigratePlan(files: readonly MigrateFile[], emptied: readonly stri
       );
       if (key.comments) lines.push(`    its comment: ${key.comments.replace(/\n/g, " ")}`);
     }
+    // The first paragraph names the persona and the paths tried; study check prints the rest.
+    if (file.personaFailure !== undefined)
+      lines.push(`  study check will fail: ${file.personaFailure.split("\n\n")[0]}`);
   }
   for (const directory of emptied) {
     lines.push(`${directory}/: removed after the move, since nothing else is in it`);

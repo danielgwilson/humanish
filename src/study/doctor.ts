@@ -275,6 +275,15 @@ export async function studySetupChecks(args: StudySetupCheckArgs): Promise<{
       message: `${config.id}: ${config.actor?.type ?? "synthetic"} / ${route} / ${dryRun ? "dry-run (no live participant)" : "live"}`,
     },
   ];
+  // A persona the study names with no readable file stops a dry run and a live run alike.
+  const { studyPersonaFailure } = await import("./persona-resolve.js");
+  const personaFailure = await studyPersonaFailure(args.cwd, config);
+  if (personaFailure !== undefined)
+    return {
+      desktop: false,
+      keys: [],
+      checks: [...checks, { name: "persona", ok: false, message: personaFailure }],
+    };
   if (dryRun) return { desktop: false, keys: [], reads: new Set(), checks };
   const unsupported = unsupportedCliRoute(config, route);
   if (unsupported)
