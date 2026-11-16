@@ -232,6 +232,15 @@ describe("parsing writing samples", () => {
     expect(warnings[0]!.includes(email)).toBe(false);
   });
 
+  it("warns about each of several samples that hold an email address", () => {
+    const warnings = sampleWarnings([email, `or ${email}`, `${email} again`]);
+    expect(warnings.map((warning) => warning.split(" ")[0])).toEqual([
+      "writing_samples[1]",
+      "writing_samples[2]",
+      "writing_samples[3]",
+    ]);
+  });
+
   it.each([
     ["a phone number with spaces", phone],
     ["a phone number with dashes", ["020", "7946", "0958"].join("-")],

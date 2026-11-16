@@ -349,7 +349,7 @@ function registerMessageSecrets(inbox: InboxRender, message: ParticipantEmail): 
   inbox.secrets.add(message.from);
   if (message.subject) inbox.secrets.add(message.subject);
   for (const match of `${message.from}\n${message.subject ?? ""}\n${message.text}\n${message.html ?? ""}`.matchAll(
-    EMAIL_ADDRESS,
+    new RegExp(EMAIL_ADDRESS.source, "g"),
   ))
     inbox.secrets.add(match[0]);
 }

@@ -212,7 +212,6 @@ function parseWritingSamples(
   });
 }
 
-const EMAIL_IN_SAMPLE = new RegExp(EMAIL_ADDRESS.source);
 // Seven digits, each apart from the next by at most one space, dot, dash or slash. It cannot tell
 // a phone number from an order or card number, and a date with a four-digit year matches too.
 const LONG_NUMBER = /\d(?:[ ./-]?\d){6}/;
@@ -220,7 +219,7 @@ const LONG_NUMBER = /\d(?:[ ./-]?\d){6}/;
 /** What a sample copied from a real user may still hold. Only the last is redacted from the run's evidence. */
 function identifiersIn(sample: string): string[] {
   return [
-    ...(EMAIL_IN_SAMPLE.test(sample) ? ["an email address"] : []),
+    ...(EMAIL_ADDRESS.test(sample) ? ["an email address"] : []),
     ...(LONG_NUMBER.test(sample) ? ["a long number, such as a phone, order or card number"] : []),
     ...(redactEncodedText(sample) !== sample
       ? ["text the run's evidence redacts (a key, a token or a file path)"]
