@@ -100,9 +100,12 @@ export function parseResolvedPersona(
     }
     const cleaned = cleanText(value).replace(/\s+/g, " ");
     if (!cleaned) return undefined;
-    if (cleaned.length > max)
-      warnings.push(`${field} exceeds ${max} characters and was shortened; ${advice}.`);
-    return cleaned.length > max ? `${cleaned.slice(0, max - 1)}…` : cleaned;
+    // Counted and cut by code point, so an emoji or another character outside the Basic
+    // Multilingual Plane is never split into half a surrogate pair.
+    const points = [...cleaned];
+    if (points.length <= max) return cleaned;
+    warnings.push(`${field} exceeds ${max} characters and was shortened; ${advice}.`);
+    return `${points.slice(0, max - 1).join("")}…`;
   };
   let background: string | undefined;
   if (record.background !== undefined) {

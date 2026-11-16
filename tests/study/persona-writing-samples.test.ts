@@ -8,6 +8,7 @@ import { makeTestTempDir } from "../helpers/temp-dir.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
 
 import {
+  type ResolvedPersona,
   parseResolvedPersona,
   personaBrief,
   personaToDirectives,
@@ -149,6 +150,31 @@ describe("parsing writing samples", () => {
     expect(persona.writingSamples?.[1]).toHaveLength(280);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/^writing_samples\[2\] /);
+  });
+
+  // 278 letters, an emoji (two UTF-16 units) at position 279, then two more letters: 281 code points.
+  const emojiAt279 = `${"a".repeat(278)}\u{1F331}bb`;
+  it.each([
+    [
+      "a writing sample",
+      { writing_samples: [emojiAt279] },
+      (p: ResolvedPersona) => p.writingSamples?.[0],
+    ],
+    ["the summary", { summary: emojiAt279 }, (p: ResolvedPersona) => p.summary],
+  ])(
+    "shortens %s by code point, keeping a character that spans two code units whole",
+    (_field, raw, read) => {
+      const shortened = read(parseResolvedPersona(raw, { id: "p", name: "P" }));
+      expect(shortened).toBe(`${"a".repeat(278)}\u{1F331}\u2026`);
+    },
+  );
+
+  it("keeps a constraint whose last character spans two code units whole when it shortens it", () => {
+    const persona = parseResolvedPersona(
+      { constraints: [`${"c".repeat(158)}\u{1F331}dd`] },
+      { id: "p", name: "P" },
+    );
+    expect(persona.constraints[0]).toBe(`${"c".repeat(158)}\u{1F331}\u2026`);
   });
 
   it("ignores an entry that is not text, with a warning naming its position", () => {
