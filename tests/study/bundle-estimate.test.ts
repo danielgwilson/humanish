@@ -186,20 +186,6 @@ describe("study check's bundle estimate", () => {
     expect(estimateBundle([visitor, visitor], HOURS).runFileBytes).toBe(37_510);
   });
 
-  it("counts a study's typing text with the mission, and names it when it has the most bytes", () => {
-    // run.json copies actor.typing wherever it copies the mission: in each stream's assignment and
-    // in the composed prompt. Each participant's text: 7 + 4,000 = 4,007 bytes. Two participants:
-    // 4,400 + 4,007 + 2 x (16,500 + 2 x 4,007) = 57,435.
-    const visitor = {
-      schedule: participantSchedule({}),
-      limits: {},
-      assignment: { mission: "Try it.", typing: "a".repeat(4_000) },
-    };
-    const estimate = estimateBundle([visitor, visitor], HOURS);
-    expect(estimate.runFileBytes).toBe(57_435);
-    expect(estimate.basis.largestField).toBe("typing");
-  });
-
   it("counts the task goals with the mission and the instruction, and names the field with the most bytes", () => {
     // The synthetic fan-out that held 3, 2 and 2 copies of its participants' instructions held
     // each of its 2 task goals 7 times, as it held the mission: once for the run and twice for
@@ -414,5 +400,21 @@ describe("humanish run", () => {
     expect(
       bundle.events.filter((event) => event.type === "study.warning").map((event) => event.message),
     ).toContain(WARN_30_HOSTS);
+  });
+});
+
+describe("the bundle estimate of actor.typing", () => {
+  it("counts a study's typing text with the mission, and names it when it has the most bytes", () => {
+    // run.json copies actor.typing wherever it copies the mission: in each stream's assignment and
+    // in the composed prompt. Each participant's text: 7 + 4,000 = 4,007 bytes. Two participants:
+    // 4,400 + 4,007 + 2 x (16,500 + 2 x 4,007) = 57,435.
+    const visitor = {
+      schedule: participantSchedule({}),
+      limits: {},
+      assignment: { mission: "Try it.", typing: "a".repeat(4_000) },
+    };
+    const estimate = estimateBundle([visitor, visitor], HOURS);
+    expect(estimate.runFileBytes).toBe(57_435);
+    expect(estimate.basis.largestField).toBe("typing");
   });
 });
