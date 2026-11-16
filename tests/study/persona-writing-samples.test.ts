@@ -263,7 +263,9 @@ describe("parsing writing samples", () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/writing_samples/);
   });
+});
 
+describe("warnings about what a writing sample holds", () => {
   it("warns, without echoing it, when the evidence redaction would change a sample", () => {
     const key = "sk-" + "syntheticvalue1234567890abcdef";
     const warnings: string[] = [];
