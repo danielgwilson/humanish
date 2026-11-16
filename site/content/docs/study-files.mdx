@@ -521,6 +521,8 @@ writing_samples:
   - "which seeds go in first"
 ```
 
+Samples do not stand in for a `background`. A persona with samples and no background gets the `medium` patience and technical confidence sentences, and `study check` warns that its participants have no background.
+
 Each sample is written as a JSON string, so a double quote inside one reaches the participant as `\"`. Samples copied from real users belong in the ignored `.humanish/local/personas/`, with names, addresses, order numbers and other identifiers removed first. `study check` warns when a sample looks like it holds an email address; a long number, such as a phone, order or card number; or a key, a token or a local path. A long number is seven or more digits with at most one space, dot, dash or slash between each, so a date with a four-digit year, such as 12.11.2026, warns too, and a price, a time or a date without its year does not. The participant still reads a sample as written, and only keys, tokens and paths are redacted from the run's evidence. It does not detect names; remove those yourself.
 
 These sentences are instructions. humanish does not stop a `keyboard_only` participant from using the mouse, and a persona certifies nothing about accessibility. `npx humanish study show <study> --json` prints the persona text each participant receives, and the run records it.

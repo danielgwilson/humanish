@@ -1,11 +1,12 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { stringify } from "yaml";
+import { parse as parseYaml, stringify } from "yaml";
 
 import { lab } from "../admission/fixtures.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
+import { personaBackgroundWarnings } from "../../src/study/warnings.js";
 
 import {
   type ResolvedPersona,
@@ -92,6 +93,28 @@ describe("writing samples in the persona section", () => {
     );
   });
 
+  it("leave a persona without a background on the moderate trait directives, with its warning", () => {
+    const persona = parseResolvedPersona(
+      { name: "Sam", writing_samples: ["which seeds go in first"] },
+      { id: "weekend-gardener", name: "Weekend Gardener" },
+    );
+    expect(renderPersonaPromptSection(persona)).toBe(
+      [
+        "Persona: Sam.",
+        'These are messages Sam typed earlier, about other things; the details in them do not apply now. They show how Sam writes: (1) "which seeds go in first"',
+        "You have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.",
+        "You have moderate technical confidence and generally use straightforward paths through the product.",
+      ].join("\n\n"),
+    );
+    const warnings = personaBackgroundWarnings(
+      "allotment",
+      [{ id: "gardener", personaId: "weekend-gardener" }],
+      new Map([["weekend-gardener", persona]]),
+    );
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/^Participant gardener has no persona background /);
+  });
+
   it("are counted in the applied traits and raise the compiler version", () => {
     const persona = traveller(["hi need to change my flight", "no the return"]);
     expect(personaToDirectives(persona).traitsApplied).toEqual([
@@ -123,9 +146,21 @@ describe("parsing writing samples", () => {
     expect(warnings).toEqual([]);
   });
 
-  it("keeps the first eight samples and warns about the rest", () => {
+  it("keeps exactly eight samples without a warning", () => {
     const warnings: string[] = [];
-    const samples = Array.from({ length: 10 }, (_, index) => `message ${index + 1}`);
+    const samples = Array.from({ length: 8 }, (_, index) => `message ${index + 1}`);
+    const persona = parseResolvedPersona(
+      { writing_samples: samples },
+      { id: "p", name: "P" },
+      warnings,
+    );
+    expect(persona.writingSamples).toEqual(samples);
+    expect(warnings).toEqual([]);
+  });
+
+  it.each([9, 10])("keeps the first eight of %i samples and warns about the rest", (count) => {
+    const warnings: string[] = [];
+    const samples = Array.from({ length: count }, (_, index) => `message ${index + 1}`);
     const persona = parseResolvedPersona(
       { writing_samples: samples },
       { id: "p", name: "P" },
@@ -175,6 +210,33 @@ describe("parsing writing samples", () => {
       { id: "p", name: "P" },
     );
     expect(persona.constraints[0]).toBe(`${"c".repeat(158)}\u{1F331}\u2026`);
+  });
+
+  it("keeps a sample of exactly 280 characters as written, without a warning", () => {
+    const warnings: string[] = [];
+    const sample = "c".repeat(280);
+    const persona = parseResolvedPersona(
+      { writing_samples: [sample] },
+      { id: "p", name: "P" },
+      warnings,
+    );
+    expect(persona.writingSamples).toEqual([sample]);
+    expect(warnings).toEqual([]);
+  });
+
+  it("ignores YAML null and boolean entries, with a warning for each", () => {
+    const warnings: string[] = [];
+    const raw: unknown = parseYaml(
+      "writing_samples:\n  - ok\n  - null\n  -\n  - true\n  - false\n",
+    );
+    const persona = parseResolvedPersona(raw, { id: "p", name: "P" }, warnings);
+    expect(persona.writingSamples).toEqual(["ok"]);
+    expect(warnings.map((warning) => warning.split(" ")[0])).toEqual([
+      "writing_samples[2]",
+      "writing_samples[3]",
+      "writing_samples[4]",
+      "writing_samples[5]",
+    ]);
   });
 
   it("ignores an entry that is not text, with a warning naming its position", () => {
