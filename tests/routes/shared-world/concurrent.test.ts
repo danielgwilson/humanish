@@ -85,7 +85,6 @@ const STUDY_PERSONAS = [
   "persona-2",
   "persona-3",
   "weekly-planner",
-  ,
   "careful-reviewer",
 ] as const;
 

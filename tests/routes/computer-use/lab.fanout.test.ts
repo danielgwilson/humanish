@@ -78,7 +78,6 @@ const STUDY_PERSONAS = [
   "power-user",
   "role-a",
   "role-b",
-  ,
   "plan-only-persona",
 ] as const;
 
