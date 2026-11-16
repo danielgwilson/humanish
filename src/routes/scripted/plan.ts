@@ -44,8 +44,8 @@ export interface ScriptedRefusal extends RouteRefusal<
   | "HUMANISH_SCRIPTED_SUBJECT_INVALID"
 > {
   /**
-   * Set on the receiving, analysis, tasks and typing refusals. The route returns those before it opens its
-   * run scope, so their result has its own field order and no automatic-analysis record.
+   * Set on the receiving, analysis, tasks and typing refusals. The route returns those before it
+   * opens its run scope, so their result has its own field order and no automatic-analysis record.
    */
   readonly beforeScope?: true;
   /** The registered actor id and the app URL the evidence names, once the chain has them. */
