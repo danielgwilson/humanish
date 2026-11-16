@@ -505,6 +505,7 @@ constraints:
 | `traits.technical_confidence` | `low`, `medium` or `high`   | `medium` without a `background` | Whether the participant sticks to visible controls or uses shortcuts and advanced options.                                                |
 | `traits.accessibility_needs`  | text, at most 80 characters | none                            | A need the participant works within. `none`, `none declared` and `not applicable` mean none.                                              |
 | `constraints`                 | list of strings             | none                            | Rules the participant is told to honor. The first 8 are used, each up to 160 characters.                                                  |
+| `writing_samples`             | list of strings             | none                            | Messages the person typed before, to show how they write. The first 8 are used, each up to 280 characters.                                |
 
 With a `background`, a trait you leave out sends no directive, and a file that sets both a background and `patience` or `technical_confidence` gets a warning to check them for conflicts. Any other field or trait warns and is not sent. An invalid level warns and falls back to `medium`, or to no directive when there is a background.
 
@@ -522,6 +523,29 @@ Each trait becomes one sentence of the participant's instructions:
 | `accessibility_needs`  | contains `keyboard_only`    | You can only use the keyboard. If an essential control has no discoverable keyboard path, describe where you could not proceed.                           |
 | `accessibility_needs`  | mentions terminal or output | You rely on clear terminal output. Describe any difficulty understanding the output you actually encounter.                                               |
 | `accessibility_needs`  | anything else               | Your accessibility requirement is: (your text). Use the available interface within this requirement and describe any difficulty you encounter.            |
+
+### Show how the person writes
+
+`writing_samples` holds a few short messages the person typed earlier, about something else. The participant reads them after the background, introduced with this sentence, which says "this person" because a persona's `name` is often a role label:
+
+```text
+These are messages this person typed earlier, about other things; the details in them do not apply now. They show how this person writes: (1) "is the shed paint dry yet" (2) "ok" (3) "which seeds go in first"
+```
+
+```yaml title=".humanish/local/personas/weekend-gardener.yaml"
+schema: humanish.persona.v1
+id: weekend-gardener
+name: Sam
+background: Sam keeps a small allotment and plans the beds on weekends.
+writing_samples:
+  - "is the shed paint dry yet"
+  - "ok"
+  - "which seeds go in first"
+```
+
+Samples do not stand in for a `background`. A persona with samples and no background gets the `medium` patience and technical confidence sentences, and `study check` warns that its participants have no background.
+
+Each sample is written as a JSON string, so a double quote inside one reaches the participant as `\"`. Samples copied from real users belong in the ignored `.humanish/local/personas/`, with names, addresses, order numbers and other identifiers removed first. `study check` warns when a sample looks like it holds an email address; a long number, such as a phone, order or card number; or a key, a token or a local path. A long number is seven or more digits with at most one space, dot, dash or slash between each, so a date with a four-digit year, such as 12.11.2026, warns too, and a price, a time or a date without its year does not. The participant still reads a sample as written, and only keys, tokens and paths are redacted from the run's evidence. It does not detect names; remove those yourself.
 
 These sentences are instructions. humanish does not stop a `keyboard_only` participant from using the mouse, and a persona certifies nothing about accessibility. `npx humanish study show <study> --json` prints the persona text each participant receives, and the run records it.
 

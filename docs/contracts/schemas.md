@@ -984,6 +984,18 @@ fields and shortened legacy fields produce diagnostics. `summary` remains a
 280-character description; constraints retain their eight-item/160-character
 bounds with warnings.
 
+Optional `writing_samples` is a list of up to eight messages the person typed
+before, each up to 280 characters once whitespace is collapsed. Extra, longer
+and non-text entries warn as constraints do. The persona section renders them
+after the background as one sentence that numbers each sample and writes it as
+a JSON string. A sample warns when it looks like it holds an email address, a
+long number (seven digits, each apart from the next by at most one space, dot,
+dash or slash, which a date with a four-digit year also has), or text
+`redactEncodedText` would change. The participant reads it as written, and the
+brief redacts only the last kind. `traitsApplied` adds `writing_samples:<count>`.
+Persona compiler version 3 adds the samples; a persona without them renders the
+same text as version 2.
+
 Profiles with background do not acquire implicit patience or skill directives.
 Explicit traits still apply, with a reminder to review possible prose conflicts.
 Legacy profiles retain medium defaults. `none_declared`/`none` access needs are

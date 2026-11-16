@@ -1,3 +1,4 @@
+import { EMAIL_ADDRESS } from "../comms/extract.js";
 import { redactEncodedText } from "../evidence/encoded-text.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import type { ActorPersonaRef } from "../actors/contract.js";
@@ -5,7 +6,9 @@ import { isRecord } from "../run/type-guards.js";
 
 type PersonaLevel = "low" | "medium" | "high";
 export const PERSONA_BACKGROUND_MAX_BYTES = 32 * 1024;
-const PERSONA_COMPILER_VERSION = 2;
+const PERSONA_COMPILER_VERSION = 3;
+const MAX_WRITING_SAMPLES = 8;
+const WRITING_SAMPLE_MAX_CHARS = 280;
 
 export class PersonaConfigError extends Error {
   constructor(message: string) {
@@ -27,6 +30,8 @@ export interface ResolvedPersona {
     accessibilityNeeds?: string;
   };
   constraints: string[];
+  /** Messages the person typed before, about other things; absent when the file sets none. */
+  writingSamples?: string[];
 }
 
 export interface PersonaDirectives {
@@ -48,6 +53,7 @@ export const PERSONA_FIELDS = new Set([
   "background",
   "traits",
   "constraints",
+  "writing_samples",
 ]);
 /** The traits under `traits:` that become directives; any other warns and is not sent. */
 export const TRAIT_FIELDS = new Set(["patience", "technical_confidence", "accessibility_needs"]);
@@ -81,7 +87,12 @@ export function parseResolvedPersona(
         `Unsupported persona trait ${redactText(JSON.stringify(field))}; it is not sent to the participant.`,
       );
   }
-  const short = (value: unknown, max: number, field: string): string | undefined => {
+  const short = (
+    value: unknown,
+    max: number,
+    field: string,
+    advice = "move detailed context to background",
+  ): string | undefined => {
     if (value === undefined) return undefined;
     if (typeof value !== "string") {
       warnings.push(`${field} must be text; ignored.`);
@@ -89,11 +100,12 @@ export function parseResolvedPersona(
     }
     const cleaned = cleanText(value).replace(/\s+/g, " ");
     if (!cleaned) return undefined;
-    if (cleaned.length > max)
-      warnings.push(
-        `${field} exceeds ${max} characters and was shortened; move detailed context to background.`,
-      );
-    return cleaned.length > max ? `${cleaned.slice(0, max - 1)}…` : cleaned;
+    // Counted and cut by code point, so an emoji or another character outside the Basic
+    // Multilingual Plane is never split into half a surrogate pair.
+    const points = [...cleaned];
+    if (points.length <= max) return cleaned;
+    warnings.push(`${field} exceeds ${max} characters and was shortened; ${advice}.`);
+    return `${points.slice(0, max - 1).join("")}…`;
   };
   let background: string | undefined;
   if (record.background !== undefined) {
@@ -147,6 +159,14 @@ export function parseResolvedPersona(
     .slice(0, 8)
     .map((value) => short(value, 160, "constraint"))
     .filter((value): value is string => value !== undefined);
+  const writingSamples = parseWritingSamples(record.writing_samples, warnings, (value, field) =>
+    short(
+      value,
+      WRITING_SAMPLE_MAX_CHARS,
+      field,
+      "a sample is one short message, so pick a shorter one",
+    ),
+  );
   const patience = level("patience"),
     skill = level("technical_confidence");
   const summary = short(record.summary, 280, "summary");
@@ -161,7 +181,50 @@ export function parseResolvedPersona(
       ...(accessibilityNeeds === undefined ? {} : { accessibilityNeeds }),
     },
     constraints,
+    ...(writingSamples.length ? { writingSamples } : {}),
   };
+}
+
+function parseWritingSamples(
+  value: unknown,
+  warnings: string[],
+  short: (value: unknown, field: string) => string | undefined,
+): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    warnings.push("Persona writing_samples must be a list of short messages; ignored.");
+    return [];
+  }
+  if (value.length > MAX_WRITING_SAMPLES)
+    warnings.push(
+      `writing_samples has ${value.length} entries; only the first ${MAX_WRITING_SAMPLES} are sent to the participant.`,
+    );
+  return value.slice(0, MAX_WRITING_SAMPLES).flatMap((entry, index) => {
+    const field = `writing_samples[${index + 1}]`;
+    const sample = short(entry, field);
+    if (sample === undefined) return [];
+    const holds = identifiersIn(sample);
+    if (holds.length)
+      warnings.push(
+        `${field} looks like it holds ${holds.join("; ")}. The participant reads the sample as written, so replace it with a made-up value.`,
+      );
+    return [sample];
+  });
+}
+
+// Seven digits, each apart from the next by at most one space, dot, dash or slash. It cannot tell
+// a phone number from an order or card number, and a date with a four-digit year matches too.
+const LONG_NUMBER = /\d(?:[ ./-]?\d){6}/;
+
+/** What a sample copied from a real user may still hold. Only the last is redacted from the run's evidence. */
+function identifiersIn(sample: string): string[] {
+  return [
+    ...(EMAIL_ADDRESS.test(sample) ? ["an email address"] : []),
+    ...(LONG_NUMBER.test(sample) ? ["a long number, such as a phone, order or card number"] : []),
+    ...(redactEncodedText(sample) !== sample
+      ? ["text the run's evidence redacts (a key, a token or a file path)"]
+      : []),
+  ];
 }
 
 const FRICTION_TOLERANCE: Record<PersonaLevel, string> = {
@@ -195,6 +258,8 @@ export function personaToDirectives(persona: ResolvedPersona): PersonaDirectives
   if (accessibilityNeeds)
     traitsApplied.push(`accessibility:${redactEncodedText(accessibilityNeeds)}`);
   if (persona.constraints.length) traitsApplied.push(`constraints:${persona.constraints.length}`);
+  if (persona.writingSamples?.length)
+    traitsApplied.push(`writing_samples:${persona.writingSamples.length}`);
   return {
     frictionTolerance: patience ? FRICTION_TOLERANCE[patience] : "",
     skillBias: skill ? SKILL_BIAS[skill] : "",
@@ -205,12 +270,24 @@ export function personaToDirectives(persona: ResolvedPersona): PersonaDirectives
     traitsApplied,
   };
 }
+/**
+ * Each sample as a JSON string, so a quote inside it cannot end it early. The sentence says "this
+ * person" because a persona's name is often a role label, which reads wrongly as a writer.
+ */
+function writingSamplesSentence(persona: ResolvedPersona): string | undefined {
+  if (!persona.writingSamples?.length) return undefined;
+  const quoted = persona.writingSamples.map(
+    (sample, index) => `(${index + 1}) ${JSON.stringify(sample)}`,
+  );
+  return `These are messages this person typed earlier, about other things; the details in them do not apply now. They show how this person writes: ${quoted.join(" ")}`;
+}
 export function renderPersonaPromptSection(persona: ResolvedPersona): string {
   const directives = personaToDirectives(persona);
   return [
     `Persona: ${persona.name}.`,
     persona.summary,
     persona.background ? `Background:\n${persona.background}` : undefined,
+    writingSamplesSentence(persona),
     directives.frictionTolerance,
     directives.skillBias,
     directives.accessibilityBehavior,
