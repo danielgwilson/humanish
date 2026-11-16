@@ -6,7 +6,7 @@
 // refusal before it loads a declared review scorer.
 
 import { personaBackgroundWarnings } from "./study/warnings.js";
-import { resolveStudyPersonas } from "./study/persona-resolve.js";
+import { resolveStudyPersonas, routeSendsPersonas } from "./study/persona-resolve.js";
 import type { LocalVmInput } from "./routes/computer-use/types.js";
 import {
   computerUseInput,
@@ -185,15 +185,18 @@ async function planPersonaWarnings(
   study: StudyConfig,
   cwd: string,
 ): Promise<string[]> {
-  if (plan.route !== "computer-use" && plan.route !== "shared-world" && plan.route !== "terminal")
-    return [];
-  const { personas } = await resolveStudyPersonas(cwd, study);
+  if (!routeSendsPersonas(plan.route)) return [];
   const participants =
     plan.route === "computer-use"
       ? plan.runner.participants
       : plan.route === "shared-world"
         ? plan.plane.participants
         : [];
+  const reaching =
+    plan.route === "terminal"
+      ? [plan.personaId]
+      : participants.map((participant) => participant.personaId);
+  const { personas } = await resolveStudyPersonas(cwd, study, reaching);
   return personaBackgroundWarnings(plan.studyId, participants, personas);
 }
 

@@ -29,6 +29,15 @@ import { verifyRun } from "../../../src/verify/verify.js";
 import { readAutomaticAnalysis, runAutomaticAnalysis } from "../../../src/analysis/automatic.js";
 import { resolveAutomaticAnalysis } from "../../../src/analysis/automatic-config.js";
 import { runTerminal } from "../../helpers/route-run.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+] as const;
 
 // Slice 2 deterministic safety net: drive the real live orchestration (dryRun:false) against a
 // fake E2B module + a mock codex CLI at zero spend. The assertions that matter are the
@@ -383,6 +392,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-live-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     vi.restoreAllMocks();
@@ -1028,6 +1038,7 @@ describe("runTerminalProductLab (live path, deterministic, no spend)", () => {
       killed: string[] = [],
       writes: string[] = [];
     const outside = await mkdtemp(path.join(tmpdir(), "humanish-tp-upload-outside-"));
+    await writePersonaFiles(outside, ...STUDY_PERSONAS);
     try {
       await writeFile(path.join(outside, "escape.tgz"), "outside bytes");
       await symlink(path.join(outside, "escape.tgz"), path.join(cwd, "escape.tgz"));
@@ -2603,6 +2614,7 @@ describe("runtime-auth key allowlist preference (CODEX_API_KEY over OPENAI_API_K
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-live-authorder-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -2748,6 +2760,7 @@ describe("terminal persona traits", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-persona-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -2823,6 +2836,7 @@ describe("terminal run directory golden", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-golden-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -2924,6 +2938,7 @@ describe("terminal run lifetime", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-lifetime-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -3042,6 +3057,7 @@ describe("terminal judgment agreement (bundle verdict, status outcome, result ok
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-judge-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

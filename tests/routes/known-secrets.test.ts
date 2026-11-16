@@ -30,6 +30,18 @@ import { syntheticPng1x1 } from "../image-fixtures.js";
 import { evaluatePagePredicate } from "../helpers/scripted-page-predicate.js";
 import { passingRun, streamingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+  "pixel-pat",
+  "returning-user",
+  "synthetic-new-user",
+] as const;
 
 /** A value with no secret shape, so only the literal scrub can remove it. */
 const opaque = (label: string): string =>
@@ -42,6 +54,7 @@ const SHORT = ["q", "7", "z"].join("");
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-known-secrets-"));
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });

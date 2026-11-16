@@ -12,6 +12,7 @@ import type { StudyDeps } from "../../../src/study/study-deps.js";
 import type { ComputerUseRunInput } from "../../../src/routes/computer-use/types.js";
 import { libraryLab } from "../../admission/fixtures.js";
 import { runComputerUse } from "../../helpers/route-run.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const dirs: string[] = [];
 afterAll(async () => {
@@ -211,6 +212,7 @@ describe("computer-use admission order", () => {
     for (const [name, names] of cases) {
       const cwd = await mkdtemp(path.join(tmpdir(), "humanish-cu-admission-"));
       dirs.push(cwd);
+      await writePersonaFiles(cwd, "first-time-visitor");
       const { config, deps, driving, countOverride } = caseOf(names);
       const dryRun = config.mode !== "live";
       const result = await runComputerUse({
@@ -222,7 +224,8 @@ describe("computer-use admission order", () => {
         ...driving,
         ...(countOverride === undefined ? {} : { countOverride }),
       });
-      expect(await readdir(cwd), name).toEqual([]);
+      // The refusal writes nothing beside the project's own persona file.
+      expect(await readdir(cwd), name).toEqual(["humanish"]);
       let text = JSON.stringify(result);
       for (const dir of [await realpath(cwd), cwd]) text = text.split(dir).join("[cwd]");
       results[name] = JSON.parse(text);

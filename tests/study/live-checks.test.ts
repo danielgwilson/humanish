@@ -13,6 +13,15 @@ import type { StudyConfig } from "../../src/study/types.js";
 import { lab, SCENARIO_YAML, type RawLab } from "../admission/fixtures.js";
 import { libraryConfig } from "../helpers/library-config.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+] as const;
 
 const dirs: string[] = [];
 afterAll(async () => {
@@ -154,6 +163,7 @@ const cases: Record<string, Case> = {
 
 async function projectDir(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-live-checks-"));
+  await writePersonaFiles(dir, ...STUDY_PERSONAS);
   dirs.push(dir);
   await writeFile(path.join(dir, "package.json"), '{ "name": "live-checks-fixture" }\n');
   await mkdir(path.join(dir, "humanish", "scenarios"), { recursive: true });
@@ -164,6 +174,7 @@ async function projectDir(): Promise<string> {
 /** A directory for `PATH` and `HOME`, holding a signed-in `codex` and `claude` when asked. */
 async function machineDir(testCase: Case): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-live-checks-bin-"));
+  await writePersonaFiles(dir, ...STUDY_PERSONAS);
   dirs.push(dir);
   const stub = async (name: string, script: string): Promise<void> => {
     await writeFile(path.join(dir, name), `#!/bin/sh\n${script}exit 3\n`);

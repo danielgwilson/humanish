@@ -52,7 +52,6 @@
       }
     },
     "warnings": [
-      "Persona autonomous-creative-agent has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
       "Sandbox resource size unavailable (metadata_unavailable); its compute cost remains unpriced."
     ],
     "error": {
@@ -91,8 +90,18 @@
     "lane": "terminal",
     "persona": {
       "id": "autonomous-creative-agent",
-      "traitsApplied": [],
-      "promptDigest": "[promptDigest]"
+      "traitsApplied": [
+        "patience:medium",
+        "skill:medium"
+      ],
+      "promptDigest": "[promptDigest]",
+      "brief": {
+        "compilerVersion": 3,
+        "text": "Persona: autonomous-creative-agent.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+        "digest": "b637a933aac6",
+        "redacted": false,
+        "sourceDigest": "[sourceDigest]"
+      }
     },
     "redaction": {
       "status": "passed",
@@ -480,8 +489,18 @@
           "lane": "terminal",
           "persona": {
             "id": "autonomous-creative-agent",
-            "traitsApplied": [],
-            "promptDigest": "[promptDigest]"
+            "traitsApplied": [
+              "patience:medium",
+              "skill:medium"
+            ],
+            "promptDigest": "[promptDigest]",
+            "brief": {
+              "compilerVersion": 3,
+              "text": "Persona: autonomous-creative-agent.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+              "digest": "b637a933aac6",
+              "redacted": false,
+              "sourceDigest": "[sourceDigest]"
+            }
           },
           "redaction": {
             "status": "passed",

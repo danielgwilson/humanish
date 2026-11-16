@@ -35,6 +35,15 @@ import { estimateActorCostForExecution } from "../../../src/run/pricing.js";
 import { ownDesktopAllocation } from "../../../src/substrates/desktop-session.js";
 import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+] as const;
 
 type SessionRunner = NonNullable<StudyDeps["runSession"]>;
 
@@ -76,6 +85,7 @@ const label = (model: string | undefined) => (model === undefined ? "undeclared"
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-brain-model-"));
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   vi.mocked(startLiveTraceFlush).mockClear();
   for (const factory of [
     createRestrictedCodexParticipant,

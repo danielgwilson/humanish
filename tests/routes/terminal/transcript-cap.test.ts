@@ -11,10 +11,20 @@ import { MAX_TRANSCRIPT_BYTES } from "../../../src/routes/terminal/types.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { streamingRun, terminalConfig } from "../../helpers/terminal-live-fake.js";
 import { runTerminal } from "../../helpers/route-run.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+] as const;
 
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-transcript-cap-"));
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });

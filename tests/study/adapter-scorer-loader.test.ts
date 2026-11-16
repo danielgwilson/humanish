@@ -19,6 +19,16 @@ import { verifyRun } from "../../src/verify/verify.js";
 import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
 import type { RunAdapterScore, RunBundle } from "../../src/index.js";
 import { runTerminal } from "../helpers/route-run.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+  "synthetic-new-user",
+] as const;
 
 // ---------------------------------------------------------------------------------------------
 // Shared fixtures.
@@ -64,6 +74,7 @@ describe("loadAdapterScorer: resolution", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-res-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -215,6 +226,7 @@ describe("loadAdapterScorer: load + whitelist", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-load-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -356,6 +368,7 @@ describe("loadAdapterScorer: route guards (declared gate that cannot run must ab
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-route-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -382,6 +395,7 @@ describe("wiring + provenance inheritance (terminal, live fake, $0)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-wire-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -452,6 +466,7 @@ describe("terminal verdict: §5 decision is flip for config-declared scorers", (
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-flip-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -717,6 +732,7 @@ describe("provenance verify (tolerated-absent, rejected-when-malformed)", () => 
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-verify-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

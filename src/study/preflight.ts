@@ -1,5 +1,5 @@
 import { personaBackgroundWarnings, plannedParticipants } from "./warnings.js";
-import { resolveStudyPersonas } from "./persona-resolve.js";
+import { resolveStudyPersonas, routeSendsPersonas } from "./persona-resolve.js";
 import { PersonaConfigError, type ResolvedPersona } from "./persona.js";
 import path from "node:path";
 import type { AutomaticAnalysisBudget } from "../analysis/automatic-config.js";
@@ -169,13 +169,12 @@ export async function runStudyPreflight(
   const route = routeOf(resolved.config);
   // The personas the run reads: each participant's on the browser routes, the agent's on the
   // terminal route. A named persona with no readable file fails the check as it stops the run.
-  const personaResolution =
-    participants.length === 0 && route !== "terminal"
-      ? { personas: new Map<string, ResolvedPersona>(), warnings: [] }
-      : await resolveStudyPersonas(cwd, resolved.config).catch((error: unknown) => {
-          if (error instanceof PersonaConfigError) return error;
-          throw error;
-        });
+  const personaResolution = !routeSendsPersonas(route)
+    ? { personas: new Map<string, ResolvedPersona>(), warnings: [] }
+    : await resolveStudyPersonas(cwd, resolved.config).catch((error: unknown) => {
+        if (error instanceof PersonaConfigError) return error;
+        throw error;
+      });
   const resolvedPersonas =
     personaResolution instanceof PersonaConfigError
       ? { personas: new Map<string, ResolvedPersona>(), warnings: [] }

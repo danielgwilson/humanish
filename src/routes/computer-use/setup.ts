@@ -47,7 +47,7 @@ import {
   participantSubjectEnv,
 } from "./types.js";
 import { capacityShortfall } from "../../substrates/local/capacity.js";
-import { studyPersonaIds } from "../../study/persona-resolve.js";
+import { computerUseParticipants } from "../../study/plan-participants.js";
 import { readDesktopFiles } from "../../study/desktop-files.js";
 import { refusedResult } from "../../run/study-result.js";
 
@@ -72,7 +72,10 @@ export async function refuseCuaStudy(
   const projectRoot = await bindProject(options.cwd);
   // The committed personas are read before the refusal returns, so a persona-file error wins.
   if (refusal.stage === "after-personas")
-    await compileParticipantPersonas(projectRoot, studyPersonaIds(config));
+    await compileParticipantPersonas(
+      projectRoot,
+      computerUseParticipants(config).map((participant) => participant.personaId),
+    );
   return refusedResult(
     "computer-use",
     {

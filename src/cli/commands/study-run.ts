@@ -9,7 +9,7 @@ import {
 import { warnAndQueue } from "../deprecations.js";
 import type { StudyResolveFailure } from "../../study/discover.js";
 import { PersonaConfigError } from "../../study/persona.js";
-import { resolveStudyPersonas } from "../../study/persona-resolve.js";
+import { resolveStudyPersonas, routeSendsPersonas } from "../../study/persona-resolve.js";
 import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
 import type { PlanResult } from "../../study/plan-types.js";
 import { keyNamesOf } from "../../study/requirements.js";
@@ -313,6 +313,7 @@ async function refusedForPersona(
   args: { command: Command; io: CliIo; options: { cwd: string }; study: string },
   resolved: { readonly config: StudyConfig; readonly warnings: string[] },
 ): Promise<boolean> {
+  if (!routeSendsPersonas(routeOf(resolved.config))) return false;
   try {
     await resolveStudyPersonas(args.options.cwd, resolved.config);
     return false;

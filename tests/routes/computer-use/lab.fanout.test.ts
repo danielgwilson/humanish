@@ -78,6 +78,8 @@ const STUDY_PERSONAS = [
   "power-user",
   "role-a",
   "role-b",
+  ,
+  "plan-only-persona",
 ] as const;
 
 /** A new project under the OS temp dir holding the persona files this file's studies name. */

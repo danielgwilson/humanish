@@ -39,7 +39,18 @@ const labs: Record<string, RawLab> = {
   "adm-cu-live": lab("cuAppUrl", live),
   // Each names a persona that has no file under humanish/personas.
   "adm-cu-persona-missing": lab("cuAppUrl", live, { persona: "weekend-planner" }),
-  "adm-shared-persona-missing": lab("sharedProvisioned", live, { persona: "weekend-planner" }),
+  "adm-shared-persona-missing": lab("sharedProvisioned", {
+    ...live,
+    participants: [
+      { id: "author", persona: "weekend-planner", entry: "/seat-1" },
+      { id: "reviewer", persona: "persona-2", entry: "/seat-2" },
+    ],
+  }),
+  // Every participant names its own persona, so the actor's reaches no one and needs no file.
+  "adm-shared-actor-persona-unused": lab("sharedProvisioned", {}, { persona: "weekend-planner" }),
+  // The scripted and preview routes record a persona id and send no persona.
+  "adm-scripted-persona-broken": lab("scriptedAppUrl", {}, { persona: "list-background" }),
+  "adm-scripted-persona-missing": lab("scriptedAppUrl", {}, { persona: "weekend-planner" }),
   "adm-terminal-persona-missing": lab("terminal", live, { persona: "weekend-planner" }),
 };
 
@@ -92,6 +103,9 @@ const cases: readonly (readonly string[])[] = [
   ["study", "check", "adm-terminal-persona-missing", "--json"],
   ["study", "check", "adm-cu-persona-missing", "--json"],
   ["study", "show", "adm-shared-persona-missing", "--json"],
+  ["study", "check", "adm-shared-actor-persona-unused", "--json"],
+  ["study", "check", "adm-scripted-persona-broken", "--json"],
+  ["study", "check", "adm-scripted-persona-missing", "--json"],
 ];
 
 const cleanup: string[] = [];
@@ -108,6 +122,11 @@ beforeEach(() => {
 async function projectDir(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-admission-cli-"));
   await writePersonaFiles(dir, ...FIXTURE_PERSONAS);
+  // A persona file whose background is a list, which a route that sends personas refuses.
+  await writeFile(
+    path.join(dir, "humanish", "personas", "list-background.yaml"),
+    "schema: humanish.persona.v1\nid: list-background\nbackground: [a, b]\n",
+  );
   cleanup.push(dir);
   await writeFile(path.join(dir, "package.json"), '{ "name": "admission-fixture" }\n');
   await writeFile(path.join(dir, "scorer.mjs"), SCORER);

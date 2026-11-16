@@ -38,6 +38,17 @@ import { syntheticPng1x1 } from "../image-fixtures.js";
 import { runComputerUse, runScripted, runSharedWorld } from "../helpers/route-run.js";
 import { baseSeams, concurrentStudy, makeRendezvous } from "../helpers/shared-world-fakes.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+  "pixel-pat",
+  "synthetic-new-user",
+] as const;
 
 // The Claude Code session runs over a fake stream, and the CLI's sign-in check passes; the provider
 // that reads Claude Code's replies is the real one.
@@ -165,6 +176,7 @@ function signInPage(): CuaExecutor {
 /** A computer-use run of the repeating participant, with `e2bKey` as one of the run's known values. */
 async function repeatingComputerUseRun(e2bKey = "synthetic-e2b-value") {
   const cwd = await makeTestTempDir("humanish-repeated-keys-");
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   const { provider, heard } = repeatingProvider();
   const executor = signInPage();
   const result = await runComputerUse({
@@ -227,6 +239,7 @@ describe("a computer-use participant that repeats an encoded key it was given", 
 describe("a shared-world participant that repeats an encoded key it was given", () => {
   it("writes no form of the key into any run file, and verify finds nothing in the run", async () => {
     const cwd = await makeTestTempDir("humanish-repeated-keys-");
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
     const study = concurrentStudy(2, 2);
     const world = { worldVersion: 0 };
     const rendezvous = makeRendezvous(2);
@@ -329,6 +342,7 @@ function signInDesktop(): ParticipantDesktop {
 describe("a Claude Code participant that repeats an encoded key it was given", () => {
   it("writes no form of the key into any run file, and verify finds nothing in the run", async () => {
     const cwd = await makeTestTempDir("humanish-repeated-keys-");
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
     const heard: string[] = [];
     const actual = await vi.importActual<
       typeof import("../../src/actors/local-agent/claude-session.js")
@@ -428,6 +442,7 @@ async function withLoopbackApp<T>(run: (appUrl: string) => Promise<T>): Promise<
 /** A scripted run of one click step on `selector`, whose browser fails it quoting the selector. */
 async function selectorQuotingRun(selector: string, env: Record<string, string> = {}) {
   const cwd = await makeTestTempDir("humanish-repeated-keys-");
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
   await writeFile(
     path.join(cwd, "humanish", "scenarios", "repeated-keys.yaml"),

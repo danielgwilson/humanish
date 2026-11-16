@@ -4,7 +4,7 @@
 // shared-world dry run records (participant ids, persona ids, assignment, rendered resolution);
 // limits, entry and host are checked directly.
 
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -24,6 +24,7 @@ import { planComputerUseStudy } from "../../src/routes/computer-use/plan.js";
 import type { DesktopParticipantRun } from "../../src/routes/computer-use/types.js";
 import { prepareSelectedOutputDirectory } from "../../src/run/contained-output.js";
 import { committedLabs } from "../helpers/committed-labs.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 import { runSharedWorld } from "../helpers/route-run.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../src/substrates/e2b/lifetime.js";
 
@@ -33,9 +34,14 @@ afterAll(async () => {
   await Promise.all(cleanup.map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
+/** A project holding a persona file for each committed persona and each one the variants name. */
 async function tempProject(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-plan-participants-"));
   cleanup.push(dir);
+  const committed = (await readdir(path.join(ROOT, "humanish", "personas")))
+    .filter((file) => file.endsWith(".yaml"))
+    .map((file) => file.slice(0, -".yaml".length));
+  await writePersonaFiles(dir, ...committed, "fallback-persona", "own-persona", "author");
   return dir;
 }
 

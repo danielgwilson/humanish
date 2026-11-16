@@ -8,8 +8,12 @@ import { describe, expect, it } from "vitest";
 import { PersonaConfigError } from "../../src/study/persona.js";
 import { resolveStudyPersonas } from "../../src/study/persona-resolve.js";
 import type { StudyConfig } from "../../src/study/types.js";
-import { lab, type BaseName } from "../admission/fixtures.js";
+import { stringify } from "yaml";
+
+import { createProgram } from "../../src/cli/program.js";
+import { lab, SCENARIO_YAML, type BaseName } from "../admission/fixtures.js";
 import { libraryConfig } from "../helpers/library-config.js";
+import { runComputerUse, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 
 /** Each route's study shape, naming `personaId` where that route's studies name a persona. */
@@ -109,5 +113,120 @@ describe("a scripted study", () => {
     );
     expect(personas.size).toBe(0);
     expect(warnings).toHaveLength(1);
+  });
+});
+
+describe("an actor persona that every participant overrides", () => {
+  const rosters: Record<string, () => StudyConfig> = {
+    "computer-use": () =>
+      libraryConfig(
+        lab(
+          "cuAppUrl",
+          {
+            participants: [
+              { id: "first", persona: "planner-one" },
+              { id: "second", persona: "planner-two" },
+            ],
+          },
+          { persona: "unused-label" },
+        ),
+      ),
+    "shared-world": () =>
+      libraryConfig(
+        lab("sharedProvisioned", {
+          actor: { persona: "unused-label" },
+          participants: [
+            { id: "author", persona: "planner-one", entry: "/seat-1" },
+            { id: "reviewer", persona: "planner-two", entry: "/seat-2" },
+          ],
+        }),
+      ),
+  };
+
+  it.each(Object.keys(rosters))("needs no file on a %s study", async (route) => {
+    const persona = (id: string) => `schema: humanish.persona.v1\nid: ${id}\nbackground: Plans.\n`;
+    const cwd = await project({
+      "humanish/personas/planner-one.yaml": persona("planner-one"),
+      "humanish/personas/planner-two.yaml": persona("planner-two"),
+    });
+    const { personas } = await resolveStudyPersonas(cwd, rosters[route]!());
+    expect([...personas.keys()].sort()).toEqual(["planner-one", "planner-two"]);
+  });
+});
+
+describe("a route that plans its own participants", () => {
+  const runners = {
+    "computer-use": (cwd: string, config: StudyConfig) =>
+      runComputerUse({ cwd, config, dryRun: true, env: {} }),
+    "shared-world": (cwd: string, config: StudyConfig) =>
+      runSharedWorld({ cwd, config, dryRun: true, env: {} }),
+    terminal: (cwd: string, config: StudyConfig) =>
+      runTerminal({ cwd, config, dryRun: true, env: {} }),
+  };
+
+  it.each(Object.keys(runners) as (keyof typeof runners)[])(
+    "stops on a named persona with no file on the %s route",
+    async (route) => {
+      const cwd = await project();
+      await expect(runners[route](cwd, shapes[route]!("weekend-planner"))).rejects.toBeInstanceOf(
+        PersonaConfigError,
+      );
+    },
+  );
+
+  it("gives a terminal study that names no persona the built-in id with no file", async () => {
+    const cwd = await project();
+    const result = await runTerminal({
+      cwd,
+      config: libraryConfig(lab("terminal", {}, { persona: undefined })),
+      dryRun: true,
+      env: {},
+    });
+    expect(result.ok).toBe(true);
+  });
+});
+
+// The preview route refuses a persona at parse, so only the scripted route can name one here.
+describe("a route that sends no persona", () => {
+  /** Runs `humanish run <study> --dry-run --json` in `cwd` and returns its exit code and result. */
+  async function dryRun(cwd: string, study: string) {
+    let exitCode = 0;
+    const stdout: string[] = [];
+    const program = createProgram({
+      writeOut: (text) => stdout.push(text),
+      writeErr: () => undefined,
+      setExitCode: (code) => {
+        exitCode = code;
+      },
+    });
+    await program.parseAsync(
+      ["node", "humanish", "run", study, "--cwd", cwd, "--dry-run", "--no-open", "--json"],
+      { from: "node" },
+    );
+    return { exitCode, result: JSON.parse(stdout.join("")) as { ok: boolean; error?: unknown } };
+  }
+
+  const studies: Record<string, () => Record<string, unknown>> = {
+    "a scripted study with a persona file whose background is a list": () =>
+      lab("scriptedAppUrl", {}, { persona: "list-background" }),
+    "a scripted study whose persona has no file": () =>
+      lab("scriptedAppUrl", {}, { persona: "weekend-planner" }),
+  };
+
+  it.each(Object.keys(studies))("runs %s", async (name) => {
+    const raw = studies[name]!();
+    const cwd = await project({
+      "package.json": '{ "name": "persona-route-fixture" }\n',
+      "humanish/scenarios/adm-journey.yaml": SCENARIO_YAML,
+      "humanish/personas/list-background.yaml":
+        "schema: humanish.persona.v1\nid: list-background\nbackground: [a, b]\n",
+      [`humanish/studies/${String(raw.id)}.yaml`]: stringify(raw),
+    });
+    const { exitCode, result } = await dryRun(cwd, String(raw.id));
+    expect({ exitCode, ok: result.ok, error: result.error }).toEqual({
+      exitCode: 0,
+      ok: true,
+      error: undefined,
+    });
   });
 });

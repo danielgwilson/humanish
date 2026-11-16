@@ -213,8 +213,9 @@ describe("runStudy returns an option refusal in the route's own envelope and wri
 
   it("typed inProcess on two participants gets the planner's fan-out refusal, naming inProcess", async () => {
     let desktopLoads = 0;
+    // No persona, so the project needs no persona file and stays empty.
     const outcome = await runStudyWith(
-      config("cuAppUrl"),
+      config("cuAppUrl", { actor: { persona: undefined } }),
       {
         cwd,
         dryRun: false,

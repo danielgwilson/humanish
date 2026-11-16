@@ -15,6 +15,7 @@ import { realpath } from "node:fs/promises";
 import { participantList } from "./study-fields.js";
 import type { StudyConfig } from "./types.js";
 import { routeOf, type StudyRoute } from "./routing.js";
+import { computerUseParticipants, sharedWorldParticipants } from "./plan-participants.js";
 
 /** Persona ids are file-name segments, never paths: the same grammar the terminal route enforces. */
 const PERSONA_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
@@ -34,11 +35,12 @@ const PERSONA_DIRECTORIES = [
   path.posix.join(".humanish", "local", "personas"),
 ] as const;
 
-/** Whether a missing persona file stops the study: true for an id the study names. */
+/** Whether a missing persona file stops the study. */
 interface PersonaResolveOptions {
   /**
-   * False for a route's built-in fallback id, which no study named: with no file, or with a file
-   * that is not YAML, it runs with the id only and a warning. Defaults to true.
+   * True, the default, for an id the study names that reaches a participant. False for a route's
+   * built-in fallback id, which no study named, and for an id that reaches no participant: with no
+   * file, or with a file that is not a YAML mapping, it runs with the id only and a warning.
    */
   readonly required?: boolean;
 }
@@ -200,24 +202,56 @@ export async function resolveCommittedPersonasForCwd(
   return resolveCommittedPersonas(projectRoot, personaIds, options);
 }
 
-/** The routes that send a participant its persona, where every persona the study names needs its file. */
+/** The routes that send each participant its persona. The scripted and preview routes record the id only. */
 const ROUTES_THAT_SEND_PERSONAS: ReadonlySet<StudyRoute> = new Set([
   "computer-use",
   "shared-world",
   "terminal",
 ]);
 
+/** Whether `route` sends each participant its persona, so a persona that reaches one needs its file. */
+export function routeSendsPersonas(route: StudyRoute): boolean {
+  return ROUTES_THAT_SEND_PERSONAS.has(route);
+}
+
 /**
- * Every persona the study names (`studyPersonaIds`), resolved from a plain cwd. On the routes that
- * send a participant its persona, a named persona with no readable file throws a
- * PersonaConfigError before anything runs. The scripted and preview routes record the id only, so
- * there a missing file stays a warning.
+ * The persona ids that reach a participant: each planned participant's on the computer-use and
+ * shared-world routes, the agent's on the terminal route, and none on the routes that send no
+ * persona. An `actor.persona` that every roster entry overrides reaches no one.
  */
-export function resolveStudyPersonas(
+function participantPersonaIds(config: StudyConfig): (string | undefined)[] {
+  switch (routeOf(config)) {
+    case "computer-use":
+      return computerUseParticipants(config).map((participant) => participant.personaId);
+    case "shared-world":
+      return sharedWorldParticipants(config).participants.map(
+        (participant) => participant.personaId,
+      );
+    case "terminal":
+      return [config.actor?.persona];
+    default:
+      return [];
+  }
+}
+
+/**
+ * Every persona the study names (`studyPersonaIds`), resolved from a plain cwd. A persona that
+ * reaches a participant on a route that sends personas must resolve: with no readable file it
+ * throws a PersonaConfigError before anything runs. Any other named persona, such as one on the
+ * scripted route or an `actor.persona` every participant overrides, keeps the warning. A caller with
+ * a plan passes its participants' persona ids, which a run's count can add to.
+ */
+export async function resolveStudyPersonas(
   cwd: string,
   config: StudyConfig,
+  reaching: readonly (string | undefined)[] = participantPersonaIds(config),
 ): Promise<{ personas: Map<string, ResolvedPersona>; warnings: string[] }> {
-  return resolveCommittedPersonasForCwd(cwd, studyPersonaIds(config), {
-    required: ROUTES_THAT_SEND_PERSONAS.has(routeOf(config)),
-  });
+  const required = new Set(reaching.filter((id): id is string => Boolean(id)));
+  const rest = studyPersonaIds(config).filter((id) => !required.has(id));
+  const named = await resolveCommittedPersonasForCwd(cwd, [...required]);
+  const others = await resolveCommittedPersonasForCwd(cwd, rest, { required: false });
+  return {
+    personas: new Map([...named.personas, ...others.personas]),
+    warnings: [...named.warnings, ...others.warnings],
+  };
 }

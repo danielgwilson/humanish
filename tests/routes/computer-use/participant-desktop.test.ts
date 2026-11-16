@@ -30,6 +30,15 @@ import {
 } from "../../../src/actors/computer-use/openai-provider.js";
 import { participantRun, participantRunDeps } from "../../helpers/participant-run.js";
 import { runComputerUse } from "../../helpers/route-run.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+] as const;
 
 const restrictedParticipantFactory = vi.hoisted(() => vi.fn());
 vi.mock("../../../src/actors/codex/restricted-participant.js", async (importOriginal) => ({
@@ -71,6 +80,7 @@ const readyDesktop = {
 
 async function fixture() {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-ready-desktop-"));
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   temporary.push(cwd);
   const parsed = parseStudy(readyDesktop);
   if (!parsed.ok) throw new Error(parsed.error.message);

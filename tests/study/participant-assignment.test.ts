@@ -15,11 +15,22 @@ import {
 } from "../../src/routes/computer-use/participant-prompt.js";
 import { runSharedWorld } from "../helpers/route-run.js";
 import { baseSeams, concurrentConfig, makeRendezvous } from "../helpers/shared-world-fakes.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+  "persona-3",
+] as const;
 
 describe("participant assignment evidence", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-assignment-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -167,6 +178,7 @@ describe("typing text in participant assignment evidence", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-assignment-typing-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

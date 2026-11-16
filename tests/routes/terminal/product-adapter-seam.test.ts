@@ -40,6 +40,15 @@ import { verifyRun } from "../../../src/verify/verify.js";
 import { DECLARED_SCORER_MALFORMED } from "../../../src/study/adapter-extension.js";
 import type { RunScorerProvenance } from "../../../src/run/bundle.js";
 import { runTerminal } from "../../helpers/route-run.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+] as const;
 
 // =============================================================================================
 // The thin example adapter: this is the ~40-line extension an adopter would write in its repo.
@@ -252,6 +261,7 @@ describe("terminal-product extension seam: a thin adapter, with no fork of core"
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-seam-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

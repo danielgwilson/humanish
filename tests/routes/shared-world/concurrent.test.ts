@@ -85,6 +85,8 @@ const STUDY_PERSONAS = [
   "persona-2",
   "persona-3",
   "weekly-planner",
+  ,
+  "careful-reviewer",
 ] as const;
 
 const CONCURRENT_ADAPTER_NAMESPACE = "concurrent-browser-adapter-proof";
@@ -2748,6 +2750,7 @@ describe("concurrent shared-world project binding", () => {
     const decoyLatest = path.join(decoyRuns, "latest.json");
     const sentinel = "outside sentinel must stay unchanged\n";
     await mkdir(physicalA);
+    await writePersonaFiles(physicalA, ...STUDY_PERSONAS);
     await mkdir(decoyRuns, { recursive: true });
     await writeFile(decoyLatest, sentinel, "utf8");
     symlinkSync(physicalA, cwdAlias, "dir");

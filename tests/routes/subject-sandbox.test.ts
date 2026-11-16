@@ -20,6 +20,16 @@ import type {
   E2BDesktopSandbox,
 } from "../../src/substrates/e2b/sdk.js";
 import { runScripted, runSharedWorld } from "../helpers/route-run.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+  "synthetic-provider",
+] as const;
 
 vi.mock("../../src/routes/computer-use/e2b-desktop/desktop.js", () => ({
   createE2BParticipantDesktop: vi.fn(() => releasedDesktop()),
@@ -278,6 +288,7 @@ const ROUTES: RouteCase[] = [
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-subject-sandbox-"));
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
