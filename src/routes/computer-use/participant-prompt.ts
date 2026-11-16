@@ -17,11 +17,12 @@ import type { DesktopParticipantRun } from "./types.js";
 
 // The missions a participant reads when its study names none. Each frames the participant as a
 // person using the app: told it is testing or being watched, a participant acts as a tester
-// whatever its persona says (docs/principles/actor-fidelity.md). The default follows the Taskly
-// benchmark's neutral mission: a mission that only says to do what one came to do ends after a
-// first action, and one that asks for a decision about the app keeps the participant using it.
+// whatever its persona says (docs/principles/actor-fidelity.md). The default names two ends for
+// the sitting. A mission that only says to do what one came to do ends after the first action on
+// a work tool, and one that only asks for a decision about the app ends after the first round of
+// a game. Getting what one came for and knowing whether one would come back covers both.
 export const DEFAULT_MISSION =
-  "You are trying a web app for the first time. The browser is already open at it. Use it the way you actually would, until you have decided whether you would keep using it, then stop. Stop sooner if you would give up.";
+  "You are trying a web app for the first time, on your own device and in your own time. The browser is already open at it. Use it the way you actually would, for a real first sitting: long enough to get what you came for and to know whether you would come back. Then stop. Stop sooner if you would give up.";
 
 /** The mission of a shared-world participant whose study names none. */
 export const SHARED_WORLD_MISSION =
