@@ -130,6 +130,7 @@ export const ACTOR = {
   type: true,
   persona: true,
   mission: true,
+  typing: true,
   model: true,
   provider: true,
   maxOutputTokens: true,

@@ -310,6 +310,16 @@ export function taskProtocolValidationReason(
   return null;
 }
 
+/** Refuse `actor.typing` on a route whose participants never read the computer-use prompt.
+ * Direct runners pass their actual support rather than trusting the config's dispatch shape. */
+export function typingValidationReason(
+  config: StudyConfig,
+  readsTyping = isComputerUseComposition(config),
+): string | null {
+  if (config.actor?.typing === undefined || readsTyping) return null;
+  return "`actor.typing` is read only by computer-use and shared-world participants. This study's participants would never see it: terminal participants type commands, scripted participants follow their scenario steps, and a preview run has no participant model. Remove `actor.typing`.";
+}
+
 /**
  * Refuse a clone subject whose target is not an explicit e2b-desktop. Every clone route clones and
  * serves the repo inside a hosted desktop sandbox, and routeOf sends every clone study to

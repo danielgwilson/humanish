@@ -26,8 +26,13 @@ export interface Participant {
   readonly index: number;
   /** `participants[i].persona ?? actor.persona`. The route compiles the committed persona file. */
   readonly personaId: string | undefined;
-  /** The declared mission and per-participant focus. An absent mission takes the route's default. */
-  readonly assignment: { readonly mission?: string; readonly focus?: string };
+  /** The declared mission, actor.typing and per-participant focus. An absent mission or typing
+   *  takes the route's default. */
+  readonly assignment: {
+    readonly mission?: string;
+    readonly typing?: string | false;
+    readonly focus?: string;
+  };
   /** Taxonomy labels copied to the bundle and the plan table; they change no behavior. */
   readonly labels: {
     readonly actorType?: string;
@@ -122,6 +127,7 @@ function desktopParticipant(
   const device = resolveParticipantDevice(config, entry?.device);
   const personaId = entry?.persona ?? actor?.persona;
   const mission = actor?.mission;
+  const typing = actor?.typing;
   const stopWhen = entry?.stopWhen ?? actor?.stopWhen;
   const dwell = entry?.dwell ?? actor?.dwell;
   const reasoningEffort = entry?.reasoningEffort ?? actor?.reasoningEffort;
@@ -139,6 +145,7 @@ function desktopParticipant(
     personaId,
     assignment: {
       ...(mission === undefined ? {} : { mission }),
+      ...(typing === undefined ? {} : { typing }),
       ...(focus === undefined ? {} : { focus }),
     },
     labels: {

@@ -29,7 +29,11 @@ import {
 } from "./types.js";
 import { CUA_MAX_CONCURRENCY_ENV, sandboxHeadroomMs } from "../../substrates/e2b/lifetime.js";
 import { digestUrl } from "./bundle-parts.js";
-import { composeParticipantInstructions, DEFAULT_MISSION } from "./participant-prompt.js";
+import {
+  composeParticipantInstructions,
+  DEFAULT_MISSION,
+  DEFAULT_TYPING,
+} from "./participant-prompt.js";
 import { resolveCuaRerunSelection } from "./rerun-selection.js";
 import { plural } from "../../run/text.js";
 import { formatDuration } from "../../run/projection.js";
@@ -126,12 +130,14 @@ export function participantRunsAndPlan(
 
   const runs: DesktopParticipantRun[] = participants.map((participant) => {
     const mission = participant.assignment.mission ?? DEFAULT_MISSION;
+    const typing = participant.assignment.typing ?? DEFAULT_TYPING;
     const focus = participant.assignment.focus;
     const tasks = participant.tasks;
     const { device, personaId } = participant;
     const resolvedPersona = personaId === undefined ? undefined : opts.personas?.get(personaId);
     const composed = composeParticipantInstructions({
       mission,
+      typing,
       ...(tasks === undefined ? {} : { tasks }),
       ...(personaId === undefined ? {} : { persona: personaId }),
       ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
@@ -144,6 +150,7 @@ export function participantRunsAndPlan(
       instructions: composed.instructions,
       evidenceAssignment: {
         mission,
+        typing,
         ...(focus === undefined ? {} : { focus }),
         ...(tasks === undefined ? {} : { tasks: tasks.map(({ id, goal }) => ({ id, goal })) }),
       },

@@ -10,6 +10,7 @@ import { attachObserverRuntimeStreamUrls } from "../../observer/render.js";
 import type { RunBundle } from "../../run/bundle.js";
 import {
   composeParticipantInstructions,
+  DEFAULT_TYPING,
   SHARED_WORLD_MISSION,
 } from "../computer-use/participant-prompt.js";
 import { startLiveTraceFlush } from "../computer-use/live-flush.js";
@@ -42,11 +43,13 @@ function buildActorSpec(
   personas: Map<string, ResolvedPersona>,
 ): DesktopParticipantRun {
   const mission = participant.assignment.mission ?? SHARED_WORLD_MISSION;
+  const typing = participant.assignment.typing ?? DEFAULT_TYPING;
   const focus = participant.assignment.focus;
   const { device, personaId } = participant;
   const resolvedPersona = personaId === undefined ? undefined : personas.get(personaId);
   const composed = composeParticipantInstructions({
     mission,
+    typing,
     ...(personaId === undefined ? {} : { persona: personaId }),
     ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
     ...(focus === undefined ? {} : { instruction: focus }),
@@ -55,7 +58,7 @@ function buildActorSpec(
   const run = resolveParticipant(participant, {
     persona: composed.persona,
     instructions: composed.instructions,
-    evidenceAssignment: { mission, ...(focus === undefined ? {} : { focus }) },
+    evidenceAssignment: { mission, typing, ...(focus === undefined ? {} : { focus }) },
   });
   return {
     ...run,

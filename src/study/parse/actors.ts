@@ -113,6 +113,9 @@ export function parseActorFields(
   if (persona.value !== undefined) actor.persona = persona.value;
   const mission = str(entry.mission);
   if (mission) actor.mission = mission;
+  const typing = parseTyping(entry.typing, `${path}.typing`);
+  if (!typing.ok) return typing;
+  if (typing.value !== undefined) actor.typing = typing.value;
   const modelReason = actorModelReason(entry.model, path);
   if (modelReason) return invalid(modelReason);
   const model = str(entry.model);
@@ -367,6 +370,23 @@ function parseTasks(
     });
   }
   return { ok: true, value: tasks };
+}
+
+/** The longest `actor.typing` text, the length init allows a mission. */
+const TYPING_MAX_CHARS = 4_000;
+
+/** `false`, or the paragraph that replaces the built-in one. */
+function parseTyping(
+  raw: unknown,
+  field: string,
+): { ok: true; value: string | false | undefined } | StudyParseFailure {
+  if (raw === undefined || raw === false) return { ok: true, value: raw };
+  if (typeof raw !== "string" || raw.trim() === "" || raw.length > TYPING_MAX_CHARS) {
+    return invalid(
+      `\`${field}\` must be false, to leave out the paragraph on typing, or the text that replaces it, at most ${TYPING_MAX_CHARS.toLocaleString("en-US")} characters. Leave it out to use the built-in paragraph.`,
+    );
+  }
+  return { ok: true, value: raw };
 }
 
 /** The bounds a dwell window must sit inside: at least one frame, at most an hour. */
