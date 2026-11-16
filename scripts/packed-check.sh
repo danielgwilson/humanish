@@ -144,6 +144,13 @@ else
   record "init rerun: no files changed" FAIL "exit $init_rerun_exit, tree same: $([ "$before_tree" = "$after_tree" ] && echo yes || echo no), dropped files present: '${dropped}'; see logs/init-rerun.out" "#1563"
 fi
 
+# 3c. The studies below name committed personas beyond the two init writes, and a named persona
+# needs its file, so the project gets copies of those persona files.
+for persona in weekly-planner ops-coordinator party-host casual-friend first-time-visitor \
+  autonomous-coding-agent autonomous-creative-agent; do
+  cp "$repo/humanish/personas/$persona.yaml" "$project/humanish/personas/$persona.yaml"
+done
+
 # 4. The offline dry run, through `run <study>`.
 hx run first-run --no-open --json >"$work/logs/run.json" 2>"$work/logs/run.err"
 run_exit=$?

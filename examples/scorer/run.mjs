@@ -16,7 +16,7 @@ const study = {
   title: "Score a dry run",
   route: "computer-use",
   subject: { source: "app-url", appUrl: "http://127.0.0.1:3000/" },
-  actor: { type: "openai-computer-use", persona: "pixel-pat", mission: "Find the pricing page." },
+  actor: { type: "openai-computer-use", mission: "Find the pricing page." },
   execution: { target: "e2b-desktop" },
   review: { analysis: false },
 };
