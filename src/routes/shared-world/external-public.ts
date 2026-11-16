@@ -138,6 +138,7 @@ export async function runExternalPublicPlane(
         startAfterMs: ({ spec }) => spec.planned.schedule.startAfterMs,
         slots: Math.max(1, concurrency - 1),
         now: ctx.now,
+        ...(deps.runDeps.credits === undefined ? {} : { signal: deps.runDeps.credits.signal }),
       },
       async ({ spec, index }, _position, { scheduledAt }) => ({
         ...(await runFollower(handoff, deps, spec, index)),

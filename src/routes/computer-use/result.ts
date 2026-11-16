@@ -1,3 +1,4 @@
+import { withOutOfCreditsSummary } from "./out-of-credits.js";
 import { removeContainedOutputFile } from "../../run/contained-output.js";
 import { adapterScoreFailureMessage, applyBrowserScorer } from "../../study/adapter-extension.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -275,7 +276,9 @@ function cuaStudyResult(args: {
     observer,
     ...(hostSuspension === undefined ? {} : { hostSuspension }),
     warnings,
-    ...(errorResult === undefined ? {} : { error: errorResult }),
+    ...(errorResult === undefined
+      ? {}
+      : { error: withOutOfCreditsSummary(errorResult, outcomes ?? []) }),
   };
 }
 

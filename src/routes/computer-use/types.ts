@@ -1,6 +1,7 @@
 import type { SandboxProviderId } from "../../run/sandbox-receipts.js";
 import type { Verdict } from "../../run/judge.js";
 import type { HostSuspensionReading } from "../../run/host-suspension.js";
+import type { AccountCredits } from "./out-of-credits.js";
 import type { LocalCapacity } from "../../substrates/local/capacity.js";
 import type { BrowserNetworkIndex } from "../../evidence/browser-network.js";
 import type { RunDesktopRecording } from "../../evidence/desktop-recording-types.js";
@@ -522,6 +523,8 @@ export interface ParticipantModelDeps {
   /** The study's shared spend ledger, present exactly when caps.maxTotalUsd is set on a
    *  live run. Preflight already refused the cap on an unpriced model. */
   runBudget?: CuaRunBudget;
+  /** Whether the run's model account ran out of credits; once it has, no participant starts. */
+  credits?: AccountCredits;
   /**
    * runtime-only observed-URL callback (the shared-world handoff): threaded into the participant's session so the
    * orchestrator watches this participant's live location.href mid-run. Never persisted (see

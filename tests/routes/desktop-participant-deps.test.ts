@@ -283,6 +283,7 @@ function onlyDeps(byId: Map<string, CuaParticipantDeps>): CuaParticipantDeps {
   const [first, ...rest] = [...byId.values()];
   for (const other of rest) {
     expect(other.runBudget).toBe(first!.runBudget);
+    expect(other.credits).toBe(first!.credits);
     expect(other.scrubKnownValues).toBe(first!.scrubKnownValues);
     expect(other.brain).toBe(first!.brain);
   }
@@ -296,6 +297,7 @@ const SHARED_KEYS = [
   "artifactRoot",
   "brain",
   "caps",
+  "credits",
   "detachedTimers",
   "desktopModule",
   "e2bApiKey",

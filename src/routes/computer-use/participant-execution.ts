@@ -69,6 +69,8 @@ export async function runCuaParticipant(
       `skipped: study budget reached before this participant started: ${crossed}; no desktop was created`,
     );
   }
+  const noCredits = deps.credits?.notStartedReason();
+  if (noCredits !== undefined) return skippedOutcome(spec, noCredits);
   // One that waited for a slot until its scheduled end would only be asked for its closing report.
   const pastEnd = pastEndReason(deps.end, deps.now());
   if (pastEnd !== undefined) return skippedOutcome(spec, pastEnd);
@@ -91,6 +93,8 @@ export async function runCuaParticipant(
     session = await deps.runSession(
       participantSessionOptions(spec, deps, ready, model.provider, writeScreenshot),
     );
+    // Before this participant's teardown, so a participant waiting for its slot does not start.
+    deps.credits?.noteEnded(session.trace);
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
@@ -242,7 +246,10 @@ export async function runCuaParticipants(
       startAfterMs: (spec) => spec.planned.schedule.startAfterMs,
       slots: concurrency,
       now: deps.now,
-      signal: stopping.signal,
+      signal:
+        deps.credits === undefined
+          ? stopping.signal
+          : AbortSignal.any([stopping.signal, deps.credits.signal]),
     },
     async (spec, index, { scheduledAt }): Promise<ParticipantRunOutcome> => {
       const id = spec.planned.id;

@@ -499,6 +499,7 @@ function runParticipants(
     startAfterMs: (spec: DesktopParticipantRun) => spec.planned.schedule.startAfterMs,
     slots: Math.max(1, ctx.concurrency),
     now,
+    ...(baseActorDeps.credits === undefined ? {} : { signal: baseActorDeps.credits.signal }),
   };
   return runOnSchedule(ctx.actorSpecs, schedule, async (spec, i, { scheduledAt }) => {
     const route = resolveActorEntryUrl(plane.getHostUrl!, participants[i]?.entry);
