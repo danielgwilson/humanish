@@ -103,3 +103,24 @@ export const isComputerUsePromptRefusedError = (
   value: unknown,
 ): value is ComputerUsePromptRefusedError =>
   typeof value === "object" && value !== null && refusals.has(value);
+
+const outOfCredits = new WeakSet<object>();
+/**
+ * The model provider says the account has no credits or quota left (OpenAI 429
+ * `credit_balance_exhausted` or `insufficient_quota`). It belongs to the account, so every request
+ * after it fails the same way and a retry only waits; one later success does not show the credits
+ * are back. `providerCode` is the provider's identifier only, never its message.
+ */
+export class ComputerUseOutOfCreditsError extends Error {
+  readonly providerCode: string;
+  constructor(provider: string, providerCode: string) {
+    super(`${provider} reports the account is out of credits (${providerCode})`);
+    this.name = "ComputerUseOutOfCreditsError";
+    this.providerCode = providerCode;
+    outOfCredits.add(this);
+  }
+}
+export const isComputerUseOutOfCreditsError = (
+  value: unknown,
+): value is ComputerUseOutOfCreditsError =>
+  typeof value === "object" && value !== null && outOfCredits.has(value);

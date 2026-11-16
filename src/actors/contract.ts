@@ -76,6 +76,10 @@ export const ACTOR_STOP_CAUSES = [
   // The model provider refused the prompt under its usage policy (OpenAI `invalid_prompt`). The
   // session ends without a retry; resending the same prompt is not a fix.
   "provider_refused_prompt",
+  // The model provider says the account has no credits or quota left (OpenAI 429
+  // credit_balance_exhausted or insufficient_quota). It ends the session without a retry, and the
+  // run starts no participant after it.
+  "provider_out_of_credits",
   "harness_aborted",
   "usage_unreported",
   // The participant's scheduled end (participants[].endAfterMs) came. A planned end: the session
