@@ -30,6 +30,7 @@ workflow without leaking private upstream truth into core.
 | Adapter                           | `humanish.adapter.v1`                                                                                                                                                                                                                                                                                                                                                                                                           | `synthetic-cli-adapter`                                                             |
 | Study file                        | `humanish.study.v3`                                                                                                                                                                                                                                                                                                                                                                                                             | `first-run`                                                                         |
 | Persona                           | `humanish.persona.v1`                                                                                                                                                                                                                                                                                                                                                                                                           | `synthetic-maintainer`                                                              |
+| Habits                            | `humanish.habits.v1` (input to `humanish personas build`; never read by a run)                                                                                                                                                                                                                                                                                                                                                  | see Persona Habits below                                                            |
 | Scenario                          | `humanish.scenario.v1`                                                                                                                                                                                                                                                                                                                                                                                                          | `first-run-smoke`                                                                   |
 | Actor trace                       | `humanish.actor-trace.v1`                                                                                                                                                                                                                                                                                                                                                                                                       | `synthetic-actor-trace`                                                             |
 | Substrate                         | reserved (never shipped)                                                                                                                                                                                                                                                                                                                                                                                                        | none                                                                                |
@@ -1016,6 +1017,34 @@ computer-use context hints are notice items titled `Participant context hint`.
 These disclose guidance supplied on turns that returned a provider response.
 Failed requests may have uncertain delivery and are not included in this list.
 Hints are not participant observations or proof of friction.
+
+### Persona habits
+
+`humanish personas build <sessions-file> --habits <file>` reads a
+`humanish.habits.v1` YAML file. It sets the sentences the builder writes into
+each persona's `background`; a run never reads it.
+
+```yaml
+schema: humanish.habits.v1
+intro: "How this person plans a trip:" # optional, one line
+measures: # optional; a field it does not list keeps the default line
+  stops_added: # a number field: zero, one, other
+    zero: they leave before adding a stop
+    one: they add one stop
+    other: they add about {value} stops
+  shared_the_plan: # a true/false field: "true", "false"
+    "true": they share the plan with a friend
+    "false": they keep the plan to themselves
+```
+
+`{value}` is the rounded value and the only placeholder, and only number forms
+take it. A number uses `zero` when the value is exactly 0 and `one` when it
+rounds to 1, when the file gives that form; otherwise `other`, otherwise the
+default line. A `{` or `}` outside `{value}` is refused. Each text is one
+line of at most 280 characters. An unknown key, an unknown form, a form that
+does not fit the field's values, or any other placeholder refuses the build
+with `HUMANISH_PERSONAS_INVALID_HABITS`. A listed field the build does not use
+is a warning.
 
 ## Actor Trace
 
