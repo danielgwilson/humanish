@@ -18,7 +18,7 @@ import { formatCuaStudyHuman } from "../../../src/cli/commands/study-format.js";
 import type { RunBundle } from "../../../src/run/bundle.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { parseStudy } from "../../../src/study/config.js";
-import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
+import type { E2BDesktopCreateOptions, E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { lab } from "../../admission/fixtures.js";
 import {
   makeFanoutModule,
@@ -70,6 +70,8 @@ async function runStudy(args: {
   fetchFor: (session: number) => FetchLike | undefined;
   module?: (handle: FanoutModuleHandle) => E2BDesktopModule;
   now?: () => number;
+  /** Runs after session `n` returns. */
+  afterSession?: (session: number) => void;
 }) {
   const parsed = parseStudy(
     lab("cuAppUrl", {
@@ -90,14 +92,17 @@ async function runStudy(args: {
       desktopModule: async () => module,
       runSession: async (options: CuaActorSessionOptions) => {
         sessions += 1;
-        const fetchFn = args.fetchFor(sessions) ?? scriptedFetch(TWO_TURN_SESSION);
-        return runCuaActorSession({
+        const session = sessions;
+        const fetchFn = args.fetchFor(session) ?? scriptedFetch(TWO_TURN_SESSION);
+        const ended = await runCuaActorSession({
           ...options,
           participant: {
             vendor: "openai",
             options: { ...options.participant?.options, apiKey: KEYS.OPENAI_API_KEY, fetchFn },
           },
         });
+        args.afterSession?.(session);
+        return ended;
       },
       analysis: { run: vi.fn() },
     },
@@ -107,7 +112,7 @@ async function runStudy(args: {
     await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId!, "run.json"), "utf8"),
   ) as RunBundle;
   const created = () => handle.created.map((options) => options.metadata?.participantId);
-  return { result: outcome.result, created, bundle, subject: parsed.config.subject };
+  return { result: outcome.result, created, bundle, subject: parsed.config.subject, sessions };
 }
 
 /** Four participants one at a time; the second's first request gets the 429 body. */
@@ -210,5 +215,45 @@ describe("the cause sentence a run opens with", () => {
     expect(result.error?.message.split(". ")[0]).toBe(
       "The model provider account ran out of credits during this run: 1 of 3 participants ran and 1 was not started",
     );
+  });
+});
+
+describe("a participant still preparing its desktop when the account runs out", () => {
+  it("closes its desktop without sending its first request", async () => {
+    // The second participant's desktop is created only after the first's session has ended on
+    // the 429 body.
+    let firstEnded!: () => void;
+    const afterFirst = new Promise<void>((resolve) => {
+      firstEnded = resolve;
+    });
+    const { result, created, sessions } = await runStudy({
+      participants: [{ id: "first" }, { id: "second" }],
+      concurrency: 2,
+      fetchFor: (session) => (session === 1 ? exhaustedAfter([]) : undefined),
+      afterSession: (session) => {
+        if (session === 1) firstEnded();
+      },
+      module: (handle) => ({
+        Sandbox: {
+          ...handle.module.Sandbox,
+          create: (async (...args: Parameters<E2BDesktopModule["Sandbox"]["create"]>) => {
+            const options = args.at(-1) as E2BDesktopCreateOptions;
+            if (options.metadata?.participantId === "second") await afterFirst;
+            return handle.module.Sandbox.create(...args);
+          }) as E2BDesktopModule["Sandbox"]["create"],
+        },
+      }),
+    });
+    expect(created()).toEqual(["first", "second"]);
+    expect(sessions).toBe(1);
+    expect(result.lanes?.[1]).toMatchObject({
+      status: "blocked",
+      skippedReason:
+        "not started: the model provider account ran out of credits while its desktop was being prepared; the desktop was closed before its first request",
+    });
+    expect(result.error?.message.split(". ")[0]).toBe(
+      "The model provider account ran out of credits during this run: 1 of 2 participants ran and 1 was not started",
+    );
+    expect(result.observer?.ok).toBe(true);
   });
 });

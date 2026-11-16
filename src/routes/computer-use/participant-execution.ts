@@ -54,6 +54,9 @@ function skippedOutcome(
   };
 }
 
+const DESKTOP_CLOSED_FOR_CREDITS =
+  "not started: the model provider account ran out of credits while its desktop was being prepared; the desktop was closed before its first request";
+
 /** Run one participant against a prepared desktop. The adapter owns provisioning, final
  * evidence and cleanup; this runner owns the model, trace and participant outcome. */
 export async function runCuaParticipant(
@@ -84,6 +87,7 @@ export async function runCuaParticipant(
   let providerCleanupError: string | undefined;
   let providerPolicyError: string | undefined;
   let ranOutOfCredits = false;
+  let notStarted: string | undefined;
   const desktop =
     deps.createDesktop?.(spec, warnings, deps.artifactRoot) ??
     createE2BParticipantDesktop(spec, deps, warnings);
@@ -92,13 +96,16 @@ export async function runCuaParticipant(
     const ready = await desktop.openSession();
     model = await startParticipantModel(spec, deps, ready.executor);
     deps.signalReady?.();
-    session = await deps.runSession({
-      ...participantSessionOptions(spec, deps, ready, model.provider, writeScreenshot),
-      onOutOfCredits: () => {
-        ranOutOfCredits = true;
-        deps.credits?.trip();
-      },
-    });
+    // The latch may have tripped while this desktop was set up: its first request would only fail.
+    if (deps.credits?.notStartedReason() !== undefined) notStarted = DESKTOP_CLOSED_FOR_CREDITS;
+    else
+      session = await deps.runSession({
+        ...participantSessionOptions(spec, deps, ready, model.provider, writeScreenshot),
+        onOutOfCredits: () => {
+          ranOutOfCredits = true;
+          deps.credits?.trip();
+        },
+      });
   } catch (error) {
     sessionError = redactText(deps.scrubKnownValues(toErrorMessage(error)));
   } finally {
@@ -122,7 +129,7 @@ export async function runCuaParticipant(
         sessionError !== undefined ||
         providerCleanupError !== undefined ||
         providerPolicyError !== undefined ||
-        session === undefined,
+        (session === undefined && notStarted === undefined),
     });
   }
   const { released, desktopFailure, ...desktopEvidence } = desktop.snapshot();
@@ -155,6 +162,9 @@ export async function runCuaParticipant(
     ...(providerCleanupError === undefined ? {} : { providerCleanupError }),
     ...(providerPolicyError === undefined ? {} : { providerPolicyError }),
     ...(ranOutOfCredits ? { outOfCredits: "ran_out" as const } : {}),
+    ...(notStarted === undefined
+      ? {}
+      : { skippedReason: notStarted, outOfCredits: "not_started" as const }),
     ...desktopEvidence,
     killed: released,
     screenshots: frames.screenshots,
