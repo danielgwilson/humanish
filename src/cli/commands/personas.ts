@@ -1,15 +1,16 @@
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { lstat, readdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import type { Command } from "commander";
 
 import {
   createContainedOutputFile,
   prepareManagedHumanishOutputDirectory,
-  prepareSelectedOutputDirectory,
   writeContainedOutputFile,
+  type PreparedSelectedOutputDirectory,
 } from "../../run/contained-output.js";
-import { gitignoreListsRuntime } from "../../run/project.js";
-import { plural } from "../../run/text.js";
+import { validateCwd } from "../../run/project.js";
+import { escapeRegExp, plural } from "../../run/text.js";
 import { isNodeError } from "../../run/type-guards.js";
 import {
   buildPersonas,
@@ -48,11 +49,15 @@ interface PersonasBuildResult {
   /** With --dry-run: the first persona file the build would write. */
   preview?: string;
   written: string[];
+  /** `<prefix>-NNN` files in the folder that this build did not write, kept as they were. */
+  earlier: string[];
   roster?: string;
   warnings: string[];
   error?: {
     code:
       | PersonaBuildErrorCode
+      | "HUMANISH_INVALID_CWD"
+      | "HUMANISH_PERSONAS_FOLDER_NOT_REAL"
       | "HUMANISH_PERSONAS_INVALID_OPTION"
       | "HUMANISH_PERSONAS_UNREADABLE_FILE"
       | "HUMANISH_PERSONAS_FILE_EXISTS"
@@ -138,12 +143,15 @@ async function handleBuild(
     dryRun: options.dryRun === true,
     fields: [],
     written: [],
+    earlier: [],
     warnings: [],
   };
+  // Whether the field report already went out, ahead of the writes.
+  let listed = false;
   const finish = (error?: NonNullable<PersonasBuildResult["error"]>): void => {
     if (error) result.error = error;
     result.ok = error === undefined;
-    writeResult(command, io, result, formatBuildHuman);
+    writeResult(command, io, result, (output) => formatBuildHuman(output, listed));
     io.setExitCode(result.ok ? 0 : 2);
   };
   const count = options.count === undefined ? undefined : parsePositiveInteger(options.count);
@@ -154,6 +162,8 @@ async function handleBuild(
       message: `${count === null ? "--count" : "--seed"} must be a whole number, 1 or more.`,
     });
   const cwd = path.resolve(options.cwd);
+  const invalidCwd = await validateCwd(cwd);
+  if (invalidCwd) return finish(invalidCwd);
   const read = async (file: string, what: string): Promise<string | undefined> => {
     try {
       return await readFile(path.resolve(cwd, file), "utf8");
@@ -196,12 +206,7 @@ async function handleBuild(
     return finish();
   }
 
-  const physical = await realpath(cwd).catch(() => cwd);
-  const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physical), physical);
-  if (!(await gitignoreListsRuntime(projectRoot)))
-    result.warnings.push(
-      `.gitignore does not list .humanish/, so git may pick up these files, which hold data from real sessions. Add .humanish/ to .gitignore, or run humanish init.`,
-    );
+  const physical = await realpath(cwd);
   const committed = await existing(
     path.join(cwd, "humanish", "personas"),
     build.files.flatMap((file) => [`${file.id}.yaml`, `${file.id}.yml`]),
@@ -211,7 +216,19 @@ async function handleBuild(
       `humanish/personas/ already has ${committed.map(({ name }) => name).join(", ")}, and a study reads that file before the one built here. Pass --prefix to build under other names.`,
     );
 
-  const directory = await prepareManagedHumanishOutputDirectory(physical, "local", "personas");
+  let directory: PreparedSelectedOutputDirectory;
+  try {
+    directory = await prepareManagedHumanishOutputDirectory(physical, "local", "personas");
+  } catch {
+    return finish({
+      code: "HUMANISH_PERSONAS_FOLDER_NOT_REAL",
+      message: `${OUT} could not be used, so nothing was written. .humanish, .humanish/local and ${OUT} must each be a real folder inside the project; one of them is a link or is not a folder. Replace it with a folder and build again.`,
+    });
+  }
+  if ((await gitIgnores(physical, path.join(OUT, build.files[0]!.name))) === false)
+    result.warnings.push(
+      `git does not ignore ${OUT}, so git status shows these files, which hold data from real sessions. Add .humanish/ to .gitignore, or run humanish init.`,
+    );
   const present = await existing(
     directory.physicalPath,
     build.files.map((file) => file.name),
@@ -229,7 +246,10 @@ async function handleBuild(
     });
 
   // The fields used and skipped go out before any file is written.
-  if (!wantsJson(command)) io.writeOut(formatFields(result));
+  if (!wantsJson(command)) {
+    io.writeOut(formatFields(result));
+    listed = true;
+  }
   for (const file of build.files) {
     try {
       if (options.force === true)
@@ -244,8 +264,41 @@ async function handleBuild(
     }
     result.written.push(file.name);
   }
+  const built = new RegExp(
+    `^${escapeRegExp(options.prefix ?? DEFAULT_PERSONA_PREFIX)}-\\d{3,}\\.ya?ml$`,
+  );
+  result.earlier = (await readdir(directory.physicalPath))
+    .filter((name) => built.test(name) && !result.written.includes(name))
+    .sort();
+  if (result.earlier.length > 0)
+    result.warnings.push(
+      `${OUT} also has ${result.earlier.join(", ")} from an earlier build, which this build did not write or change. A study that names them still reads them; delete them if you no longer want them.`,
+    );
   result.roster = build.roster;
   finish();
+}
+
+/**
+ * Whether git ignores `relativePath` in the project: undefined outside a git work tree or when git
+ * cannot run, so a project without git gets no warning. `check-ignore` applies every rule the way
+ * `git status` does, negations and comments included.
+ */
+function gitIgnores(projectRoot: string, relativePath: string): Promise<boolean | undefined> {
+  const env = { ...process.env };
+  // These would point git at another repository than the project's.
+  for (const name of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"])
+    delete env[name];
+  return new Promise((resolve) => {
+    execFile(
+      "git",
+      ["-C", projectRoot, "check-ignore", "-q", "--", relativePath],
+      { env, timeout: 10_000 },
+      (error) => {
+        if (error === null) resolve(true);
+        else resolve(typeof error.code === "number" && error.code === 1 ? false : undefined);
+      },
+    );
+  });
 }
 
 /** Which of `names` are already in `directory`, and whether each is a plain file. */
@@ -295,9 +348,9 @@ function formatFields(result: PersonasBuildResult): string {
   );
 }
 
-function formatBuildHuman(result: PersonasBuildResult): HumanOutput {
+function formatBuildHuman(result: PersonasBuildResult, listed: boolean): HumanOutput {
   if (!result.ok) {
-    const fields = result.sessions ? formatFields(result) : "";
+    const fields = result.sessions && !listed ? formatFields(result) : "";
     return fields ? { stdout: fields, error: result.error } : humanError(result.error);
   }
   const sampling = result.sampling!;

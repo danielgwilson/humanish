@@ -1,7 +1,8 @@
 // `humanish personas build` writes persona files from a sessions export and prints the roster that
 // assigns them, which a study can paste. The examples are a fictional trip planner and recipe site.
+import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { chmod, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readdir, readFile, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Command, CommanderError } from "commander";
 import { parse } from "yaml";
@@ -49,6 +50,13 @@ const SESSIONS = [
   .join("\n");
 
 const PERSONAS_DIR = path.join(".humanish", "local", "personas");
+
+/** This process's environment without the variables that would point git at another repository. */
+function gitFreeEnv(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  for (const name of Object.keys(env)) if (name.startsWith("GIT_")) delete env[name];
+  return env;
+}
 const FIRST = path.join(PERSONAS_DIR, "visitor-001.yaml");
 
 /** A project whose .gitignore lists .humanish/, as `humanish init` leaves it, unless `ignored` is false. */
@@ -263,14 +271,66 @@ describe("humanish personas build --dry-run", () => {
 });
 
 describe("humanish personas build output folder", () => {
-  it("warns when .gitignore does not list .humanish/, and still writes", async () => {
+  it.each([
+    [".humanish/runs/\n", 1],
+    ["# .humanish/\n", 1],
+    [".humanish/*\n!.humanish/local/\n", 1],
+    [".humanish\n", 0],
+    [".humanish/\n", 0],
+  ])(
+    "in a git repository with .gitignore %j, warns %i times and still writes",
+    async (rules, warnings) => {
+      const cwd = await project(false);
+      await writeFile(path.join(cwd, ".gitignore"), rules);
+      execFileSync("git", ["init", "-q"], { cwd, env: gitFreeEnv() });
+
+      const { exitCode, json } = await buildJson(cwd);
+
+      expect(exitCode).toBe(0);
+      expect(json.warnings).toHaveLength(warnings);
+      expect((await builtFiles(cwd)).size).toBe(4);
+    },
+  );
+
+  it("says nothing about git outside a git repository", async () => {
     const cwd = await project(false);
+    expect((await buildJson(cwd)).json.warnings).toEqual([]);
+  });
+
+  it("refuses a --cwd that does not exist, and creates nothing", async () => {
+    const parent = await project();
+    const cwd = path.join(parent, "no-such-project");
+    const result = await runCli(["personas", "build", "../sessions.jsonl", "--cwd", cwd, "--json"]);
+    expect(result.exitCode).toBe(2);
+    expect(JSON.parse(result.output)).toMatchObject({ error: { code: "HUMANISH_INVALID_CWD" } });
+    expect(existsSync(cwd)).toBe(false);
+  });
+
+  it("refuses a .humanish folder that is a link", async () => {
+    const cwd = await project();
+    const elsewhere = await makeTestTempDir("humanish-personas-elsewhere-");
+    await symlink(elsewhere, path.join(cwd, ".humanish"));
 
     const { exitCode, json } = await buildJson(cwd);
 
+    expect(exitCode).toBe(2);
+    expect(json).toMatchObject({ error: { code: "HUMANISH_PERSONAS_FOLDER_NOT_REAL" } });
+    expect(await readdir(elsewhere)).toEqual([]);
+  });
+
+  it("lists persona files an earlier, larger build left, and keeps them", async () => {
+    const cwd = await project();
+    expect((await build(cwd, "--count", "5")).exitCode).toBe(0);
+
+    const { exitCode, json } = await buildJson(cwd, "--count", "2", "--force");
+
     expect(exitCode).toBe(0);
+    expect(json).toMatchObject({
+      written: ["visitor-001.yaml", "visitor-002.yaml"],
+      earlier: ["visitor-003.yaml", "visitor-004.yaml", "visitor-005.yaml"],
+    });
     expect(json.warnings).toHaveLength(1);
-    expect((await builtFiles(cwd)).size).toBe(4);
+    expect((await builtFiles(cwd)).size).toBe(5);
   });
 
   it("warns when humanish/personas/ has a file with a built id", async () => {
@@ -330,6 +390,8 @@ describe("humanish personas build output folder", () => {
         written: [],
         error: { code: "HUMANISH_PERSONAS_WRITE_FAILED" },
       });
+      const human = await build(cwd);
+      expect(human.output.split("Measures each persona states:")).toHaveLength(2);
     } finally {
       await chmod(path.join(cwd, PERSONAS_DIR), 0o700);
     }

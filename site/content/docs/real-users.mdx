@@ -50,7 +50,7 @@ The command reads fields whose values are all numbers or all true and false. `nu
 
 It draws `--count` sessions, every session up to 50 by default, with `--seed` (default 1). The same export and seed give the same files. When `--count` is above the number of sessions, sessions are used more than once, evenly, and the output says so.
 
-Each persona goes to `.humanish/local/personas/visitor-001.yaml` and on, a folder `humanish init` adds to `.gitignore`; when your `.gitignore` does not list `.humanish/`, the command says so. `--prefix` changes `visitor`, and `--force` replaces files that are already there. A file holds a neutral name and a background built from that session's measures, and nothing else from the export:
+Each persona goes to `.humanish/local/personas/visitor-001.yaml` and on, a folder `humanish init` adds to `.gitignore`. In a git repository, the command asks git whether it ignores that folder and warns when it does not. `--prefix` changes `visitor`, and `--force` replaces files that are already there. A rebuild with a smaller `--count` keeps the higher-numbered files from the earlier build and lists them so you can delete them. A file holds a neutral name and a background built from that session's measures, and nothing else from the export:
 
 ```yaml title=".humanish/local/personas/visitor-001.yaml"
 schema: humanish.persona.v1
