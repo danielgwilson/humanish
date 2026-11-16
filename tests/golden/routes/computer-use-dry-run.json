@@ -33,7 +33,7 @@
             1280,
             800
           ],
-          "instructionDigest": "d28074a0b0a4c6e9"
+          "instructionDigest": "5da0734bb02c3fa2"
         }
       ]
     },
@@ -129,14 +129,14 @@
         "id": "first-time-visitor",
         "name": "Computer-use operator (first-time-visitor)",
         "source": "study:cua-routing-proof",
-        "sourceDigest": "d28074a0b0a4c6e9"
+        "sourceDigest": "5da0734bb02c3fa2"
       },
       "scenario": {
         "id": "cua-cua-routing-proof",
         "title": "CUA routing proof",
-        "goal": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "goal": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nWhen you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.\n\nYour focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
         "source": "study:cua-routing-proof",
-        "sourceDigest": "d28074a0b0a4c6e9"
+        "sourceDigest": "5da0734bb02c3fa2"
       },
       "packageName": "humanish",
       "redaction": {
@@ -270,14 +270,14 @@
       "id": "first-time-visitor",
       "name": "Computer-use operator (first-time-visitor)",
       "source": "study:cua-routing-proof",
-      "sourceDigest": "d28074a0b0a4c6e9"
+      "sourceDigest": "5da0734bb02c3fa2"
     },
     "scenario": {
       "id": "cua-cua-routing-proof",
       "title": "CUA routing proof",
-      "goal": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "goal": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nWhen you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.\n\nYour focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
       "source": "study:cua-routing-proof",
-      "sourceDigest": "d28074a0b0a4c6e9"
+      "sourceDigest": "5da0734bb02c3fa2"
     },
     "lifecycle": [
       {
@@ -312,7 +312,7 @@
         "laneId": "lane-01",
         "assignment": {
           "mission": "Explore the app and stop.",
-          "typing": "When you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.",
+          "typing": "When you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.",
           "focus": "Focus on the landing page."
         },
         "kind": "browser",

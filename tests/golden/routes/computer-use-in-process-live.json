@@ -39,7 +39,7 @@
             1440,
             950
           ],
-          "instructionDigest": "3cf78acd75b38152"
+          "instructionDigest": "820477451e33fbb4"
         }
       ]
     },
@@ -138,7 +138,7 @@
         "redacted": false,
         "sourceDigest": "45177c5325f4"
       },
-      "promptDigest": "3cf78acd75b38152"
+      "promptDigest": "820477451e33fbb4"
     },
     "redaction": {
       "status": "passed",
@@ -248,14 +248,14 @@
         "id": "pixel-pat",
         "name": "Computer-use operator (pixel-pat)",
         "source": "study:downstream-local-app-state",
-        "sourceDigest": "3cf78acd75b38152"
+        "sourceDigest": "820477451e33fbb4"
       },
       "scenario": {
         "id": "cua-downstream-local-app-state",
         "title": "State-driven local app",
-        "goal": "Persona: pixel-pat.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (desktop, 1440x950).\n\nDrive the app via its state contract.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "goal": "Persona: pixel-pat.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (desktop, 1440x950).\n\nDrive the app via its state contract.\n\nWhen you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
         "source": "study:downstream-local-app-state",
-        "sourceDigest": "3cf78acd75b38152"
+        "sourceDigest": "820477451e33fbb4"
       },
       "packageName": "humanish",
       "redaction": {
@@ -409,14 +409,14 @@
       "id": "pixel-pat",
       "name": "Computer-use operator (pixel-pat)",
       "source": "study:downstream-local-app-state",
-      "sourceDigest": "3cf78acd75b38152"
+      "sourceDigest": "820477451e33fbb4"
     },
     "scenario": {
       "id": "cua-downstream-local-app-state",
       "title": "State-driven local app",
-      "goal": "Persona: pixel-pat.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (desktop, 1440x950).\n\nDrive the app via its state contract.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "goal": "Persona: pixel-pat.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (desktop, 1440x950).\n\nDrive the app via its state contract.\n\nWhen you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
       "source": "study:downstream-local-app-state",
-      "sourceDigest": "3cf78acd75b38152"
+      "sourceDigest": "820477451e33fbb4"
     },
     "lifecycle": [
       {
@@ -451,7 +451,7 @@
         "laneId": "lane-01",
         "assignment": {
           "mission": "Drive the app via its state contract.",
-          "typing": "When you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up."
+          "typing": "When you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it."
         },
         "kind": "browser",
         "label": "Pixel pat",
@@ -488,7 +488,7 @@
               "redacted": false,
               "sourceDigest": "45177c5325f4"
             },
-            "promptDigest": "3cf78acd75b38152"
+            "promptDigest": "820477451e33fbb4"
           },
           "redaction": {
             "status": "passed",
