@@ -1,0 +1,531 @@
+{
+  "schema": "humanish.bench-result.v1",
+  "createdAt": "2026-11-16T05:03:05.691Z",
+  "humanish": {
+    "version": "0.161.0",
+    "source": "this checkout at c7f0681a6, src/ as of e2d6e2a5a"
+  },
+  "rubric": {
+    "id": "taskly-rubric",
+    "version": 5,
+    "sha256": "967025f9514ec8c393d3ecf87d85cf4ec2f4b285573a35b54751982aa46d5102"
+  },
+  "fixture": {
+    "id": "taskly",
+    "digests": {
+      "plantedAppJs": "81d287dc902f0c27893c6d73f3b7bceceeed7310c18f6667e2b71449e34682e8",
+      "cleanAppJs": "7f9f16923c0fc87224b5d7447e87ce10f5963266b5f28eb909b497a31c7a2733",
+      "indexHtml": "ea196a9b8915c8e9f94dd70eb349111cd3fb072abb21bea4f63bf614479c4a13",
+      "persona": "e99887ad1f46cafec7f3520be2703cf4ce218f4a770483c5997df4f367517a88"
+    },
+    "persona": "synthetic-new-user"
+  },
+  "mission": {
+    "id": "default",
+    "sha256": "d400a3b46efa1f09c00d2d5b40ecf21fd4d31db532bbb2c0d3ed6714ca377203",
+    "text": "You are trying a web app for the first time, on your own device and in your own time. The browser is already open at it. Use it the way you actually would, for a real first sitting: long enough to get what you came for and to know whether you would come back. Then stop. Stop sooner if you would give up."
+  },
+  "runsPerArm": 3,
+  "budget": {
+    "maxUsdPerBrain": 4,
+    "participantCapUsd": 0.6,
+    "analysisMaxUsd": 4,
+    "analysisAutoCap": true,
+    "worstCaseDesktopMinutes": 50,
+    "analysis": false
+  },
+  "brains": [
+    {
+      "brain": "openai-computer-use",
+      "participantModels": [
+        "gpt-6.1-sol"
+      ],
+      "analysis": {
+        "provider": null,
+        "model": null,
+        "promptVersion": null,
+        "maxCostUsd": null,
+        "maxOutputTokens": null
+      },
+      "stopped": null,
+      "spentUsd": {
+        "participant": 0.3895,
+        "desktop": 0.0606,
+        "analysis": 0,
+        "total": 0.4501,
+        "unpricedRuns": 0
+      },
+      "runs": [
+        {
+          "arm": "planted",
+          "index": 1,
+          "runId": "cua-2026-11-16T04-55-28-182Z-b901cc93",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.072426,
+            "desktopUsd": 0.010106,
+            "analysisUsd": null,
+            "totalUsd": 0.0825
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "detectedQuotes": {
+                "D3": "the filters also confused me - active showed the crossed-out task, while completed showed the unchecked shopping task.",
+                "D5": "i hesitated over editing: i changed the shopping task to buy milk and bread and clicked save, but it stayed in editing mode and later reverted.",
+                "D4": "i refreshed to see if that helped, but both tasks disappeared and undefined appeared again."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "i refreshed to see if that helped, but both tasks disappeared and undefined appeared again."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i tried making a small everyday list: buy milk and water plants. adding them was straightforward, and ticking off the plants crossed it out."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "clean",
+          "index": 1,
+          "runId": "cua-2026-11-16T04-56-44-161Z-b23ee398",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.061325,
+            "desktopUsd": 0.009702,
+            "analysisUsd": null,
+            "totalUsd": 0.071
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "but after i refreshed the page, both tasks disappeared."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added two sample tasks, edited the grocery task, checked off water plants, and tried the active and completed views. those steps were straightforward."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "planted",
+          "index": 2,
+          "runId": "cua-2026-11-16T04-57-57-014Z-65b32e1a",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.069208,
+            "desktopUsd": 0.009905,
+            "analysisUsd": null,
+            "totalUsd": 0.0791
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "detectedQuotes": {
+                "D3": "active showed the checked-off task, while completed showed the unchecked grocery item, which confused me.",
+                "D5": "i hesitated when save left the grocery item in an editing box.",
+                "D4": "i refreshed to see if that would help, but both tasks disappeared and the list said undefined and 0 left."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "i refreshed to see if that would help, but both tasks disappeared and the list said undefined and 0 left."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added water the plants and buy milk, then checked off the plants task. adding things felt straightforward."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "clean",
+          "index": 2,
+          "runId": "cua-2026-11-16T04-59-11-238Z-e4398841",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.062275,
+            "desktopUsd": 0.010969,
+            "analysisUsd": null,
+            "totalUsd": 0.0732
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "but after i refreshed the page, the whole list disappeared."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added three sample errands, changed buy milk to buy milk and bread, and checked off water plants. adding, editing, and switching between active and completed felt straightforward.",
+                "i'd stop here. it's easy to use, but i wouldn't move plans out of my notebook if i can't trust them to still be there next time."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "planted",
+          "index": 3,
+          "runId": "cua-2026-11-16T05-00-37-731Z-ad558677",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.068794,
+            "desktopUsd": 0.011043,
+            "analysisUsd": null,
+            "totalUsd": 0.0798
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "detectedQuotes": {
+                "D3": "active showed the checked-off task, while completed showed the unchecked one, which confused me.",
+                "D5": "i hesitated when save didn't finish editing my grocery item.",
+                "D4": "both tasks disappeared, and the list said undefined with 0 left."
+              },
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": false,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added buy groceries and water plants, then checked off the plants task. adding items was easy and the layout looked straightforward."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        },
+        {
+          "arm": "clean",
+          "index": 3,
+          "runId": "cua-2026-11-16T05-02-00-448Z-18f4cdbe",
+          "ok": false,
+          "error": "HUMANISH_COMPUTER_USE_FAILED",
+          "costs": {
+            "participantUsd": 0.055462,
+            "desktopUsd": 0.008891,
+            "analysisUsd": null,
+            "totalUsd": 0.0644
+          },
+          "analysisState": "skipped_disabled",
+          "analysisRefusal": null,
+          "cleanup": {
+            "checkState": "clean",
+            "reclaimState": null
+          },
+          "participants": [
+            {
+              "streamId": "stream-001",
+              "detected": {
+                "D1": false,
+                "D2": false,
+                "D3": false,
+                "D4": false,
+                "D5": false
+              },
+              "detectedQuotes": {},
+              "falseAssurance": [],
+              "d2Mechanism": null,
+              "engaged": {
+                "D1": false,
+                "D2": true,
+                "D3": true,
+                "D4": true,
+                "D5": true
+              },
+              "invented": [],
+              "supported": [
+                {
+                  "classId": "B10",
+                  "quote": "after refreshing, all three tasks disappeared and the page said nothing here yet."
+                }
+              ],
+              "harness": [],
+              "unresolved": [
+                "did not reach the goal. i added three everyday tasks, edited the grocery task, checked off water plants, and used active to see what was left. those steps were straightforward."
+              ],
+              "model": "gpt-6.1-sol",
+              "status": "abandoned",
+              "stopCause": null
+            }
+          ],
+          "analysis": null
+        }
+      ],
+      "summary": {
+        "report": {
+          "plantedUnits": 3,
+          "cleanUnits": 3,
+          "recall": {
+            "D1": {
+              "hits": 0,
+              "of": 3
+            },
+            "D2": {
+              "hits": 0,
+              "of": 3
+            },
+            "D3": {
+              "hits": 3,
+              "of": 3
+            },
+            "D4": {
+              "hits": 3,
+              "of": 3
+            },
+            "D5": {
+              "hits": 3,
+              "of": 3
+            },
+            "total": {
+              "hits": 9,
+              "of": 15,
+              "wilson95": [
+                0.3575,
+                0.8018
+              ]
+            }
+          },
+          "d2Mechanism": {
+            "data_loss": 0,
+            "display": 0,
+            "ambiguous": 0,
+            "unspecified": 0
+          },
+          "falseAssurance": {
+            "claims": 0,
+            "unitsWith": 0
+          },
+          "invented": {
+            "planted": 0,
+            "clean": 0,
+            "unitsWith": 0
+          },
+          "harness": 0,
+          "unresolved": 7,
+          "supported": 5,
+          "engaged": {
+            "D1": {
+              "hits": 0,
+              "of": 3
+            },
+            "D2": {
+              "hits": 1,
+              "of": 3
+            },
+            "D3": {
+              "hits": 1,
+              "of": 3
+            },
+            "D4": {
+              "hits": 3,
+              "of": 3
+            },
+            "D5": {
+              "hits": 3,
+              "of": 3
+            }
+          }
+        },
+        "analysis": {
+          "plantedUnits": 0,
+          "cleanUnits": 0,
+          "recall": {
+            "D1": {
+              "hits": 0,
+              "of": 0
+            },
+            "D2": {
+              "hits": 0,
+              "of": 0
+            },
+            "D3": {
+              "hits": 0,
+              "of": 0
+            },
+            "D4": {
+              "hits": 0,
+              "of": 0
+            },
+            "D5": {
+              "hits": 0,
+              "of": 0
+            },
+            "total": {
+              "hits": 0,
+              "of": 0,
+              "wilson95": null
+            }
+          },
+          "d2Mechanism": {
+            "data_loss": 0,
+            "display": 0,
+            "ambiguous": 0,
+            "unspecified": 0
+          },
+          "falseAssurance": {
+            "claims": 0,
+            "unitsWith": 0
+          },
+          "invented": {
+            "planted": 0,
+            "clean": 0,
+            "unitsWith": 0
+          },
+          "harness": 0,
+          "unresolved": 0,
+          "supported": 0
+        }
+      }
+    }
+  ]
+}

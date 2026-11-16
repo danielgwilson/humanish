@@ -8,21 +8,15 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-Computer-use and shared-world participants now read a short paragraph on typing after their
-mission: type as this person would, in a few plain words, one thing at a time. Without it,
-participants wrote into chat boxes and search fields like an assistant, with full sentences, a
-greeting and a thank-you, and the whole request in the first message. In support chat tasks
-with it, their turns came close to what people type. `actor.typing: false` leaves the paragraph
-out, and `actor.typing: "<text>"` replaces it, for a persona who writes formally or a form that
-needs long answers. `typing: no`, `off`, `none` or `"false"` is refused with a message that says
-to write `typing: false`. A participant at a `desktop-cli` subject's terminal types commands, so
-it gets no paragraph unless `actor.typing` is text. Each participant's
-`streams[].assignment.typing` records the text it read, or `false`. `humanish study show --json`
-shows `actor.typing` when the study sets it and nothing when it does not. A bundle this release
-writes needs this release or later to verify: 0.160.0 and earlier fail `run bundle shape` on the
-new field. Terminal, scripted and preview studies refuse `actor.typing`; a library caller gets
-`HUMANISH_STUDY_TYPING_UNSUPPORTED`. The new paragraph changes the prompt digest of every
-computer-use and shared-world participant except those at a `desktop-cli` terminal.
+## 0.161.0: Participants type and stay like the people who use your app, and personas come from real sessions (2026-11-16)
+
+humanish 0.161.0 makes participants behave more like the people who use an app. They now read a
+short paragraph on how people type in chat and search, and the built-in mission asks for a real
+first sitting. `humanish personas build` turns an export of your real sessions into personas, and
+a persona file can show how the person writes. A run stops starting participants when its OpenAI
+account runs out of credits, and a study that names a persona with no file is refused.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.161.0)
 
 ## 0.160.0: See what your runs keep on disk, and finish a remote copy that stopped (2026-11-10)
 

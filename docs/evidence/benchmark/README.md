@@ -314,6 +314,8 @@ mission, and read every unresolved and invented line before tagging.
 | 2026-10-09 | 0.119.0, src/ as of 6405a7c0 | `neutral` | `openai-computer-use` | 3            | 10/15         | 10/15           | 0 and 0             | $6.12           | [summary](2026-10-09-0.119.0-neutral-openai-computer-use.md) |
 | 2026-10-09 | 0.120.0, src/ as of cf75cc6f | `neutral` | `openai-computer-use` | 3            | 12/15         | 11/15           | 0 and 0             | $5.87           | [summary](2026-10-09-0.120.0-neutral-openai-computer-use.md) |
 | 2026-10-14 | 0.133.0, src/ as of 7147b595 | `neutral` | `openai-computer-use` | 3            | 9/15          | 8/15            | 0 and 0             | $5.87           | [summary](2026-10-14-0.133.0-neutral-openai-computer-use.md) |
+| 2026-11-16 | 0.161.0, src/ as of e2d6e2a5a | `neutral` | `openai-computer-use` | 3            | 11/15         | 8/15            | 0 and 0             | $1.07           | [summary](2026-11-16-0.161.0-neutral-openai-computer-use.md) |
+| 2026-11-16 | 0.161.0, src/ as of e2d6e2a5a | `default` | `openai-computer-use` | 3            | 9/15          | not run         | 0                   | $0.45           | [summary](2026-11-16-0.161.0-default-openai-computer-use.md) |
 
 Analysis models on fixed recordings, 2026-10-22: twelve analyst settings on the same 8 Taskly
 recordings, and seven on three movie-game runs, in
