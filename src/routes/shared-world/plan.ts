@@ -42,6 +42,7 @@ import {
   taskProtocolValidationReason,
   waitLimitValidationReason,
 } from "../../study/validation.js";
+import { typingValueReason } from "../../study/parse/actors.js";
 import { unpricedCapCheck } from "../../study/requirements.js";
 import {
   participantsAtOnce,
@@ -114,6 +115,9 @@ export function planSharedWorldStudy(
   if (!analysis.ok) return refuse("HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, false);
   if (tasksReason) return refuse("HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
+  // The parser checks this too; a library caller skips the parser.
+  const typingReason = typingValueReason(config.actor?.typing);
+  if (typingReason) return refuse("HUMANISH_STUDY_INVALID", typingReason);
   // The parser refuses these; a library caller's config skips it.
   if (participantList(config)?.some((entry) => entry.files !== undefined))
     return refuse(invalid, `participants[].files: ${DESKTOP_FILES_ROUTE_REASON}. Remove them.`);

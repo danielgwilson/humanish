@@ -70,6 +70,54 @@ describe("actor.typing admission", () => {
     if (!result.ok) expect(result.error.message).toMatch(/^`actor\.typing`/);
   });
 
+  it.each(["no", "Off", "FALSE", "None"])(
+    "refuses %s as the whole value and names typing: false",
+    (word) => {
+      const supported = fixtures.find(({ reads }) => reads)!.config;
+      const result = parseStudy(withTyping(supported, ` ${word} `));
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.error.message).toMatch(/`typing: false`/);
+    },
+  );
+
+  it("trims the text, as it trims the mission", () => {
+    const supported = fixtures.find(({ reads }) => reads)!.config;
+    const result = parseStudy(withTyping(supported, "  Type a few words.\n"));
+    expect(result.ok && result.config.actor.typing).toBe("Type a few words.");
+  });
+
+  it.each(
+    fixtures
+      .filter(({ reads }) => reads)
+      .flatMap(({ name, config }) =>
+        ["", "  ", "none"].map((typing) => ({ name, config, typing: JSON.stringify(typing) })),
+      ),
+  )(
+    "refuses a library config's typing $typing on $name before any runner side effect",
+    async ({ config, typing }) => {
+      const parsed = validConfig(config);
+      parsed.actor.typing = JSON.parse(typing) as string; // A library caller skips parseStudy.
+      const forbidden = vi.fn(async () => {
+        throw new Error("provider/user hook forbidden");
+      });
+      const output = path.join(cwd, "must-not-exist");
+      const outcome = await runStudyWith(
+        parsed,
+        { cwd: output, dryRun: false, env: {} },
+        {
+          desktopModule: forbidden,
+          runSession: forbidden,
+          runScriptedSession: forbidden,
+          renderObserver: forbidden,
+        },
+      );
+      expect(outcome.result.error).toMatchObject({ code: "HUMANISH_STUDY_INVALID" });
+      expect(outcome.result.error?.message).toMatch(/^`actor\.typing`/);
+      expect(forbidden).not.toHaveBeenCalled();
+      await expect(access(output)).rejects.toMatchObject({ code: "ENOENT" });
+    },
+  );
+
   it.each(fixtures.filter(({ reads }) => !reads))(
     "refuses a library config with typing on $name before any runner side effect",
     async ({ config }) => {

@@ -113,7 +113,7 @@ export function parseActorFields(
   if (persona.value !== undefined) actor.persona = persona.value;
   const mission = str(entry.mission);
   if (mission) actor.mission = mission;
-  const typing = parseTyping(entry.typing, `${path}.typing`);
+  const typing = parseTyping(entry.typing);
   if (!typing.ok) return typing;
   if (typing.value !== undefined) actor.typing = typing.value;
   const modelReason = actorModelReason(entry.model, path);
@@ -375,18 +375,31 @@ function parseTasks(
 /** The longest `actor.typing` text, the length init allows a mission. */
 const TYPING_MAX_CHARS = 4_000;
 
-/** `false`, or the paragraph that replaces the built-in one. */
+/** Words a study author writes meaning "no paragraph", which would otherwise be sent as one. */
+const TYPING_OFF_WORDS = new Set(["no", "off", "false", "none"]);
+
+/**
+ * Why an `actor.typing` value cannot be sent, or null. parseStudy (after trimming) and the
+ * computer-use and shared-world planners (for a library config) share it, so both refuse the
+ * same values.
+ */
+export function typingValueReason(value: unknown): string | null {
+  if (value === undefined || value === false) return null;
+  if (typeof value === "string" && TYPING_OFF_WORDS.has(value.trim().toLowerCase()))
+    return `\`actor.typing\` is "${value.trim()}", which would be sent to each participant as its paragraph on typing. Write \`typing: false\` to send no paragraph.`;
+  if (typeof value !== "string" || value.trim() === "" || value.length > TYPING_MAX_CHARS)
+    return `\`actor.typing\` must be false, to leave out the paragraph on typing, or the text that replaces it, at most ${TYPING_MAX_CHARS.toLocaleString("en-US")} characters. Leave it out to use the built-in paragraph.`;
+  return null;
+}
+
+/** `false`, or the paragraph that replaces the built-in one, trimmed as the mission is. */
 function parseTyping(
   raw: unknown,
-  field: string,
 ): { ok: true; value: string | false | undefined } | StudyParseFailure {
-  if (raw === undefined || raw === false) return { ok: true, value: raw };
-  if (typeof raw !== "string" || raw.trim() === "" || raw.length > TYPING_MAX_CHARS) {
-    return invalid(
-      `\`${field}\` must be false, to leave out the paragraph on typing, or the text that replaces it, at most ${TYPING_MAX_CHARS.toLocaleString("en-US")} characters. Leave it out to use the built-in paragraph.`,
-    );
-  }
-  return { ok: true, value: raw };
+  const value = typeof raw === "string" ? raw.trim() : raw;
+  const reason = typingValueReason(value);
+  if (reason) return invalid(reason);
+  return { ok: true, value: value as string | false | undefined };
 }
 
 /** The bounds a dwell window must sit inside: at least one frame, at most an hour. */
