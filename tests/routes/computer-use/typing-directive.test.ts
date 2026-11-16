@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 import {
+  CLOSING_LINE_DIRECTIVE,
   composeParticipantInstructions,
   DEFAULT_TYPING,
 } from "../../../src/routes/computer-use/participant-prompt.js";
@@ -28,10 +29,18 @@ function paragraphsAfterMission(typing?: string | false): string[] {
 }
 
 describe("the typing paragraph a participant reads", () => {
-  it("is the fixed text the study brief gives", () => {
+  it("is the fixed text that names only a chat and a search box", () => {
     expect(DEFAULT_TYPING).toBe(
-      "When you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.",
+      "When you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.",
     );
+  });
+
+  it("sits between the mission and the closing line in a study with no tasks or focus", () => {
+    const paragraphs = composeParticipantInstructions({ mission, device }).instructions.split(
+      "\n\n",
+    );
+    const at = paragraphs.indexOf(mission);
+    expect(paragraphs.slice(at, at + 3)).toEqual([mission, DEFAULT_TYPING, CLOSING_LINE_DIRECTIVE]);
   });
 
   it("follows the mission and comes before the tasks when the study sets none", () => {

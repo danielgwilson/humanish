@@ -28,10 +28,11 @@ export const DEFAULT_MISSION =
 // The paragraph on typing every computer-use and shared-world participant reads after its mission,
 // unless the study sets actor.typing. Simulated users write longer, more polite turns than people
 // and give everything up front (Mind the Sim2Real Gap, arXiv 2603.11245); with this paragraph,
-// participants' chat turns moved close to people's. It was written once before any run and is not
-// tuned to results.
+// participants' chat turns moved close to people's. It names chat and search and nothing else: a
+// first wording that covered any message also shortened the entries participants wrote to keep,
+// so a defect that needs a long entry went unreached, and it shortened their closing reports.
 export const DEFAULT_TYPING =
-  "When you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.";
+  "When you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.";
 
 /** The mission of a shared-world participant whose study names none. */
 export const SHARED_WORLD_MISSION =

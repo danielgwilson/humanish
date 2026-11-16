@@ -351,6 +351,10 @@ with `jump` on the same code, 24 planted and 24 clean runs per mode. Rescored wi
 reports found 57/120 and 59/120 and analyses 70/120 and 69/115; the D5 gap rubric 4 showed (17/24
 against 8/23) was analysis wording its rules did not read. A third glide batch at the shorter 0.157.0 timing
 found 31/60 and 31/55 with steps 8% longer than jump, and `glide` became the default.
+[2026-11-16-typing-paragraph.md](2026-11-16-typing-paragraph.md) runs the typing paragraph on the
+neutral mission: its first wording, which covered any message, shortened task names and closing
+reports and lost the truncation defect; the wording that names only a chat and a search box
+restored both.
 
 The first run's misses: one planted participant never typed more than 28 characters, so it never
 met D2; the other reported "Clear completed removed the two finished tasks" on the build where

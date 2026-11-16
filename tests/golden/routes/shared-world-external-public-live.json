@@ -140,7 +140,7 @@
         "redacted": false,
         "sourceDigest": "df9869f525e8"
       },
-      "promptDigest": "d4af35205a2c794a"
+      "promptDigest": "b2311e7f52e0803a"
     },
     "redaction": {
       "status": "passed",
@@ -212,7 +212,7 @@
         "redacted": false,
         "sourceDigest": "bc0215645b73"
       },
-      "promptDigest": "1f5a995edbc6a8f8"
+      "promptDigest": "f77cf64c3c3f843a"
     },
     "redaction": {
       "status": "passed",
@@ -284,7 +284,7 @@
         "redacted": false,
         "sourceDigest": "44542c74a1d1"
       },
-      "promptDigest": "25c85f2918eaf048"
+      "promptDigest": "dc13a1f7ef8a03a0"
     },
     "redaction": {
       "status": "passed",
@@ -360,14 +360,14 @@
         "id": "party-host",
         "name": "3 participants in one public app",
         "source": "study:lobby-trivia-3player-test",
-        "sourceDigest": "d4af35205a2c794a"
+        "sourceDigest": "b2311e7f52e0803a"
       },
       "scenario": {
         "id": "concurrent-shared-world-lobby-trivia-3player-test",
         "title": "the example multiplayer app 3-player external-public",
-        "goal": "Persona: party-host.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "goal": "Persona: party-host.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nWhen you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.\n\nYour focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
         "source": "study:lobby-trivia-3player-test",
-        "sourceDigest": "d4af35205a2c794a"
+        "sourceDigest": "b2311e7f52e0803a"
       },
       "packageName": "humanish",
       "redaction": {
@@ -535,14 +535,14 @@
       "id": "party-host",
       "name": "3 participants in one public app",
       "source": "study:lobby-trivia-3player-test",
-      "sourceDigest": "d4af35205a2c794a"
+      "sourceDigest": "b2311e7f52e0803a"
     },
     "scenario": {
       "id": "concurrent-shared-world-lobby-trivia-3player-test",
       "title": "the example multiplayer app 3-player external-public",
-      "goal": "Persona: party-host.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "goal": "Persona: party-host.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nWhen you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.\n\nYour focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
       "source": "study:lobby-trivia-3player-test",
-      "sourceDigest": "d4af35205a2c794a"
+      "sourceDigest": "b2311e7f52e0803a"
     },
     "lifecycle": [
       {
@@ -610,7 +610,7 @@
         "simId": "sim-001",
         "assignment": {
           "mission": "Play the example multiplayer app with your friends.",
-          "typing": "When you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.",
+          "typing": "When you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.",
           "focus": "Create a lobby, then wait; once 3 players are in, start and play."
         },
         "kind": "browser",
@@ -684,7 +684,7 @@
               "redacted": false,
               "sourceDigest": "df9869f525e8"
             },
-            "promptDigest": "d4af35205a2c794a"
+            "promptDigest": "b2311e7f52e0803a"
           },
           "redaction": {
             "status": "passed",
@@ -757,7 +757,7 @@
         "simId": "sim-002",
         "assignment": {
           "mission": "Play the example multiplayer app with your friends.",
-          "typing": "When you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.",
+          "typing": "When you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.",
           "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
@@ -831,7 +831,7 @@
               "redacted": false,
               "sourceDigest": "bc0215645b73"
             },
-            "promptDigest": "1f5a995edbc6a8f8"
+            "promptDigest": "f77cf64c3c3f843a"
           },
           "redaction": {
             "status": "passed",
@@ -904,7 +904,7 @@
         "simId": "sim-003",
         "assignment": {
           "mission": "Play the example multiplayer app with your friends.",
-          "typing": "When you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.",
+          "typing": "When you type into a chat or a search box in the app, type as this person would at their own keyboard when nobody is grading them. People type little there: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up. Anything else you write in the app (a task, a note, a post, an answer on a form) is as long as this person would really make it.",
           "focus": "Join the lobby you're told the code for, then play."
         },
         "kind": "browser",
@@ -978,7 +978,7 @@
               "redacted": false,
               "sourceDigest": "44542c74a1d1"
             },
-            "promptDigest": "25c85f2918eaf048"
+            "promptDigest": "dc13a1f7ef8a03a0"
           },
           "redaction": {
             "status": "passed",
