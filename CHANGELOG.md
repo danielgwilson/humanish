@@ -12,9 +12,9 @@ A persona file can now show how the person writes. `writing_samples` lists up to
 the person typed earlier, and the participant reads them after the background, with a sentence
 saying they were about other things. The run's persona brief records them, and `traitsApplied`
 counts them. A persona without samples sends the same text as before. `study check` now lists a
-persona file's warnings, as `study show` already did, including one for a sample that holds a key,
-a token or a local path. Keep samples copied from real users in `.humanish/local/personas/`, with
-names and identifiers removed.
+persona file's warnings, as `study show` already did, including one for a sample that looks like it
+holds an email address, a phone number, a key, a token or a local path. Keep samples copied from
+real users in `.humanish/local/personas/`, with names and identifiers removed.
 
 ## 0.160.0: See what your runs keep on disk, and finish a remote copy that stopped (2026-11-10)
 

@@ -1,6 +1,9 @@
 // Link and one-time-code extraction from a message body, shared by captured mail (fake-inbox.ts)
 // and real receiving (receiving-render.ts). Pure; bodies and results are runtime-only.
 
+/** An email address in message text. A real inbox scrubs each one it holds; a persona's writing sample warns on one. */
+export const EMAIL_ADDRESS = /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+
 /** Extract actionable http(s) links from a message body (href="…" and bare URLs), de-duped, in order.
  *  The verification magic-link the persona would tap. Pure; body is runtime-only. */
 export function extractLinks(body: string): string[] {

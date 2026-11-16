@@ -10,7 +10,7 @@ import {
   MAX_INLINE_IMAGES,
   MAX_INLINE_IMAGES_BYTES,
 } from "./images.js";
-import { extractLinks, extractOtpCodes } from "./extract.js";
+import { EMAIL_ADDRESS, extractLinks, extractOtpCodes } from "./extract.js";
 import type {
   ParticipantEmail,
   ReceivingSurfaceFile,
@@ -349,7 +349,7 @@ function registerMessageSecrets(inbox: InboxRender, message: ParticipantEmail): 
   inbox.secrets.add(message.from);
   if (message.subject) inbox.secrets.add(message.subject);
   for (const match of `${message.from}\n${message.subject ?? ""}\n${message.text}\n${message.html ?? ""}`.matchAll(
-    /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+    EMAIL_ADDRESS,
   ))
     inbox.secrets.add(match[0]);
 }

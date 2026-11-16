@@ -186,8 +186,50 @@ describe("parsing writing samples", () => {
     );
     expect(persona.writingSamples).toHaveLength(2);
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toMatch(/^writing_samples\[2\] /);
+    expect(warnings[0]).toMatch(/^writing_samples\[2\] .*\bkey\b/);
     expect(warnings[0]!.includes(key)).toBe(false);
+  });
+
+  // Built here so no committed file holds an address or a number shaped like a real one.
+  const email = ["sam.rivers", "example.org"].join("@");
+  const phone = ["+44", "20", "7946", "0958"].join(" ");
+  const sampleWarnings = (samples: string[]) => {
+    const warnings: string[] = [];
+    parseResolvedPersona({ writing_samples: samples }, { id: "p", name: "P" }, warnings);
+    return warnings;
+  };
+
+  it("warns, without echoing it, when a sample looks like it holds an email address", () => {
+    const warnings = sampleWarnings(["ok", `send it to ${email} pls`]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/^writing_samples\[2\] .*email address/);
+    expect(warnings[0]!.includes(email)).toBe(false);
+  });
+
+  it.each([
+    ["with spaces", phone],
+    ["with dashes and brackets", ["(020)", "7946", "0958"].join("-")],
+    ["as one run", ["0791", "1123456"].join("")],
+  ])("warns when a sample looks like it holds a phone number %s", (_shape, number) => {
+    const warnings = sampleWarnings([`call me on ${number}`]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/^writing_samples\[1\] .*phone number/);
+    expect(warnings[0]!.includes(number)).toBe(false);
+  });
+
+  it("gives one warning naming each kind a sample looks like it holds", () => {
+    const warnings = sampleWarnings([`${email} or ${phone}`]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatch(/email address.*phone number/);
+  });
+
+  it.each([
+    "the one on the 14th",
+    "flight 2 at 9:40",
+    "row 12 seat 4",
+    "booked for 3 nights in 2027",
+  ])("does not warn about an ordinary sample with a number in it: %s", (sample) => {
+    expect(sampleWarnings([sample])).toEqual([]);
   });
 });
 

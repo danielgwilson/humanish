@@ -1,3 +1,4 @@
+import { EMAIL_ADDRESS } from "../comms/extract.js";
 import { redactEncodedText } from "../evidence/encoded-text.js";
 import { digestText, redactText } from "../evidence/redaction.js";
 import type { ActorPersonaRef } from "../actors/contract.js";
@@ -199,13 +200,31 @@ function parseWritingSamples(
     const field = `writing_samples[${index + 1}]`;
     const sample = short(entry, field);
     if (sample === undefined) return [];
-    // The run's evidence redacts the brief, but the participant reads the sample as written.
-    if (redactEncodedText(sample) !== sample)
+    const holds = identifiersIn(sample);
+    if (holds.length)
       warnings.push(
-        `${field} holds text the evidence redaction removes, such as a key, a token or a file path. The participant still reads it as written. Replace it with a made-up value.`,
+        `${field} looks like it holds ${LIST.format(holds)}. The participant reads the sample as written, so replace it with a made-up value.`,
       );
     return [sample];
   });
+}
+
+const LIST = new Intl.ListFormat("en", { type: "conjunction" });
+const EMAIL_IN_SAMPLE = new RegExp(EMAIL_ADDRESS.source);
+// Seven digits in a row, each apart from the next by at most two spaces, dots, dashes or
+// brackets. A leading + or bracket does not change whether it matches. An ISO date has eight
+// digits and also matches.
+const PHONE_IN_SAMPLE = /\d(?:[ .()-]{0,2}\d){6}/;
+
+/** What a sample copied from a real user may still hold. Only the last is redacted from the run's evidence. */
+function identifiersIn(sample: string): string[] {
+  return [
+    ...(EMAIL_IN_SAMPLE.test(sample) ? ["an email address"] : []),
+    ...(PHONE_IN_SAMPLE.test(sample) ? ["a phone number"] : []),
+    ...(redactEncodedText(sample) !== sample
+      ? ["text the run's evidence redacts (a key, a token or a file path)"]
+      : []),
+  ];
 }
 
 const FRICTION_TOLERANCE: Record<PersonaLevel, string> = {

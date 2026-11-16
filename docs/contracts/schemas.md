@@ -988,8 +988,10 @@ Optional `writing_samples` is a list of up to eight messages the person typed
 before, each up to 280 characters once whitespace is collapsed. Extra, longer
 and non-text entries warn as constraints do. The persona section renders them
 after the background as one sentence that numbers each sample and writes it as
-a JSON string. A sample that `redactEncodedText` would change warns, since the
-participant reads it as written. `traitsApplied` adds `writing_samples:<count>`.
+a JSON string. A sample warns when it looks like it holds an email address, a
+phone number (seven digits apart by at most two separators), or text
+`redactEncodedText` would change. The participant reads it as written, and the
+brief redacts only the last kind. `traitsApplied` adds `writing_samples:<count>`.
 Persona compiler version 3 adds the samples; a persona without them renders the
 same text as version 2.
 
