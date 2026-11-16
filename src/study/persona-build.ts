@@ -85,6 +85,10 @@ export type PersonaBuild =
     };
 
 type Session = Record<string, unknown>;
+
+/** A session's own value for `name`; a field such as `constructor` is never read off the prototype. */
+const valueOf = (session: Session, name: string): unknown =>
+  Object.hasOwn(session, name) ? session[name] : undefined;
 type Measure = { name: string; kind: MeasureKind };
 
 /** Build the personas, or say why not. The same input always gives the same files. */
@@ -107,7 +111,7 @@ export function buildPersonas(input: PersonaBuildInput): PersonaBuild {
   const fields = classifyFields(sessions, named);
   const measures = fields.flatMap((field) => (field.used ? [field] : []));
   const hasValue = (session: Session, name: string) =>
-    session[name] !== null && session[name] !== undefined;
+    valueOf(session, name) !== null && valueOf(session, name) !== undefined;
   const usable = sessions.filter((session) => measures.some(({ name }) => hasValue(session, name)));
   const counts = { read: sessions.length, usable: usable.length };
   const fail = (code: PersonaBuildErrorCode, message: string): PersonaBuild => ({
@@ -137,7 +141,13 @@ export function buildPersonas(input: PersonaBuildInput): PersonaBuild {
     const id = `${prefix}-${String(number).padStart(3, "0")}`;
     const lines = measures.flatMap(({ name }) =>
       hasValue(session, name)
-        ? [measureLine(name, session[name] as number | boolean, habits?.measures.get(name))]
+        ? [
+            measureLine(
+              name,
+              valueOf(session, name) as number | boolean,
+              habits?.measures.get(name),
+            ),
+          ]
         : [],
     );
     const background = [habits?.intro ?? DEFAULT_INTRO, ...lines].join("\n");
@@ -267,16 +277,15 @@ function classifyFields(
     const skip = (reason: SkipReason): FieldReport => ({ name, used: false, reason });
     if (!/[\p{L}\p{N}]/u.test(name)) return skip("no letters or digits");
     const values = sessions
-      .map((session) => session[name])
+      .map((session) => valueOf(session, name))
       .filter((value) => value !== null && value !== undefined);
     const read = readValues(values);
     const kind = read === "number" || read === "yes/no" ? read : undefined;
     if (named?.has(name)) return kind ? { name, used: true, kind } : skip(read as SkipReason);
     if (looksLikeIdentifierOrTime(name)) return skip("identifier or time");
     if (!kind) return skip(read as SkipReason);
-    // A whole number this large is a count of milliseconds or seconds since 1970, or an id.
-    if (values.some((value) => Number.isInteger(value) && Math.abs(value as number) >= 1e9))
-      return skip("identifier or time");
+    // A number this large is a count of milliseconds or seconds since 1970, or an id.
+    if (values.some((value) => Math.abs(value as number) >= 1e9)) return skip("identifier or time");
     return named ? skip("not named in --measures") : { name, used: true, kind };
   });
 }

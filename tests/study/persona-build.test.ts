@@ -105,6 +105,34 @@ describe("which fields become measures", () => {
     ]);
   });
 
+  it("skips a field with any number of a billion or more, whole or not", () => {
+    const result = built(
+      buildPersonas({ sessionsText: lines({ last_seen: 1_731_000_000.5, stops_added: 2 }) }),
+    );
+    expect(result.fields[0]).toEqual({
+      name: "last_seen",
+      used: false,
+      reason: "identifier or time",
+    });
+  });
+
+  it("reads a field named like an Object.prototype key that some sessions lack", () => {
+    const result = built(
+      buildPersonas({
+        sessionsText: lines({ constructor: 2, toString: true }, { stops_added: 1 }),
+      }),
+    );
+    expect(result.fields).toEqual([
+      { name: "constructor", used: true, kind: "number" },
+      { name: "toString", used: true, kind: "yes/no" },
+      { name: "stops_added", used: true, kind: "number" },
+    ]);
+    expect(result.files.map((file) => habitLines(file.contents)).sort()).toEqual([
+      ["- constructor: about 2", "- to string: yes"],
+      ["- stops added: about 1"],
+    ]);
+  });
+
   it("writes nothing from a skipped field into any persona", () => {
     const result = built(
       buildPersonas({ sessionsText: lines({ user_id: 4242, note: "left early", stops_added: 3 }) }),
