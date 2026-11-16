@@ -240,6 +240,10 @@ Their Observer server and run detail parse run.json without checking its schema 
 run without the lists; the 0.126.0 page refuses an account participant's data without receipts.
 This release reads v1, v2 and v3 bundles as they are, with no migration. An exported copy
 (`humanish export --format bundle`) is written as v4 whatever the source version.
+humanish 0.160.0 and earlier accept only `mission`, `focus` and `tasks` in `streams[].assignment`,
+so their verify fails `run bundle shape` on a computer-use or shared-world run.json from a later
+release, whose assignment records `typing`. Verify such a run with the release that wrote it or a
+later one.
 
 ## Purpose
 
