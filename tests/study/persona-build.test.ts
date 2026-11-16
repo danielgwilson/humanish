@@ -123,3 +123,170 @@ describe("default phrasing", () => {
     );
   });
 });
+
+describe("rounding", () => {
+  it.each([
+    [0, "0"],
+    [1, "about 1"],
+    [2.04, "about 2"],
+    [9.96, "about 10"],
+    [9.94, "about 9.9"],
+    [10.5, "about 11"],
+    [-2.35, "about -2.4"],
+    [140, "about 140"],
+  ])("renders %s as %s", (value, phrase) => {
+    const result = built(buildPersonas({ sessionsText: lines({ recipes_saved: value }) }));
+    expect(background(result.files[0]!.contents).split("\n")[1]).toBe(`- recipes saved: ${phrase}`);
+  });
+});
+
+describe("each session's own measures", () => {
+  it("leaves out a measure the session has no value for, and skips a session with none", () => {
+    const result = built(
+      buildPersonas({
+        sessionsText: lines(
+          { photos_rated: 5, shared: null },
+          { photos_rated: null, shared: null },
+          { shared: true },
+        ),
+        seed: 1,
+      }),
+    );
+    expect(result.sessions).toEqual({ read: 3, usable: 2 });
+    expect(
+      result.files.map((file) => background(file.contents).split("\n").slice(1)).sort(),
+    ).toEqual([["- photos rated: about 5"], ["- shared: yes"]]);
+  });
+
+  it("writes files the persona parser reads with no warnings, named after the prefix", () => {
+    const result = built(
+      buildPersonas({
+        sessionsText: lines({ quizzes_finished: 2 }, { quizzes_finished: 6 }),
+        prefix: "quiz-taker",
+      }),
+    );
+    expect(result.files.map(({ id, name }) => ({ id, name }))).toEqual([
+      { id: "quiz-taker-001", name: "quiz-taker-001.yaml" },
+      { id: "quiz-taker-002", name: "quiz-taker-002.yaml" },
+    ]);
+    for (const [index, file] of result.files.entries()) {
+      const warnings: string[] = [];
+      const persona = parseResolvedPersona(
+        parse(file.contents),
+        { id: "fallback", name: "Fallback" },
+        warnings,
+      );
+      expect(warnings).toEqual([]);
+      expect(persona).toMatchObject({ id: file.id, name: `Quiz Taker ${index + 1}` });
+      expect(persona.background?.split("\n")).toHaveLength(2);
+    }
+  });
+
+  it("prints a participants block that gives each participant one persona", () => {
+    const result = built(buildPersonas({ sessionsText: lines({ a: 1 }, { a: 2 }) }));
+    expect(parse(result.roster)).toEqual({
+      participants: [
+        { id: "visitor-001", persona: "visitor-001" },
+        { id: "visitor-002", persona: "visitor-002" },
+      ],
+    });
+  });
+});
+
+describe("sampling", () => {
+  const sessions = (count: number) =>
+    lines(...Array.from({ length: count }, (_, index) => ({ pages_read: index })));
+  const drawnValues = (result: PersonaBuild) =>
+    built(result).files.map((file) => background(file.contents).split("\n")[1]);
+
+  it("draws every session, up to 50, when no count is given", () => {
+    expect(built(buildPersonas({ sessionsText: sessions(7) })).sampling).toEqual({
+      drawn: 7,
+      seed: 1,
+      reused: false,
+    });
+    const many = built(buildPersonas({ sessionsText: sessions(80) }));
+    expect(many.files).toHaveLength(50);
+    expect(new Set(drawnValues(many)).size).toBe(50);
+  });
+
+  it("gives the same files for the same input and seed, and another draw for another seed", () => {
+    const first = buildPersonas({ sessionsText: sessions(30), count: 10, seed: 7 });
+    const again = buildPersonas({ sessionsText: sessions(30), count: 10, seed: 7 });
+    const other = buildPersonas({ sessionsText: sessions(30), count: 10, seed: 8 });
+    expect(again).toEqual(first);
+    expect(drawnValues(other)).not.toEqual(drawnValues(first));
+    expect(new Set(drawnValues(first)).size).toBe(10);
+  });
+
+  it("reuses sessions evenly when the count is above the number of sessions, and says so", () => {
+    const result = built(buildPersonas({ sessionsText: sessions(3), count: 7 }));
+    expect(result.sampling).toEqual({ drawn: 7, seed: 1, reused: true });
+    const uses = new Map<string | undefined, number>();
+    for (const value of drawnValues(result)) uses.set(value, (uses.get(value) ?? 0) + 1);
+    expect([...uses.values()].sort()).toEqual([2, 2, 3]);
+  });
+
+  it.each([
+    { count: 0 },
+    { count: 101 },
+    { count: 2.5 },
+    { seed: -1 },
+    { prefix: "../x" },
+    { prefix: "a".repeat(37) },
+  ])("refuses %o", (options) => {
+    expect(buildPersonas({ sessionsText: sessions(3), ...options })).toMatchObject({
+      ok: false,
+      error: { code: "HUMANISH_PERSONAS_INVALID_OPTION" },
+    });
+  });
+});
+
+describe("--measures", () => {
+  const export_ = lines({ rounds: 2, hints: 1, user_id: 9, note: "x", streak: 4 });
+
+  it("narrows the measures to the named fields", () => {
+    const result = built(buildPersonas({ sessionsText: export_, measures: ["streak", "rounds"] }));
+    expect(result.fields.filter((field) => field.used).map((field) => field.name)).toEqual([
+      "rounds",
+      "streak",
+    ]);
+    expect(result.fields.find((field) => field.name === "hints")).toEqual({
+      name: "hints",
+      used: false,
+      reason: "not named in --measures",
+    });
+  });
+
+  it.each([
+    ["user_id", "identifier or time"],
+    ["note", "text"],
+    ["missing", "not in the sessions file"],
+  ])("refuses a named field that cannot be a measure: %s", (name, reason) => {
+    expect(buildPersonas({ sessionsText: export_, measures: [name] })).toMatchObject({
+      ok: false,
+      error: { code: "HUMANISH_PERSONAS_INVALID_MEASURE", field: name, reason },
+    });
+  });
+});
+
+describe("the sessions file", () => {
+  it("reads one JSON array the same as JSON Lines", () => {
+    const records = [{ rounds: 1 }, { rounds: 5 }];
+    expect(buildPersonas({ sessionsText: JSON.stringify(records) })).toEqual(
+      buildPersonas({ sessionsText: lines(...records) }),
+    );
+  });
+
+  it.each([
+    ['{"rounds": 1}\n{"rounds": 2,\n', 2],
+    ['{"rounds": 1}\n[1, 2]\n', 2],
+    ["\n\n", undefined],
+  ])("names the line that is not a session object", (text, line) => {
+    const result = buildPersonas({ sessionsText: text });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "HUMANISH_PERSONAS_INVALID_SESSIONS", ...(line ? { line } : {}) },
+    });
+  });
+});

@@ -50,6 +50,16 @@ export type PersonaBuildErrorCode =
   | "HUMANISH_PERSONAS_NO_MEASURES"
   | "HUMANISH_PERSONAS_INVALID_OPTION";
 
+export interface PersonaBuildError {
+  code: PersonaBuildErrorCode;
+  message: string;
+  /** The line of the sessions file that is not a session. */
+  line?: number;
+  /** The `--measures` field that cannot be a measure, and why. */
+  field?: string;
+  reason?: SkipReason | "not in the sessions file";
+}
+
 export type PersonaBuild =
   | {
       ok: true;
@@ -61,43 +71,52 @@ export type PersonaBuild =
       /** A `participants:` block that gives each participant one built persona. */
       roster: string;
     }
-  | { ok: false; error: { code: PersonaBuildErrorCode; message: string }; fields: FieldReport[] };
+  | { ok: false; error: PersonaBuildError; fields: FieldReport[] };
 
 type Value = number | boolean;
 type Session = ReadonlyMap<string, unknown>;
 
+// The persona id grammar, `<prefix>-NNN`, within the 40 characters a participant id may have.
+const PREFIX_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+const PREFIX_MAX_CHARS = 36;
+
 /** Build the personas, or say why not. The same input always gives the same files. */
 export function buildPersonas(input: PersonaBuildInput): PersonaBuild {
-  const fail = (code: PersonaBuildErrorCode, message: string, fields: FieldReport[] = []) =>
-    ({ ok: false, error: { code, message }, fields }) as const;
+  const fail = (error: PersonaBuildError, fields: FieldReport[] = []): PersonaBuild => ({
+    ok: false,
+    error,
+    fields,
+  });
+  const option = optionError(input);
+  if (option) return fail({ code: "HUMANISH_PERSONAS_INVALID_OPTION", message: option });
   const sessions = parseSessions(input.sessionsText);
-  if (typeof sessions === "string") return fail("HUMANISH_PERSONAS_INVALID_SESSIONS", sessions);
-  const prefix = input.prefix ?? DEFAULT_PERSONA_PREFIX;
+  if (!Array.isArray(sessions))
+    return fail({ code: "HUMANISH_PERSONAS_INVALID_SESSIONS", ...sessions });
   const fields = classifyFields(sessions);
-  const measures = fields.filter((field) => field.used).map((field) => field.name);
+  const narrowed = narrowFields(fields, input.measures);
+  if ("code" in narrowed) return fail(narrowed, fields);
+  const measures = narrowed.flatMap((field) => (field.used ? [field] : []));
   if (measures.length === 0)
     return fail(
-      "HUMANISH_PERSONAS_NO_MEASURES",
-      "No field in the sessions file is a measure: a persona reads only fields whose values are all numbers or all true and false, and never one named like an identifier or a time. Add numeric or true/false columns to the export.",
-      fields,
+      {
+        code: "HUMANISH_PERSONAS_NO_MEASURES",
+        message:
+          "No field in the sessions file is a measure: a persona reads only fields whose values are all numbers or all true and false, and never one named like an identifier or a time. Add numeric or true/false columns to the export.",
+      },
+      narrowed,
     );
-  const usable = sessions.filter((session) =>
-    measures.some((name) => session.get(name) !== null && session.get(name) !== undefined),
-  );
-  const count = Math.min(usable.length, DEFAULT_PERSONA_COUNT);
+  const hasValue = (session: Session, name: string) =>
+    session.get(name) !== null && session.get(name) !== undefined;
+  const usable = sessions.filter((session) => measures.some(({ name }) => hasValue(session, name)));
+  const count = input.count ?? Math.min(usable.length, DEFAULT_PERSONA_COUNT);
   const seed = input.seed ?? DEFAULT_PERSONA_SEED;
-  const drawn = drawSessions(usable, count, seed);
-  const kinds = new Map(
-    fields.flatMap((field) => (field.used ? [[field.name, field.kind] as const] : [])),
-  );
-  const files = drawn.map((session, index) => {
+  const prefix = input.prefix ?? DEFAULT_PERSONA_PREFIX;
+  const files = drawSessions(usable, count, seed).map((session, index) => {
     const number = index + 1;
     const id = `${prefix}-${String(number).padStart(3, "0")}`;
-    const lines = measures.flatMap((name) => {
-      const value = session.get(name);
-      if (value === null || value === undefined) return [];
-      return [`- ${fieldWords(name)}: ${phraseValue(value as Value, kinds.get(name)!)}`];
-    });
+    const lines = measures.flatMap(({ name, kind }) =>
+      hasValue(session, name) ? [measureLine(name, session.get(name) as Value, kind)] : [],
+    );
     const persona = {
       schema: "humanish.persona.v1",
       id,
@@ -109,44 +128,102 @@ export function buildPersonas(input: PersonaBuildInput): PersonaBuild {
   return {
     ok: true,
     sessions: { read: sessions.length, usable: usable.length },
-    fields,
-    sampling: { drawn: files.length, seed, reused: false },
+    fields: narrowed,
+    sampling: { drawn: files.length, seed, reused: count > usable.length },
     files,
     roster: rosterBlock(files.map((file) => file.id)),
   };
 }
 
-/** The records of a JSON array, or of JSON Lines; a message naming the bad line otherwise. */
-function parseSessions(text: string): Session[] | string {
+function optionError({ count, seed, prefix }: PersonaBuildInput): string | undefined {
+  if (count !== undefined && !(Number.isInteger(count) && count >= 1 && count <= MAX_PERSONA_COUNT))
+    return `--count must be a whole number from 1 to ${MAX_PERSONA_COUNT}, the most participants a study has.`;
+  if (seed !== undefined && !(Number.isSafeInteger(seed) && seed >= 0))
+    return "--seed must be a whole number, 0 or more.";
+  if (prefix !== undefined && !(PREFIX_PATTERN.test(prefix) && prefix.length <= PREFIX_MAX_CHARS))
+    return `--prefix must start with a letter or digit, hold only letters, digits, - and _, and be at most ${PREFIX_MAX_CHARS} characters, because it starts each persona id and file name.`;
+  return undefined;
+}
+
+/** With `--measures`, only the named fields are measures; naming one that cannot be is an error. */
+function narrowFields(
+  fields: readonly FieldReport[],
+  named: readonly string[] | undefined,
+): FieldReport[] | PersonaBuildError {
+  if (named === undefined) return [...fields];
+  for (const name of named) {
+    const field = fields.find((candidate) => candidate.name === name);
+    if (field === undefined)
+      return {
+        code: "HUMANISH_PERSONAS_INVALID_MEASURE",
+        message: `--measures names ${name}, which no session in the sessions file has. Check the spelling against the export's column names.`,
+        field: name,
+        reason: "not in the sessions file",
+      };
+    if (!field.used)
+      return {
+        code: "HUMANISH_PERSONAS_INVALID_MEASURE",
+        message: `--measures names ${name}, which cannot be a measure: ${SKIP_TEXT[field.reason]}. Leave it out of --measures.`,
+        field: name,
+        reason: field.reason,
+      };
+  }
+  return fields.map((field) =>
+    field.used && !named.includes(field.name)
+      ? { name: field.name, used: false, reason: "not named in --measures" }
+      : field,
+  );
+}
+
+/** Why each skipped field is skipped, in words a person reads. */
+export const SKIP_TEXT: Record<SkipReason, string> = {
+  "identifier or time": "its name looks like an identifier or a time, which a persona never holds",
+  text: "it holds text, which may be something a person typed",
+  "nested value": "it holds a list or an object",
+  "mixed types": "it mixes numbers and true/false values",
+  "not a finite number": "one of its numbers is too large to read, such as 1e999",
+  "no values": "every session has null or no value for it",
+  "not named in --measures": "--measures does not name it",
+};
+
+/** The records of a JSON array, or of JSON Lines; the line or session that is not one otherwise. */
+function parseSessions(text: string): Session[] | { message: string; line?: number } {
   const trimmed = text.trim();
-  let records: unknown[];
+  // Each record with the line it starts on, when the file is JSON Lines.
+  const records: Array<{ record: unknown; line?: number }> = [];
   if (trimmed.startsWith("[")) {
+    let parsed: unknown;
     try {
-      const parsed: unknown = JSON.parse(trimmed);
-      if (!Array.isArray(parsed)) return "The sessions file is not a JSON array.";
-      records = parsed;
+      parsed = JSON.parse(trimmed);
     } catch (error) {
-      return `The sessions file is not valid JSON: ${(error as Error).message}.`;
+      return { message: `The sessions file is not valid JSON: ${(error as Error).message}.` };
     }
+    if (!Array.isArray(parsed)) return { message: "The sessions file is not a JSON array." };
+    records.push(...parsed.map((record: unknown) => ({ record })));
   } else {
-    records = [];
-    const all = text.split(/\r?\n/);
-    for (const [index, line] of all.entries()) {
-      if (!line.trim()) continue;
+    for (const [index, json] of text.split(/\r?\n/).entries()) {
+      if (!json.trim()) continue;
+      const line = index + 1;
       try {
-        records.push(JSON.parse(line));
+        records.push({ record: JSON.parse(json), line });
       } catch {
-        return `Line ${index + 1} of the sessions file is not valid JSON. Each line holds one session as a JSON object.`;
+        return {
+          message: `Line ${line} of the sessions file is not valid JSON. Each line holds one session as a JSON object.`,
+          line,
+        };
       }
     }
   }
   const sessions: Session[] = [];
-  for (const [index, record] of records.entries()) {
+  for (const [index, { record, line }] of records.entries()) {
     if (!isRecord(record) || Array.isArray(record))
-      return `Session ${index + 1} is not a JSON object. Each session is one object of field names and values.`;
+      return {
+        message: `${line === undefined ? `Session ${index + 1}` : `Line ${line}`} of the sessions file is not a JSON object. Each session is one object of field names and values.`,
+        ...(line === undefined ? {} : { line }),
+      };
     sessions.push(new Map(Object.entries(record)));
   }
-  if (sessions.length === 0) return "The sessions file holds no sessions.";
+  if (sessions.length === 0) return { message: "The sessions file holds no sessions." };
   return sessions;
 }
 
@@ -197,15 +274,19 @@ function fieldWords(name: string): string {
     .toLowerCase();
 }
 
-/** A whole number, or one decimal below 10 when the value is not whole. */
+/** A whole number, or one decimal below 10 when the value is not whole; halves round away from 0. */
 function roundValue(value: number): number {
   if (Number.isInteger(value)) return value;
-  return Math.abs(value) < 10 ? Math.round(value * 10) / 10 : Math.round(value);
+  const scale = Math.abs(value) < 10 ? 10 : 1;
+  const rounded = (Math.sign(value) * Math.round(Math.abs(value) * scale)) / scale;
+  return rounded === 0 ? 0 : rounded;
 }
 
-function phraseValue(value: Value, kind: MeasureKind): string {
-  if (kind === "yes/no") return value ? "yes" : "no";
-  return `about ${roundValue(value as number)}`;
+/** `- rounds played: about 3`; an exact 0 is not approximate, so it reads `0`. */
+function measureLine(name: string, value: Value, kind: MeasureKind): string {
+  if (kind === "yes/no") return `- ${fieldWords(name)}: ${value ? "yes" : "no"}`;
+  const number = value as number;
+  return `- ${fieldWords(name)}: ${number === 0 ? "0" : `about ${roundValue(number)}`}`;
 }
 
 /** Sessions ranked by a digest of the seed and their position, then the first `count`. */
