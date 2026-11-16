@@ -65,14 +65,8 @@ export async function runStudyCommand(args: {
     args.io.setExitCode(2);
     return;
   }
-  // A persona the study names with no readable file is refused as the study file's problem, before
-  // any key lookup, placement or run. runStudyWith refuses it too, for a library caller.
-  const personaRefusal = await studyPersonaRefusal(args.options.cwd, args.study, resolved);
-  if (personaRefusal !== undefined) {
-    writeResult(args.command, args.io, personaRefusal, formatStudyResolveFailureHuman);
-    args.io.setExitCode(2);
-    return;
-  }
+  // Before any key lookup, placement or run. runStudyWith refuses it too, for a library caller.
+  if (await refusedForPersona(args, resolved)) return;
 
   // Surface forward-declared-field + .yml warnings on run/watch too, not only on inspect.
   // Otherwise a setting that does nothing is silently swallowed on the path users actually run.
@@ -311,23 +305,28 @@ function ownerKeyConflict(options: StudyCommandOptions): string | undefined {
   return undefined;
 }
 
-/** The study file failure for a persona the study names that does not resolve, if there is one. */
-async function studyPersonaRefusal(
-  cwd: string,
-  study: string,
+/**
+ * Writes the study file failure for a persona the study names that has no readable file, with exit
+ * code 2, and says whether it did.
+ */
+async function refusedForPersona(
+  args: { command: Command; io: CliIo; options: { cwd: string }; study: string },
   resolved: { readonly config: StudyConfig; readonly warnings: string[] },
-): Promise<StudyResolveFailure | undefined> {
+): Promise<boolean> {
   try {
-    await resolveStudyPersonas(cwd, resolved.config);
-    return undefined;
+    await resolveStudyPersonas(args.options.cwd, resolved.config);
+    return false;
   } catch (error) {
     if (!(error instanceof PersonaConfigError)) throw error;
-    return {
+    const failure: StudyResolveFailure = {
       ok: false,
-      cwd: resolve(cwd),
-      study,
+      cwd: resolve(args.options.cwd),
+      study: args.study,
       error: { code: "HUMANISH_STUDY_INVALID", message: error.message },
       warnings: resolved.warnings,
     };
+    writeResult(args.command, args.io, failure, formatStudyResolveFailureHuman);
+    args.io.setExitCode(2);
+    return true;
   }
 }

@@ -1711,6 +1711,8 @@ const CUA_LAB_FIXTURE: Record<string, string> = {
     "  target: e2b-desktop",
     "  timeoutMs: 60000",
   ].join("\n"),
+  "humanish/personas/first-time-visitor.yaml":
+    "schema: humanish.persona.v1\nid: first-time-visitor\nname: first-time-visitor\n",
 };
 
 interface CuaEnvelope {

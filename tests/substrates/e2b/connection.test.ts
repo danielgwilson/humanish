@@ -19,6 +19,8 @@ import type {
   E2BDesktopSandbox,
 } from "../../../src/substrates/e2b/sdk.js";
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+import { FIXTURE_PERSONAS } from "../../admission/fixtures.js";
 
 // The E2B SDK names an account by the API key and domain each call carries, and reads
 // E2B_API_KEY and E2B_DOMAIN from process.env for a call that carries none. A library caller can
@@ -111,6 +113,7 @@ function terminalStudy() {
  */
 async function finishedRun() {
   const cwd = await makeTestTempDir("humanish-e2b-connection-");
+  await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
   const sdk = recordingSdk();
   await runStudyWith(
     liveStudy(),
@@ -151,6 +154,7 @@ describe("a library run's E2B calls", () => {
       vi.stubEnv("E2B_API_KEY", processKey);
       vi.stubEnv("E2B_DOMAIN", undefined);
       const cwd = await makeTestTempDir("humanish-e2b-connection-terminal-");
+      await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
       const sdk = recordingSdk();
       // The fake shell never prints the readiness marker, so the session stops after the create
       // and the route tears the sandbox down.

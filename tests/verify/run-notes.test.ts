@@ -36,7 +36,6 @@ describe("verify and reviewer notes", () => {
 
   it("finds nothing in a note whose secret was replaced when it was added", async () => {
     const cwd = await makeTestTempDir("humanish-notes-verify-");
-    await writePersonaFiles(cwd, "first-time-visitor");
     await writeTimedRun(cwd, "timed-verify-run");
     const added = await addRunNote(await bindExistingRunArtifactPaths(cwd, "timed-verify-run"), {
       atMs: 0,

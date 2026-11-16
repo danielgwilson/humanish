@@ -66,6 +66,15 @@ import type { StudyConfig } from "../../src/study/types.js";
 import { lab, SCENARIO_YAML, type BaseName, type Patch } from "../admission/fixtures.js";
 import { writePersonaFiles } from "../helpers/persona-files.js";
 
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+  "persona-3",
+] as const;
+
 function parsed(base: BaseName, patch: Patch = {}): StudyConfig {
   const result = parseStudy(lab(base, patch));
   if (!result.ok) throw new Error(result.error.message);
@@ -85,14 +94,7 @@ describe("runStudy plans each study once", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-plan-once-"));
-    await writePersonaFiles(
-      cwd,
-      "autonomous-creative-agent",
-      "first-time-visitor",
-      "persona-1",
-      "persona-2",
-      "persona-3",
-    );
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
     await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
     await writeFile(path.join(cwd, "humanish", "scenarios", "adm-journey.yaml"), SCENARIO_YAML);
     counts.planStudy = 0;

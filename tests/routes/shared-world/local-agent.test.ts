@@ -18,6 +18,17 @@ import { defaultCodexCliVersion } from "../../../src/actors/codex/codex-admissio
 import { restrictedCodexNpmTarget } from "../../../src/actors/codex/restricted-executable.js";
 import { writePersonaFiles } from "../../helpers/persona-files.js";
 
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "comparison-shopper",
+  "first-time-visitor",
+  "impatient-skimmer",
+  "persona-1",
+  "persona-2",
+  "persona-3",
+  "power-user",
+] as const;
+
 const live = { mode: "live" };
 const localAgent = { type: "local-agent", localAgent: "codex" };
 const cleanup: string[] = [];
@@ -28,16 +39,7 @@ afterAll(async () => {
 
 async function projectDir(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-sw-local-agent-"));
-  await writePersonaFiles(
-    dir,
-    "comparison-shopper",
-    "first-time-visitor",
-    "impatient-skimmer",
-    "persona-1",
-    "persona-2",
-    "persona-3",
-    "power-user",
-  );
+  await writePersonaFiles(dir, ...STUDY_PERSONAS);
   cleanup.push(dir);
   await writeFile(path.join(dir, "package.json"), '{ "name": "sw-local-agent-fixture" }\n');
   await mkdir(path.join(dir, "humanish", "scenarios"), { recursive: true });
@@ -122,16 +124,7 @@ describe("shared world with a local-agent brain", () => {
   /** A `PATH` holding a signed-in ChatGPT-account `codex` that reports `version`. */
   async function signedInCodex(version: string): Promise<string> {
     const dir = await mkdtemp(path.join(tmpdir(), "humanish-sw-codex-"));
-    await writePersonaFiles(
-      dir,
-      "comparison-shopper",
-      "first-time-visitor",
-      "impatient-skimmer",
-      "persona-1",
-      "persona-2",
-      "persona-3",
-      "power-user",
-    );
+    await writePersonaFiles(dir, ...STUDY_PERSONAS);
     cleanup.push(dir);
     const bin = path.join(dir, "codex");
     await writeFile(
@@ -173,16 +166,7 @@ describe("shared world with a local-agent brain", () => {
 
   it("refuses a signed-out agent CLI as AGENT_SIGNIN_REQUIRED", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "humanish-sw-codex-"));
-    await writePersonaFiles(
-      dir,
-      "comparison-shopper",
-      "first-time-visitor",
-      "impatient-skimmer",
-      "persona-1",
-      "persona-2",
-      "persona-3",
-      "power-user",
-    );
+    await writePersonaFiles(dir, ...STUDY_PERSONAS);
     cleanup.push(dir);
     await writeFile(path.join(dir, "codex"), '#!/bin/sh\necho "Not logged in"\nexit 1\n');
     await chmod(path.join(dir, "codex"), 0o755);

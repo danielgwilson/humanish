@@ -11,8 +11,9 @@ import { stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
 import { runStudy, type RunStudyOptions } from "../../src/run-study.js";
-import { lab, type BaseName } from "../admission/fixtures.js";
+import { FIXTURE_PERSONAS, lab, type BaseName } from "../admission/fixtures.js";
 import { libraryConfig } from "../helpers/library-config.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const dirs: string[] = [];
 afterAll(async () => {
@@ -124,6 +125,7 @@ describe("refusal envelopes", () => {
 
   it("the shared-world CLI refusal keeps its text", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-refusal-envelope-"));
+    await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
     dirs.push(cwd);
     await writeFile(path.join(cwd, "package.json"), '{ "name": "refusal-envelope-fixture" }\n');
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });

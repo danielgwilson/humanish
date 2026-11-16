@@ -509,7 +509,6 @@ describe("lab routing (app-url → cua)", () => {
     });
     expect(routeOf(meta)).toBe("computer-use");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-clone-actor-"));
-    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
     try {
       const outcome = await runStudyWith(meta, { cwd, dryRun: true });
       expect(outcome.route).toBe("computer-use");
@@ -536,7 +535,6 @@ describe("desktop-cli runtime prerequisites", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-desktop-cli-"));
-    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -7230,7 +7228,6 @@ describe("runCuaActorLab cost estimates", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-cost-"));
-    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -7569,7 +7566,6 @@ describe("adopter-hosted comms on the app-url route", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-external-cwd-"));
-    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await rm(cwd, { force: true, recursive: true });
@@ -7629,7 +7625,6 @@ describe("adopter-hosted comms on the app-url route", () => {
     // actual implementation.
     const TOKEN = "test-token-not-a-secret";
     const dir = await mkdtemp(path.join(tmpdir(), "humanish-cua-external-"));
-    await writePersonaFiles(dir, "first-time-visitor", "pixel-pat");
     const scriptPath = path.join(dir, "catch.py");
     const surface = path.join(dir, "surface");
     await mkdir(surface, { recursive: true });

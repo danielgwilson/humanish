@@ -13,6 +13,15 @@ import type { StudyDeps } from "../../src/study/study-deps.js";
 import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
 import { writePersonaFiles } from "../helpers/persona-files.js";
 
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+  "persona-3",
+] as const;
+
 type Score = () => RunAdapterScore;
 
 const behaviors: Record<string, Score> = {
@@ -100,14 +109,7 @@ describe("scorer failures fold into one verdict the bundle, status and result ag
       for (const declared of [false, true]) {
         it(`${routeName}: ${behavior}${declared ? " with CLI provenance" : ""}`, async () => {
           const cwd = await mkdtemp(path.join(tmpdir(), "humanish-scorer-fold-"));
-          await writePersonaFiles(
-            cwd,
-            "autonomous-creative-agent",
-            "first-time-visitor",
-            "persona-1",
-            "persona-2",
-            "persona-3",
-          );
+          await writePersonaFiles(cwd, ...STUDY_PERSONAS);
           dirs.push(cwd);
           const outcome = await runStudyWith(
             route.config(),

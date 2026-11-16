@@ -4,13 +4,16 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
- * Writes `humanish/personas/<id>.yaml` under `cwd` for each id, with only a schema and the id: the
- * smallest file that resolves. Its participants get the persona's name and the medium patience and
- * technical confidence directives, and no background.
+ * Writes `humanish/personas/<id>.yaml` under `cwd` for each id, with a schema, the id and the id as
+ * its name. Its prompt section starts with the `Persona: <id>.` line a label-only persona gave, then
+ * the medium patience and technical confidence directives. It has no background.
  */
 export async function writePersonaFiles(cwd: string, ...ids: readonly string[]): Promise<void> {
   const directory = path.join(cwd, "humanish", "personas");
   await mkdir(directory, { recursive: true });
   for (const id of ids)
-    await writeFile(path.join(directory, `${id}.yaml`), `schema: humanish.persona.v1\nid: ${id}\n`);
+    await writeFile(
+      path.join(directory, `${id}.yaml`),
+      `schema: humanish.persona.v1\nid: ${id}\nname: ${id}\n`,
+    );
 }

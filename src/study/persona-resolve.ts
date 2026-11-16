@@ -48,6 +48,7 @@ function pastePersonaFile(personaId: string): string {
   return [
     "schema: humanish.persona.v1",
     `id: ${personaId}`,
+    `name: ${personaId}`,
     "# background: >-",
     "#   A short, fictional description of who this person is and what they want.",
   ].join("\n");

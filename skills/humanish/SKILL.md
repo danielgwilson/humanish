@@ -265,8 +265,10 @@ terminal studies and `tasks[].success` are excluded. These warnings never refuse
 a run, and the run records them in its bundle.
 
 Give each participant a persona with a short, fictional `background` describing
-their relevant experience and situation. A missing persona or background also
-warns. Use `humanish study show <study> --json` to see what the participant receives.
+their relevant experience and situation. A participant with no persona, or a
+persona with no background, warns. A persona the study names must have its file,
+`humanish/personas/<id>.yaml`: without one, `study check` and `run` stop. Use
+`humanish study show <study> --json` to see what the participant receives.
 Do not supply hidden success rules, expected defects or recovery tricks.
 
 Write reusable studies as `.yaml` study files (`humanish.study.v3`):

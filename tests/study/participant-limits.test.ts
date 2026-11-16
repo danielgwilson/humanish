@@ -200,7 +200,6 @@ describe("automatic analysis of a study over 16 participants", () => {
 
   it("says in study check's analysis line that 17 participants take two cohort requests the default cap admits", async () => {
     const cwd = await makeTestTempDir("humanish-participant-limits-");
-    await writePersonaFiles(cwd, "first-time-visitor");
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     await writeFile(
       path.join(cwd, "humanish", "studies", "crowd.yaml"),

@@ -71,6 +71,9 @@ import { concurrentSandboxes, sandboxCeiling } from "../../../src/substrates/e2b
 import { x11vncRemote } from "../../helpers/x11vnc-remote.js";
 import { writePersonaFiles } from "../../helpers/persona-files.js";
 
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = ["casual-friend", "competitive-friend", "party-host"] as const;
+
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the
 // external-public route creates no subject sandbox: only actor sandboxes via
@@ -414,7 +417,7 @@ function makeExternalSeams(
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-external-public-"));
-  await writePersonaFiles(cwd, "casual-friend", "competitive-friend", "party-host");
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });

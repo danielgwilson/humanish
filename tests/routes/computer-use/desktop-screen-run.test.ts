@@ -43,9 +43,11 @@ async function runTwo(fakes: FanoutModuleOptions) {
   );
   if (!parsed.ok) throw new Error(parsed.error.message);
   const handle = makeFanoutModule(fakes);
+  const cwd = await makeTestTempDir("humanish-desktop-screen-");
+  await writePersonaFiles(cwd, "first-time-visitor");
   const outcome = await runStudyWith(
     parsed.config,
-    { cwd: await makeTestTempDir("humanish-desktop-screen-"), env: ENV, open: false },
+    { cwd, env: ENV, open: false },
     {
       desktopModule: async () => handle.module,
       subjectPhaseSink: () => undefined,
@@ -109,7 +111,6 @@ describe("the hosted desktop's screen saver", () => {
     expect(stepsOf(0)).toEqual(["browser", "wait 8000 ms", "screen saver"]);
     expect(stepsOf(1)).toEqual(["browser", "wait 8000 ms", "screen saver"]);
     const dir = await makeTestTempDir("humanish-desktop-screen-bash-");
-    await writePersonaFiles(dir, "first-time-visitor");
     const script = screenCommands[0]!;
     expect(await xsetCallsOnBash(script, path.join(dir, "with"), true)).toEqual([
       "DISPLAY=:0 s off",
