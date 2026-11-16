@@ -16,6 +16,15 @@ import { libraryConfig } from "../helpers/library-config.js";
 import { runComputerUse, runScripted, runSharedWorld, runTerminal } from "../helpers/route-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 import { passingRun, terminalConfig } from "../helpers/terminal-live-fake.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+] as const;
 
 const STUDY: RunStudyProvenance = {
   id: "run-start-proof",
@@ -108,6 +117,7 @@ const cases: Case[] = [
 /** A project with the scenario the scripted studies name. */
 async function project(): Promise<string> {
   const cwd = await makeTestTempDir("humanish-run-start-");
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
   await writeFile(path.join(cwd, "humanish", "scenarios", "adm-journey.yaml"), SCENARIO_YAML);
   return cwd;

@@ -144,6 +144,13 @@ else
   record "init rerun: no files changed" FAIL "exit $init_rerun_exit, tree same: $([ "$before_tree" = "$after_tree" ] && echo yes || echo no), dropped files present: '${dropped}'; see logs/init-rerun.out" "#1563"
 fi
 
+# 3c. The studies below name committed personas beyond the two init writes, and a named persona
+# needs its file, so the project gets copies of those persona files.
+for persona in weekly-planner ops-coordinator party-host casual-friend first-time-visitor \
+  autonomous-coding-agent autonomous-creative-agent; do
+  cp "$repo/humanish/personas/$persona.yaml" "$project/humanish/personas/$persona.yaml"
+done
+
 # 4. The offline dry run, through `run <study>`.
 hx run first-run --no-open --json >"$work/logs/run.json" 2>"$work/logs/run.err"
 run_exit=$?
@@ -2987,11 +2994,17 @@ fi
 # subject.source local-app in run.json, the result and each participant's subject, and verify
 # reads the run (#1733, #1716). 0.117.0 recorded app-url.
 cat >"$lib/local-app.mjs" <<'JS'
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseStudy, runStudy, verifyRun } from "humanish";
 const cwd = mkdtempSync(join(process.env.LOCAL_APP_DIR, "run-"));
+// The study names a persona, so the project holds its file.
+mkdirSync(join(cwd, "humanish/personas"), { recursive: true });
+writeFileSync(
+  join(cwd, "humanish/personas/first-time-visitor.yaml"),
+  "schema: humanish.persona.v1\nid: first-time-visitor\nbackground: Sam is trying the app for the first time.\n",
+);
 const parsed = parseStudy({
   schema: "humanish.study.v3",
   id: "local-app-dry",

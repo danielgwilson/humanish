@@ -12,7 +12,8 @@ import { resolveStudyManifest } from "../../src/study/discover.js";
 import { runStudyWith } from "../../src/run-study.js";
 import { stringify } from "yaml";
 import type { DetectedLocalAgent } from "../../src/actors/local-agent/cli.js";
-import { lab as admissionLab } from "../admission/fixtures.js";
+import { FIXTURE_PERSONAS, lab as admissionLab } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const noAgents: DetectLocalAgentsOptions = { which: async () => undefined };
 // What a hosted Codex participant's operator handshake reports when it passes.
@@ -49,6 +50,7 @@ async function project<T>(manifest: string, run: (cwd: string) => Promise<T>): P
     await writeFile(path.join(cwd, "package.json"), "{}");
     await writeFile(path.join(cwd, ".gitignore"), ".humanish/\n");
     await writeFile(path.join(cwd, "humanish/studies/preview.yaml"), manifest);
+    await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
     return await run(cwd);
   } finally {
     await rm(cwd, { recursive: true, force: true });

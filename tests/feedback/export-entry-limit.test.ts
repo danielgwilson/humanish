@@ -9,9 +9,12 @@ import { exportRun } from "../../src/feedback/export.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { shareSafetyDryRun } from "../helpers/share-safety-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
+import { FIXTURE_PERSONAS } from "../admission/fixtures.js";
 
 it("exports a one-participant run past 10,000 entries that verify grades share_ready", async () => {
   const cwd = await makeTestTempDir("humanish-export-entries-");
+  await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
   const { runId, runDir } = await shareSafetyDryRun(cwd);
   const runEntries = (await readdir(runDir, { recursive: true })).length;
   const many = path.join(runDir, "many");

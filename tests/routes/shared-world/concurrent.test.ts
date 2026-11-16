@@ -75,6 +75,18 @@ import {
   makeTrace,
   waitForCondition,
 } from "../../helpers/shared-world-fakes.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "on-the-go-contributor",
+  "ops-coordinator",
+  "persona-1",
+  "persona-2",
+  "persona-3",
+  "weekly-planner",
+  "careful-reviewer",
+] as const;
 
 const CONCURRENT_ADAPTER_NAMESPACE = "concurrent-browser-adapter-proof";
 
@@ -95,6 +107,7 @@ function concurrentFailScore(ctx: BrowserScoringContext): RunAdapterScore {
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-concurrent-sw-"));
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
@@ -1916,6 +1929,7 @@ describe("concurrent shared-world verify findings golden", () => {
   const goodRun = () =>
     (shared ??= (async () => {
       const project = await mkdtemp(path.join(tmpdir(), "humanish-concurrent-golden-"));
+      await writePersonaFiles(project, ...STUDY_PERSONAS);
       const run = await goodConcurrentRun(undefined, project);
       // The bundle with its traces loaded; each case writes its edit of it back, traces included.
       const original = JSON.stringify(await readRunWithTraces(path.dirname(run.bundlePath)));
@@ -2538,6 +2552,7 @@ describe("concurrent shared-world run directory goldens", () => {
   let goldenCwd: string;
   beforeEach(async () => {
     goldenCwd = await mkdtemp(path.join(tmpdir(), "humanish-csw-golden-"));
+    await writePersonaFiles(goldenCwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(goldenCwd, { recursive: true, force: true });
@@ -2734,6 +2749,7 @@ describe("concurrent shared-world project binding", () => {
     const decoyLatest = path.join(decoyRuns, "latest.json");
     const sentinel = "outside sentinel must stay unchanged\n";
     await mkdir(physicalA);
+    await writePersonaFiles(physicalA, ...STUDY_PERSONAS);
     await mkdir(decoyRuns, { recursive: true });
     await writeFile(decoyLatest, sentinel, "utf8");
     symlinkSync(physicalA, cwdAlias, "dir");
@@ -2843,6 +2859,7 @@ describe("concurrent shared-world run failure naming", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-sw-run-failure-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

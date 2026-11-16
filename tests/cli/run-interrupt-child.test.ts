@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PNG } from "pngjs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // The run command's handler in a real process: a live computer-use lab on a fake E2B module, its
 // session hanging, gets SIGTERM. The process records the interruption, kills the journaled sandbox
@@ -125,6 +126,7 @@ describe("a live run with the run command's handler, signalled mid-session", () 
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-interrupt-"));
+    await writePersonaFiles(cwd, "first-time-visitor");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -192,6 +194,7 @@ describe("a live run with the run command's handler, signalled during desktop st
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-interrupt-"));
+    await writePersonaFiles(cwd, "first-time-visitor");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

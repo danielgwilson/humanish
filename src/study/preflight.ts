@@ -1,5 +1,6 @@
 import { personaBackgroundWarnings, plannedParticipants } from "./warnings.js";
-import { resolveCommittedPersonasForCwd, studyPersonaIds } from "./persona-resolve.js";
+import { resolveStudyPersonas, routeSendsPersonas } from "./persona-resolve.js";
+import { PersonaConfigError, type ResolvedPersona } from "./persona.js";
 import path from "node:path";
 import type { AutomaticAnalysisBudget } from "../analysis/automatic-config.js";
 import type { E2BDesktopModule } from "../substrates/e2b/sdk.js";
@@ -165,11 +166,19 @@ export async function runStudyPreflight(
   }
 
   const participants = plannedParticipants(resolved.config);
-  const personaResolution =
-    participants.length === 0
-      ? { personas: new Map(), warnings: [] }
-      : await resolveCommittedPersonasForCwd(cwd, studyPersonaIds(resolved.config));
   const route = routeOf(resolved.config);
+  // The personas the run reads: each participant's on the browser routes, the agent's on the
+  // terminal route. A named persona with no readable file fails the check as it stops the run.
+  const personaResolution = !routeSendsPersonas(route)
+    ? { personas: new Map<string, ResolvedPersona>(), warnings: [] }
+    : await resolveStudyPersonas(cwd, resolved.config).catch((error: unknown) => {
+        if (error instanceof PersonaConfigError) return error;
+        throw error;
+      });
+  const resolvedPersonas =
+    personaResolution instanceof PersonaConfigError
+      ? { personas: new Map<string, ResolvedPersona>(), warnings: [] }
+      : personaResolution;
   const env = options.env ?? process.env;
   const ctx: PreflightContext = {
     cwd,
@@ -189,12 +198,30 @@ export async function runStudyPreflight(
     ],
     targets: collectTargets(resolved.config),
     sandbox: { created: false },
-    warnings: [
-      ...resolved.warnings,
-      ...personaResolution.warnings,
-      ...personaBackgroundWarnings(resolved.config.id, participants, personaResolution.personas),
-    ],
+    // A persona that did not resolve is the failure; the others' background warnings would be
+    // computed from personas that were never read.
+    warnings:
+      personaResolution instanceof PersonaConfigError
+        ? [...resolved.warnings]
+        : [
+            ...resolved.warnings,
+            ...resolvedPersonas.warnings,
+            ...personaBackgroundWarnings(
+              resolved.config.id,
+              participants,
+              resolvedPersonas.personas,
+            ),
+          ],
   };
+
+  if (personaResolution instanceof PersonaConfigError) {
+    const { message } = personaResolution;
+    // The row says what failed; the error carries the rest, such as the file to paste.
+    const summary = message.split("\n\n")[0] ?? message;
+    return fail(ctx, "HUMANISH_STUDY_INVALID", message, [
+      { name: "persona", ok: false, message: summary },
+    ]);
+  }
 
   // The plan `humanish run <study>` makes before it creates anything: no run options, so the file's
   // mode decides dry or live, and the same environment for the sandbox ceiling. A study the run

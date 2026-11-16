@@ -22,6 +22,7 @@ import {
   type FanoutModuleOptions,
 } from "../../helpers/fanout-desktop.js";
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
@@ -42,9 +43,11 @@ async function runTwo(fakes: FanoutModuleOptions) {
   );
   if (!parsed.ok) throw new Error(parsed.error.message);
   const handle = makeFanoutModule(fakes);
+  const cwd = await makeTestTempDir("humanish-desktop-screen-");
+  await writePersonaFiles(cwd, "first-time-visitor");
   const outcome = await runStudyWith(
     parsed.config,
-    { cwd: await makeTestTempDir("humanish-desktop-screen-"), env: ENV, open: false },
+    { cwd, env: ENV, open: false },
     {
       desktopModule: async () => handle.module,
       subjectPhaseSink: () => undefined,

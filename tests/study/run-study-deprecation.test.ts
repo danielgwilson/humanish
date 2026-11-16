@@ -11,6 +11,7 @@ import type { StudyConfig } from "../../src/study/types.js";
 import { runStudy, type RunStudyOptions } from "../../src/run-study.js";
 import { parseStudy } from "../../src/study/config.js";
 import { lab } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // The package's runStudyWith refuses the RunStudyOptions fields it no longer has, and the typed options
 // emit no deprecation warning. Only tests set the internal options.
@@ -95,6 +96,7 @@ describe("the package's runStudy", () => {
   });
 
   it("runs a lab given only the typed options", async () => {
+    await writePersonaFiles(cwd, "first-time-visitor");
     const outcome = await runStudy(config(), { cwd, dryRun: true });
     expect(outcome.route).toBe("computer-use");
     expect(outcome.result.ok).toBe(true);

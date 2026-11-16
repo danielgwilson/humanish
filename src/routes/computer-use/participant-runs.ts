@@ -247,9 +247,9 @@ export function formatParticipantPlanEntry(entry: CuaParticipantPlanEntry): stri
 }
 
 /**
- * Compile the committed persona files the participants use, printing a warning for each one that
- * is missing. A refusal that comes after this step reads them first, so a persona-file error still
- * wins over it.
+ * Compile the committed persona files the participants use. Each id is one the study names, so one
+ * with no readable file throws a PersonaConfigError, as prepareStudy already does before admission.
+ * A refusal that comes after this step reads them first, so a persona-file error still wins over it.
  */
 export async function compileParticipantPersonas(
   projectRoot: PreparedSelectedOutputDirectory,

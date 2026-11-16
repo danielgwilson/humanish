@@ -16,6 +16,16 @@ import type { E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { runSharedWorld } from "../../helpers/route-run.js";
 import { baseSeams, concurrentStudy, makeRunSession } from "../../helpers/shared-world-fakes.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+  "persona-3",
+] as const;
 
 const MINUTES = 60_000;
 
@@ -37,6 +47,7 @@ describe("a provisioned shared world with a declared schedule", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-shared-arrivals-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

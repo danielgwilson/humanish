@@ -1,5 +1,5 @@
 import { personaBackgroundWarnings, plannedParticipants } from "./warnings.js";
-import { studyPersonaIds, resolveCommittedPersonasForCwd } from "./persona-resolve.js";
+import { studyPersonaIds, resolveStudyPersonas } from "./persona-resolve.js";
 import { personaBrief, PersonaConfigError } from "./persona.js";
 import type { ActorPersonaRef } from "../actors/contract.js";
 import { constants } from "node:fs";
@@ -296,7 +296,7 @@ export async function inspectStudyManifest(
 
   let personaResolution;
   try {
-    personaResolution = await resolveCommittedPersonasForCwd(cwd, studyPersonaIds(resolved.config));
+    personaResolution = await resolveStudyPersonas(cwd, resolved.config);
   } catch (error) {
     if (!(error instanceof PersonaConfigError)) throw error;
     return {

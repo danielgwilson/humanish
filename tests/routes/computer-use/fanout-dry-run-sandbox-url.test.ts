@@ -10,6 +10,7 @@ import { parseStudy } from "../../../src/study/config.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { synthetic } from "../../helpers/secret-formats.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const SANDBOX_ID = synthetic("abcdefghijklmnopqrstuvwxyz0123456789", 20, 70);
 const APP_URL = `https://3000-${SANDBOX_ID}.${"e2b"}.app/`;
@@ -44,6 +45,7 @@ describe("a fan-out dry run against an E2B app URL", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-sandbox-url-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "power-user");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

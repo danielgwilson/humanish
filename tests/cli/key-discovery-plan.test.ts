@@ -16,8 +16,9 @@ import {
   type ResolvedKeyFill,
 } from "../../src/keys/key-resolution.js";
 import { runInit } from "../../src/study/init.js";
-import { lab } from "../admission/fixtures.js";
+import { FIXTURE_PERSONAS, lab } from "../admission/fixtures.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // A live `lab run` fills every provider key it finds, exactly as discovery without a filter does,
 // and prints a `humanish keys:` line only for the keys its plan reads.
@@ -122,6 +123,7 @@ async function patchLocalBrowser(cwd: string, patch: Record<string, unknown>): P
 /** A project with one lab, `hosted`. */
 async function project(raw: object): Promise<string> {
   const cwd = await makeTestTempDir("humanish-key-plan-hosted-");
+  await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
   await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
   await writeFile(
     path.join(cwd, "humanish", "studies", "hosted.yaml"),

@@ -5,6 +5,7 @@
 import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { parseStudy } from "../../src/study/config.js";
@@ -12,7 +13,7 @@ import { planStudy } from "../../src/study/plan.js";
 import type { Requirement } from "../../src/study/plan-types.js";
 import type { StudyDeps } from "../../src/study/study-deps.js";
 import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.js";
-import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
+import { FIXTURE_PERSONAS, lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
 import { planComputerUseStudy } from "../../src/routes/computer-use/plan.js";
 import { runComputerUse } from "../helpers/route-run.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../src/substrates/e2b/lifetime.js";
@@ -57,6 +58,7 @@ afterAll(async () => {
 
 async function projectDir(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-requirements-"));
+  await writePersonaFiles(dir, ...FIXTURE_PERSONAS);
   cleanup.push(dir);
   await writeFile(path.join(dir, "package.json"), '{ "name": "requirements-fixture" }\n');
   await mkdir(path.join(dir, "humanish", "scenarios"), { recursive: true });

@@ -475,5 +475,451 @@
     "runs": false,
     "subprocess": 0,
     "scorerRan": false
+  },
+  "run adm-cu-persona-missing --json": {
+    "exitCode": 2,
+    "stdout": {
+      "ok": false,
+      "cwd": "[cwd]",
+      "study": "adm-cu-persona-missing",
+      "error": {
+        "code": "HUMANISH_STUDY_INVALID",
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
+      },
+      "warnings": []
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "run adm-cu-persona-missing --dry-run --json": {
+    "exitCode": 2,
+    "stdout": {
+      "ok": false,
+      "cwd": "[cwd]",
+      "study": "adm-cu-persona-missing",
+      "error": {
+        "code": "HUMANISH_STUDY_INVALID",
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
+      },
+      "warnings": []
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "watch adm-shared-persona-missing --json": {
+    "exitCode": 2,
+    "stdout": {
+      "ok": false,
+      "cwd": "[cwd]",
+      "study": "adm-shared-persona-missing",
+      "error": {
+        "code": "HUMANISH_STUDY_INVALID",
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
+      },
+      "warnings": []
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "run adm-terminal-persona-missing --json": {
+    "exitCode": 2,
+    "stdout": {
+      "ok": false,
+      "cwd": "[cwd]",
+      "study": "adm-terminal-persona-missing",
+      "error": {
+        "code": "HUMANISH_STUDY_INVALID",
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
+      },
+      "warnings": []
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "study check adm-terminal-persona-missing --json": {
+    "exitCode": 2,
+    "stdout": {
+      "schema": "humanish.study-check.v1",
+      "analysis": {
+        "model": "gpt-6.1-sol",
+        "effort": "medium",
+        "maxCostUsd": 10,
+        "trigger": "default",
+        "participants": 1,
+        "expectedCostUsd": {
+          "low": 0.151223,
+          "high": 0.758423
+        }
+      },
+      "ok": false,
+      "cwd": "[cwd]",
+      "study": "adm-terminal-persona-missing",
+      "studyId": "adm-terminal-persona-missing",
+      "origin": "committed",
+      "path": "humanish/studies/adm-terminal-persona-missing.yaml",
+      "route": "terminal",
+      "reachability": "metadata",
+      "checks": [
+        {
+          "name": "study file",
+          "ok": true,
+          "message": "resolved committed study file"
+        },
+        {
+          "name": "route",
+          "ok": true,
+          "message": "selected the terminal route"
+        },
+        {
+          "name": "persona",
+          "ok": false,
+          "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml."
+        }
+      ],
+      "targets": [
+        {
+          "label": "subject.product.publicSurfaces[0]",
+          "kind": "subject.product.publicSurface",
+          "targetDigest": "61b6f1ebd1d6e093",
+          "originDigest": "100680ad546ce6a5",
+          "loopback": false,
+          "checked": false,
+          "status": "not_checked",
+          "message": "target declared; reachability not checked"
+        }
+      ],
+      "sandbox": {
+        "created": false
+      },
+      "spend": {
+        "e2bDesktop": false,
+        "model": false
+      },
+      "warnings": [],
+      "error": {
+        "code": "HUMANISH_STUDY_INVALID",
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
+      }
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "study check adm-cu-persona-missing --json": {
+    "exitCode": 2,
+    "stdout": {
+      "schema": "humanish.study-check.v1",
+      "analysis": {
+        "model": "gpt-6.1-sol",
+        "effort": "medium",
+        "maxCostUsd": 10,
+        "trigger": "default",
+        "participants": 1,
+        "expectedCostUsd": {
+          "low": 0.151223,
+          "high": 0.758423
+        }
+      },
+      "ok": false,
+      "cwd": "[cwd]",
+      "study": "adm-cu-persona-missing",
+      "studyId": "adm-cu-persona-missing",
+      "origin": "committed",
+      "path": "humanish/studies/adm-cu-persona-missing.yaml",
+      "route": "computer-use",
+      "reachability": "metadata",
+      "checks": [
+        {
+          "name": "study file",
+          "ok": true,
+          "message": "resolved committed study file"
+        },
+        {
+          "name": "route",
+          "ok": true,
+          "message": "selected the computer-use route"
+        },
+        {
+          "name": "persona",
+          "ok": false,
+          "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml."
+        }
+      ],
+      "targets": [
+        {
+          "label": "subject.appUrl",
+          "kind": "subject.appUrl",
+          "targetDigest": "c51203df6e75a968",
+          "originDigest": "0398673719884a62",
+          "loopback": true,
+          "checked": false,
+          "status": "not_checked",
+          "message": "target declared; reachability not checked"
+        }
+      ],
+      "sandbox": {
+        "created": false
+      },
+      "spend": {
+        "e2bDesktop": false,
+        "model": false
+      },
+      "warnings": [],
+      "error": {
+        "code": "HUMANISH_STUDY_INVALID",
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
+      }
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "study show adm-shared-persona-missing --json": {
+    "exitCode": 2,
+    "stdout": {
+      "schema": "humanish.study-show.v1",
+      "ok": false,
+      "cwd": "[cwd]",
+      "study": "adm-shared-persona-missing",
+      "error": {
+        "code": "HUMANISH_STUDY_INVALID",
+        "message": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\nname: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nThat file gives the participant the persona's name and the medium patience and technical confidence sentences. A background is what makes it a persona: add one where the comment shows. Or remove the persona line from the study."
+      },
+      "warnings": []
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "study check adm-shared-actor-persona-unused --json": {
+    "exitCode": 0,
+    "stdout": {
+      "schema": "humanish.study-check.v1",
+      "analysis": {
+        "model": "gpt-6.1-sol",
+        "effort": "medium",
+        "maxCostUsd": 10,
+        "trigger": "default",
+        "participants": 2,
+        "expectedCostUsd": {
+          "low": 0.161223,
+          "high": 0.768423
+        }
+      },
+      "ok": true,
+      "cwd": "[cwd]",
+      "study": "adm-shared-actor-persona-unused",
+      "studyId": "adm-shared-actor-persona-unused",
+      "origin": "committed",
+      "path": "humanish/studies/adm-shared-actor-persona-unused.yaml",
+      "route": "shared-world",
+      "reachability": "metadata",
+      "checks": [
+        {
+          "name": "study file",
+          "ok": true,
+          "message": "resolved committed study file"
+        },
+        {
+          "name": "route",
+          "ok": true,
+          "message": "selected the shared-world route"
+        },
+        {
+          "name": "reachability",
+          "ok": true,
+          "message": "metadata-only; no network, sandbox, or model calls. Target reachability was not checked."
+        },
+        {
+          "name": "this machine",
+          "ok": true,
+          "checked": false,
+          "message": "Credentials, local login and dependencies were not checked. Run humanish doctor --study adm-shared-actor-persona-unused to check them."
+        }
+      ],
+      "targets": [
+        {
+          "label": "subject.serve.url",
+          "kind": "subject.serve.url",
+          "targetDigest": "c51203df6e75a968",
+          "originDigest": "0398673719884a62",
+          "loopback": true,
+          "checked": false,
+          "status": "not_checked",
+          "message": "target declared; reachability not checked"
+        }
+      ],
+      "sandbox": {
+        "created": false
+      },
+      "spend": {
+        "e2bDesktop": false,
+        "model": false
+      },
+      "warnings": [
+        "Persona weekend-planner has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
+        "Participant author has no persona background because persona persona-1 has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show adm-shared-actor-persona-unused --json to see what the participant receives.",
+        "Participant reviewer has no persona background because persona persona-2 has no readable background. Add a short, fictional background describing their experience and situation. Run humanish study show adm-shared-actor-persona-unused --json to see what the participant receives."
+      ]
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "study check adm-scripted-persona-broken --json": {
+    "exitCode": 0,
+    "stdout": {
+      "schema": "humanish.study-check.v1",
+      "analysis": {
+        "model": "gpt-6.1-sol",
+        "effort": "medium",
+        "maxCostUsd": 10,
+        "trigger": "default",
+        "participants": 1,
+        "expectedCostUsd": {
+          "low": 0.151223,
+          "high": 0.758423
+        }
+      },
+      "ok": true,
+      "cwd": "[cwd]",
+      "study": "adm-scripted-persona-broken",
+      "studyId": "adm-scripted-persona-broken",
+      "origin": "committed",
+      "path": "humanish/studies/adm-scripted-persona-broken.yaml",
+      "route": "scripted",
+      "reachability": "metadata",
+      "checks": [
+        {
+          "name": "study file",
+          "ok": true,
+          "message": "resolved committed study file"
+        },
+        {
+          "name": "route",
+          "ok": true,
+          "message": "selected the scripted route"
+        },
+        {
+          "name": "reachability",
+          "ok": true,
+          "message": "metadata-only; no network, sandbox, or model calls. Target reachability was not checked."
+        },
+        {
+          "name": "this machine",
+          "ok": true,
+          "checked": false,
+          "message": "Credentials, local login and dependencies were not checked. Run humanish doctor --study adm-scripted-persona-broken to check them."
+        }
+      ],
+      "targets": [
+        {
+          "label": "subject.appUrl",
+          "kind": "subject.appUrl",
+          "targetDigest": "c51203df6e75a968",
+          "originDigest": "0398673719884a62",
+          "loopback": true,
+          "checked": false,
+          "status": "not_checked",
+          "message": "target declared; reachability not checked"
+        }
+      ],
+      "sandbox": {
+        "created": false
+      },
+      "spend": {
+        "e2bDesktop": false,
+        "model": false
+      },
+      "warnings": []
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
+  },
+  "study check adm-scripted-persona-missing --json": {
+    "exitCode": 0,
+    "stdout": {
+      "schema": "humanish.study-check.v1",
+      "analysis": {
+        "model": "gpt-6.1-sol",
+        "effort": "medium",
+        "maxCostUsd": 10,
+        "trigger": "default",
+        "participants": 1,
+        "expectedCostUsd": {
+          "low": 0.151223,
+          "high": 0.758423
+        }
+      },
+      "ok": true,
+      "cwd": "[cwd]",
+      "study": "adm-scripted-persona-missing",
+      "studyId": "adm-scripted-persona-missing",
+      "origin": "committed",
+      "path": "humanish/studies/adm-scripted-persona-missing.yaml",
+      "route": "scripted",
+      "reachability": "metadata",
+      "checks": [
+        {
+          "name": "study file",
+          "ok": true,
+          "message": "resolved committed study file"
+        },
+        {
+          "name": "route",
+          "ok": true,
+          "message": "selected the scripted route"
+        },
+        {
+          "name": "reachability",
+          "ok": true,
+          "message": "metadata-only; no network, sandbox, or model calls. Target reachability was not checked."
+        },
+        {
+          "name": "this machine",
+          "ok": true,
+          "checked": false,
+          "message": "Credentials, local login and dependencies were not checked. Run humanish doctor --study adm-scripted-persona-missing to check them."
+        }
+      ],
+      "targets": [
+        {
+          "label": "subject.appUrl",
+          "kind": "subject.appUrl",
+          "targetDigest": "c51203df6e75a968",
+          "originDigest": "0398673719884a62",
+          "loopback": true,
+          "checked": false,
+          "status": "not_checked",
+          "message": "target declared; reachability not checked"
+        }
+      ],
+      "sandbox": {
+        "created": false
+      },
+      "spend": {
+        "e2bDesktop": false,
+        "model": false
+      },
+      "warnings": []
+    },
+    "stderr": "",
+    "runs": false,
+    "subprocess": 0,
+    "scorerRan": false
   }
 }

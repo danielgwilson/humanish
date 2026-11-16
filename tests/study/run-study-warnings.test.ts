@@ -12,6 +12,7 @@ import type { StudyConfig } from "../../src/study/types.js";
 import type { RunScorerProvenance } from "../../src/run/bundle.js";
 import { prepareStudy } from "../../src/run-study.js";
 import { lab } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const WARNING = "RunStudyOptions.onEvent failed on plan: observer down";
 
@@ -42,6 +43,7 @@ describe("a scorer that joins after the route's checks", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-lab-warnings-"));
+    await writePersonaFiles(cwd, "first-time-visitor");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

@@ -11,6 +11,18 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parseStudy } from "../../../src/study/config.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { runSharedWorld } from "../../helpers/route-run.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "casual-friend",
+  "first-time-visitor",
+  "party-host",
+  "persona-1",
+  "persona-2",
+  "persona-3",
+] as const;
 
 type Caps = { maxUsd?: number; maxTotalUsd?: number } | undefined;
 
@@ -74,6 +86,7 @@ const externalPublic = (caps: Caps) =>
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-sw-cap-warning-"));
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });

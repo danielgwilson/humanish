@@ -1,7 +1,6 @@
 # Read by tests/study/summaries.test.ts and tests/surface/study-show-roundtrip.test.ts. It holds
 # what no committed study does at once: a declared model, participants with different personas, a
-# participant whose effort differs from the actor's, a group the parser expands, and a persona id
-# with no file.
+# participant whose effort differs from the actor's, and a group the parser expands.
 schema: humanish.study.v3
 id: mixed-participants
 title: Summary fixture with a declared model and mixed participants
@@ -25,7 +24,7 @@ participants:
     reasoningEffort: high
   - id: skimmer
     count: 2
-    persona: fixture-only-persona
+    persona: impatient-skimmer
 caps:
   maxUsd: 2
   maxTotalUsd: 5

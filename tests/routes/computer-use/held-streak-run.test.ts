@@ -21,6 +21,7 @@ import { lab } from "../../admission/fixtures.js";
 import { streakGaps } from "../../../src/routes/computer-use/bundle-parts.js";
 import { makeFanoutModule } from "../../helpers/fanout-desktop.js";
 import { MINUTE, NEW_ROW, QUIET, runWatching, turnOf } from "../../helpers/watching-loop.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
@@ -79,6 +80,7 @@ async function reloadUntilEnd(options: CuaActorSessionOptions) {
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-held-streak-"));
+  await writePersonaFiles(cwd, "first-time-visitor");
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });

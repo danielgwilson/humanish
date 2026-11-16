@@ -8,6 +8,15 @@ import type { StudyConfig } from "../../../src/study/types.js";
 import { lab } from "../../admission/fixtures.js";
 import { libraryConfig } from "../../helpers/library-config.js";
 import { runSharedWorld } from "../../helpers/route-run.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+] as const;
 
 // Email receiving is prepared after the run starts and before any sandbox. A failure there is a
 // refusal after the run started, driven here through the real route.
@@ -31,6 +40,7 @@ describe("shared-world email receiving setup failure", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-sw-receiving-refusal-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

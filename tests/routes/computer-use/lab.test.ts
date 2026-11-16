@@ -96,6 +96,17 @@ import { NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";
 import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
 import { x11vncRemote } from "../../helpers/x11vnc-remote.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = ["careful-reviewer", "first-time-visitor", "pixel-pat"] as const;
+
+/** A new project under the OS temp dir holding the persona files this file's studies name. */
+async function labProject(prefix: string): Promise<string> {
+  const project = await mkdtemp(path.join(tmpdir(), prefix));
+  await writePersonaFiles(project, ...STUDY_PERSONAS);
+  return project;
+}
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module fake serves both faces of the sandbox: the
@@ -533,7 +544,7 @@ describe("lab routing (app-url → cua)", () => {
 describe("desktop-cli runtime prerequisites", () => {
   let cwd: string;
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-desktop-cli-"));
+    cwd = await labProject("humanish-desktop-cli-");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -1085,7 +1096,7 @@ describe("runCuaActorLab", () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-lab-"));
+    cwd = await labProject("humanish-cua-lab-");
   });
 
   afterEach(async () => {
@@ -1159,6 +1170,7 @@ describe("runCuaActorLab", () => {
     const sentinel = "outside sentinel must stay unchanged\n";
 
     await mkdir(physicalA);
+    await writePersonaFiles(physicalA, ...STUDY_PERSONAS);
     await mkdir(decoyRuns, { recursive: true });
     await writeFile(decoyLatest, sentinel, "utf8");
     symlinkSync(physicalA, cwdAlias, "dir");
@@ -4983,7 +4995,7 @@ describe("runCuaActorLab", () => {
 describe("execution.desktop.template (custom E2B desktop image, single-participant computer-use route)", () => {
   let cwd: string;
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-template-"));
+    cwd = await labProject("humanish-cua-template-");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -5062,7 +5074,7 @@ describe("execution.desktop.template (custom E2B desktop image, single-participa
 describe("Chrome DevTools readiness after launch", () => {
   let cwd: string;
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-devtools-"));
+    cwd = await labProject("humanish-cua-devtools-");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -5191,7 +5203,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-state-"));
+    cwd = await labProject("humanish-cua-state-");
   });
 
   afterEach(async () => {
@@ -5653,7 +5665,7 @@ describe("buildSingleParticipantBundle", () => {
   describe("local-tree route (subject.source: local-tree, computer-use)", () => {
     let cwd: string;
     beforeEach(async () => {
-      cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-local-tree-"));
+      cwd = await labProject("humanish-cua-local-tree-");
     });
     afterEach(async () => {
       await rm(cwd, { recursive: true, force: true });
@@ -6413,7 +6425,7 @@ function localAppConfig(appUrl = "http://localhost:5173/"): StudyConfig {
 describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
   let cwd: string;
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-inproc-"));
+    cwd = await labProject("humanish-cua-inproc-");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -6804,7 +6816,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
   const openServers: ObserverServer[] = [];
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-budget-"));
+    cwd = await labProject("humanish-cua-budget-");
   });
   afterEach(async () => {
     await Promise.all(openServers.splice(0).map((server) => server.close()));
@@ -7219,7 +7231,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
 describe("runCuaActorLab cost estimates", () => {
   let cwd: string;
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-cost-"));
+    cwd = await labProject("humanish-cua-cost-");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -7557,7 +7569,7 @@ describe("runCuaActorLab cost estimates", () => {
 describe("adopter-hosted comms on the app-url route", () => {
   let cwd: string;
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-external-cwd-"));
+    cwd = await labProject("humanish-cua-external-cwd-");
   });
   afterEach(async () => {
     await rm(cwd, { force: true, recursive: true });
@@ -7616,7 +7628,7 @@ describe("adopter-hosted comms on the app-url route", () => {
     // catch`, so the health probe, the token guard, and the drain contract are proven against the
     // actual implementation.
     const TOKEN = "test-token-not-a-secret";
-    const dir = await mkdtemp(path.join(tmpdir(), "humanish-cua-external-"));
+    const dir = await labProject("humanish-cua-external-");
     const scriptPath = path.join(dir, "catch.py");
     const surface = path.join(dir, "surface");
     await mkdir(surface, { recursive: true });
@@ -7723,7 +7735,7 @@ describe("adopter-hosted comms on the app-url route", () => {
 
 describe("computer-use run id reuse", () => {
   it("refuses a live run whose run id names an existing run, before any sandbox or analysis", async () => {
-    const cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-run-id-"));
+    const cwd = await labProject("humanish-cua-run-id-");
     try {
       const older = await runStudyWith(cuaConfig(), { cwd, dryRun: true, runId: "older-run" });
       expect(older.result.ok).toBe(true);
@@ -7777,7 +7789,7 @@ describe("computer-use run id reuse", () => {
 describe("computer-use run directory goldens", () => {
   let goldenCwd: string;
   beforeEach(async () => {
-    goldenCwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-golden-"));
+    goldenCwd = await labProject("humanish-cua-golden-");
   });
   afterEach(async () => {
     await rm(goldenCwd, { recursive: true, force: true });
@@ -7915,7 +7927,7 @@ describe("computer-use run directory goldens", () => {
 describe("computer-use captions and summaries", () => {
   let goldenCwd: string;
   beforeEach(async () => {
-    goldenCwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-caption-"));
+    goldenCwd = await labProject("humanish-cua-caption-");
   });
   afterEach(async () => {
     await rm(goldenCwd, { recursive: true, force: true });

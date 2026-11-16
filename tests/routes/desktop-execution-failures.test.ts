@@ -28,6 +28,18 @@ import type {
   E2BDesktopSandbox,
 } from "../../src/substrates/e2b/sdk.js";
 import { runComputerUse, runSharedWorld } from "../helpers/route-run.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "casual-friend",
+  "first-time-visitor",
+  "impatient-skimmer",
+  "party-host",
+  "persona-1",
+  "persona-2",
+] as const;
 
 vi.mock("../../src/routes/computer-use/e2b-desktop/desktop.js", () => ({
   createE2BParticipantDesktop: vi.fn((spec: DesktopParticipantRun) => unreleasedDesktop(spec)),
@@ -197,6 +209,7 @@ function provisionedStudy() {
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-execution-failures-"));
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   // Every participant's provider leaves its cleanup unconfirmed and reports a disallowed item.
   vi.mocked(createRestrictedCodexParticipant).mockImplementation(
     () =>

@@ -19,6 +19,8 @@ import { parseDocument } from "yaml";
 import type { StudyRoute } from "../routing.js";
 import { isNodeError } from "../../run/type-guards.js";
 import { convertStudyText, isStudyV3, type DroppedKey, type MovedKey } from "./convert.js";
+import { parseStudy } from "../config.js";
+import { studyPersonaFailure } from "../persona-resolve.js";
 import { otherStudyFiles, STUDY_DIRECTORIES, studyFileStem } from "../files.js";
 import {
   assertDirectory,
@@ -50,6 +52,12 @@ export interface MigrateFile {
   readonly route?: StudyRoute;
   readonly moved: readonly MovedKey[];
   readonly dropped: readonly DroppedKey[];
+  /**
+   * Why the converted study would stop at `study check` because of its personas: a persona it
+   * names has no readable file, and the message names the paths tried. Absent when its personas
+   * resolve.
+   */
+  readonly personaFailure?: string;
 }
 
 /** What migrate did, or would do with `--dry-run`. */
@@ -163,6 +171,12 @@ async function givenTargets(root: string, paths: readonly string[]): Promise<str
   return [...seen.values()];
 }
 
+/** Why the converted study's personas would stop it, read against the project at `root`. */
+async function convertedPersonaFailure(root: string, text: string): Promise<string | undefined> {
+  const parsed = parseStudy(parseDocument(text).toJS());
+  return parsed.ok ? studyPersonaFailure(root, parsed.config) : undefined;
+}
+
 async function planWrites(
   root: string,
   options: MigrateOptions,
@@ -208,6 +222,7 @@ async function planWrites(
     const studiesDir = LABS_TO_STUDIES.get(path.dirname(source));
     const destination =
       studiesDir === undefined ? source : path.join(studiesDir, path.basename(source));
+    const personaFailure = await convertedPersonaFailure(root, converted.conversion.text);
     const file: MigrateFile = {
       source,
       action: studiesDir === undefined ? "rewrite" : "move",
@@ -215,6 +230,7 @@ async function planWrites(
       route: converted.conversion.route,
       moved: converted.conversion.moved,
       dropped: converted.conversion.dropped,
+      ...(personaFailure === undefined ? {} : { personaFailure }),
     };
     files.push(file);
     writes.push({

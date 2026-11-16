@@ -18,6 +18,15 @@ import type {
   E2BDesktopSandbox,
 } from "../../src/substrates/e2b/sdk.js";
 import { runComputerUse, runSharedWorld } from "../helpers/route-run.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+] as const;
 
 const ENV = {
   OPENAI_API_KEY: "synthetic-openai-key",
@@ -28,6 +37,7 @@ const LINK_REFUSED = /must not contain symbolic links/;
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-desktop-path-checks-"));
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });

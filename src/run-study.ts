@@ -6,7 +6,7 @@
 // refusal before it loads a declared review scorer.
 
 import { personaBackgroundWarnings } from "./study/warnings.js";
-import { resolveCommittedPersonasForCwd, studyPersonaIds } from "./study/persona-resolve.js";
+import { resolveStudyPersonas, routeSendsPersonas } from "./study/persona-resolve.js";
 import type { LocalVmInput } from "./routes/computer-use/types.js";
 import {
   computerUseInput,
@@ -121,7 +121,14 @@ export async function prepareStudy(
     return { ok: false, outcome };
   }
   // The run records the background warnings in its bundle with the plan's own.
-  const backgroundWarnings = await planBackgroundWarnings(planned.planned.plan, study, options.cwd);
+  const backgroundWarnings = await planPersonaWarnings(
+    planned.planned.plan,
+    study,
+    options.cwd,
+  ).catch(async (error: unknown) => {
+    await vm?.close();
+    throw error;
+  });
   const plan = {
     ...planned.planned.plan,
     warnings: [...(planned.planned.plan.warnings ?? []), ...backgroundWarnings],
@@ -168,22 +175,28 @@ export async function prepareStudy(
 }
 
 /**
- * A warning for each of the plan's participants whose persona has no background. Only
- * computer-use and shared-world plans have participants; the committed personas are read for them.
+ * Reads the personas the study names, and returns a warning for each of the plan's participants
+ * whose persona has no background. On the computer-use, shared-world and terminal routes a named
+ * persona with no readable file throws a PersonaConfigError here, before the route admits the plan.
+ * Only computer-use and shared-world plans have participants to warn about.
  */
-async function planBackgroundWarnings(
+async function planPersonaWarnings(
   plan: StudyPlan,
   study: StudyConfig,
   cwd: string,
 ): Promise<string[]> {
+  if (!routeSendsPersonas(plan.route)) return [];
   const participants =
     plan.route === "computer-use"
       ? plan.runner.participants
       : plan.route === "shared-world"
         ? plan.plane.participants
         : [];
-  if (participants.length === 0) return [];
-  const { personas } = await resolveCommittedPersonasForCwd(cwd, studyPersonaIds(study));
+  const reaching =
+    plan.route === "terminal"
+      ? [plan.personaId]
+      : participants.map((participant) => participant.personaId);
+  const { personas } = await resolveStudyPersonas(cwd, study, reaching);
   return personaBackgroundWarnings(plan.studyId, participants, personas);
 }
 

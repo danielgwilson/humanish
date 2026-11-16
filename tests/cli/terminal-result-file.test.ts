@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
-import { lab } from "../admission/fixtures.js";
+import { FIXTURE_PERSONAS, lab } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // A remote run's launcher waits for the runner's `watch --result-file` to write the run's result,
 // so every route the runner can run has to write it.
@@ -52,6 +53,7 @@ describe("watch --result-file on a terminal study", () => {
       path.join(cwd, "humanish", "studies", `${String(raw.id)}.yaml`),
       stringify(raw),
     );
+    await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
     const file = path.join(cwd, "result.json");
     const exitCode = await watch([String(raw.id), "--dry-run", "--json", "--result-file", file]);
     const written = JSON.parse(await readFile(file, "utf8")) as {

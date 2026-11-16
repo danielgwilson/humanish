@@ -147,7 +147,7 @@ describe("committed persona resolution", () => {
     }
   });
 
-  it("warns and falls back on a persona file that is not valid YAML", async () => {
+  it("warns and falls back on a persona file that is not valid YAML when the id is not required", async () => {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "humanish-broken-persona-"));
     try {
       await mkdir(path.join(cwd, "humanish", "personas"), { recursive: true });
@@ -156,7 +156,9 @@ describe("committed persona resolution", () => {
         "traits: {patience: low",
       );
       const projectRoot = await prepareSelectedOutputDirectory(path.dirname(cwd), cwd);
-      const { persona, warnings } = await resolveCommittedPersona(projectRoot, "broken");
+      const { persona, warnings } = await resolveCommittedPersona(projectRoot, "broken", {
+        required: false,
+      });
       expect(persona).toBeNull();
       expect(warnings.join(" ")).toContain("could not be parsed as YAML");
     } finally {
@@ -164,12 +166,12 @@ describe("committed persona resolution", () => {
     }
   });
 
-  it("does not resolve (and does not throw on) unsafe ids or missing files", async () => {
-    const resolved = await resolveCommittedPersonasForCwd(process.cwd(), [
-      "../../etc/passwd",
-      "personas/nested",
-      "no-such-persona",
-    ]);
+  it("does not resolve (and does not throw on) unsafe ids or missing files that are not required", async () => {
+    const resolved = await resolveCommittedPersonasForCwd(
+      process.cwd(),
+      ["../../etc/passwd", "personas/nested", "no-such-persona"],
+      { required: false },
+    );
     expect(resolved.personas.size).toBe(0);
     expect(resolved.warnings).toHaveLength(3);
     expect(resolved.warnings.join(" ")).toContain("no persona context");

@@ -23,6 +23,7 @@ import { admitTerminalPlan } from "../../../src/routes/terminal/route.js";
 import { planTerminalStudy } from "../../../src/routes/terminal/plan.js";
 import { runAdmitted, runTerminal } from "../../helpers/route-run.js";
 import { sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const ROOT = process.cwd();
 
@@ -376,6 +377,7 @@ describe("runTerminalProductLab (dry-run)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-terminal-lab-"));
+    await writePersonaFiles(cwd, "autonomous-creative-agent");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -595,6 +597,7 @@ describe("humanish lab run terminal-product-demo (CLI)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-terminal-cli-"));
+    await writePersonaFiles(cwd, "autonomous-creative-agent");
     await writeFile(
       path.join(cwd, "package.json"),
       JSON.stringify({ name: "fixture-app" }, null, 2),

@@ -129,8 +129,18 @@
     "lane": "computer-use",
     "persona": {
       "id": "party-host",
-      "traitsApplied": [],
-      "promptDigest": "79dc6dd7be0e9208"
+      "traitsApplied": [
+        "patience:medium",
+        "skill:medium"
+      ],
+      "brief": {
+        "compilerVersion": 3,
+        "text": "Persona: party-host.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+        "digest": "b3f01c5a35c2",
+        "redacted": false,
+        "sourceDigest": "df9869f525e8"
+      },
+      "promptDigest": "d4af35205a2c794a"
     },
     "redaction": {
       "status": "passed",
@@ -191,8 +201,18 @@
     "lane": "computer-use",
     "persona": {
       "id": "competitive-friend",
-      "traitsApplied": [],
-      "promptDigest": "1019e0490827a5e7"
+      "traitsApplied": [
+        "patience:medium",
+        "skill:medium"
+      ],
+      "brief": {
+        "compilerVersion": 3,
+        "text": "Persona: competitive-friend.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+        "digest": "91b6b1103d79",
+        "redacted": false,
+        "sourceDigest": "bc0215645b73"
+      },
+      "promptDigest": "1f5a995edbc6a8f8"
     },
     "redaction": {
       "status": "passed",
@@ -253,8 +273,18 @@
     "lane": "computer-use",
     "persona": {
       "id": "casual-friend",
-      "traitsApplied": [],
-      "promptDigest": "234e3bf85f8d21f1"
+      "traitsApplied": [
+        "patience:medium",
+        "skill:medium"
+      ],
+      "brief": {
+        "compilerVersion": 3,
+        "text": "Persona: casual-friend.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+        "digest": "d66796960be6",
+        "redacted": false,
+        "sourceDigest": "44542c74a1d1"
+      },
+      "promptDigest": "25c85f2918eaf048"
     },
     "redaction": {
       "status": "passed",
@@ -330,14 +360,14 @@
         "id": "party-host",
         "name": "3 participants in one public app",
         "source": "study:lobby-trivia-3player-test",
-        "sourceDigest": "79dc6dd7be0e9208"
+        "sourceDigest": "d4af35205a2c794a"
       },
       "scenario": {
         "id": "concurrent-shared-world-lobby-trivia-3player-test",
         "title": "the example multiplayer app 3-player external-public",
-        "goal": "Persona: party-host.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "goal": "Persona: party-host.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
         "source": "study:lobby-trivia-3player-test",
-        "sourceDigest": "79dc6dd7be0e9208"
+        "sourceDigest": "d4af35205a2c794a"
       },
       "packageName": "humanish",
       "redaction": {
@@ -505,14 +535,14 @@
       "id": "party-host",
       "name": "3 participants in one public app",
       "source": "study:lobby-trivia-3player-test",
-      "sourceDigest": "79dc6dd7be0e9208"
+      "sourceDigest": "d4af35205a2c794a"
     },
     "scenario": {
       "id": "concurrent-shared-world-lobby-trivia-3player-test",
       "title": "the example multiplayer app 3-player external-public",
-      "goal": "Persona: party-host.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "goal": "Persona: party-host.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nPlay the example multiplayer app with your friends.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Create a lobby, then wait; once 3 players are in, start and play.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
       "source": "study:lobby-trivia-3player-test",
-      "sourceDigest": "79dc6dd7be0e9208"
+      "sourceDigest": "d4af35205a2c794a"
     },
     "lifecycle": [
       {
@@ -643,8 +673,18 @@
           "lane": "computer-use",
           "persona": {
             "id": "party-host",
-            "traitsApplied": [],
-            "promptDigest": "79dc6dd7be0e9208"
+            "traitsApplied": [
+              "patience:medium",
+              "skill:medium"
+            ],
+            "brief": {
+              "compilerVersion": 3,
+              "text": "Persona: party-host.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+              "digest": "b3f01c5a35c2",
+              "redacted": false,
+              "sourceDigest": "df9869f525e8"
+            },
+            "promptDigest": "d4af35205a2c794a"
           },
           "redaction": {
             "status": "passed",
@@ -780,8 +820,18 @@
           "lane": "computer-use",
           "persona": {
             "id": "competitive-friend",
-            "traitsApplied": [],
-            "promptDigest": "1019e0490827a5e7"
+            "traitsApplied": [
+              "patience:medium",
+              "skill:medium"
+            ],
+            "brief": {
+              "compilerVersion": 3,
+              "text": "Persona: competitive-friend.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+              "digest": "91b6b1103d79",
+              "redacted": false,
+              "sourceDigest": "bc0215645b73"
+            },
+            "promptDigest": "1f5a995edbc6a8f8"
           },
           "redaction": {
             "status": "passed",
@@ -917,8 +967,18 @@
           "lane": "computer-use",
           "persona": {
             "id": "casual-friend",
-            "traitsApplied": [],
-            "promptDigest": "234e3bf85f8d21f1"
+            "traitsApplied": [
+              "patience:medium",
+              "skill:medium"
+            ],
+            "brief": {
+              "compilerVersion": 3,
+              "text": "Persona: casual-friend.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+              "digest": "d66796960be6",
+              "redacted": false,
+              "sourceDigest": "44542c74a1d1"
+            },
+            "promptDigest": "25c85f2918eaf048"
           },
           "redaction": {
             "status": "passed",

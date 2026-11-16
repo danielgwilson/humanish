@@ -2,7 +2,7 @@
 // Run after build. No keys, provider allocation, model calls, or forced product exit.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,12 @@ for (const phase of ["Xvfb", "startxfce4"]) {
   const cwd = await mkdtemp(join(tmpdir(), "humanish-startup-exit-"));
   try {
     await writeFile(join(cwd, "study.yaml"), study);
+    // The study names this persona, and a named persona needs its file.
+    await mkdir(join(cwd, "humanish/personas"), { recursive: true });
+    await copyFile(
+      join(root, "humanish/personas/autonomous-creative-agent.yaml"),
+      join(cwd, "humanish/personas/autonomous-creative-agent.yaml"),
+    );
     const proofPath = join(cwd, "proof.json");
     const child = spawn(
       process.execPath,

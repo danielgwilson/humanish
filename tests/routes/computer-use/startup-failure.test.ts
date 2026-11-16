@@ -27,6 +27,7 @@ import {
   type FanoutModuleHandle,
   type FanoutModuleOptions,
 } from "../../helpers/fanout-desktop.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
@@ -120,6 +121,7 @@ describe("a hosted fan-out whose first participant fails to start", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-startup-failure-"));
+    await writePersonaFiles(cwd, "first-time-visitor");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

@@ -20,9 +20,10 @@ import { planStudy } from "../../src/study/plan.js";
 import type { ComputerUsePlan, PlanResult } from "../../src/study/plan-types.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
 import type { StudyConfig } from "../../src/study/types.js";
-import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
+import { FIXTURE_PERSONAS, lab, type BaseName, type Patch } from "../admission/fixtures.js";
 import { participantPlanOf } from "../helpers/participant-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const CEILING = "HUMANISH_E2B_MAX_SANDBOX_MINUTES";
 const S = 1_000;
@@ -164,6 +165,7 @@ describe("a roster of starts, ends and caps", () => {
 
   it("prints every participant's window in study check", async () => {
     const cwd = await makeTestTempDir("humanish-participant-schedule-");
+    await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     await writeFile(
       path.join(cwd, "humanish", "studies", "day.yaml"),
@@ -310,6 +312,7 @@ describe("HUMANISH_CUA_MAX_CONCURRENCY", () => {
 
   it("shows the lowered schedule in study check", async () => {
     const cwd = await makeTestTempDir("humanish-concurrency-cap-");
+    await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     await writeFile(
       path.join(cwd, "humanish", "studies", "spread.yaml"),

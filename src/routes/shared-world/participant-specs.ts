@@ -218,7 +218,7 @@ export async function buildParticipantSpecs(
   scrubKnownValues: (text: string) => string,
 ): Promise<DesktopParticipantRun[]> {
   // Only the personas the participants use: an actor.persona that every participant overrides
-  // is never applied, so it is not read.
+  // is never applied, so it is not read. Each is one the study names, so each needs its file.
   const personaResolution = await resolveCommittedPersonasForCwd(
     cwd,
     participants.map((participant) => participant.personaId),

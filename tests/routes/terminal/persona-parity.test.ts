@@ -9,7 +9,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ActorPersonaRef } from "../../../src/actors/contract.js";
 import { digestText } from "../../../src/evidence/redaction.js";
-import { renderPersonaPromptSection } from "../../../src/study/persona.js";
+import { PersonaConfigError, renderPersonaPromptSection } from "../../../src/study/persona.js";
 import { resolveCommittedPersonasForCwd } from "../../../src/study/persona-resolve.js";
 import type { StudyConfig } from "../../../src/study/types.js";
 import {
@@ -150,13 +150,8 @@ describe("terminal persona parity between the dry and live paths", () => {
     expect(ref.brief?.text).toBe(personaLine);
   });
 
-  it("falls back to the persona id on both paths when no persona file is committed", async () => {
-    const { ref, personaLine, warnings } = await expectSamePersona(config(PERSONA_ID));
-
-    expect(personaLine).toBe(`persona: ${PERSONA_ID}`);
-    expect(ref).toMatchObject({ id: PERSONA_ID, traitsApplied: [] });
-    expect(ref.brief).toBeUndefined();
-    expect(warnings).toHaveLength(1);
+  it("stops on both paths when the persona the study names has no file", async () => {
+    await expect(expectSamePersona(config(PERSONA_ID))).rejects.toBeInstanceOf(PersonaConfigError);
   });
 
   it("uses the same default persona id on both paths when the actor names none", async () => {

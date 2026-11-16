@@ -13,6 +13,7 @@ import { verifyRun } from "../../src/verify/verify.js";
 import { bytesReadDuring } from "../helpers/bytes-read.js";
 import { shareSafetyDryRun, shareSafetyDryRunConfig } from "../helpers/share-safety-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // Concatenated so this file never holds a secret-shaped literal; the text scan detects it.
 const SYNTHETIC_SECRET = "sk-" + "syntheticvalue1234567890abcdef";
@@ -70,6 +71,7 @@ describe("verify does not grade an unreadable adapter artifact share_ready", () 
 
   beforeAll(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-unscanned-"));
+    await writePersonaFiles(cwd, "first-time-visitor");
     for (const [name, file] of Object.entries(CASES)) {
       runIds.set(name, await runWithAdapterFile(cwd, file));
     }
@@ -106,6 +108,7 @@ describe("verify does not grade an unreadable adapter artifact share_ready", () 
 
   it("fails the evidence check for a required artifact over the read limit and names the limit", async () => {
     const project = await makeTestTempDir("humanish-over-limit-artifact-");
+    await writePersonaFiles(project, "first-time-visitor");
     const runId = await runWithAdapterFile(project, {
       path: "adapter/state.json",
       kind: "state",
@@ -186,6 +189,7 @@ describe("verify reads a run file by its bytes, not its name", () => {
   let overLimit: Fixture;
   async function project(): Promise<{ project: string; runId: string; runDir: string }> {
     const dir = await mkdtemp(path.join(tmpdir(), "humanish-content-scan-"));
+    await writePersonaFiles(dir, "first-time-visitor");
     projects.push(dir);
     return { project: dir, ...(await shareSafetyDryRun(dir)) };
   }
@@ -268,6 +272,7 @@ describe("verify reads a run file by its bytes, not its name", () => {
 
   it("refuses a run.json over the read limit without reading it whole", async () => {
     const dir = await makeTestTempDir("humanish-over-limit-bundle-");
+    await writePersonaFiles(dir, "first-time-visitor");
     const { runId, runDir } = await shareSafetyDryRun(dir);
     // JSON allows trailing whitespace, so the bundle still parses if it is read whole.
     await appendFile(path.join(runDir, "run.json"), Buffer.alloc(OVER_READ_LIMIT, " "));
@@ -285,6 +290,7 @@ describe("verify reads a run file by its bytes, not its name", () => {
 
   it("scans a file whose name has a colon or a percent escape, as it always did", async () => {
     const dir = await makeTestTempDir("humanish-scan-names-");
+    await writePersonaFiles(dir, "first-time-visitor");
     const { runId, runDir } = await shareSafetyDryRun(dir);
     await mkdir(path.join(runDir, "extras"));
     await writeFile(path.join(runDir, "extras", "build:summary.txt"), "Build passed.\n");
@@ -396,6 +402,7 @@ describe("verify decodes the encodings a reader undoes", () => {
   beforeAll(async () => {
     for (const [name, file] of Object.entries(ENCODED_CASES)) {
       const project = await mkdtemp(path.join(tmpdir(), "humanish-encoded-scan-"));
+      await writePersonaFiles(project, "first-time-visitor");
       const { runId, runDir } = await shareSafetyDryRun(project);
       await mkdir(path.join(runDir, "adapter"), { recursive: true });
       await writeFile(path.join(runDir, file.path), file.text);

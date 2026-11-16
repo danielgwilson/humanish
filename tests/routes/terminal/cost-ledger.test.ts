@@ -20,6 +20,15 @@ import {
 } from "../../../src/routes/terminal/ledger.js";
 import { DEFAULT_CODEX_MODEL } from "../../../src/actors/computer-use/openai-provider.js";
 import { runTerminal } from "../../helpers/route-run.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+] as const;
 
 // Slice 3 deterministic proof ($0, no live E2B): the cost/spend ledger + the null-vs-zero-vs-absent
 // discipline + the no-spend proof derived from the ledger + full caps enforcement (fail-closed).
@@ -149,6 +158,7 @@ describe("terminal-product cost ledger + no-spend proof + caps enforcement (dete
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-cost-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -547,6 +557,7 @@ describe("the terminal sandbox's compute time in the run cost summary", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tp-sandbox-cost-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

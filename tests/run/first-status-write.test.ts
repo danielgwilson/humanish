@@ -11,6 +11,7 @@ import { runStudyWith } from "../../src/run-study.js";
 import { STUDY_SCHEMA, type StudyConfig } from "../../src/study/types.js";
 import { RUN_STATUS_FILE } from "../../src/run/status.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // The first status.json write of each run lands late. A route that acquires a sandbox without
 // awaiting it reaches Sandbox.create before the record exists; under load that is what left a run
@@ -69,6 +70,7 @@ describe("a live route records its status before acquiring a sandbox", () => {
   let runDir: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-status-first-"));
+    await writePersonaFiles(cwd, "on-the-go-contributor", "ops-coordinator", "weekly-planner");
     runDir = path.join(cwd, ".humanish", "runs", RUN_ID);
   });
   afterEach(async () => {

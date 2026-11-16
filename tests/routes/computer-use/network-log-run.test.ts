@@ -23,6 +23,7 @@ import {
   type FanoutModuleOptions,
 } from "../../helpers/fanout-desktop.js";
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 const SITE = "http://127.0.0.1:3000";
@@ -177,6 +178,7 @@ async function runWithCapture(
   if (!parsed.ok) throw new Error(parsed.error.message);
   const handle = makeFanoutModule(fakes);
   const cwd = await makeTestTempDir("humanish-network-log-run-");
+  await writePersonaFiles(cwd, "first-time-visitor");
   const outcome = await runStudyWith(
     parsed.config,
     { cwd, env: ENV, open: false },
@@ -532,6 +534,7 @@ describe("a hosted participant in a study without execution.network", () => {
       capturingDesktop({ holderLog: announce({ startedAt: T - 5 }), events: EVENTS }),
     );
     const cwd = await makeTestTempDir("humanish-network-log-off-");
+    await writePersonaFiles(cwd, "first-time-visitor");
     const outcome = await runStudyWith(
       parsed.config,
       { cwd, env: ENV, open: false },

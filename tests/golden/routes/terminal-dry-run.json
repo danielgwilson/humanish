@@ -26,7 +26,6 @@
       ]
     },
     "warnings": [
-      "Persona autonomous-creative-agent has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
       "This is a dry run: its participants are synthetic and no product behavior was tested.",
       "Before filing public feedback, use `humanish feedback issue` so redaction and public-safety checks gate the payload."
     ],
@@ -65,14 +64,14 @@
         "id": "autonomous-creative-agent",
         "name": "Autonomous terminal agent (autonomous-creative-agent)",
         "source": "study:terminal-live-proof",
-        "sourceDigest": "5bc9377b0c3e"
+        "sourceDigest": "5cf2e89fa0ce"
       },
       "scenario": {
         "id": "terminal-terminal-live-proof",
         "title": "Terminal live proof",
         "goal": "Discover widgetsmith-cli from public surfaces.",
         "source": "study:terminal-live-proof",
-        "sourceDigest": "5bc9377b0c3e"
+        "sourceDigest": "5cf2e89fa0ce"
       },
       "packageName": "humanish",
       "redaction": {
@@ -175,7 +174,7 @@
       "No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts."
     ]
   },
-  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- outcome: dry run\n- summary: Dry run: 1 participant would try widgetsmith-cli from a terminal. No sandbox was created, no key was used and $0 was spent.\n- mission: Discover widgetsmith-cli from public surfaces.\n- subject: Subject product declared: widgetsmith-cli; public surfaces: https://example.com/widgetsmith. humanish did not provision or clone the product, so its provenance is unpinned: a study of public pages has no commit to pin. The evidence is tied to the prompt digest 5bc9377b0c3e.\n- credentials: Runtime auth channel: openai-env (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=false, allowProviderCredentials=false, allowPaymentCredentials=false, allowGitHubMutation=false.\n- caps: Spend, job and time caps: maxUsd=0, maxJobs=0, maxMinutes=10. A live run uses the runtime key only while a cap is in force, and derives its no-spend proof from the recorded cost ledger. This dry run spends $0: it makes no model request.\n\n## Gaps\n- This dry run did not execute the live in-sandbox agent route; it checks the evidence shape only, not live behavior, scale, or adoption.\n- No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts.\n",
+  "review.md": "# Terminal live proof\n\n- run: [run]\n- mode: dry-run\n- verdict: dry run\n- outcome: dry run\n- summary: Dry run: 1 participant would try widgetsmith-cli from a terminal. No sandbox was created, no key was used and $0 was spent.\n- mission: Discover widgetsmith-cli from public surfaces.\n- subject: Subject product declared: widgetsmith-cli; public surfaces: https://example.com/widgetsmith. humanish did not provision or clone the product, so its provenance is unpinned: a study of public pages has no commit to pin. The evidence is tied to the prompt digest 5cf2e89fa0ce.\n- credentials: Runtime auth channel: openai-env (names only; values never persist; the live engine applies the selected key placement, while this dry-run performs no injection). Credential policies (deny-by-default): allowPrivateRepoAccess=false, allowProviderCredentials=false, allowPaymentCredentials=false, allowGitHubMutation=false.\n- caps: Spend, job and time caps: maxUsd=0, maxJobs=0, maxMinutes=10. A live run uses the runtime key only while a cap is in force, and derives its no-spend proof from the recorded cost ledger. This dry run spends $0: it makes no model request.\n\n## Gaps\n- This dry run did not execute the live in-sandbox agent route; it checks the evidence shape only, not live behavior, scale, or adoption.\n- No exec-stream, transcript, substrate, cost, or cleanup artifacts were produced because no live session ran; live verification requires those artifacts.\n",
   "run.json": {
     "schema": "humanish.run-bundle.v4",
     "runId": "[run]",
@@ -208,14 +207,14 @@
       "id": "autonomous-creative-agent",
       "name": "Autonomous terminal agent (autonomous-creative-agent)",
       "source": "study:terminal-live-proof",
-      "sourceDigest": "5bc9377b0c3e"
+      "sourceDigest": "5cf2e89fa0ce"
     },
     "scenario": {
       "id": "terminal-terminal-live-proof",
       "title": "Terminal live proof",
       "goal": "Discover widgetsmith-cli from public surfaces.",
       "source": "study:terminal-live-proof",
-      "sourceDigest": "5bc9377b0c3e"
+      "sourceDigest": "5cf2e89fa0ce"
     },
     "lifecycle": [
       {
@@ -301,7 +300,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "terminal-lab.subject.declared",
-        "message": "Subject product declared: widgetsmith-cli; public surfaces: https://example.com/widgetsmith. humanish did not provision or clone the product, so its provenance is unpinned: a study of public pages has no commit to pin. The evidence is tied to the prompt digest 5bc9377b0c3e.",
+        "message": "Subject product declared: widgetsmith-cli; public surfaces: https://example.com/widgetsmith. humanish did not provision or clone the product, so its provenance is unpinned: a study of public pages has no commit to pin. The evidence is tied to the prompt digest 5cf2e89fa0ce.",
         "simId": "sim-001",
         "streamId": "stream-001"
       },

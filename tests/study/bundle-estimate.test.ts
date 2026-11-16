@@ -30,6 +30,7 @@ import { runStudyPreflight } from "../../src/study/preflight.js";
 import { lab, type Patch } from "../admission/fixtures.js";
 import { makeFanoutModule } from "../helpers/fanout-desktop.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const HOURS = 60 * 60_000;
 // Room for long windows and 30 sandboxes at once, as on an E2B Pro plan.
@@ -65,6 +66,7 @@ function eventDay(hosts: number, hours: number, guests = 0): Patch {
  */
 async function check(patch: Patch) {
   const cwd = await makeTestTempDir("humanish-bundle-check-");
+  await writePersonaFiles(cwd, "first-time-visitor");
   await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
   const raw = lab("cuAppUrl", { id: "bundle", ...patch });
   await writeFile(path.join(cwd, "humanish", "studies", `${String(raw.id)}.yaml`), stringify(raw));
@@ -376,6 +378,7 @@ describe("study check's warning on run.json", () => {
 describe("humanish run", () => {
   it("runs a study past a limit and records the warning in its bundle", async () => {
     const cwd = await makeTestTempDir("humanish-bundle-warning-");
+    await writePersonaFiles(cwd, "first-time-visitor");
     const handle = makeFanoutModule();
     const parsed = parseStudy(lab("cuAppUrl", eventDay(30, 8)));
     if (!parsed.ok) throw new Error(parsed.error.message);

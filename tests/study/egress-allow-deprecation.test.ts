@@ -10,6 +10,7 @@ import type { RunBundle } from "../../src/run/bundle.js";
 import { parseStudy } from "../../src/study/config.js";
 import { lab, SCENARIO_YAML, type BaseName } from "../admission/fixtures.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const allow = { execution: { egressAllow: ["example.com"] } };
 const ignoredOn = (route: string) => (warning: string) =>
@@ -24,6 +25,7 @@ function parsed(base: BaseName) {
 
 async function project(): Promise<string> {
   const cwd = await makeTestTempDir("humanish-egress-allow-");
+  await writePersonaFiles(cwd, "autonomous-creative-agent", "first-time-visitor");
   await writeFile(path.join(cwd, "package.json"), '{ "name": "egress-allow-fixture" }\n');
   await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
   await writeFile(path.join(cwd, "humanish", "scenarios", "adm-journey.yaml"), SCENARIO_YAML);

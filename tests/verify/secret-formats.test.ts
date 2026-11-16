@@ -17,6 +17,7 @@ import {
   synthetic,
 } from "../helpers/secret-formats.js";
 import { shareSafetyDryRun } from "../helpers/share-safety-run.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // An E2B app host, `<port>-<sandbox id>.e2b.app`, with an id built at run time.
 const E2B_APP_HOST = `3000-${synthetic("abcdefghijklmnopqrstuvwxyz0123456789", 20, 60)}.${"e2b"}.app`;
@@ -130,6 +131,7 @@ describe("verify against secret formats", () => {
 
   beforeAll(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-secret-formats-"));
+    await writePersonaFiles(cwd, "first-time-visitor");
     ({ runId, runDir } = await shareSafetyDryRun(cwd));
   }, 60_000);
 

@@ -68,7 +68,7 @@ try {
     mode: "live",
     subject: { source: "local-app", appUrl: app.appUrl },
     // This registry id selects the computer-use loop. createProvider supplies the actual provider.
-    actor: { type: "openai-computer-use", persona: "pixel-pat", mission: "Greet the app." },
+    actor: { type: "openai-computer-use", mission: "Greet the app." },
     review: { analysis: false }, // Keep this deterministic example free of provider requests.
     execution: { timeoutMs: 15_000 },
   });

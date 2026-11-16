@@ -26,6 +26,15 @@ import {
   TWO_TURN_SESSION,
   type FanoutModuleHandle,
 } from "../../helpers/fanout-desktop.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+] as const;
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 const exhaustedBody = readFileSync(
@@ -55,6 +64,7 @@ function exhaustedAfter(ok: unknown[], onExhausted = () => {}): FetchLike {
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-out-of-credits-"));
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });

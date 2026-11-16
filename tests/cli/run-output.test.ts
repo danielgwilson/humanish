@@ -7,7 +7,14 @@ import { stringify } from "yaml";
 import { createProgram } from "../../src/cli/program.js";
 import { analysisOutcomeText } from "../../src/cli/io.js";
 import { runNotFoundMessage } from "../../src/run/run-not-found.js";
-import { lab, SCENARIO_YAML, type BaseName, type Patch } from "../admission/fixtures.js";
+import {
+  FIXTURE_PERSONAS,
+  lab,
+  SCENARIO_YAML,
+  type BaseName,
+  type Patch,
+} from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 async function runCli(args: string[]) {
   let exitCode = 0;
@@ -53,6 +60,7 @@ async function fixtureStudy(base: BaseName, patch: Patch = {}) {
   await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
   await writeFile(path.join(cwd, "humanish", "scenarios", "adm-journey.yaml"), SCENARIO_YAML);
   await writeFile(path.join(cwd, "humanish", "studies", `${id}.yaml`), stringify(raw));
+  await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
   return { cwd, id };
 }
 

@@ -23,6 +23,17 @@ import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { automaticAnalysisBoundary } from "../../helpers/automatic-analysis-boundary.js";
 import { runSharedWorld } from "../../helpers/route-run.js";
 import { makeCommandHandler, makeFakeModule } from "../../helpers/shared-world-fakes.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "competitive-friend",
+  "first-time-visitor",
+  "party-host",
+  "persona-1",
+  "persona-2",
+] as const;
 
 const CAPS: ActorCapabilities = {
   headless: true,
@@ -105,6 +116,7 @@ function lobbyScreen(click: () => Promise<void>): CuaExecutor {
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-shared-budget-"));
+  await writePersonaFiles(cwd, ...STUDY_PERSONAS);
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });

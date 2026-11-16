@@ -45,7 +45,7 @@
             500,
             896
           ],
-          "instructionDigest": "ccf927bef50e6bf3"
+          "instructionDigest": "69b640914c2fd7fc"
         },
         {
           "id": "small-skimmer",
@@ -56,7 +56,7 @@
             500,
             740
           ],
-          "instructionDigest": "57352c1d455c284f"
+          "instructionDigest": "ffce1d1d53885830"
         },
         {
           "id": "desktop-power",
@@ -67,7 +67,7 @@
             1440,
             950
           ],
-          "instructionDigest": "d6e2177d9ca67437"
+          "instructionDigest": "0045ebde6eca754b"
         },
         {
           "id": "wide-researcher",
@@ -78,7 +78,7 @@
             1920,
             1080
           ],
-          "instructionDigest": "53936e9f827ed7e4"
+          "instructionDigest": "001c980a967b5214"
         }
       ]
     },
@@ -264,16 +264,12 @@
     }
   },
   "<stderr>": [
-    "humanish: Persona first-time-visitor has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
-    "humanish: Persona impatient-skimmer has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
-    "humanish: Persona power-user has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
-    "humanish: Persona comparison-shopper has no readable file under humanish/personas or .humanish/local/personas; using the id only (no persona context).",
     "humanish computer-use fan-out plan (fanout-proof): 4 participants, strategy per-lane-worlds, concurrency 1, 4 waves.",
     "  session budget 60s per participant; worst-case ~44 sandbox-minutes total.",
-    "  - mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#ccf927bef50e6bf3",
-    "  - small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#57352c1d455c284f",
-    "  - desktop-power: persona=power-user device=desktop 1440x950 prompt#d6e2177d9ca67437",
-    "  - wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#53936e9f827ed7e4",
+    "  - mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#69b640914c2fd7fc",
+    "  - small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#ffce1d1d53885830",
+    "  - desktop-power: persona=power-user device=desktop 1440x950 prompt#0045ebde6eca754b",
+    "  - wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#001c980a967b5214",
     "humanish computer-use [mobile-newcomer]: Chrome DevTools answered on 127.0.0.1:9222 ([ms])",
     "humanish computer-use [small-skimmer]: Chrome DevTools answered on 127.0.0.1:9222 ([ms])",
     "humanish computer-use [desktop-power]: Chrome DevTools answered on 127.0.0.1:9222 ([ms])",
@@ -309,8 +305,18 @@
     "lane": "computer-use",
     "persona": {
       "id": "first-time-visitor",
-      "traitsApplied": [],
-      "promptDigest": "ccf927bef50e6bf3"
+      "traitsApplied": [
+        "patience:medium",
+        "skill:medium"
+      ],
+      "brief": {
+        "compilerVersion": 3,
+        "text": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+        "digest": "55afb8195831",
+        "redacted": false,
+        "sourceDigest": "28dae3e80640"
+      },
+      "promptDigest": "69b640914c2fd7fc"
     },
     "redaction": {
       "status": "passed",
@@ -489,8 +495,18 @@
     "lane": "computer-use",
     "persona": {
       "id": "impatient-skimmer",
-      "traitsApplied": [],
-      "promptDigest": "57352c1d455c284f"
+      "traitsApplied": [
+        "patience:medium",
+        "skill:medium"
+      ],
+      "brief": {
+        "compilerVersion": 3,
+        "text": "Persona: impatient-skimmer.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+        "digest": "df7e0c0213dc",
+        "redacted": false,
+        "sourceDigest": "62c82171fe3e"
+      },
+      "promptDigest": "ffce1d1d53885830"
     },
     "redaction": {
       "status": "passed",
@@ -669,8 +685,18 @@
     "lane": "computer-use",
     "persona": {
       "id": "power-user",
-      "traitsApplied": [],
-      "promptDigest": "d6e2177d9ca67437"
+      "traitsApplied": [
+        "patience:medium",
+        "skill:medium"
+      ],
+      "brief": {
+        "compilerVersion": 3,
+        "text": "Persona: power-user.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+        "digest": "fa3216a861a2",
+        "redacted": false,
+        "sourceDigest": "4d51481e59a8"
+      },
+      "promptDigest": "0045ebde6eca754b"
     },
     "redaction": {
       "status": "passed",
@@ -850,8 +876,18 @@
     "lane": "computer-use",
     "persona": {
       "id": "comparison-shopper",
-      "traitsApplied": [],
-      "promptDigest": "53936e9f827ed7e4"
+      "traitsApplied": [
+        "patience:medium",
+        "skill:medium"
+      ],
+      "brief": {
+        "compilerVersion": 3,
+        "text": "Persona: comparison-shopper.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+        "digest": "3d0a62e58e47",
+        "redacted": false,
+        "sourceDigest": "6e4b4db6d8dc"
+      },
+      "promptDigest": "001c980a967b5214"
     },
     "redaction": {
       "status": "passed",
@@ -1029,14 +1065,14 @@
         "id": "first-time-visitor",
         "name": "Computer-use fan-out (4 participants)",
         "source": "study:fanout-proof",
-        "sourceDigest": "ccf927bef50e6bf3"
+        "sourceDigest": "69b640914c2fd7fc"
       },
       "scenario": {
         "id": "cua-fanout-proof",
         "title": "Fan-out proof",
-        "goal": "Persona: first-time-visitor.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "goal": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
         "source": "study:fanout-proof",
-        "sourceDigest": "ccf927bef50e6bf3"
+        "sourceDigest": "69b640914c2fd7fc"
       },
       "packageName": "humanish",
       "redaction": {
@@ -1223,14 +1259,14 @@
       "id": "first-time-visitor",
       "name": "Computer-use fan-out (4 participants)",
       "source": "study:fanout-proof",
-      "sourceDigest": "ccf927bef50e6bf3"
+      "sourceDigest": "69b640914c2fd7fc"
     },
     "scenario": {
       "id": "cua-fanout-proof",
       "title": "Fan-out proof",
-      "goal": "Persona: first-time-visitor.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "goal": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a mobile user on a mobile device (414x896 @3x). Expect a mobile/touch layout.\n\nExplore the app and stop.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Sign up from a phone.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
       "source": "study:fanout-proof",
-      "sourceDigest": "ccf927bef50e6bf3"
+      "sourceDigest": "69b640914c2fd7fc"
     },
     "lifecycle": [
       {
@@ -1386,8 +1422,18 @@
           "lane": "computer-use",
           "persona": {
             "id": "first-time-visitor",
-            "traitsApplied": [],
-            "promptDigest": "ccf927bef50e6bf3"
+            "traitsApplied": [
+              "patience:medium",
+              "skill:medium"
+            ],
+            "brief": {
+              "compilerVersion": 3,
+              "text": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+              "digest": "55afb8195831",
+              "redacted": false,
+              "sourceDigest": "28dae3e80640"
+            },
+            "promptDigest": "69b640914c2fd7fc"
           },
           "redaction": {
             "status": "passed",
@@ -1570,8 +1616,18 @@
           "lane": "computer-use",
           "persona": {
             "id": "impatient-skimmer",
-            "traitsApplied": [],
-            "promptDigest": "57352c1d455c284f"
+            "traitsApplied": [
+              "patience:medium",
+              "skill:medium"
+            ],
+            "brief": {
+              "compilerVersion": 3,
+              "text": "Persona: impatient-skimmer.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+              "digest": "df7e0c0213dc",
+              "redacted": false,
+              "sourceDigest": "62c82171fe3e"
+            },
+            "promptDigest": "ffce1d1d53885830"
           },
           "redaction": {
             "status": "passed",
@@ -1749,8 +1805,18 @@
           "lane": "computer-use",
           "persona": {
             "id": "power-user",
-            "traitsApplied": [],
-            "promptDigest": "d6e2177d9ca67437"
+            "traitsApplied": [
+              "patience:medium",
+              "skill:medium"
+            ],
+            "brief": {
+              "compilerVersion": 3,
+              "text": "Persona: power-user.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+              "digest": "fa3216a861a2",
+              "redacted": false,
+              "sourceDigest": "4d51481e59a8"
+            },
+            "promptDigest": "0045ebde6eca754b"
           },
           "redaction": {
             "status": "passed",
@@ -1929,8 +1995,18 @@
           "lane": "computer-use",
           "persona": {
             "id": "comparison-shopper",
-            "traitsApplied": [],
-            "promptDigest": "53936e9f827ed7e4"
+            "traitsApplied": [
+              "patience:medium",
+              "skill:medium"
+            ],
+            "brief": {
+              "compilerVersion": 3,
+              "text": "Persona: comparison-shopper.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+              "digest": "3d0a62e58e47",
+              "redacted": false,
+              "sourceDigest": "6e4b4db6d8dc"
+            },
+            "promptDigest": "001c980a967b5214"
           },
           "redaction": {
             "status": "passed",
@@ -2052,7 +2128,7 @@
         "at": "[ts]",
         "level": "info",
         "type": "cua-lab.fanout.plan",
-        "message": "Fan-out plan: 4 participants (per-lane-worlds), concurrency 1, 4 waves; session budget 60s per participant; worst-case ~44 sandbox-minutes. Participants: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#ccf927bef50e6bf3, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#57352c1d455c284f, desktop-power: persona=power-user device=desktop 1440x950 prompt#d6e2177d9ca67437, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#53936e9f827ed7e4."
+        "message": "Fan-out plan: 4 participants (per-lane-worlds), concurrency 1, 4 waves; session budget 60s per participant; worst-case ~44 sandbox-minutes. Participants: mobile-newcomer: persona=first-time-visitor device=mobile 500x896 prompt#69b640914c2fd7fc, small-skimmer: persona=impatient-skimmer device=small-mobile 500x740 prompt#ffce1d1d53885830, desktop-power: persona=power-user device=desktop 1440x950 prompt#0045ebde6eca754b, wide-researcher: persona=comparison-shopper device=wide 1920x1080 prompt#001c980a967b5214."
       },
       {
         "id": "event-002-subject-mobile-newcomer",

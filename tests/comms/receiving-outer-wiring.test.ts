@@ -25,6 +25,16 @@ import {
 } from "../../src/run/contained-output.js";
 import { fullScreenXwininfo } from "../helpers/full-screen-xwininfo.js";
 import { runComputerUse, runSharedWorld } from "../helpers/route-run.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
+
+/** The personas this file's studies name, which need their files to run. */
+const STUDY_PERSONAS = [
+  "autonomous-creative-agent",
+  "first-time-visitor",
+  "persona-1",
+  "persona-2",
+  "returning-user",
+] as const;
 
 type Preparation = {
   participants: string[];
@@ -222,6 +232,7 @@ describe("configured receiving through exported study runners", () => {
     failSession = false,
   ): Promise<void> {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-receiving-outer-"));
+    await writePersonaFiles(cwd, ...STUDY_PERSONAS);
     roots.push(cwd);
     const events: string[] = [],
       prompts: string[] = [];

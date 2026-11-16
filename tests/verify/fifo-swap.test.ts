@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 import { verifyRun } from "../../src/verify/verify.js";
 import { shareSafetyDryRun } from "../helpers/share-safety-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const swap = vi.hoisted(() => ({ target: "" }));
 
@@ -31,6 +32,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 describe("a run file swapped for a FIFO", () => {
   it("ends verify without waiting for a writer and never grades the run", async () => {
     const cwd = await makeTestTempDir("humanish-verify-fifo-");
+    await writePersonaFiles(cwd, "first-time-visitor");
     const { runId, runDir } = await shareSafetyDryRun(cwd);
     const file = path.join(await realpath(runDir), "notes.txt");
     await writeFile(file, "Plain text.\n");

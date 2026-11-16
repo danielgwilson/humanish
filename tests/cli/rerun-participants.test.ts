@@ -5,7 +5,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { afterAll, expect, it } from "vitest";
 import { stringify } from "yaml";
-import { lab } from "../admission/fixtures.js";
+import { FIXTURE_PERSONAS, lab } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // `lab run --rerun-failed-from <run> --participants <ids>` is the example in `lab run --help`.
 // The CLI must pass the selection as rerun.participantIds: runStudyWith refuses the removed
@@ -28,6 +29,7 @@ it("passes the selected participants to the rerun check without a warning", asyn
     path.join(cwd, "humanish", "studies", "fanout.yaml"),
     stringify({ ...raw, id: "fanout" }),
   );
+  await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
 
   const child = await execFileAsync(
     process.execPath,

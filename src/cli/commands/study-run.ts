@@ -8,6 +8,7 @@ import {
 } from "../../analysis/automatic-config.js";
 import { warnAndQueue } from "../deprecations.js";
 import type { StudyResolveFailure } from "../../study/discover.js";
+import { studyPersonaFailure } from "../../study/persona-resolve.js";
 import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
 import type { PlanResult } from "../../study/plan-types.js";
 import { keyNamesOf } from "../../study/requirements.js";
@@ -63,6 +64,8 @@ export async function runStudyCommand(args: {
     args.io.setExitCode(2);
     return;
   }
+  // Before any key lookup, placement or run. runStudyWith refuses it too, for a library caller.
+  if (await refusedForPersona(args, resolved)) return;
 
   // Surface forward-declared-field + .yml warnings on run/watch too, not only on inspect.
   // Otherwise a setting that does nothing is silently swallowed on the path users actually run.
@@ -299,4 +302,26 @@ function ownerKeyConflict(options: StudyCommandOptions): string | undefined {
   if (!/^[0-9a-f]{16}$/.test(options.ownerKey))
     return "--owner-key is 16 lowercase hexadecimal characters.";
   return undefined;
+}
+
+/**
+ * Writes the study file failure for a persona the study names that has no readable file, with exit
+ * code 2, and says whether it did.
+ */
+async function refusedForPersona(
+  args: { command: Command; io: CliIo; options: { cwd: string }; study: string },
+  resolved: { readonly config: StudyConfig; readonly warnings: string[] },
+): Promise<boolean> {
+  const message = await studyPersonaFailure(args.options.cwd, resolved.config);
+  if (message === undefined) return false;
+  const failure: StudyResolveFailure = {
+    ok: false,
+    cwd: resolve(args.options.cwd),
+    study: args.study,
+    error: { code: "HUMANISH_STUDY_INVALID", message },
+    warnings: resolved.warnings,
+  };
+  writeResult(args.command, args.io, failure, formatStudyResolveFailureHuman);
+  args.io.setExitCode(2);
+  return true;
 }
