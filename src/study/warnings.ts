@@ -105,6 +105,15 @@ const ACTOR_ROWS: readonly InertRow[] = [
     field: "actor.model",
     applies: (config, routes) => otherRoute(routes) && Boolean(config.actor?.model),
   },
+  // Only the computer-use prompt composer sends the typing paragraph; a terminal participant types
+  // commands, and scripted and preview participants run no model.
+  {
+    field: "actor.typing",
+    reason:
+      "the paragraph on typing a computer-use participant reads after its mission; needs route: computer-use or shared-world",
+    applies: (config, routes) =>
+      config.actor?.typing !== undefined && !routes.cua && !routes.shared,
+  },
   // Only a computer-use loop dispatches wait actions; terminal, scripted and preview participants
   // take none.
   {

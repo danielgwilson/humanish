@@ -194,8 +194,9 @@ const V2_KEYS: KeyShape = {
       ...without(PARTICIPANT_ENTRY, ...AFTER_V2_PARTICIPANT_KEYS),
       count: true,
     },
-    // maxWaitMs, idleWaitMs, clock and provider arrived after v2, so a v2 file cannot carry them.
-    ...without(ACTOR, "type", "maxWaitMs", "idleWaitMs", "clock", "provider"),
+    // maxWaitMs, idleWaitMs, clock, provider and typing arrived after v2, so a v2 file cannot carry
+    // them.
+    ...without(ACTOR, "type", "maxWaitMs", "idleWaitMs", "clock", "provider", "typing"),
     laneFocus: { id: true, label: true, instruction: true },
   },
   // execution.pointer arrived after v2.

@@ -59,6 +59,7 @@ import {
 import {
   CLOSING_LINE_DIRECTIVE,
   composeParticipantInstructions,
+  DEFAULT_TYPING,
 } from "../../../src/routes/computer-use/participant-prompt.js";
 import type {
   E2BDesktopCreateOptions,
@@ -3165,7 +3166,10 @@ describe("runCuaActorLab", () => {
     const bundle = JSON.parse(
       await readFile(path.join(cwd, ".humanish", "runs", outcome.result.runId, "run.json"), "utf8"),
     );
-    expect(bundle.streams[0].assignment).toEqual({ mission: config.actor.mission });
+    expect(bundle.streams[0].assignment).toEqual({
+      mission: config.actor.mission,
+      typing: DEFAULT_TYPING,
+    });
     expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain("signup-a@example.test");
     expect(JSON.stringify(bundle.streams[0].assignment)).not.toContain(String(commsPort));
   });
@@ -7047,6 +7051,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
     expect(liveStream?.status).toBe("running");
     expect(liveStream?.assignment).toEqual({
       mission: "Explore with [REDACTED_SECRET].",
+      typing: DEFAULT_TYPING,
       focus: "Focus on the landing page.",
       tasks: [{ id: "settings", goal: "Save with [REDACTED_SECRET]." }],
     });

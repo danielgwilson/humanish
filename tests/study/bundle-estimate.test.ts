@@ -41,7 +41,7 @@ const COUNTED =
   "at a model turn every 10s that adds up to 3.5 KB to the participant's trace. The run goes ahead.";
 /** What the run.json warning says the file holds of each participant's text. */
 const COPIES =
-  "It holds the mission, the task goals and each participant's instruction in that participant's stream, and again in the feedback candidate of each participant that reports friction or stops. It holds the first participant's mission, instruction and task goals once more for the run, and the estimate counts a feedback candidate for every participant.";
+  "It holds the mission, the paragraph on typing, the task goals and each participant's instruction in that participant's stream, and again in the feedback candidate of each participant that reports friction or stops. It holds the first participant's mission, paragraph on typing, instruction and task goals once more for the run, and the estimate counts a feedback candidate for every participant.";
 const WARN_30_HOSTS = `The Observer page, observer/index.html, may grow to about 47.7 MiB, past the 32 MiB verify reads in one file, so verify would grade the run local_only: humanish export would refuse it without --local-only, and a bundle export would fail. The estimate counts 30 participants working declared windows of up to 8h, ${COUNTED} To stay under the limit, shorten the longest windows (participants[].endAfterMs), or split the participants across studies.`;
 
 /** An event day: `hosts` hosts working `hours` from the start, and `guests` arriving a minute apart. */
@@ -403,5 +403,21 @@ describe("humanish run", () => {
     expect(
       bundle.events.filter((event) => event.type === "study.warning").map((event) => event.message),
     ).toContain(WARN_30_HOSTS);
+  });
+});
+
+describe("the bundle estimate of actor.typing", () => {
+  it("counts a study's typing text with the mission, and names it when it has the most bytes", () => {
+    // run.json copies actor.typing wherever it copies the mission: in each stream's assignment and
+    // in the composed prompt. Each participant's text: 7 + 4,000 = 4,007 bytes. Two participants:
+    // 4,400 + 4,007 + 2 x (16,500 + 2 x 4,007) = 57,435.
+    const visitor = {
+      schedule: participantSchedule({}),
+      limits: {},
+      assignment: { mission: "Try it.", typing: "a".repeat(4_000) },
+    };
+    const estimate = estimateBundle([visitor, visitor], HOURS);
+    expect(estimate.runFileBytes).toBe(57_435);
+    expect(estimate.basis.largestField).toBe("typing");
   });
 });

@@ -29,7 +29,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:b6d06e7f6bb706b8",
+              "instructions": "sha256:a1266c1adaacc51f",
               "tools": [
                 {
                   "type": "computer"
@@ -65,7 +65,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:b6d06e7f6bb706b8"
+                      "text": "sha256:a1266c1adaacc51f"
                     },
                     {
                       "type": "input_image",
@@ -81,7 +81,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:b6d06e7f6bb706b8",
+              "instructions": "sha256:a1266c1adaacc51f",
               "tools": [
                 {
                   "type": "computer"
@@ -129,7 +129,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:b6d06e7f6bb706b8",
+              "instructions": "sha256:a1266c1adaacc51f",
               "tools": [
                 {
                   "type": "computer"
@@ -198,7 +198,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:31d95e233ba92e50",
+              "instructions": "sha256:803789381a59dba0",
               "tools": [
                 {
                   "type": "computer"
@@ -234,7 +234,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:31d95e233ba92e50"
+                      "text": "sha256:803789381a59dba0"
                     },
                     {
                       "type": "input_image",
@@ -250,7 +250,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:31d95e233ba92e50",
+              "instructions": "sha256:803789381a59dba0",
               "tools": [
                 {
                   "type": "computer"
@@ -298,7 +298,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:31d95e233ba92e50",
+              "instructions": "sha256:803789381a59dba0",
               "tools": [
                 {
                   "type": "computer"
@@ -389,7 +389,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:5505df3f32a00df8",
+              "instructions": "sha256:3aa2c8ebb6d621b4",
               "tools": [
                 {
                   "type": "computer"
@@ -425,7 +425,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:5505df3f32a00df8"
+                      "text": "sha256:3aa2c8ebb6d621b4"
                     },
                     {
                       "type": "input_image",
@@ -472,7 +472,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:5505df3f32a00df8",
+              "instructions": "sha256:3aa2c8ebb6d621b4",
               "tools": [
                 {
                   "type": "computer"
@@ -508,7 +508,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:5505df3f32a00df8"
+                      "text": "sha256:3aa2c8ebb6d621b4"
                     },
                     {
                       "type": "input_image",
@@ -555,7 +555,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:eb8ea822e212c2de",
+              "instructions": "sha256:cda3c47e16851eb7",
               "tools": [
                 {
                   "type": "computer"
@@ -591,7 +591,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:eb8ea822e212c2de"
+                      "text": "sha256:cda3c47e16851eb7"
                     },
                     {
                       "type": "input_image",
@@ -651,7 +651,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:fc4b7b22265249dc",
+              "instructions": "sha256:23cc09aa8dccaac3",
               "tools": [
                 {
                   "type": "computer"
@@ -687,7 +687,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:fc4b7b22265249dc"
+                      "text": "sha256:23cc09aa8dccaac3"
                     },
                     {
                       "type": "input_image",
@@ -739,7 +739,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:454dbf407e3f254e",
+              "instructions": "sha256:7f26448483d32677",
               "tools": [
                 {
                   "type": "computer"
@@ -775,7 +775,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:454dbf407e3f254e"
+                      "text": "sha256:7f26448483d32677"
                     },
                     {
                       "type": "input_image",
@@ -801,7 +801,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:454dbf407e3f254e",
+              "instructions": "sha256:7f26448483d32677",
               "tools": [
                 {
                   "type": "computer"
@@ -837,7 +837,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:454dbf407e3f254e"
+                      "text": "sha256:7f26448483d32677"
                     },
                     {
                       "type": "input_image",
@@ -888,7 +888,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:13a6eac01e091074",
+              "instructions": "sha256:2fe738feadf42eb5",
               "tools": [
                 {
                   "type": "computer"
@@ -924,7 +924,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:13a6eac01e091074"
+                      "text": "sha256:2fe738feadf42eb5"
                     },
                     {
                       "type": "input_image",
@@ -940,7 +940,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:13a6eac01e091074",
+              "instructions": "sha256:2fe738feadf42eb5",
               "tools": [
                 {
                   "type": "computer"
@@ -988,7 +988,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:13a6eac01e091074",
+              "instructions": "sha256:2fe738feadf42eb5",
               "tools": [
                 {
                   "type": "computer"
@@ -1057,7 +1057,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:8f8fdbbcc00693ea",
+              "instructions": "sha256:2fc0639450bd1eb9",
               "tools": [
                 {
                   "type": "computer"
@@ -1093,7 +1093,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:8f8fdbbcc00693ea"
+                      "text": "sha256:2fc0639450bd1eb9"
                     },
                     {
                       "type": "input_image",
@@ -1109,7 +1109,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:8f8fdbbcc00693ea",
+              "instructions": "sha256:2fc0639450bd1eb9",
               "tools": [
                 {
                   "type": "computer"
@@ -1157,7 +1157,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:8f8fdbbcc00693ea",
+              "instructions": "sha256:2fc0639450bd1eb9",
               "tools": [
                 {
                   "type": "computer"
@@ -1226,7 +1226,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:4cfdd03314c0d1da",
+              "instructions": "sha256:d3c02f4cc1609ecb",
               "tools": [
                 {
                   "type": "computer"
@@ -1262,7 +1262,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:4cfdd03314c0d1da"
+                      "text": "sha256:d3c02f4cc1609ecb"
                     },
                     {
                       "type": "input_image",
@@ -1278,7 +1278,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:4cfdd03314c0d1da",
+              "instructions": "sha256:d3c02f4cc1609ecb",
               "tools": [
                 {
                   "type": "computer"
@@ -1326,7 +1326,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:4cfdd03314c0d1da",
+              "instructions": "sha256:d3c02f4cc1609ecb",
               "tools": [
                 {
                   "type": "computer"
@@ -1395,7 +1395,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:3ec37a8099177816",
+              "instructions": "sha256:34e483dd4cdb9550",
               "tools": [
                 {
                   "type": "computer"
@@ -1431,7 +1431,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:3ec37a8099177816"
+                      "text": "sha256:34e483dd4cdb9550"
                     },
                     {
                       "type": "input_image",
@@ -1447,7 +1447,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:3ec37a8099177816",
+              "instructions": "sha256:34e483dd4cdb9550",
               "tools": [
                 {
                   "type": "computer"
@@ -1495,7 +1495,7 @@
             "participantKey": true,
             "body": {
               "model": "gpt-6.1-sol",
-              "instructions": "sha256:3ec37a8099177816",
+              "instructions": "sha256:34e483dd4cdb9550",
               "tools": [
                 {
                   "type": "computer"
@@ -1587,7 +1587,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:ce37f7f18bfae3a9",
+              "instructions": "sha256:92cffc049e545201",
               "tools": [
                 {
                   "type": "computer"
@@ -1623,7 +1623,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:ce37f7f18bfae3a9"
+                      "text": "sha256:92cffc049e545201"
                     },
                     {
                       "type": "input_image",
@@ -1695,7 +1695,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:436bf42a700f0a87",
+              "instructions": "sha256:a4a4a72ad19326c8",
               "tools": [
                 {
                   "type": "computer"
@@ -1731,7 +1731,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:436bf42a700f0a87"
+                      "text": "sha256:a4a4a72ad19326c8"
                     },
                     {
                       "type": "input_image",
@@ -1781,7 +1781,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:0557455dda6a04b7",
+              "instructions": "sha256:f27799cbbbd4873c",
               "tools": [
                 {
                   "type": "computer"
@@ -1817,7 +1817,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:0557455dda6a04b7"
+                      "text": "sha256:f27799cbbbd4873c"
                     },
                     {
                       "type": "input_image",
@@ -1843,7 +1843,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:454dbf407e3f254e",
+              "instructions": "sha256:7f26448483d32677",
               "tools": [
                 {
                   "type": "computer"
@@ -1879,7 +1879,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:454dbf407e3f254e"
+                      "text": "sha256:7f26448483d32677"
                     },
                     {
                       "type": "input_image",
@@ -1977,7 +1977,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:f391b409f846efd0",
+              "instructions": "sha256:ce536e23def58f67",
               "tools": [
                 {
                   "type": "computer"
@@ -2013,7 +2013,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:f391b409f846efd0"
+                      "text": "sha256:ce536e23def58f67"
                     },
                     {
                       "type": "input_image",
@@ -2039,7 +2039,7 @@
             "body": {
               "model": "gpt-6.1-sol",
               "max_output_tokens": 1024,
-              "instructions": "sha256:1f92c58a461d93dc",
+              "instructions": "sha256:662a1d67e78734df",
               "tools": [
                 {
                   "type": "computer"
@@ -2075,7 +2075,7 @@
                   "content": [
                     {
                       "type": "input_text",
-                      "text": "sha256:1f92c58a461d93dc"
+                      "text": "sha256:662a1d67e78734df"
                     },
                     {
                       "type": "input_image",
