@@ -62,10 +62,9 @@ describe("an OpenAI account with no credits left", () => {
     expect((error as Error).message).not.toContain(exhaustedMessage);
   });
 
-  it("is named from the type when the code names nothing", async () => {
-    const typeOnly = JSON.stringify({
-      error: { message: "quota", type: "insufficient_quota", param: null, code: null },
-    });
+  it("is named from the type when the captured body's code is set to null (not a captured body)", async () => {
+    const captured = JSON.parse(exhaustedBody) as { error: Record<string, unknown> };
+    const typeOnly = JSON.stringify({ error: { ...captured.error, code: null } });
     const fake = answering(429, typeOnly);
     const error = await firstTurnError(fake.fetchFn);
     expect(fake.requests()).toBe(1);
@@ -94,6 +93,27 @@ describe("an OpenAI account with no credits left", () => {
     expect(result.reason).toBe(
       "OpenAI reports the account is out of credits (429 credit_balance_exhausted); the request was not sent again",
     );
+    expect(fake.requests()).toBe(1);
+  });
+
+  it("keeps its stop cause when the session must stop on any failed request under a cap", async () => {
+    const fake = answering(429, exhaustedBody);
+    const result = await runComputerUseLoop({
+      instructions: "Add one task.",
+      provider: provider(fake.fetchFn),
+      executor: {
+        observe: async () => ({ screenshot: FRAME, stateSignature: "s" }),
+        execute: async () => {},
+      },
+      persona: { id: "fixture", traitsApplied: [], promptDigest: "fixture" },
+      redaction: defaultRedactionHooks,
+      now: Date.now,
+      timeoutMs: 60_000,
+      maxUsd: 1,
+      estimateTurnCostUsd: () => 0,
+      requireReportedUsageForSpendCap: true,
+    });
+    expect(result.trace.stopCause).toBe("provider_out_of_credits");
     expect(fake.requests()).toBe(1);
   });
 });
