@@ -13,7 +13,7 @@ A persona that states what one real person did changes how a participant uses yo
 
 **Holding a participant for a real session's length keeps it in the app.** It does not make the participant use the app the way the real person did. `participants[].maxSessionMs` and `endAfterMs` set how long a session lasts; the persona's habits decide what happens in it.
 
-**Check the typing setting and the mission.** Participants get a short paragraph about typing as people do: a few plain words, one thing at a time. `actor.typing` replaces that paragraph with your own text, and `false` drops it. Replace it for a persona who writes formally, or for a form that needs long answers. A study with no `actor.mission` gives each participant the built-in mission, which asks them to try the app for the first time and stop once they would decide whether to keep using it. Write your own mission when your users arrive with a job, such as booking a table or finishing a quiz they were sent.
+**Check the typing setting and the mission.** Participants get a short paragraph about typing as people do: a few plain words, one thing at a time. `actor.typing` replaces that paragraph with your own text, and `false` drops it. Replace it for a persona who writes formally, or for a form that needs long answers. A study with no `actor.mission` gives each participant the built-in mission: try the app for the first time, for a real first sitting, long enough to get what they came for and to know whether they would come back. Write your own mission when your users arrive with a job, such as booking a table or finishing a quiz they were sent.
 
 ## Build personas from an export of your sessions
 
@@ -32,13 +32,9 @@ GROUP BY session_key;
 
 The query groups by a session key but does not select it. Save the result as JSON Lines, one session per line, or as one JSON array:
 
-```json
-{
-  "rounds_played": 3,
-  "photos_viewed_per_round": 2.1,
-  "used_a_hint": false,
-  "started_another_game": true
-}
+```text title="sessions.jsonl"
+{"rounds_played": 3, "photos_viewed_per_round": 2.1, "used_a_hint": false, "started_another_game": true}
+{"rounds_played": 1, "photos_viewed_per_round": 4, "used_a_hint": true, "started_another_game": false}
 ```
 
 Then build the personas:
