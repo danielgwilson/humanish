@@ -448,9 +448,10 @@ no credits or quota left (OpenAI `429 credit_balance_exhausted`, or
 `insufficient_quota` as the error's `code` or `type`). The request is not
 retried, and the session ends as `failed` / `actor_error` with a
 `provider account out of credits` notice. On the computer-use and shared-world
-routes, no participant starts after it: each one not yet started is a `blocked`
-simulation with no `arrival.startedAt`, and the review summary opens with the
-cause and the counts.
+routes, no participant starts after any request gets this response, a closing
+request included; a closing request that gets it keeps the session's ending.
+Each participant not yet started is a `blocked` simulation with no
+`arrival.startedAt`, and the review summary opens with the cause and the counts.
 
 Observer projects this as optional `streams[].ending` with a `cause` and readable
 `label`. Older `budget_reached` traces without a recognized machine notice say
