@@ -157,8 +157,18 @@
     "lane": "computer-use",
     "persona": {
       "id": "persona-1",
-      "traitsApplied": [],
-      "promptDigest": "d1280419c49899e1"
+      "traitsApplied": [
+        "patience:medium",
+        "skill:medium"
+      ],
+      "brief": {
+        "compilerVersion": 2,
+        "text": "Persona: persona-1.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+        "digest": "39f549ccb0ba",
+        "redacted": false,
+        "sourceDigest": "db2181d3ba16"
+      },
+      "promptDigest": "95d2ec756a612492"
     },
     "redaction": {
       "status": "passed",
@@ -219,8 +229,18 @@
     "lane": "computer-use",
     "persona": {
       "id": "persona-2",
-      "traitsApplied": [],
-      "promptDigest": "e8770386d592cfb8"
+      "traitsApplied": [
+        "patience:medium",
+        "skill:medium"
+      ],
+      "brief": {
+        "compilerVersion": 2,
+        "text": "Persona: persona-2.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+        "digest": "8033ca03f4d0",
+        "redacted": false,
+        "sourceDigest": "3192710dcb4a"
+      },
+      "promptDigest": "5e52726a56d63145"
     },
     "redaction": {
       "status": "passed",
@@ -281,8 +301,18 @@
     "lane": "computer-use",
     "persona": {
       "id": "persona-3",
-      "traitsApplied": [],
-      "promptDigest": "29bc06c32acb4323"
+      "traitsApplied": [
+        "patience:medium",
+        "skill:medium"
+      ],
+      "brief": {
+        "compilerVersion": 2,
+        "text": "Persona: persona-3.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+        "digest": "f7b8359338eb",
+        "redacted": false,
+        "sourceDigest": "5d5d2899f582"
+      },
+      "promptDigest": "914f026471e4afc9"
     },
     "redaction": {
       "status": "passed",
@@ -377,14 +407,14 @@
         "id": "persona-1",
         "name": "3 participants in one shared app",
         "source": "study:concurrent-shared-world-proof",
-        "sourceDigest": "d1280419c49899e1"
+        "sourceDigest": "95d2ec756a612492"
       },
       "scenario": {
         "id": "concurrent-shared-world-concurrent-shared-world-proof",
         "title": "Concurrent shared-world proof",
-        "goal": "Persona: persona-1.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "goal": "Persona: persona-1.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
         "source": "study:concurrent-shared-world-proof",
-        "sourceDigest": "d1280419c49899e1"
+        "sourceDigest": "95d2ec756a612492"
       },
       "packageName": "humanish",
       "redaction": {
@@ -571,14 +601,14 @@
       "id": "persona-1",
       "name": "3 participants in one shared app",
       "source": "study:concurrent-shared-world-proof",
-      "sourceDigest": "d1280419c49899e1"
+      "sourceDigest": "95d2ec756a612492"
     },
     "scenario": {
       "id": "concurrent-shared-world-concurrent-shared-world-proof",
       "title": "Concurrent shared-world proof",
-      "goal": "Persona: persona-1.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "goal": "Persona: persona-1.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
       "source": "study:concurrent-shared-world-proof",
-      "sourceDigest": "d1280419c49899e1"
+      "sourceDigest": "95d2ec756a612492"
     },
     "lifecycle": [
       {
@@ -703,8 +733,18 @@
           "lane": "computer-use",
           "persona": {
             "id": "persona-1",
-            "traitsApplied": [],
-            "promptDigest": "d1280419c49899e1"
+            "traitsApplied": [
+              "patience:medium",
+              "skill:medium"
+            ],
+            "brief": {
+              "compilerVersion": 2,
+              "text": "Persona: persona-1.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+              "digest": "39f549ccb0ba",
+              "redacted": false,
+              "sourceDigest": "db2181d3ba16"
+            },
+            "promptDigest": "95d2ec756a612492"
           },
           "redaction": {
             "status": "passed",
@@ -834,8 +874,18 @@
           "lane": "computer-use",
           "persona": {
             "id": "persona-2",
-            "traitsApplied": [],
-            "promptDigest": "e8770386d592cfb8"
+            "traitsApplied": [
+              "patience:medium",
+              "skill:medium"
+            ],
+            "brief": {
+              "compilerVersion": 2,
+              "text": "Persona: persona-2.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+              "digest": "8033ca03f4d0",
+              "redacted": false,
+              "sourceDigest": "3192710dcb4a"
+            },
+            "promptDigest": "5e52726a56d63145"
           },
           "redaction": {
             "status": "passed",
@@ -965,8 +1015,18 @@
           "lane": "computer-use",
           "persona": {
             "id": "persona-3",
-            "traitsApplied": [],
-            "promptDigest": "29bc06c32acb4323"
+            "traitsApplied": [
+              "patience:medium",
+              "skill:medium"
+            ],
+            "brief": {
+              "compilerVersion": 2,
+              "text": "Persona: persona-3.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
+              "digest": "f7b8359338eb",
+              "redacted": false,
+              "sourceDigest": "5d5d2899f582"
+            },
+            "promptDigest": "914f026471e4afc9"
           },
           "redaction": {
             "status": "passed",

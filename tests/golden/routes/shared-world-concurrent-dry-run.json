@@ -107,14 +107,14 @@
         "id": "persona-1",
         "name": "3 participants in one shared app",
         "source": "study:concurrent-shared-world-proof",
-        "sourceDigest": "d1280419c49899e1"
+        "sourceDigest": "95d2ec756a612492"
       },
       "scenario": {
         "id": "concurrent-shared-world-concurrent-shared-world-proof",
         "title": "Concurrent shared-world proof",
-        "goal": "Persona: persona-1.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "goal": "Persona: persona-1.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
         "source": "study:concurrent-shared-world-proof",
-        "sourceDigest": "d1280419c49899e1"
+        "sourceDigest": "95d2ec756a612492"
       },
       "packageName": "humanish",
       "redaction": {
@@ -294,14 +294,14 @@
       "id": "persona-1",
       "name": "3 participants in one shared app",
       "source": "study:concurrent-shared-world-proof",
-      "sourceDigest": "d1280419c49899e1"
+      "sourceDigest": "95d2ec756a612492"
     },
     "scenario": {
       "id": "concurrent-shared-world-concurrent-shared-world-proof",
       "title": "Concurrent shared-world proof",
-      "goal": "Persona: persona-1.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "goal": "Persona: persona-1.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.\n\nYou are a desktop user (desktop, 1440x950).\n\nUse the shared app.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
       "source": "study:concurrent-shared-world-proof",
-      "sourceDigest": "d1280419c49899e1"
+      "sourceDigest": "95d2ec756a612492"
     },
     "lifecycle": [
       {
