@@ -16,7 +16,7 @@ import { participantList } from "./study-fields.js";
 import type { StudyConfig } from "./types.js";
 
 /** Persona ids are file-name segments, never paths: the same grammar the terminal route enforces. */
-const PERSONA_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
+export const PERSONA_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 /** Title-case an id for the fallback display name (`skeptical-power-user` -> `Skeptical Power User`). */
 export function personaTitleFromId(personaId: string): string {
