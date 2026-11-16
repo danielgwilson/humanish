@@ -165,10 +165,10 @@ export async function runStudyPreflight(
   }
 
   const participants = plannedParticipants(resolved.config);
-  const personas =
+  const personaResolution =
     participants.length === 0
-      ? new Map()
-      : (await resolveCommittedPersonasForCwd(cwd, studyPersonaIds(resolved.config))).personas;
+      ? { personas: new Map(), warnings: [] }
+      : await resolveCommittedPersonasForCwd(cwd, studyPersonaIds(resolved.config));
   const route = routeOf(resolved.config);
   const env = options.env ?? process.env;
   const ctx: PreflightContext = {
@@ -191,7 +191,8 @@ export async function runStudyPreflight(
     sandbox: { created: false },
     warnings: [
       ...resolved.warnings,
-      ...personaBackgroundWarnings(resolved.config.id, participants, personas),
+      ...personaResolution.warnings,
+      ...personaBackgroundWarnings(resolved.config.id, participants, personaResolution.personas),
     ],
   };
 

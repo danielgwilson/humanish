@@ -1,4 +1,11 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { stringify } from "yaml";
+
+import { lab } from "../admission/fixtures.js";
+import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { runStudyPreflight } from "../../src/study/preflight.js";
 
 import {
   parseResolvedPersona,
@@ -181,5 +188,31 @@ describe("parsing writing samples", () => {
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toMatch(/^writing_samples\[2\] /);
     expect(warnings[0]!.includes(key)).toBe(false);
+  });
+});
+
+describe("study check", () => {
+  it("warns about a persona's writing sample that the evidence redaction would change", async () => {
+    const cwd = await makeTestTempDir("humanish-writing-samples-");
+    await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
+    await mkdir(path.join(cwd, "humanish/personas"), { recursive: true });
+    await writeFile(
+      path.join(cwd, "humanish/studies/example.yaml"),
+      stringify(lab("cuAppUrl", {}, { persona: "traveller" })),
+    );
+    const key = "sk-" + "syntheticvalue1234567890abcdef";
+    await writeFile(
+      path.join(cwd, "humanish/personas/traveller.yaml"),
+      stringify({
+        background: "Jordan flies twice a year to see family.",
+        writing_samples: ["hi need to change my flight", `my login is ${key}`],
+      }),
+    );
+    const check = await runStudyPreflight({ cwd, study: "example" });
+    expect(check.ok).toBe(true);
+    const samples = check.warnings.filter((warning) => warning.includes("writing_samples"));
+    expect(samples).toHaveLength(1);
+    expect(samples[0]).toMatch(/^humanish\/personas\/traveller\.yaml: writing_samples\[2\] /);
+    expect(samples[0]!.includes(key)).toBe(false);
   });
 });
