@@ -90,13 +90,18 @@ descriptions).
 
 The paragraph on typing that every computer-use and shared-world participant reads after
 its mission (`DEFAULT_TYPING` in `src/routes/computer-use/participant-prompt.ts`, set per
-study with `actor.typing`) is a narrow instruction of the countable kind. It names what
-people type: a few plain words, often no greeting or thank-you, one thing at a time, and a
-search only as long as the result needs. The same Sim2Real paper reports that simulated
+study with `actor.typing`) is a narrow instruction of the countable kind. It covers a chat
+and a search box and names what people type there: a few plain words, often no greeting or
+thank-you, one thing at a time, and a search only as long as the result needs. Anything else
+the participant writes in the app is as long as the person would make it. The same Sim2Real paper reports that simulated
 users are more polite, write longer turns and give their information up front. In support
 chat tasks with the paragraph, participants' turn length, opening message and details per
 turn moved close to people's. How they used the rest of the app did not change, and their
-search queries stayed longer than people's.
+search queries stayed longer than people's. A first wording covered any message, a search or
+a form answer. With it, participants also wrote shorter entries they meant to keep and shorter
+closing reports, and on the Taskly benchmark a defect that needs a long entry went unreached
+([2026-11-16-typing-paragraph.md](../evidence/benchmark/2026-11-16-typing-paragraph.md)). The
+paragraph now names chat and search only.
 
 ### Outcome-only scoring cannot see modality
 
