@@ -1,9 +1,10 @@
-// buildPersonas turns an export of real sessions into persona files and a roster block.
+// buildPersonas turns an export of real sessions into persona files and a roster block. The
+// examples are a fictional recipe site and a fictional trip planner.
 import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
 
 import { buildPersonas, type PersonaBuild } from "../../src/study/persona-build.js";
-import { parseResolvedPersona } from "../../src/study/persona.js";
+import { parseResolvedPersona, PERSONA_BACKGROUND_MAX_BYTES } from "../../src/study/persona.js";
 
 const lines = (...records: unknown[]): string =>
   records.map((record) => JSON.stringify(record)).join("\n");
@@ -15,6 +16,10 @@ function built(result: PersonaBuild): Extract<PersonaBuild, { ok: true }> {
 
 const background = (contents: string): string =>
   (parse(contents) as { background: string }).background;
+/** The habit lines of a built background, without its intro line. */
+const habitLines = (contents: string): string[] => background(contents).split("\n").slice(1);
+const firstHabits = (result: PersonaBuild): string[] =>
+  habitLines(built(result).files[0]!.contents);
 
 describe("which fields become measures", () => {
   it("reads finite numbers and booleans and skips every other field with its reason", () => {
@@ -22,20 +27,21 @@ describe("which fields become measures", () => {
       buildPersonas({
         // 1e999 parses to Infinity, which JSON itself cannot carry.
         sessionsText: [
-          '{"rounds": 2, "comment": "fun", "device": {"w": 390}, "score": 1e999, "tags": [1], "mixed": 1, "empty": null, "hinted": true}',
-          '{"rounds": 4, "comment": null, "score": 3, "mixed": false, "empty": null, "hinted": false}',
+          '{"stops": 2, "comment": "fun", "device": {"w": 390}, "score": 1e999, "tags": [1], "mixed": 1, "empty": null, "shared": true, "---": 3}',
+          '{"stops": 4, "comment": null, "score": 3, "mixed": false, "empty": null, "shared": false, "---": 4}',
         ].join("\n"),
       }),
     );
     expect(result.fields).toEqual([
-      { name: "rounds", used: true, kind: "number" },
+      { name: "stops", used: true, kind: "number" },
       { name: "comment", used: false, reason: "text" },
       { name: "device", used: false, reason: "nested value" },
       { name: "score", used: false, reason: "not a finite number" },
       { name: "tags", used: false, reason: "nested value" },
       { name: "mixed", used: false, reason: "mixed types" },
       { name: "empty", used: false, reason: "no values" },
-      { name: "hinted", used: true, kind: "yes/no" },
+      { name: "shared", used: true, kind: "yes/no" },
+      { name: "---", used: false, reason: "no letters or digits" },
     ]);
   });
 
@@ -45,50 +51,75 @@ describe("which fields become measures", () => {
     "session_id",
     "userId",
     "accountID",
+    "USERID",
+    "sessionid",
     "visitor-uuid",
     "timestamp",
     "eventTimestamp",
     "created_at",
     "updatedAt",
+    "created_ts",
+    "start_time",
+    "datetime_utc",
+    "epoch_ms",
     "date",
     "visit_date",
-    "firstVisitDate",
     "email",
-    "ip",
     "client_ip",
+    "session_key",
+    "api_token",
+    "row_hash",
+    "phone",
+    "account",
+    "home_address",
+    "zip",
+    "lat",
+    "lng",
+    "longitude",
+    "display_name",
     "session",
     "user",
-  ])("skips %s for its name even when its values are numbers", (name) => {
-    const result = built(buildPersonas({ sessionsText: lines({ [name]: 7, rounds: 1 }) }));
+  ])("skips %s for its name even when its values are small numbers", (name) => {
+    const result = built(buildPersonas({ sessionsText: lines({ [name]: 7, stops_added: 1 }) }));
     expect(result.fields[0]).toEqual({ name, used: false, reason: "identifier or time" });
   });
 
-  it.each(["paid_rounds", "valid_answers", "idle_seconds", "session_count", "user_rating"])(
-    "keeps %s, whose name only contains an identifier word inside another word or as a qualifier",
-    (name) => {
-      const result = built(buildPersonas({ sessionsText: lines({ [name]: 2 }) }));
-      expect(result.fields).toEqual([{ name, used: true, kind: "number" }]);
-    },
-  );
+  it.each(["session_count", "user_rating", "searches_per_visit"])("keeps %s", (name) => {
+    const result = built(buildPersonas({ sessionsText: lines({ [name]: 2 }) }));
+    expect(result.fields).toEqual([{ name, used: true, kind: "number" }]);
+  });
 
-  it("writes nothing from a skipped field into any persona", () => {
+  it("skips a field with a whole number of a billion or more in any session", () => {
     const result = built(
       buildPersonas({
-        sessionsText: lines({ user_id: 4242, note: "left early", rounds: 3 }),
+        sessionsText: lines(
+          { recipes_opened: 3, sync: 4, plan: 99_812_377 },
+          { recipes_opened: 5, sync: 1_731_000_000_004, plan: 2 },
+        ),
       }),
     );
-    const persona = parse(result.files[0]!.contents) as Record<string, unknown>;
-    expect(Object.keys(persona)).toEqual(["schema", "id", "name", "background"]);
-    expect(background(result.files[0]!.contents).split("\n").slice(1)).toEqual([
-      "- rounds: about 3",
+    expect(result.fields).toEqual([
+      { name: "recipes_opened", used: true, kind: "number" },
+      { name: "sync", used: false, reason: "identifier or time" },
+      { name: "plan", used: true, kind: "number" },
     ]);
   });
 
-  it("refuses an export with no measure at all", () => {
-    const result = buildPersonas({ sessionsText: lines({ id: 1, note: "a" }) });
+  it("writes nothing from a skipped field into any persona", () => {
+    const result = built(
+      buildPersonas({ sessionsText: lines({ user_id: 4242, note: "left early", stops_added: 3 }) }),
+    );
+    const persona = parse(result.files[0]!.contents) as Record<string, unknown>;
+    expect(Object.keys(persona)).toEqual(["schema", "id", "name", "background"]);
+    expect(habitLines(result.files[0]!.contents)).toEqual(["- stops added: about 3"]);
+  });
+
+  it("refuses an export with no measure at all, and reports the sessions it read", () => {
+    const result = buildPersonas({ sessionsText: lines({ id: 1, note: "a" }, { id: 2 }) });
     expect(result).toMatchObject({
       ok: false,
       error: { code: "HUMANISH_PERSONAS_NO_MEASURES" },
+      sessions: { read: 2, usable: 0 },
       fields: [
         { name: "id", used: false, reason: "identifier or time" },
         { name: "note", used: false, reason: "text" },
@@ -97,15 +128,67 @@ describe("which fields become measures", () => {
   });
 });
 
+describe("--measures", () => {
+  const exported = lines({
+    stops_added: 2,
+    routes_compared: 1,
+    trip_id: 9,
+    note: "x",
+    legs: [1],
+    start_time: 4,
+    booking: 4_400_000_123,
+  });
+  const used = (result: PersonaBuild) =>
+    built(result)
+      .fields.filter((field) => field.used)
+      .map((field) => field.name);
+
+  it("narrows the measures to the named fields", () => {
+    const result = built(buildPersonas({ sessionsText: exported, measures: ["stops_added"] }));
+    expect(used(result)).toEqual(["stops_added"]);
+    expect(result.fields.find((field) => field.name === "routes_compared")).toEqual({
+      name: "routes_compared",
+      used: false,
+      reason: "not named in --measures",
+    });
+    expect(result.fields.find((field) => field.name === "trip_id")).toEqual({
+      name: "trip_id",
+      used: false,
+      reason: "identifier or time",
+    });
+  });
+
+  it("reads a named field that its name or a large value would skip", () => {
+    const result = built(
+      buildPersonas({ sessionsText: exported, measures: ["start_time", "booking"] }),
+    );
+    expect(used(result)).toEqual(["start_time", "booking"]);
+    expect(habitLines(result.files[0]!.contents)).toEqual([
+      "- start time: about 4",
+      "- booking: about 4400000000",
+    ]);
+  });
+
+  it.each(["note", "legs", "missing"])(
+    "refuses a named field that cannot be a measure: %s",
+    (name) => {
+      expect(buildPersonas({ sessionsText: exported, measures: [name] })).toMatchObject({
+        ok: false,
+        error: { code: "HUMANISH_PERSONAS_INVALID_MEASURE" },
+      });
+    },
+  );
+});
+
 describe("default phrasing", () => {
-  it("writes one line per measure from the field name and the rounded value", () => {
+  it("writes the intro and one line per measure from the field name and the rounded value", () => {
     const result = built(
       buildPersonas({
         sessionsText: lines({
-          rounds_played: 3,
-          picturesViewedPerRound: 2.14,
-          used_a_hint: false,
-          started_another_game: true,
+          recipes_opened: 3,
+          searchesPerVisit: 2.14,
+          saved_a_recipe: false,
+          shared_the_plan: true,
           minutes_on_site: 12.6,
         }),
       }),
@@ -114,17 +197,15 @@ describe("default phrasing", () => {
     expect(background(result.files[0]!.contents)).toBe(
       [
         "How this person used this app on an earlier visit, which is how they use it now:",
-        "- rounds played: about 3",
-        "- pictures viewed per round: about 2.1",
-        "- used a hint: no",
-        "- started another game: yes",
+        "- recipes opened: about 3",
+        "- searches per visit: about 2.1",
+        "- saved a recipe: no",
+        "- shared the plan: yes",
         "- minutes on site: about 13",
       ].join("\n"),
     );
   });
-});
 
-describe("rounding", () => {
   it.each([
     [0, "0"],
     [1, "about 1"],
@@ -134,9 +215,31 @@ describe("rounding", () => {
     [10.5, "about 11"],
     [-2.35, "about -2.4"],
     [140, "about 140"],
+    [999.4, "about 999"],
+    [12_345, "about 12300"],
+    [99_812_377, "about 99800000"],
+    [-45_678.9, "about -45700"],
   ])("renders %s as %s", (value, phrase) => {
-    const result = built(buildPersonas({ sessionsText: lines({ recipes_saved: value }) }));
-    expect(background(result.files[0]!.contents).split("\n")[1]).toBe(`- recipes saved: ${phrase}`);
+    expect(firstHabits(buildPersonas({ sessionsText: lines({ recipes_saved: value }) }))).toEqual([
+      `- recipes saved: ${phrase}`,
+    ]);
+  });
+
+  it("strips control characters from a field name it phrases", () => {
+    expect(
+      firstHabits(buildPersonas({ sessionsText: lines({ "stops\u001b[2J_added": 2 }) })),
+    ).toEqual(["- stops [2 j added: about 2"]);
+  });
+
+  it("refuses a build whose background would pass the persona background limit", () => {
+    const wide = Object.fromEntries(
+      Array.from({ length: 400 }, (_, index) => [`${"w".repeat(80)}_${index}`, index + 1]),
+    );
+    expect(buildPersonas({ sessionsText: lines(wide) })).toMatchObject({
+      ok: false,
+      error: { code: "HUMANISH_PERSONAS_BACKGROUND_TOO_LONG" },
+    });
+    expect(Object.keys(wide).length * 90).toBeGreaterThan(PERSONA_BACKGROUND_MAX_BYTES);
   });
 });
 
@@ -145,29 +248,29 @@ describe("each session's own measures", () => {
     const result = built(
       buildPersonas({
         sessionsText: lines(
-          { photos_rated: 5, shared: null },
-          { photos_rated: null, shared: null },
+          { stops_added: 5, shared: null },
+          { stops_added: null, shared: null },
           { shared: true },
         ),
-        seed: 1,
       }),
     );
     expect(result.sessions).toEqual({ read: 3, usable: 2 });
-    expect(
-      result.files.map((file) => background(file.contents).split("\n").slice(1)).sort(),
-    ).toEqual([["- photos rated: about 5"], ["- shared: yes"]]);
+    expect(result.files.map((file) => habitLines(file.contents)).sort()).toEqual([
+      ["- shared: yes"],
+      ["- stops added: about 5"],
+    ]);
   });
 
   it("writes files the persona parser reads with no warnings, named after the prefix", () => {
     const result = built(
       buildPersonas({
-        sessionsText: lines({ quizzes_finished: 2 }, { quizzes_finished: 6 }),
-        prefix: "quiz-taker",
+        sessionsText: lines({ stops_added: 2 }, { stops_added: 6 }),
+        prefix: "trip-planner",
       }),
     );
     expect(result.files.map(({ id, name }) => ({ id, name }))).toEqual([
-      { id: "quiz-taker-001", name: "quiz-taker-001.yaml" },
-      { id: "quiz-taker-002", name: "quiz-taker-002.yaml" },
+      { id: "trip-planner-001", name: "trip-planner-001.yaml" },
+      { id: "trip-planner-002", name: "trip-planner-002.yaml" },
     ]);
     for (const [index, file] of result.files.entries()) {
       const warnings: string[] = [];
@@ -177,7 +280,7 @@ describe("each session's own measures", () => {
         warnings,
       );
       expect(warnings).toEqual([]);
-      expect(persona).toMatchObject({ id: file.id, name: `Quiz Taker ${index + 1}` });
+      expect(persona).toMatchObject({ id: file.id, name: `Trip Planner ${index + 1}` });
       expect(persona.background?.split("\n")).toHaveLength(2);
     }
   });
@@ -195,9 +298,20 @@ describe("each session's own measures", () => {
 
 describe("sampling", () => {
   const sessions = (count: number) =>
-    lines(...Array.from({ length: count }, (_, index) => ({ pages_read: index })));
+    lines(...Array.from({ length: count }, (_, index) => ({ stops_added: index })));
   const drawnValues = (result: PersonaBuild) =>
-    built(result).files.map((file) => background(file.contents).split("\n")[1]);
+    built(result).files.map((file) => habitLines(file.contents)[0]);
+
+  it("draws a fixed order for a fixed seed", () => {
+    expect(drawnValues(buildPersonas({ sessionsText: sessions(6), seed: 1 }))).toEqual([
+      "- stops added: about 4",
+      "- stops added: about 5",
+      "- stops added: about 2",
+      "- stops added: about 3",
+      "- stops added: 0",
+      "- stops added: about 1",
+    ]);
+  });
 
   it("draws every session, up to 50, when no count is given", () => {
     expect(built(buildPersonas({ sessionsText: sessions(7) })).sampling).toEqual({
@@ -242,51 +356,56 @@ describe("sampling", () => {
   });
 });
 
-describe("--measures", () => {
-  const export_ = lines({ rounds: 2, hints: 1, user_id: 9, note: "x", streak: 4 });
-
-  it("narrows the measures to the named fields", () => {
-    const result = built(buildPersonas({ sessionsText: export_, measures: ["streak", "rounds"] }));
-    expect(result.fields.filter((field) => field.used).map((field) => field.name)).toEqual([
-      "rounds",
-      "streak",
-    ]);
-    expect(result.fields.find((field) => field.name === "hints")).toEqual({
-      name: "hints",
-      used: false,
-      reason: "not named in --measures",
-    });
-  });
-
-  it.each([
-    ["user_id", "identifier or time"],
-    ["note", "text"],
-    ["missing", "not in the sessions file"],
-  ])("refuses a named field that cannot be a measure: %s", (name, reason) => {
-    expect(buildPersonas({ sessionsText: export_, measures: [name] })).toMatchObject({
-      ok: false,
-      error: { code: "HUMANISH_PERSONAS_INVALID_MEASURE", field: name, reason },
-    });
-  });
-});
-
 describe("the sessions file", () => {
   it("reads one JSON array the same as JSON Lines", () => {
-    const records = [{ rounds: 1 }, { rounds: 5 }];
+    const records = [{ stops_added: 1 }, { stops_added: 5 }];
     expect(buildPersonas({ sessionsText: JSON.stringify(records) })).toEqual(
       buildPersonas({ sessionsText: lines(...records) }),
     );
   });
 
+  it("reads JSON Lines that start with a byte order mark", () => {
+    expect(built(buildPersonas({ sessionsText: `﻿${lines({ stops_added: 2 })}` })).sessions).toEqual(
+      { read: 1, usable: 1 },
+    );
+  });
+
+  it("reads a JSON array of 200,000 sessions", () => {
+    const text = JSON.stringify(
+      Array.from({ length: 200_000 }, (_, index) => ({ stops_added: index % 9 })),
+    );
+    expect(built(buildPersonas({ sessionsText: text, count: 3 })).sessions).toEqual({
+      read: 200_000,
+      usable: 200_000,
+    });
+  });
+
+  it("never echoes the file's content when it is not valid JSON", () => {
+    const secret = "Ana Ruiz";
+    for (const text of [
+      `[{"stops_added": 1, "note": "${secret}"},]`,
+      `{"stops_added": 1, "note": "${secret}"`,
+    ]) {
+      const result = buildPersonas({ sessionsText: text });
+      expect(result).toMatchObject({
+        ok: false,
+        error: { code: "HUMANISH_PERSONAS_INVALID_SESSIONS" },
+      });
+      if (result.ok) continue;
+      expect(result.error.message).not.toContain("Ruiz");
+      expect(result.error.message).not.toContain("stops_added");
+    }
+  });
+
   it.each([
-    ['{"rounds": 1}\n{"rounds": 2,\n', 2],
-    ['{"rounds": 1}\n[1, 2]\n', 2],
-    ["\n\n", undefined],
-  ])("names the line that is not a session object", (text, line) => {
-    const result = buildPersonas({ sessionsText: text });
-    expect(result).toMatchObject({
+    '{"stops_added": 1}\n{"stops_added": 2,\n',
+    '{"stops_added": 1}\n[1, 2]\n',
+    "[1, 2]",
+    "\n\n",
+  ])("refuses a file that is not sessions: %j", (text) => {
+    expect(buildPersonas({ sessionsText: text })).toMatchObject({
       ok: false,
-      error: { code: "HUMANISH_PERSONAS_INVALID_SESSIONS", ...(line ? { line } : {}) },
+      error: { code: "HUMANISH_PERSONAS_INVALID_SESSIONS" },
     });
   });
 });
@@ -304,23 +423,28 @@ describe("a habits file", () => {
     '    "true": "they save the recipe they cook"',
     '    "false": "they never save a recipe"',
   ].join("\n");
-  const bodyOf = (records: unknown[], habits = habitsText) =>
-    built(
-      buildPersonas({ sessionsText: lines(...records), habitsText: habits, seed: 3 }),
-    ).files.map((file) => background(file.contents).split("\n"));
+  const bodies = (records: unknown[], habits = habitsText) =>
+    built(buildPersonas({ sessionsText: lines(...records), habitsText: habits })).files.map(
+      (file) => background(file.contents).split("\n"),
+    );
 
   it("phrases each listed measure with its form for zero, one, any other value, true and false", () => {
-    const bodies = bodyOf([
+    const written = bodies([
       { recipes_opened: 0, saved_a_recipe: true, minutes_reading: 4 },
       { recipes_opened: 1.04, saved_a_recipe: false },
       { recipes_opened: 3.46 },
+      { recipes_opened: 0.04 },
     ]).sort((a, b) => a[1]!.localeCompare(b[1]!));
-    expect(bodies).toEqual([
+    expect(written).toEqual([
       [
         "How this cook uses the recipe site on any visit:",
         "- they leave before opening a recipe",
         "- they save the recipe they cook",
         "- minutes reading: about 4",
+      ],
+      [
+        "How this cook uses the recipe site on any visit:",
+        "- they open about 0 recipes before choosing one",
       ],
       [
         "How this cook uses the recipe site on any visit:",
@@ -338,25 +462,16 @@ describe("a habits file", () => {
     const habits = [
       "schema: humanish.habits.v1",
       "measures:",
-      '  photos_guessed: { other: "they guess about {value} photos" }',
-      '  hints_used: { one: "they use one hint" }',
+      '  routes_compared: { other: "they compare about {value} routes" }',
+      '  stops_added: { one: "they add one stop" }',
     ].join("\n");
-    expect(bodyOf([{ photos_guessed: 1, hints_used: 2 }], habits)).toEqual([
-      [
-        "How this person used this app on an earlier visit, which is how they use it now:",
-        "- they guess about 1 photos",
-        "- hints used: about 2",
-      ],
-    ]);
+    expect(
+      bodies([{ routes_compared: 1, stops_added: 2 }], habits).map((body) => body.slice(1)),
+    ).toEqual([["- they compare about 1 routes", "- stops added: about 2"]]);
   });
 
   it("warns about a listed measure the build does not use", () => {
-    const result = built(
-      buildPersonas({
-        sessionsText: lines({ recipes_opened: 2 }),
-        habitsText,
-      }),
-    );
+    const result = built(buildPersonas({ sessionsText: lines({ recipes_opened: 2 }), habitsText }));
     expect(result.warnings).toHaveLength(1);
   });
 
@@ -368,6 +483,14 @@ describe("a habits file", () => {
     [
       "a placeholder other than {value}",
       'schema: humanish.habits.v1\nmeasures:\n  recipes_opened: { other: "about {count} recipes" }',
+    ],
+    [
+      "an unclosed placeholder",
+      'schema: humanish.habits.v1\nmeasures:\n  recipes_opened: { other: "about {value recipes" }',
+    ],
+    [
+      "a stray brace",
+      'schema: humanish.habits.v1\nmeasures:\n  recipes_opened: { other: "about {value}} recipes" }',
     ],
     [
       "{value} in a true or false form",
@@ -385,7 +508,12 @@ describe("a habits file", () => {
       "a form that is not one line of text",
       'schema: humanish.habits.v1\nmeasures:\n  recipes_opened: { other: "a\\nb" }',
     ],
+    [
+      "a form that is not text",
+      "schema: humanish.habits.v1\nmeasures:\n  recipes_opened: { other: 3 }",
+    ],
     ["an intro over 280 characters", `schema: humanish.habits.v1\nintro: ${"x".repeat(281)}`],
+    ["measures that is not a mapping", "schema: humanish.habits.v1\nmeasures: [1]"],
     ["text that is not YAML", "schema: [humanish"],
   ])("refuses %s", (_case, habits) => {
     expect(
