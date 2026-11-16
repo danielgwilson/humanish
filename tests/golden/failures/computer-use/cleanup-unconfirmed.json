@@ -164,7 +164,7 @@
         "skill:medium"
       ],
       "brief": {
-        "compilerVersion": 2,
+        "compilerVersion": 3,
         "text": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
         "digest": "55afb8195831",
         "redacted": false,
@@ -649,7 +649,7 @@
               "skill:medium"
             ],
             "brief": {
-              "compilerVersion": 2,
+              "compilerVersion": 3,
               "text": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
               "digest": "55afb8195831",
               "redacted": false,

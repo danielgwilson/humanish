@@ -156,7 +156,7 @@
         "skill:medium"
       ],
       "brief": {
-        "compilerVersion": 2,
+        "compilerVersion": 3,
         "text": "Persona: persona-1.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
         "digest": "39f549ccb0ba",
         "redacted": false,
@@ -228,7 +228,7 @@
         "skill:medium"
       ],
       "brief": {
-        "compilerVersion": 2,
+        "compilerVersion": 3,
         "text": "Persona: persona-3.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
         "digest": "f7b8359338eb",
         "redacted": false,
@@ -661,7 +661,7 @@
               "skill:medium"
             ],
             "brief": {
-              "compilerVersion": 2,
+              "compilerVersion": 3,
               "text": "Persona: persona-1.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
               "digest": "39f549ccb0ba",
               "redacted": false,
@@ -874,7 +874,7 @@
               "skill:medium"
             ],
             "brief": {
-              "compilerVersion": 2,
+              "compilerVersion": 3,
               "text": "Persona: persona-3.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
               "digest": "f7b8359338eb",
               "redacted": false,

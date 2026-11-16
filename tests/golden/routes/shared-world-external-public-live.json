@@ -134,7 +134,7 @@
         "skill:medium"
       ],
       "brief": {
-        "compilerVersion": 2,
+        "compilerVersion": 3,
         "text": "Persona: party-host.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
         "digest": "b3f01c5a35c2",
         "redacted": false,
@@ -206,7 +206,7 @@
         "skill:medium"
       ],
       "brief": {
-        "compilerVersion": 2,
+        "compilerVersion": 3,
         "text": "Persona: competitive-friend.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
         "digest": "91b6b1103d79",
         "redacted": false,
@@ -278,7 +278,7 @@
         "skill:medium"
       ],
       "brief": {
-        "compilerVersion": 2,
+        "compilerVersion": 3,
         "text": "Persona: casual-friend.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
         "digest": "d66796960be6",
         "redacted": false,
@@ -678,7 +678,7 @@
               "skill:medium"
             ],
             "brief": {
-              "compilerVersion": 2,
+              "compilerVersion": 3,
               "text": "Persona: party-host.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
               "digest": "b3f01c5a35c2",
               "redacted": false,
@@ -825,7 +825,7 @@
               "skill:medium"
             ],
             "brief": {
-              "compilerVersion": 2,
+              "compilerVersion": 3,
               "text": "Persona: competitive-friend.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
               "digest": "91b6b1103d79",
               "redacted": false,
@@ -972,7 +972,7 @@
               "skill:medium"
             ],
             "brief": {
-              "compilerVersion": 2,
+              "compilerVersion": 3,
               "text": "Persona: casual-friend.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
               "digest": "d66796960be6",
               "redacted": false,

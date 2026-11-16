@@ -310,7 +310,7 @@
         "skill:medium"
       ],
       "brief": {
-        "compilerVersion": 2,
+        "compilerVersion": 3,
         "text": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
         "digest": "55afb8195831",
         "redacted": false,
@@ -500,7 +500,7 @@
         "skill:medium"
       ],
       "brief": {
-        "compilerVersion": 2,
+        "compilerVersion": 3,
         "text": "Persona: impatient-skimmer.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
         "digest": "df7e0c0213dc",
         "redacted": false,
@@ -690,7 +690,7 @@
         "skill:medium"
       ],
       "brief": {
-        "compilerVersion": 2,
+        "compilerVersion": 3,
         "text": "Persona: power-user.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
         "digest": "fa3216a861a2",
         "redacted": false,
@@ -881,7 +881,7 @@
         "skill:medium"
       ],
       "brief": {
-        "compilerVersion": 2,
+        "compilerVersion": 3,
         "text": "Persona: comparison-shopper.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
         "digest": "3d0a62e58e47",
         "redacted": false,
@@ -1427,7 +1427,7 @@
               "skill:medium"
             ],
             "brief": {
-              "compilerVersion": 2,
+              "compilerVersion": 3,
               "text": "Persona: first-time-visitor.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
               "digest": "55afb8195831",
               "redacted": false,
@@ -1621,7 +1621,7 @@
               "skill:medium"
             ],
             "brief": {
-              "compilerVersion": 2,
+              "compilerVersion": 3,
               "text": "Persona: impatient-skimmer.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
               "digest": "df7e0c0213dc",
               "redacted": false,
@@ -1810,7 +1810,7 @@
               "skill:medium"
             ],
             "brief": {
-              "compilerVersion": 2,
+              "compilerVersion": 3,
               "text": "Persona: power-user.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
               "digest": "fa3216a861a2",
               "redacted": false,
@@ -2000,7 +2000,7 @@
               "skill:medium"
             ],
             "brief": {
-              "compilerVersion": 2,
+              "compilerVersion": 3,
               "text": "Persona: comparison-shopper.\n\nYou have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.\n\nYou have moderate technical confidence and generally use straightforward paths through the product.",
               "digest": "3d0a62e58e47",
               "redacted": false,
