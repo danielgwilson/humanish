@@ -8,15 +8,6 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
-A persona file can now show how the person writes. `writing_samples` lists up to 8 short messages
-the person typed earlier, and the participant reads them after the background, with a sentence
-saying they were about other things. The run's persona brief records them, and `traitsApplied`
-counts them. A persona without samples sends the same text as before. `study check` now lists a
-persona file's warnings, as `study show` already did, including one for a sample that looks like it
-holds an email address, a long number such as a phone or order number, a key, a token or a local
-path. Keep samples copied from real users in `.humanish/local/personas/`, with names and
-identifiers removed.
-
 ## 0.160.0: See what your runs keep on disk, and finish a remote copy that stopped (2026-11-10)
 
 humanish 0.160.0 shows what your runs keep on disk and lets you clear old ones. `humanish runs`
