@@ -6,6 +6,7 @@ import type { ComputerUsePlan, SharedWorldPlan } from "../../study/plan-types.js
 import type { StudyDeps } from "../../study/study-deps.js";
 import { e2bRequestTimeoutMs } from "../../substrates/e2b/lifetime.js";
 import type { LiveTraceFlush } from "./live-flush.js";
+import { accountCredits } from "./out-of-credits.js";
 import { makeCuaRunBudget } from "./participant-model.js";
 import type { CuaParticipantDeps } from "./types.js";
 
@@ -64,7 +65,8 @@ type DesktopRouteOverrides = {
 
 /**
  * One run's participant deps. Call it once per run: the run budget it creates is the one ledger
- * every participant notes its spend on, and a dry run, which never spends, gets none.
+ * every participant notes its spend on, its account credits are the one latch that stops every
+ * later start, and a dry run, which never spends, gets neither.
  */
 export function desktopParticipantDeps(
   run: DesktopRunFacts,
@@ -78,6 +80,7 @@ export function desktopParticipantDeps(
     desktopModule: seams.desktopModule,
     detachedTimers: seams.detachedTimers,
     runBudget: plan.dryRun || maxTotalUsd === undefined ? undefined : makeCuaRunBudget(maxTotalUsd),
+    credits: plan.dryRun ? undefined : accountCredits(),
   };
   return {
     ...definedFields(optional),

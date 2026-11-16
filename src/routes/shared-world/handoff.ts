@@ -393,9 +393,15 @@ export async function runFollower(
     handoff.timedOut ||= timedOut;
     const reason = handoff.scrub(toErrorMessage(error));
     const at = deps.now();
+    // A host that ran out of credits ended the handoff, and no follower can start after it.
+    const noCredits = deps.runDeps.credits?.notStartedReason();
+    const blocked = makeBlockedFollowerOutcome(spec, reason, timedOut);
     return {
       spec,
-      outcome: makeBlockedFollowerOutcome(spec, reason, timedOut),
+      outcome:
+        noCredits === undefined
+          ? blocked
+          : { ...blocked, skippedReason: noCredits, outOfCredits: "not_started" },
       startedAt: at,
       endedAt: at,
       route: deps.publicAppUrl,

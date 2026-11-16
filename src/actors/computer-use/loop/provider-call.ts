@@ -1,5 +1,9 @@
 import { isComputerUseAdmissionLimitError } from "../admission-limit.js";
-import { ComputerUseProviderError, isComputerUseProviderError } from "../provider-error.js";
+import {
+  ComputerUseProviderError,
+  isComputerUseOutOfCreditsError,
+  isComputerUseProviderError,
+} from "../provider-error.js";
 import { adapterLimit, providerStalledTwice, usageUnreported, type Stop } from "./ending.js";
 import {
   CuaAbortError,
@@ -62,6 +66,9 @@ export async function requestTurn(
     // recorded before any abort listener runs.
     if (isComputerUseAdmissionLimitError(error)) return { stop: session.conclude(adapterLimit) };
     if (error instanceof LostRequestRefused) return { stop: session.conclude(error.stop) };
+    // The provider answered, and an account with no credits was not charged: the stop cause
+    // must survive a strict cap, because the run reads it to stop starting participants.
+    if (isComputerUseOutOfCreditsError(error)) throw error;
     // A thrown request may have been billed without returning usage. Admission refusal is
     // the explicit no-dispatch exception above; strict capped routes cannot safely retry.
     if (session.requiresUsage) {
