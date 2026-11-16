@@ -11,11 +11,13 @@ import { parseStudy } from "../../src/study/config.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { lab, SCENARIO_YAML } from "../admission/fixtures.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const INBOX = "https://3000-isbxwarningfixture01.e2b.app/inbox";
 
 async function project(): Promise<string> {
   const cwd = await makeTestTempDir("humanish-warning-redaction-");
+  await writePersonaFiles(cwd, "first-time-visitor");
   await writeFile(path.join(cwd, "package.json"), '{ "name": "warning-redaction-fixture" }\n');
   await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
   await writeFile(path.join(cwd, "humanish", "scenarios", "adm-journey.yaml"), SCENARIO_YAML);

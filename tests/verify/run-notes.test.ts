@@ -10,6 +10,7 @@ import { writeNoteFile } from "../helpers/note-files.js";
 import { shareSafetyDryRun } from "../helpers/share-safety-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
 import { writeTimedRun } from "../helpers/timed-run.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // Concatenated so this file never holds a secret-shaped literal; the text scan detects it.
 const SYNTHETIC_SECRET = "sk-" + "syntheticvalue1234567890abcdef";
@@ -17,6 +18,7 @@ const SYNTHETIC_SECRET = "sk-" + "syntheticvalue1234567890abcdef";
 describe("verify and reviewer notes", () => {
   it("blocks share_ready when a note file holds a planted secret-shaped value", async () => {
     const cwd = await makeTestTempDir("humanish-notes-verify-");
+    await writePersonaFiles(cwd, "first-time-visitor");
     const { runId, runDir } = await shareSafetyDryRun(cwd);
     expect((await verifyRun(cwd, runId)).shareSafety.status).toBe("share_ready");
 
@@ -34,6 +36,7 @@ describe("verify and reviewer notes", () => {
 
   it("finds nothing in a note whose secret was replaced when it was added", async () => {
     const cwd = await makeTestTempDir("humanish-notes-verify-");
+    await writePersonaFiles(cwd, "first-time-visitor");
     await writeTimedRun(cwd, "timed-verify-run");
     const added = await addRunNote(await bindExistingRunArtifactPaths(cwd, "timed-verify-run"), {
       atMs: 0,

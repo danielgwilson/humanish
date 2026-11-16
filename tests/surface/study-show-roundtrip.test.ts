@@ -16,6 +16,7 @@ import {
   studyShowJson,
   writeStarterProject,
 } from "../helpers/study-corpus.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const FIXTURE = "humanish/studies/mixed-participants.yaml";
@@ -62,6 +63,12 @@ describe("study show --json prints a config parseStudy reads back", () => {
     await copyFile(
       path.join(ROOT, "tests", "fixtures", "study-summary", "mixed-participants.yaml"),
       path.join(fixture, FIXTURE),
+    );
+    await writePersonaFiles(
+      fixture,
+      "synthetic-new-user",
+      "skeptical-power-user",
+      "impatient-skimmer",
     );
     projects.set("fixture", fixture);
   });

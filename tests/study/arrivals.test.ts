@@ -15,6 +15,7 @@ import { runStudyPreflight } from "../../src/study/preflight.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const CONCURRENT = "HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES";
 const CEILING = "HUMANISH_E2B_MAX_SANDBOX_MINUTES";
@@ -206,6 +207,7 @@ describe("the plan's schedule", () => {
 describe("study check", () => {
   it("prints the schedule and does not call a scheduled roster under a concurrency cap waves", async () => {
     const cwd = await makeTestTempDir("humanish-arrivals-check-");
+    await writePersonaFiles(cwd, "first-time-visitor");
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     await writeFile(
       path.join(cwd, "humanish", "studies", "support-desk.yaml"),

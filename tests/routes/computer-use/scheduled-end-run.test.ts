@@ -24,6 +24,7 @@ import {
   scriptedParticipant,
   TWO_TURN_SESSION,
 } from "../../helpers/fanout-desktop.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 const MIN = 60_000;
@@ -67,6 +68,7 @@ describe("a support agent with a scheduled end", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-scheduled-end-"));
+    await writePersonaFiles(cwd, "first-time-visitor");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

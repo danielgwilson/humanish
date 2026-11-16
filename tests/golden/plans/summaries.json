@@ -250,7 +250,7 @@
       "personas": [
         {
           "id": "autonomous-coding-agent",
-          "resolved": false
+          "resolved": true
         }
       ]
     },
@@ -291,7 +291,7 @@
       "personas": [
         {
           "id": "autonomous-coding-agent",
-          "resolved": false
+          "resolved": true
         }
       ]
     },
@@ -308,7 +308,7 @@
       "personas": [
         {
           "id": "autonomous-coding-agent",
-          "resolved": false
+          "resolved": true
         }
       ]
     },
@@ -607,7 +607,7 @@
       "personas": [
         {
           "id": "autonomous-creative-agent",
-          "resolved": false
+          "resolved": true
         }
       ]
     },
@@ -966,7 +966,7 @@
         "schema": "humanish.study-summary.v1",
         "studyId": "mixed-participants",
         "subject": "app-url http://127.0.0.1:3000/",
-        "participants": "synthetic-new-user · skeptical-power-user · fixture-only-persona",
+        "participants": "synthetic-new-user · skeptical-power-user · impatient-skimmer",
         "model": "gpt-6-astra",
         "reasoningEffort": "per-lane",
         "caps": {
@@ -985,8 +985,8 @@
           "resolved": true
         },
         {
-          "id": "fixture-only-persona",
-          "resolved": false
+          "id": "impatient-skimmer",
+          "resolved": true
         }
       ]
     }

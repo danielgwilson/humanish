@@ -224,4 +224,36 @@ export const routeCases: readonly AdmissionCase[] = [
     ),
     parser: "list of at least 2",
   },
+
+  // A persona the study names with no file under humanish/personas: runStudyWith refuses it on
+  // each route that sends a persona, before any desktop, provider or run directory.
+  {
+    name: "computer-use live: named persona with no file",
+    raw: lab("cuAppUrl", live, { persona: "weekend-planner" }),
+    parser: "accepts",
+    options: { env: "keys" },
+    entries: ["runStudy"],
+  },
+  {
+    name: "computer-use dry run: named persona with no file",
+    raw: lab("cuAppUrl", {}, { persona: "weekend-planner" }),
+    parser: "accepts",
+    entries: ["runStudy"],
+  },
+  {
+    name: "shared world live: participant persona with no file",
+    raw: lab("sharedExternal", {
+      ...live,
+      participants: [{ id: "host", host: true, persona: "weekend-planner" }, { id: "guest" }],
+    }),
+    parser: "accepts",
+    options: { env: "keys" },
+    entries: ["runStudy"],
+  },
+  {
+    name: "terminal dry run: named persona with no file",
+    raw: lab("terminal", {}, { persona: "weekend-planner" }),
+    parser: "accepts",
+    entries: ["runStudy"],
+  },
 ];

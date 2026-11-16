@@ -11,6 +11,7 @@ import { parseStudy } from "../../src/study/config.js";
 import { parseResolvedPersona } from "../../src/study/persona.js";
 import { personaBackgroundWarnings } from "../../src/study/warnings.js";
 import { lab, type BaseName } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 function parsed(mission: string, base: BaseName = "cuAppUrl") {
   const result = parseStudy(lab(base, {}, { mission }));
@@ -107,6 +108,7 @@ it("checks participant instructions and task goals but leaves researcher criteri
 
 async function project(raw: unknown): Promise<string> {
   const cwd = await makeTestTempDir("humanish-mission-warnings-");
+  await writePersonaFiles(cwd, "first-time-visitor");
   await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
   await writeFile(path.join(cwd, "humanish/studies/example.yaml"), stringify(raw));
   return cwd;
@@ -150,7 +152,7 @@ it.each(["cuAppUrl", "sharedExternal"] as const)(
       { persona: undefined },
     );
     const cwd = await project(raw);
-    await mkdir(path.join(cwd, "humanish/personas"));
+    await mkdir(path.join(cwd, "humanish/personas"), { recursive: true });
     await writeFile(
       path.join(cwd, "humanish/personas/short-profile.yaml"),
       "name: Trial User\nsummary: Tries a new planning app.\n",
@@ -233,11 +235,12 @@ it("skips scripted-browser and terminal participant text", () => {
 it("uses inherited and overridden persona backgrounds for each participant", async () => {
   const raw = lab(
     "cuAppUrl",
-    { participants: [{ id: "inherited" }, { id: "overridden", persona: "missing" }] },
+    { participants: [{ id: "inherited" }, { id: "overridden", persona: "no-background" }] },
     { persona: "experienced" },
   );
   const cwd = await project(raw);
-  await mkdir(path.join(cwd, "humanish/personas"));
+  await writePersonaFiles(cwd, "no-background");
+  await mkdir(path.join(cwd, "humanish/personas"), { recursive: true });
   await writeFile(
     path.join(cwd, "humanish/personas/experienced.yaml"),
     "background: Plans volunteer shifts in a notebook.\n",

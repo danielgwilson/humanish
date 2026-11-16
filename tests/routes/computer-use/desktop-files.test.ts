@@ -22,6 +22,7 @@ import {
   type FanoutModuleOptions,
 } from "../../helpers/fanout-desktop.js";
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 const PHOTO = "synthetic portrait photo";
@@ -44,6 +45,7 @@ function study(participants: unknown[]): StudyConfig {
 /** A project with the study file at studies/desktop-files.yaml and its fixtures beside it. */
 async function project(): Promise<string> {
   const cwd = await makeTestTempDir("humanish-desktop-files-route-");
+  await writePersonaFiles(cwd, "first-time-visitor");
   await mkdir(path.join(cwd, "studies", "fixtures"), { recursive: true });
   await writeFile(path.join(cwd, "studies", "desktop-files.yaml"), "# the study file\n");
   await writeFile(path.join(cwd, "studies", "fixtures", "photo.png"), PHOTO);

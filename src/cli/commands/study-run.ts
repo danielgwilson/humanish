@@ -8,6 +8,8 @@ import {
 } from "../../analysis/automatic-config.js";
 import { warnAndQueue } from "../deprecations.js";
 import type { StudyResolveFailure } from "../../study/discover.js";
+import { PersonaConfigError } from "../../study/persona.js";
+import { resolveStudyPersonas } from "../../study/persona-resolve.js";
 import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
 import type { PlanResult } from "../../study/plan-types.js";
 import { keyNamesOf } from "../../study/requirements.js";
@@ -60,6 +62,14 @@ export async function runStudyCommand(args: {
   const resolved = await resolveStudyManifest(args.options.cwd, args.study);
   if (!resolved.ok) {
     writeResult(args.command, args.io, resolved, formatStudyResolveFailureHuman);
+    args.io.setExitCode(2);
+    return;
+  }
+  // A persona the study names with no readable file is refused as the study file's problem, before
+  // any key lookup, placement or run. runStudyWith refuses it too, for a library caller.
+  const personaRefusal = await studyPersonaRefusal(args.options.cwd, args.study, resolved);
+  if (personaRefusal !== undefined) {
+    writeResult(args.command, args.io, personaRefusal, formatStudyResolveFailureHuman);
     args.io.setExitCode(2);
     return;
   }
@@ -299,4 +309,25 @@ function ownerKeyConflict(options: StudyCommandOptions): string | undefined {
   if (!/^[0-9a-f]{16}$/.test(options.ownerKey))
     return "--owner-key is 16 lowercase hexadecimal characters.";
   return undefined;
+}
+
+/** The study file failure for a persona the study names that does not resolve, if there is one. */
+async function studyPersonaRefusal(
+  cwd: string,
+  study: string,
+  resolved: { readonly config: StudyConfig; readonly warnings: string[] },
+): Promise<StudyResolveFailure | undefined> {
+  try {
+    await resolveStudyPersonas(cwd, resolved.config);
+    return undefined;
+  } catch (error) {
+    if (!(error instanceof PersonaConfigError)) throw error;
+    return {
+      ok: false,
+      cwd: resolve(cwd),
+      study,
+      error: { code: "HUMANISH_STUDY_INVALID", message: error.message },
+      warnings: resolved.warnings,
+    };
+  }
 }

@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { reclaimRunSandboxes } from "../../src/run/reclaim.js";
 import type { E2BDesktopModule } from "../../src/substrates/e2b/sdk.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // A library caller of runStudyWith gets no signal handler (the CLI installs one, tested in
 // tests/cli/run-interrupt-child.test.ts): the process exits at once. What it leaves is the contract
@@ -77,6 +78,7 @@ describe("a live run signalled mid-session", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-signal-"));
+    await writePersonaFiles(cwd, "first-time-visitor");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

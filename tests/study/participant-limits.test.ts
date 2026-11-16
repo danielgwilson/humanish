@@ -16,6 +16,7 @@ import { runStudyPreflight } from "../../src/study/preflight.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const SETTING = "HUMANISH_E2B_MAX_CONCURRENT_SANDBOXES";
 
@@ -199,6 +200,7 @@ describe("automatic analysis of a study over 16 participants", () => {
 
   it("says in study check's analysis line that 17 participants take two cohort requests the default cap admits", async () => {
     const cwd = await makeTestTempDir("humanish-participant-limits-");
+    await writePersonaFiles(cwd, "first-time-visitor");
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     await writeFile(
       path.join(cwd, "humanish", "studies", "crowd.yaml"),
@@ -227,6 +229,7 @@ describe("automatic analysis of a study over 16 participants", () => {
 describe("a dry run of 40 participants", () => {
   it("finishes ok with every participant planned", async () => {
     const cwd = await makeTestTempDir("humanish-participant-limits-");
+    await writePersonaFiles(cwd, "first-time-visitor");
     const outcome = await runStudyWith(study("cuAppUrl", participants(40)), {
       cwd,
       dryRun: true,

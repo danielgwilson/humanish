@@ -19,6 +19,7 @@ import {
   type FanoutModuleOptions,
 } from "../../helpers/fanout-desktop.js";
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
@@ -31,6 +32,7 @@ interface RunEvent {
 /** Runs a one-participant app-url study from a study file on fake hosted desktops. */
 async function runOne(patch: Record<string, unknown>, fakes: FanoutModuleOptions) {
   const cwd = await makeTestTempDir("humanish-desktop-start-");
+  await writePersonaFiles(cwd, "first-time-visitor");
   await mkdir(path.join(cwd, "studies", "fixtures"), { recursive: true });
   await writeFile(path.join(cwd, "studies", "desktop-start.yaml"), "# the study file\n");
   await writeFile(path.join(cwd, "studies", "fixtures", "photo.png"), "synthetic photo");

@@ -15,8 +15,9 @@ import { planStudy } from "../../src/study/plan.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
 import type { PlanResult, StudyPlan } from "../../src/study/plan-types.js";
 import type { StudyConfig } from "../../src/study/types.js";
-import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
+import { FIXTURE_PERSONAS, lab, type BaseName, type Patch } from "../admission/fixtures.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const CEILING = "HUMANISH_E2B_MAX_SANDBOX_MINUTES";
 const S = 1_000;
@@ -219,6 +220,7 @@ describe("study check and the estimates", () => {
 
   it("prints each participant's window", async () => {
     const cwd = await makeTestTempDir("humanish-session-cap-check-");
+    await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     await writeFile(
       path.join(cwd, "humanish", "studies", "visit.yaml"),

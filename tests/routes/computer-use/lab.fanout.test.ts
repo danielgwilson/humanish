@@ -67,6 +67,7 @@ import type { ProviderContext } from "../../../src/study/run-study-homes.js";
 import { DEVICE_PRESETS } from "../../../src/study/device-presets.js";
 import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const HOLLOW_SESSION = [{ id: "r1", output: [{ type: "message", content: [] }] }];
 const FANOUT_ADAPTER_NAMESPACE = "fanout-browser-adapter-proof";
@@ -173,6 +174,16 @@ describe("computer-use participants come from the plan", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-plan-authority-"));
+    await writePersonaFiles(
+      cwd,
+      "comparison-shopper",
+      "first-time-visitor",
+      "impatient-skimmer",
+      "p",
+      "power-user",
+      "role-a",
+      "role-b",
+    );
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -229,6 +240,16 @@ describe("cua fan-out: dry-run ($0 contract bundle)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-dry-"));
+    await writePersonaFiles(
+      cwd,
+      "comparison-shopper",
+      "first-time-visitor",
+      "impatient-skimmer",
+      "p",
+      "power-user",
+      "role-a",
+      "role-b",
+    );
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -542,6 +563,16 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-live-"));
+    await writePersonaFiles(
+      cwd,
+      "comparison-shopper",
+      "first-time-visitor",
+      "impatient-skimmer",
+      "p",
+      "power-user",
+      "role-a",
+      "role-b",
+    );
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -1101,6 +1132,16 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     const rerunProof = () =>
       (made ??= (async (): Promise<RerunProof> => {
         const project = await mkdtemp(path.join(tmpdir(), "humanish-fanout-rerun-"));
+        await writePersonaFiles(
+          project,
+          "comparison-shopper",
+          "first-time-visitor",
+          "impatient-skimmer",
+          "p",
+          "power-user",
+          "role-a",
+          "role-b",
+        );
         const sourceHandle = makeFanoutModule();
         const sourceOutcome = await runStudyWith(
           fanoutConfig({ concurrency: 4 }),
@@ -2155,6 +2196,16 @@ describe("cua fan-out: engine fail-closed guards", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-guard-"));
+    await writePersonaFiles(
+      cwd,
+      "comparison-shopper",
+      "first-time-visitor",
+      "impatient-skimmer",
+      "p",
+      "power-user",
+      "role-a",
+      "role-b",
+    );
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -2211,6 +2262,16 @@ describe("cua fan-out: cost estimate (sum participant token lines + one aggregat
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-fanout-cost-"));
+    await writePersonaFiles(
+      cwd,
+      "comparison-shopper",
+      "first-time-visitor",
+      "impatient-skimmer",
+      "p",
+      "power-user",
+      "role-a",
+      "role-b",
+    );
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

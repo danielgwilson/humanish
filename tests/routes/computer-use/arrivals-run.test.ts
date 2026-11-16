@@ -26,6 +26,7 @@ import {
   scriptedParticipant,
   TWO_TURN_SESSION,
 } from "../../helpers/fanout-desktop.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
@@ -111,6 +112,7 @@ describe("a computer-use study with a declared schedule", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-arrivals-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "power-user");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -266,6 +268,7 @@ describe("a computer-use study whose participant fails partway through the sched
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-arrivals-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "power-user");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -348,6 +351,7 @@ describe("the live bundle of a computer-use study with a declared schedule", () 
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-arrivals-live-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "power-user");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

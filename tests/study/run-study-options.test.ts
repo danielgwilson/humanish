@@ -16,6 +16,7 @@ import type { StudyConfig } from "../../src/study/types.js";
 import type { CuaParticipantPlan } from "../../src/routes/computer-use/types.js";
 import { trackRuntimeStreams } from "../../src/routes/computer-use/live-flush.js";
 import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 function config(base: BaseName, patch?: Patch): StudyConfig {
   const parsed = parseStudy(lab(base, patch));
@@ -444,6 +445,7 @@ describe("a computer-use dry run through runStudy", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-run-lab-events-"));
+    await writePersonaFiles(cwd, "first-time-visitor");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

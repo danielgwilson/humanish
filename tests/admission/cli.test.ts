@@ -6,12 +6,13 @@
 import { access, mkdir, mkdtemp, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 import { CommanderError } from "commander";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
-import { lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
+import { FIXTURE_PERSONAS, lab, SCENARIO_YAML, type RawLab } from "./fixtures.js";
 
 const subprocess = vi.hoisted(() => ({ calls: 0 }));
 
@@ -36,6 +37,10 @@ const labs: Record<string, RawLab> = {
   "adm-terminal-live": lab("terminal", live),
   "adm-cu-local-tree-live": lab("cuLocalTree", live),
   "adm-cu-live": lab("cuAppUrl", live),
+  // Each names a persona that has no file under humanish/personas.
+  "adm-cu-persona-missing": lab("cuAppUrl", live, { persona: "weekend-planner" }),
+  "adm-shared-persona-missing": lab("sharedProvisioned", live, { persona: "weekend-planner" }),
+  "adm-terminal-persona-missing": lab("terminal", live, { persona: "weekend-planner" }),
 };
 
 // Writes a marker when imported, so a case can tell whether scorer host code ran.
@@ -79,6 +84,14 @@ const cases: readonly (readonly string[])[] = [
   ["run", "adm-clone-codex-app-server", "--json"],
   ["study", "show", "adm-clone-codex-app-server", "--json"],
   ["run", "adm-clone-no-serve", "--json"],
+  // A named persona with no file stops run, a dry run, watch and check, and show reports it.
+  ["run", "adm-cu-persona-missing", "--json"],
+  ["run", "adm-cu-persona-missing", "--dry-run", "--json"],
+  ["watch", "adm-shared-persona-missing", "--json"],
+  ["run", "adm-terminal-persona-missing", "--json"],
+  ["study", "check", "adm-terminal-persona-missing", "--json"],
+  ["study", "check", "adm-cu-persona-missing", "--json"],
+  ["study", "show", "adm-shared-persona-missing", "--json"],
 ];
 
 const cleanup: string[] = [];
@@ -94,6 +107,7 @@ beforeEach(() => {
 
 async function projectDir(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-admission-cli-"));
+  await writePersonaFiles(dir, ...FIXTURE_PERSONAS);
   cleanup.push(dir);
   await writeFile(path.join(dir, "package.json"), '{ "name": "admission-fixture" }\n');
   await writeFile(path.join(dir, "scorer.mjs"), SCORER);

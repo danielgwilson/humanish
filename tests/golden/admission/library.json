@@ -4034,5 +4034,73 @@
       "runner": "shared-world",
       "sameAsRunStudy": true
     }
+  },
+  "computer-use live: named persona with no file": {
+    "parser": {
+      "ok": true
+    },
+    "runStudy": {
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
+      "result": {
+        "threw": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+      }
+    }
+  },
+  "computer-use dry run: named persona with no file": {
+    "parser": {
+      "ok": true
+    },
+    "runStudy": {
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
+      "result": {
+        "threw": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+      }
+    }
+  },
+  "shared world live: participant persona with no file": {
+    "parser": {
+      "ok": true
+    },
+    "runStudy": {
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
+      "result": {
+        "threw": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+      }
+    }
+  },
+  "terminal dry run: named persona with no file": {
+    "parser": {
+      "ok": true
+    },
+    "runStudy": {
+      "runs": false,
+      "calls": {
+        "desktop": 0,
+        "executor": 0,
+        "provider": 0,
+        "subprocess": 0
+      },
+      "result": {
+        "threw": "The study names persona weekend-planner, and it has no persona file, so its participants would get only the id. humanish looked for humanish/personas/weekend-planner.yaml, humanish/personas/weekend-planner.yml, .humanish/local/personas/weekend-planner.yaml, .humanish/local/personas/weekend-planner.yml. The file name must be the persona id followed by .yaml.\n\nAdd the file, for example humanish/personas/weekend-planner.yaml:\n\nschema: humanish.persona.v1\nid: weekend-planner\n# background: >-\n#   A short, fictional description of who this person is and what they want.\n\nOr remove the persona line from the study."
+      }
+    }
   }
 }

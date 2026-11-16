@@ -9,10 +9,12 @@ import type { StudyOutcome } from "../../src/run-study.js";
 import { parseStudy } from "../../src/study/config.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import { lab } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-remote-dispatch-"));
+  await writePersonaFiles(cwd, "first-time-visitor");
 });
 afterEach(() => rm(cwd, { recursive: true, force: true }));
 

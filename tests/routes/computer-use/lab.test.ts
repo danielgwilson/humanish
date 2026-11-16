@@ -96,6 +96,7 @@ import { NODE_BOOTSTRAP_COMMAND } from "../../../src/subject/node-bootstrap.js";
 import { runAdmitted, runComputerUse } from "../../helpers/route-run.js";
 import { x11vncRemote } from "../../helpers/x11vnc-remote.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. The desktop module fake serves both faces of the sandbox: the
@@ -508,6 +509,7 @@ describe("lab routing (app-url → cua)", () => {
     });
     expect(routeOf(meta)).toBe("computer-use");
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-clone-actor-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
     try {
       const outcome = await runStudyWith(meta, { cwd, dryRun: true });
       expect(outcome.route).toBe("computer-use");
@@ -534,6 +536,7 @@ describe("desktop-cli runtime prerequisites", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-desktop-cli-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -1086,6 +1089,7 @@ describe("runCuaActorLab", () => {
 
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-lab-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
 
   afterEach(async () => {
@@ -4984,6 +4988,7 @@ describe("execution.desktop.template (custom E2B desktop image, single-participa
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-template-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -5063,6 +5068,7 @@ describe("Chrome DevTools readiness after launch", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-devtools-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -5192,6 +5198,7 @@ describe("subject.state (seed/migrate/fixtures on the clone route)", () => {
 
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-state-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
 
   afterEach(async () => {
@@ -5654,6 +5661,7 @@ describe("buildSingleParticipantBundle", () => {
     let cwd: string;
     beforeEach(async () => {
       cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-local-tree-"));
+      await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
     });
     afterEach(async () => {
       await rm(cwd, { recursive: true, force: true });
@@ -6414,6 +6422,7 @@ describe("runCuaActorLab in-process (state-driven, no E2B)", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-inproc-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -6805,6 +6814,7 @@ describe("runCuaActorLab budget/timeout semantics + live serve", () => {
 
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-budget-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await Promise.all(openServers.splice(0).map((server) => server.close()));
@@ -7220,6 +7230,7 @@ describe("runCuaActorLab cost estimates", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-cost-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });
@@ -7558,6 +7569,7 @@ describe("adopter-hosted comms on the app-url route", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-external-cwd-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await rm(cwd, { force: true, recursive: true });
@@ -7617,6 +7629,7 @@ describe("adopter-hosted comms on the app-url route", () => {
     // actual implementation.
     const TOKEN = "test-token-not-a-secret";
     const dir = await mkdtemp(path.join(tmpdir(), "humanish-cua-external-"));
+    await writePersonaFiles(dir, "first-time-visitor", "pixel-pat");
     const scriptPath = path.join(dir, "catch.py");
     const surface = path.join(dir, "surface");
     await mkdir(surface, { recursive: true });
@@ -7724,6 +7737,7 @@ describe("adopter-hosted comms on the app-url route", () => {
 describe("computer-use run id reuse", () => {
   it("refuses a live run whose run id names an existing run, before any sandbox or analysis", async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-run-id-"));
+    await writePersonaFiles(cwd, "first-time-visitor", "pixel-pat");
     try {
       const older = await runStudyWith(cuaConfig(), { cwd, dryRun: true, runId: "older-run" });
       expect(older.result.ok).toBe(true);
@@ -7778,6 +7792,7 @@ describe("computer-use run directory goldens", () => {
   let goldenCwd: string;
   beforeEach(async () => {
     goldenCwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-golden-"));
+    await writePersonaFiles(goldenCwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await rm(goldenCwd, { recursive: true, force: true });
@@ -7916,6 +7931,7 @@ describe("computer-use captions and summaries", () => {
   let goldenCwd: string;
   beforeEach(async () => {
     goldenCwd = await mkdtemp(path.join(tmpdir(), "humanish-cua-caption-"));
+    await writePersonaFiles(goldenCwd, "first-time-visitor", "pixel-pat");
   });
   afterEach(async () => {
     await rm(goldenCwd, { recursive: true, force: true });

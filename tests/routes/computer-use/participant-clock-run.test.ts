@@ -21,6 +21,7 @@ import { runStudyWith } from "../../../src/run-study.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { lab } from "../../admission/fixtures.js";
 import { makeFanoutModule, type FanoutModuleOptions } from "../../helpers/fanout-desktop.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
@@ -123,6 +124,7 @@ async function terminalZoneOnBash(script: string, dir: string): Promise<string> 
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-participant-clock-"));
+  await writePersonaFiles(cwd, "first-time-visitor");
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });

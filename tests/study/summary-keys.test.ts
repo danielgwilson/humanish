@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import { stringify } from "yaml";
 import { STUDY_SCHEMA } from "../../src/study/types.js";
 import { readStudySummary } from "../../src/study/summary.js";
-import { lab as admissionLab } from "../admission/fixtures.js";
+import { FIXTURE_PERSONAS, lab as admissionLab } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const base = {
   schema: STUDY_SCHEMA,
@@ -19,6 +20,7 @@ const base = {
 
 async function summary(config: unknown, env: NodeJS.ProcessEnv) {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-summary-keys-"));
+  await writePersonaFiles(cwd, "p-one", "p-two", ...FIXTURE_PERSONAS);
   try {
     await mkdir(path.join(cwd, "humanish/studies"), { recursive: true });
     await writeFile(path.join(cwd, "humanish/studies/key-check.yaml"), stringify(config));

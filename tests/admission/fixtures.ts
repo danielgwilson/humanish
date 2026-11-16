@@ -119,6 +119,14 @@ const bases = {
 
 export type BaseName = keyof typeof bases;
 
+/** The personas the computer-use, shared-world and terminal bases name, which need their files. */
+export const FIXTURE_PERSONAS = [
+  "first-time-visitor",
+  "autonomous-creative-agent",
+  "persona-1",
+  "persona-2",
+] as const;
+
 /** A patch value of `undefined` deletes the key; arrays and scalars replace. */
 export type Patch = { readonly [key: string]: unknown };
 

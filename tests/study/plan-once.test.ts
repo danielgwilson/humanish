@@ -64,6 +64,7 @@ import { routeOf } from "../../src/study/plan.js";
 import { parseStudy } from "../../src/study/config.js";
 import type { StudyConfig } from "../../src/study/types.js";
 import { lab, SCENARIO_YAML, type BaseName, type Patch } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 function parsed(base: BaseName, patch: Patch = {}): StudyConfig {
   const result = parseStudy(lab(base, patch));
@@ -84,6 +85,14 @@ describe("runStudy plans each study once", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-plan-once-"));
+    await writePersonaFiles(
+      cwd,
+      "autonomous-creative-agent",
+      "first-time-visitor",
+      "persona-1",
+      "persona-2",
+      "persona-3",
+    );
     await mkdir(path.join(cwd, "humanish", "scenarios"), { recursive: true });
     await writeFile(path.join(cwd, "humanish", "scenarios", "adm-journey.yaml"), SCENARIO_YAML);
     counts.planStudy = 0;

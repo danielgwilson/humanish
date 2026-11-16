@@ -11,6 +11,7 @@ import { mapWithConcurrency } from "../../src/run/concurrency.js";
 import { verifyRun } from "../../src/verify/verify.js";
 import { shareSafetyDryRun } from "../helpers/share-safety-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // The scan lists a directory with readdir(path); storage validation passes options. One listing of
 // `target` by the scan fails as a transient permission error would.
@@ -69,6 +70,7 @@ async function verifyCli(
 describe("the public-safety scan's directory listing", () => {
   it("names a directory it could not list as unscanned", async () => {
     const cwd = await makeTestTempDir("humanish-scan-listing-");
+    await writePersonaFiles(cwd, "first-time-visitor");
     const { runId, runDir } = await shareSafetyDryRun(cwd);
     const extras = path.join(await realpath(runDir), "extras");
     await mkdir(extras);
@@ -86,6 +88,7 @@ describe("the public-safety scan's directory listing", () => {
 
   it("reads 15,000 entries of a one-participant run and names the stop past them", async () => {
     const cwd = await makeTestTempDir("humanish-scan-entries-");
+    await writePersonaFiles(cwd, "first-time-visitor");
     const { runId, runDir } = await shareSafetyDryRun(cwd);
     const runEntries = (await readdir(runDir, { recursive: true })).length;
     // Empty directories: the walk counts them without reading any file. The run's own files and

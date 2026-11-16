@@ -248,14 +248,15 @@ export function formatParticipantPlanEntry(entry: CuaParticipantPlanEntry): stri
 
 /**
  * Compile the committed persona files the participants use, printing a warning for each one that
- * is missing. A refusal that comes after this step reads them first, so a persona-file error still
- * wins over it.
+ * is missing. prepareStudy has already refused a named persona with no file, so a missing one here
+ * comes from a caller that planned the route itself. A refusal that comes after this step reads
+ * them first, so an unreadable or invalid persona file still wins over it.
  */
 export async function compileParticipantPersonas(
   projectRoot: PreparedSelectedOutputDirectory,
   personaIds: readonly (string | undefined)[],
 ): Promise<Map<string, ResolvedPersona>> {
-  const resolution = await resolveCommittedPersonas(projectRoot, personaIds);
+  const resolution = await resolveCommittedPersonas(projectRoot, personaIds, { required: false });
   for (const warning of resolution.warnings) {
     process.stderr.write(`humanish: ${warning}\n`);
   }

@@ -30,6 +30,7 @@ import {
   TWO_TURN_SESSION,
 } from "../helpers/fanout-desktop.js";
 import { readRunWithTraces, writeRunBundle } from "../helpers/run-traces.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const KEYS = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 const VERSIONS = ["v4", "v3", "v2", "v1"] as const;
@@ -113,6 +114,7 @@ async function keepRun(): Promise<{
   faulted: Record<Version, string>;
 }> {
   const source = await mkdtemp(path.join(tmpdir(), "humanish-trace-source-"));
+  await writePersonaFiles(source, "first-time-visitor");
   projects.push(source);
   const parsed = parseStudy(
     lab("cuAppUrl", { mode: "live", participants: [{ id: "first" }, { id: "second" }] }),

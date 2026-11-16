@@ -22,6 +22,7 @@ import {
   type FanoutModuleOptions,
 } from "../../helpers/fanout-desktop.js";
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
@@ -108,6 +109,7 @@ describe("the hosted desktop's screen saver", () => {
     expect(stepsOf(0)).toEqual(["browser", "wait 8000 ms", "screen saver"]);
     expect(stepsOf(1)).toEqual(["browser", "wait 8000 ms", "screen saver"]);
     const dir = await makeTestTempDir("humanish-desktop-screen-bash-");
+    await writePersonaFiles(dir, "first-time-visitor");
     const script = screenCommands[0]!;
     expect(await xsetCallsOnBash(script, path.join(dir, "with"), true)).toEqual([
       "DISPLAY=:0 s off",

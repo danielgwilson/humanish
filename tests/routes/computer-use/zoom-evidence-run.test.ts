@@ -19,6 +19,7 @@ import { verifyRun } from "../../../src/verify/verify.js";
 import { lab } from "../../admission/fixtures.js";
 import { makeFanoutModule } from "../../helpers/fanout-desktop.js";
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const ENV = { OPENAI_API_KEY: "test-openai-key", E2B_API_KEY: "test-e2b-key" };
 
@@ -56,6 +57,7 @@ async function runZooming(
   if (!parsed.ok) throw new Error(parsed.error.message);
   const handle = makeFanoutModule({});
   const cwd = await makeTestTempDir("humanish-zoom-evidence-run-");
+  await writePersonaFiles(cwd, "first-time-visitor");
   const outcome = await runStudyWith(
     parsed.config,
     { cwd, env: ENV, open: false },

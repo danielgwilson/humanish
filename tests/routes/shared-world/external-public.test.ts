@@ -69,6 +69,7 @@ import { formatConcurrentSharedWorldStudyHuman } from "../../../src/cli/commands
 import { HARNESS_WORDS } from "../../helpers/harness-words.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../../src/substrates/e2b/lifetime.js";
 import { x11vncRemote } from "../../helpers/x11vnc-remote.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 // ---------------------------------------------------------------------------
 // Fakes. Same N-substrate shape as the concurrent-shared-world harness, but the
@@ -413,6 +414,7 @@ function makeExternalSeams(
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-external-public-"));
+  await writePersonaFiles(cwd, "casual-friend", "competitive-friend", "party-host");
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });

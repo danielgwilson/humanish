@@ -20,6 +20,7 @@ import {
   TWO_TURN_SESSION,
 } from "../../helpers/fanout-desktop.js";
 import { makeTestTempDir } from "../../helpers/temp-dir.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const ENV = {
   OPENAI_API_KEY: "test-openai-key",
@@ -84,6 +85,7 @@ describe("planning a computer-use study on a Modal desktop", () => {
 describe("a computer-use run on a Modal desktop", () => {
   it("journals Modal's sandbox and records a modal-desktop priced at Modal's rate", async () => {
     const cwd = await makeTestTempDir("humanish-modal-desktop-run-");
+    await writePersonaFiles(cwd, "first-time-visitor");
     const handle = makeFanoutModule();
     const outcome = await runStudyWith(
       study(),

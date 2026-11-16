@@ -32,10 +32,13 @@ export async function resolveTerminalPersona(args: {
 }): Promise<TerminalPersona> {
   const personaId = args.plan.personaId ?? "autonomous-terminal-agent";
   const physicalCwd = await realpath(args.cwd);
-  // Resolve the committed persona so its traits actually shape the agent prompt; fail-safe to
-  // the bare persona id (no traits applied) when no persona file is committed.
+  // Resolve the committed persona so its traits actually shape the agent prompt. prepareStudy has
+  // already refused a named persona with no file, so only the built-in fallback id, which no study
+  // names, reaches here without one and runs as the bare id.
   const projectRoot = await prepareSelectedOutputDirectory(path.dirname(physicalCwd), physicalCwd);
-  const { persona, warnings } = await resolveCommittedPersona(projectRoot, personaId);
+  const { persona, warnings } = await resolveCommittedPersona(projectRoot, personaId, {
+    required: false,
+  });
   args.warnings.push(...warnings);
   return {
     personaId,

@@ -16,8 +16,9 @@ import { planStudy } from "../../src/study/plan.js";
 import { runStudyPreflight } from "../../src/study/preflight.js";
 import type { PlanResult, StudyPlan } from "../../src/study/plan-types.js";
 import type { StudyConfig } from "../../src/study/types.js";
-import { lab, type BaseName, type Patch } from "../admission/fixtures.js";
+import { FIXTURE_PERSONAS, lab, type BaseName, type Patch } from "../admission/fixtures.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 function study(base: BaseName, patch: Patch = {}): StudyConfig {
   const parsed = parseStudy(lab(base, patch));
@@ -248,6 +249,7 @@ describe("study check and study show", () => {
 
   async function studyDir(patch: Patch): Promise<string> {
     const cwd = await makeTestTempDir("humanish-participant-clock-");
+    await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
     await mkdir(path.join(cwd, "humanish", "studies"), { recursive: true });
     await writeFile(path.join(cwd, "package.json"), '{ "name": "clock-fixture" }\n');
     await writeFile(

@@ -12,10 +12,12 @@ import { STUDY_SCHEMA, type StudyConfig } from "../../../src/study/types.js";
 import { verifyRun } from "../../../src/verify/verify.js";
 import { libraryConfig } from "../../helpers/library-config.js";
 import { runComputerUse } from "../../helpers/route-run.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-subject-kind-"));
+  await writePersonaFiles(cwd, "first-time-visitor");
 });
 afterEach(async () => {
   vi.unstubAllGlobals();

@@ -7,7 +7,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { E2BDesktopModule, E2BDesktopSandbox } from "../../src/substrates/e2b/sdk.js";
 import { runStudyPreflight, type StudyPreflightResult } from "../../src/study/preflight.js";
 import { createProgram } from "../../src/cli/program.js";
-import { lab, SCENARIO_YAML } from "../admission/fixtures.js";
+import { FIXTURE_PERSONAS, lab, SCENARIO_YAML } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 interface CliResult {
   exitCode: number;
@@ -421,6 +422,7 @@ async function withTempLab<T>(
   callback: (cwd: string) => Promise<T>,
 ): Promise<T> {
   const cwd = await mkdtemp(path.join(tmpdir(), "humanish-lab-preflight-"));
+  await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
   try {
     for (const [relativePath, contents] of Object.entries(files)) {
       const filePath = path.join(cwd, relativePath);

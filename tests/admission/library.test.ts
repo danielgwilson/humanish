@@ -7,6 +7,7 @@
 import { mkdir, mkdtemp, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { parseStudy } from "../../src/study/config.js";
@@ -14,7 +15,7 @@ import { runStudyWith, type InternalRunStudyOptions } from "../../src/run-study.
 import type { ComputerUseRunInput } from "../../src/routes/computer-use/types.js";
 import { resolveStudyDryRun, routeOf, type StudyRoute } from "../../src/study/plan.js";
 import type { StudyConfig } from "../../src/study/types.js";
-import { lab, SCENARIO_YAML } from "./fixtures.js";
+import { FIXTURE_PERSONAS, lab, SCENARIO_YAML } from "./fixtures.js";
 import { libraryConfig } from "../helpers/library-config.js";
 import { parserCases, type AdmissionCase, type AdmissionOptions } from "./parser-cases.js";
 import { routeCases } from "./route-cases.js";
@@ -45,6 +46,7 @@ afterAll(async () => {
 
 async function projectDir(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), "humanish-admission-"));
+  await writePersonaFiles(dir, ...FIXTURE_PERSONAS);
   cleanup.push(dir);
   await writeFile(path.join(dir, "package.json"), '{ "name": "admission-fixture" }\n');
   await mkdir(path.join(dir, "humanish", "scenarios"), { recursive: true });

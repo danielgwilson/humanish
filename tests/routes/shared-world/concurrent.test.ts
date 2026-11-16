@@ -75,6 +75,7 @@ import {
   makeTrace,
   waitForCondition,
 } from "../../helpers/shared-world-fakes.js";
+import { writePersonaFiles } from "../../helpers/persona-files.js";
 
 const CONCURRENT_ADAPTER_NAMESPACE = "concurrent-browser-adapter-proof";
 
@@ -95,6 +96,15 @@ function concurrentFailScore(ctx: BrowserScoringContext): RunAdapterScore {
 let cwd: string;
 beforeEach(async () => {
   cwd = await mkdtemp(path.join(tmpdir(), "humanish-concurrent-sw-"));
+  await writePersonaFiles(
+    cwd,
+    "on-the-go-contributor",
+    "ops-coordinator",
+    "persona-1",
+    "persona-2",
+    "persona-3",
+    "weekly-planner",
+  );
 });
 afterEach(async () => {
   await rm(cwd, { recursive: true, force: true });
@@ -1916,6 +1926,15 @@ describe("concurrent shared-world verify findings golden", () => {
   const goodRun = () =>
     (shared ??= (async () => {
       const project = await mkdtemp(path.join(tmpdir(), "humanish-concurrent-golden-"));
+      await writePersonaFiles(
+        project,
+        "on-the-go-contributor",
+        "ops-coordinator",
+        "persona-1",
+        "persona-2",
+        "persona-3",
+        "weekly-planner",
+      );
       const run = await goodConcurrentRun(undefined, project);
       // The bundle with its traces loaded; each case writes its edit of it back, traces included.
       const original = JSON.stringify(await readRunWithTraces(path.dirname(run.bundlePath)));
@@ -2538,6 +2557,15 @@ describe("concurrent shared-world run directory goldens", () => {
   let goldenCwd: string;
   beforeEach(async () => {
     goldenCwd = await mkdtemp(path.join(tmpdir(), "humanish-csw-golden-"));
+    await writePersonaFiles(
+      goldenCwd,
+      "on-the-go-contributor",
+      "ops-coordinator",
+      "persona-1",
+      "persona-2",
+      "persona-3",
+      "weekly-planner",
+    );
   });
   afterEach(async () => {
     await rm(goldenCwd, { recursive: true, force: true });
@@ -2843,6 +2871,15 @@ describe("concurrent shared-world run failure naming", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-sw-run-failure-"));
+    await writePersonaFiles(
+      cwd,
+      "on-the-go-contributor",
+      "ops-coordinator",
+      "persona-1",
+      "persona-2",
+      "persona-3",
+      "weekly-planner",
+    );
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

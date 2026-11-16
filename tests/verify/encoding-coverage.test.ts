@@ -10,6 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { verifyRun } from "../../src/verify/verify.js";
 import { shareSafetyDryRun, startSafeLibrary } from "../helpers/share-safety-run.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 // Concatenated so this file never holds a secret-shaped literal.
 const SECRET = "sk-" + "syntheticvalue1234567890abcdef";
@@ -151,6 +152,7 @@ describe("encoding coverage", () => {
 
   beforeAll(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-encoding-coverage-"));
+    await writePersonaFiles(cwd, "first-time-visitor");
     for (const [name, file] of Object.entries(CASES)) {
       const { runId, runDir } = await shareSafetyDryRun(cwd);
       await mkdir(path.join(runDir, "adapter"), { recursive: true });

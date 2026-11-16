@@ -9,7 +9,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { stringify } from "yaml";
 
 import { createProgram } from "../../src/cli/program.js";
-import { lab } from "../admission/fixtures.js";
+import { FIXTURE_PERSONAS, lab } from "../admission/fixtures.js";
+import { writePersonaFiles } from "../helpers/persona-files.js";
 
 const RUN_FLAGS = ["--scorer", "--rerun-failed-from", "--participants"];
 
@@ -134,6 +135,7 @@ describe("run takes the rerun and scorer flags", () => {
       path.join(cwd, "humanish", "studies", "fanout.yaml"),
       stringify({ ...raw, id: "fanout" }),
     );
+    await writePersonaFiles(cwd, ...FIXTURE_PERSONAS);
   });
   afterEach(async () => {
     await rm(cwd, { recursive: true, force: true });

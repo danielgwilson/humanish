@@ -218,10 +218,12 @@ export async function buildParticipantSpecs(
   scrubKnownValues: (text: string) => string,
 ): Promise<DesktopParticipantRun[]> {
   // Only the personas the participants use: an actor.persona that every participant overrides
-  // is never applied, so it is not read.
+  // is never applied, so it is not read. prepareStudy has already refused a named persona with no
+  // file.
   const personaResolution = await resolveCommittedPersonasForCwd(
     cwd,
     participants.map((participant) => participant.personaId),
+    { required: false },
   );
   const actorSpecs = participants.map((participant) =>
     buildActorSpec(participant, personaResolution.personas),
