@@ -420,6 +420,13 @@ export interface StudyActor {
    */
   tasks?: StudyTask[];
   /**
+   * Computer-use and shared-world: the paragraph on typing each participant reads after the
+   * mission. Absent means the built-in paragraph (DEFAULT_TYPING in
+   * src/routes/computer-use/participant-prompt.ts), `false` leaves it out, and a string replaces
+   * it. Other routes fail preflight.
+   */
+  typing?: string | false;
+  /**
    * The participant model. For `computer-use`, the vendor comes from the participant model table
    * (src/actors/computer-use/models.ts); `openai-computer-use` runs any id on OpenAI.
    */

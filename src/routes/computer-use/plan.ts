@@ -50,6 +50,7 @@ import {
   taskProtocolValidationReason,
   waitLimitValidationReason,
 } from "../../study/validation.js";
+import { typingValueReason } from "../../study/parse/actors.js";
 import { desktopCliProductReason } from "../../study/composition-rules.js";
 import { isLocalBrowserStudy } from "../../substrates/local/runtime-config.js";
 import {
@@ -569,6 +570,9 @@ export function planComputerUseStudy(
     return refuse("before-scope", "HUMANISH_STUDY_ANALYSIS_INVALID", analysis.message);
   const tasksReason = taskProtocolValidationReason(config, true);
   if (tasksReason) return refuse("before-scope", "HUMANISH_STUDY_TASKS_UNSUPPORTED", tasksReason);
+  // The parser checks this too; a library caller skips the parser.
+  const typingReason = typingValueReason(config.actor?.typing);
+  if (typingReason) return refuse("before-scope", "HUMANISH_STUDY_INVALID", typingReason);
 
   // The parser checks the actor too; a library caller skips the parser.
   const actorType = config.actor?.type ?? "";

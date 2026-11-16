@@ -33,7 +33,7 @@
             1280,
             800
           ],
-          "instructionDigest": "0103ee312c3c19e5"
+          "instructionDigest": "9e5dc1253c4b809a"
         }
       ]
     },
@@ -159,14 +159,14 @@
         "id": "first-time-visitor",
         "name": "Computer-use operator (first-time-visitor)",
         "source": "study:cua-routing-proof",
-        "sourceDigest": "0103ee312c3c19e5"
+        "sourceDigest": "9e5dc1253c4b809a"
       },
       "scenario": {
         "id": "cua-cua-routing-proof",
         "title": "CUA routing proof",
-        "goal": "Persona: first-time-visitor.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nYour focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+        "goal": "Persona: first-time-visitor.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
         "source": "study:cua-routing-proof",
-        "sourceDigest": "0103ee312c3c19e5"
+        "sourceDigest": "9e5dc1253c4b809a"
       },
       "packageName": "humanish",
       "redaction": {
@@ -302,14 +302,14 @@
       "id": "first-time-visitor",
       "name": "Computer-use operator (first-time-visitor)",
       "source": "study:cua-routing-proof",
-      "sourceDigest": "0103ee312c3c19e5"
+      "sourceDigest": "9e5dc1253c4b809a"
     },
     "scenario": {
       "id": "cua-cua-routing-proof",
       "title": "CUA routing proof",
-      "goal": "Persona: first-time-visitor.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nYour focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
+      "goal": "Persona: first-time-visitor.\n\nYou are a desktop user (custom, 1280x800).\n\nExplore the app and stop.\n\nWhen you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.\n\nYour focus: Focus on the landing page.\n\nWhen you stop, make the FIRST line of your last message exactly one of these three, on its own line: REACHED THE GOAL. / DID NOT REACH THE GOAL. / BLOCKED. Then, from the next line, say what you did, what confused you, and where you hesitated.",
       "source": "study:cua-routing-proof",
-      "sourceDigest": "0103ee312c3c19e5"
+      "sourceDigest": "9e5dc1253c4b809a"
     },
     "lifecycle": [
       {
@@ -344,6 +344,7 @@
         "laneId": "lane-01",
         "assignment": {
           "mission": "Explore the app and stop.",
+          "typing": "When you type (a message, a search, a form answer), type as this person would at their own keyboard when nobody is grading them. People type little: a few plain words, often without a greeting or a thank-you, one thing at a time, and only as much of a search as it takes for the result to show up.",
           "focus": "Focus on the landing page."
         },
         "kind": "browser",

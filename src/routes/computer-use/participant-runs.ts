@@ -126,12 +126,14 @@ export function participantRunsAndPlan(
 
   const runs: DesktopParticipantRun[] = participants.map((participant) => {
     const mission = participant.assignment.mission ?? DEFAULT_MISSION;
+    const { typing } = participant.assignment;
     const focus = participant.assignment.focus;
     const tasks = participant.tasks;
     const { device, personaId } = participant;
     const resolvedPersona = personaId === undefined ? undefined : opts.personas?.get(personaId);
     const composed = composeParticipantInstructions({
       mission,
+      ...(typing === undefined ? {} : { typing }),
       ...(tasks === undefined ? {} : { tasks }),
       ...(personaId === undefined ? {} : { persona: personaId }),
       ...(resolvedPersona === undefined ? {} : { resolvedPersona }),
@@ -144,6 +146,7 @@ export function participantRunsAndPlan(
       instructions: composed.instructions,
       evidenceAssignment: {
         mission,
+        typing: composed.typing,
         ...(focus === undefined ? {} : { focus }),
         ...(tasks === undefined ? {} : { tasks: tasks.map(({ id, goal }) => ({ id, goal })) }),
       },
