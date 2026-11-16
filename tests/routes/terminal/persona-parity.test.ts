@@ -144,7 +144,7 @@ describe("terminal persona parity between the dry and live paths", () => {
     const { ref, personaLine } = await expectSamePersona(config(PERSONA_ID));
 
     expect(personaLine.split("\n\n")[1]).toBe(
-      'These are messages Autonomous Creative Agent typed earlier, about other things; the details in them do not apply now. They show how Autonomous Creative Agent writes: (1) "how do i undo that" (2) "ok it worked"',
+      'These are messages this person typed earlier, about other things; the details in them do not apply now. They show how this person writes: (1) "how do i undo that" (2) "ok it worked"',
     );
     expect(ref.traitsApplied).toContain("writing_samples:2");
     expect(ref.brief?.text).toBe(personaLine);

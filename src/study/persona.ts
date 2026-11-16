@@ -270,13 +270,16 @@ export function personaToDirectives(persona: ResolvedPersona): PersonaDirectives
     traitsApplied,
   };
 }
-/** Each sample as a JSON string, so a quote inside it cannot end it early. */
+/**
+ * Each sample as a JSON string, so a quote inside it cannot end it early. The sentence says "this
+ * person" because a persona's name is often a role label, which reads wrongly as a writer.
+ */
 function writingSamplesSentence(persona: ResolvedPersona): string | undefined {
   if (!persona.writingSamples?.length) return undefined;
   const quoted = persona.writingSamples.map(
     (sample, index) => `(${index + 1}) ${JSON.stringify(sample)}`,
   );
-  return `These are messages ${persona.name} typed earlier, about other things; the details in them do not apply now. They show how ${persona.name} writes: ${quoted.join(" ")}`;
+  return `These are messages this person typed earlier, about other things; the details in them do not apply now. They show how this person writes: ${quoted.join(" ")}`;
 }
 export function renderPersonaPromptSection(persona: ResolvedPersona): string {
   const directives = personaToDirectives(persona);

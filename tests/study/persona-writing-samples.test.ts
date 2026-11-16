@@ -69,7 +69,7 @@ describe("writing samples in the persona section", () => {
       [
         "Persona: Jordan.",
         "Background:\nJordan flies twice a year to see family.",
-        'These are messages Jordan typed earlier, about other things; the details in them do not apply now. They show how Jordan writes: (1) "hi need to change my flight" (2) "the one on the 14th"',
+        'These are messages this person typed earlier, about other things; the details in them do not apply now. They show how this person writes: (1) "hi need to change my flight" (2) "the one on the 14th"',
         "You are impatient: if you hit repeated friction or stop making progress toward your goal, you are likely to stop. Describe what you actually encountered.",
       ].join("\n\n"),
     );
@@ -79,17 +79,17 @@ describe("writing samples in the persona section", () => {
     const persona = traveller(['she said "ok" to the window seat', "row 12\\14"]);
     const section = renderPersonaPromptSection(persona).split("\n\n")[2];
     expect(section).toBe(
-      'These are messages Jordan typed earlier, about other things; the details in them do not apply now. They show how Jordan writes: (1) "she said \\"ok\\" to the window seat" (2) "row 12\\\\14"',
+      'These are messages this person typed earlier, about other things; the details in them do not apply now. They show how this person writes: (1) "she said \\"ok\\" to the window seat" (2) "row 12\\\\14"',
     );
   });
 
-  it("name an unnamed persona by its id in title case", () => {
+  it("say this person, never the persona's name, which can be a role label", () => {
     const persona = parseResolvedPersona(
-      { writing_samples: ["is the shed paint dry yet"] },
+      { name: "Skeptical Power User", writing_samples: ["is the shed paint dry yet"] },
       { id: "weekend-gardener", name: "Weekend Gardener" },
     );
     expect(renderPersonaPromptSection(persona).split("\n\n")[1]).toBe(
-      'These are messages Weekend Gardener typed earlier, about other things; the details in them do not apply now. They show how Weekend Gardener writes: (1) "is the shed paint dry yet"',
+      'These are messages this person typed earlier, about other things; the details in them do not apply now. They show how this person writes: (1) "is the shed paint dry yet"',
     );
   });
 
@@ -101,7 +101,7 @@ describe("writing samples in the persona section", () => {
     expect(renderPersonaPromptSection(persona)).toBe(
       [
         "Persona: Sam.",
-        'These are messages Sam typed earlier, about other things; the details in them do not apply now. They show how Sam writes: (1) "which seeds go in first"',
+        'These are messages this person typed earlier, about other things; the details in them do not apply now. They show how this person writes: (1) "which seeds go in first"',
         "You have moderate patience: you will work through some friction, but may stop if further effort no longer seems worthwhile.",
         "You have moderate technical confidence and generally use straightforward paths through the product.",
       ].join("\n\n"),
