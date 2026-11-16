@@ -234,7 +234,7 @@ function parseSessions(text: string): Session[] | { message: string; line?: numb
   }
   const sessions: Session[] = [];
   for (const [index, { record, line }] of records.entries()) {
-    if (!isRecord(record) || Array.isArray(record))
+    if (!isRecord(record))
       return {
         message: `${line === undefined ? `Session ${index + 1}` : `Line ${line}`} of the sessions file is not a JSON object. Each session is one object of field names and values.`,
         ...(line === undefined ? {} : { line }),

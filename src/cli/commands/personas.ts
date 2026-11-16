@@ -213,8 +213,18 @@ async function handleBuild(
   // The fields used and skipped go out before any file is written.
   if (!wantsJson(command)) io.writeOut(formatFields(result));
   for (const file of build.files) {
-    if (options.force === true) await writeContainedOutputFile(directory, file.name, file.contents);
-    else await createContainedOutputFile(directory, file.name, file.contents);
+    try {
+      if (options.force === true)
+        await writeContainedOutputFile(directory, file.name, file.contents);
+      else await createContainedOutputFile(directory, file.name, file.contents);
+    } catch (error) {
+      // Another process created the file after the check above.
+      if (!isNodeError(error) || error.code !== "EEXIST") throw error;
+      return finish({
+        code: "HUMANISH_PERSONAS_FILE_EXISTS",
+        message: `${file.name} appeared in ${out} while the build was writing, so it and the files after it were not written. Pass --force to replace it.`,
+      });
+    }
     result.written.push(file.name);
   }
   result.roster = build.roster;
