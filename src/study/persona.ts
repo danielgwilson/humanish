@@ -5,7 +5,9 @@ import { isRecord } from "../run/type-guards.js";
 
 type PersonaLevel = "low" | "medium" | "high";
 export const PERSONA_BACKGROUND_MAX_BYTES = 32 * 1024;
-const PERSONA_COMPILER_VERSION = 2;
+const PERSONA_COMPILER_VERSION = 3;
+const MAX_WRITING_SAMPLES = 8;
+const WRITING_SAMPLE_MAX_CHARS = 280;
 
 export class PersonaConfigError extends Error {
   constructor(message: string) {
@@ -27,6 +29,8 @@ export interface ResolvedPersona {
     accessibilityNeeds?: string;
   };
   constraints: string[];
+  /** Messages the person typed before, about other things; absent when the file sets none. */
+  writingSamples?: string[];
 }
 
 export interface PersonaDirectives {
@@ -48,6 +52,7 @@ export const PERSONA_FIELDS = new Set([
   "background",
   "traits",
   "constraints",
+  "writing_samples",
 ]);
 /** The traits under `traits:` that become directives; any other warns and is not sent. */
 export const TRAIT_FIELDS = new Set(["patience", "technical_confidence", "accessibility_needs"]);
@@ -81,7 +86,12 @@ export function parseResolvedPersona(
         `Unsupported persona trait ${redactText(JSON.stringify(field))}; it is not sent to the participant.`,
       );
   }
-  const short = (value: unknown, max: number, field: string): string | undefined => {
+  const short = (
+    value: unknown,
+    max: number,
+    field: string,
+    advice = "move detailed context to background",
+  ): string | undefined => {
     if (value === undefined) return undefined;
     if (typeof value !== "string") {
       warnings.push(`${field} must be text; ignored.`);
@@ -90,9 +100,7 @@ export function parseResolvedPersona(
     const cleaned = cleanText(value).replace(/\s+/g, " ");
     if (!cleaned) return undefined;
     if (cleaned.length > max)
-      warnings.push(
-        `${field} exceeds ${max} characters and was shortened; move detailed context to background.`,
-      );
+      warnings.push(`${field} exceeds ${max} characters and was shortened; ${advice}.`);
     return cleaned.length > max ? `${cleaned.slice(0, max - 1)}…` : cleaned;
   };
   let background: string | undefined;
@@ -147,6 +155,14 @@ export function parseResolvedPersona(
     .slice(0, 8)
     .map((value) => short(value, 160, "constraint"))
     .filter((value): value is string => value !== undefined);
+  const writingSamples = parseWritingSamples(record.writing_samples, warnings, (value, field) =>
+    short(
+      value,
+      WRITING_SAMPLE_MAX_CHARS,
+      field,
+      "a sample is one short message, so pick a shorter one",
+    ),
+  );
   const patience = level("patience"),
     skill = level("technical_confidence");
   const summary = short(record.summary, 280, "summary");
@@ -161,7 +177,35 @@ export function parseResolvedPersona(
       ...(accessibilityNeeds === undefined ? {} : { accessibilityNeeds }),
     },
     constraints,
+    ...(writingSamples.length ? { writingSamples } : {}),
   };
+}
+
+function parseWritingSamples(
+  value: unknown,
+  warnings: string[],
+  short: (value: unknown, field: string) => string | undefined,
+): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    warnings.push("Persona writing_samples must be a list of short messages; ignored.");
+    return [];
+  }
+  if (value.length > MAX_WRITING_SAMPLES)
+    warnings.push(
+      `writing_samples has ${value.length} entries; only the first ${MAX_WRITING_SAMPLES} are sent to the participant.`,
+    );
+  return value.slice(0, MAX_WRITING_SAMPLES).flatMap((entry, index) => {
+    const field = `writing_samples[${index + 1}]`;
+    const sample = short(entry, field);
+    if (sample === undefined) return [];
+    // The run's evidence redacts the brief, but the participant reads the sample as written.
+    if (redactEncodedText(sample) !== sample)
+      warnings.push(
+        `${field} holds text the evidence redaction removes, such as a key, a token or a file path. The participant still reads it as written. Replace it with a made-up value.`,
+      );
+    return [sample];
+  });
 }
 
 const FRICTION_TOLERANCE: Record<PersonaLevel, string> = {
@@ -195,6 +239,8 @@ export function personaToDirectives(persona: ResolvedPersona): PersonaDirectives
   if (accessibilityNeeds)
     traitsApplied.push(`accessibility:${redactEncodedText(accessibilityNeeds)}`);
   if (persona.constraints.length) traitsApplied.push(`constraints:${persona.constraints.length}`);
+  if (persona.writingSamples?.length)
+    traitsApplied.push(`writing_samples:${persona.writingSamples.length}`);
   return {
     frictionTolerance: patience ? FRICTION_TOLERANCE[patience] : "",
     skillBias: skill ? SKILL_BIAS[skill] : "",
@@ -205,12 +251,21 @@ export function personaToDirectives(persona: ResolvedPersona): PersonaDirectives
     traitsApplied,
   };
 }
+/** Each sample as a JSON string, so a quote inside it cannot end it early. */
+function writingSamplesSentence(persona: ResolvedPersona): string | undefined {
+  if (!persona.writingSamples?.length) return undefined;
+  const quoted = persona.writingSamples.map(
+    (sample, index) => `(${index + 1}) ${JSON.stringify(sample)}`,
+  );
+  return `These are messages ${persona.name} typed earlier, about other things; the details in them do not apply now. They show how ${persona.name} writes: ${quoted.join(" ")}`;
+}
 export function renderPersonaPromptSection(persona: ResolvedPersona): string {
   const directives = personaToDirectives(persona);
   return [
     `Persona: ${persona.name}.`,
     persona.summary,
     persona.background ? `Background:\n${persona.background}` : undefined,
+    writingSamplesSentence(persona),
     directives.frictionTolerance,
     directives.skillBias,
     directives.accessibilityBehavior,
