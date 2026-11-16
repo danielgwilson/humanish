@@ -206,24 +206,22 @@ function parseWritingSamples(
     const holds = identifiersIn(sample);
     if (holds.length)
       warnings.push(
-        `${field} looks like it holds ${LIST.format(holds)}. The participant reads the sample as written, so replace it with a made-up value.`,
+        `${field} looks like it holds ${holds.join("; ")}. The participant reads the sample as written, so replace it with a made-up value.`,
       );
     return [sample];
   });
 }
 
-const LIST = new Intl.ListFormat("en", { type: "conjunction" });
 const EMAIL_IN_SAMPLE = new RegExp(EMAIL_ADDRESS.source);
-// Seven digits in a row, each apart from the next by at most two spaces, dots, dashes or
-// brackets. A leading + or bracket does not change whether it matches. An ISO date has eight
-// digits and also matches.
-const PHONE_IN_SAMPLE = /\d(?:[ .()-]{0,2}\d){6}/;
+// Seven digits, each apart from the next by at most one space, dot, dash or slash. It cannot tell
+// a phone number from an order or card number, and a date with a four-digit year matches too.
+const LONG_NUMBER = /\d(?:[ ./-]?\d){6}/;
 
 /** What a sample copied from a real user may still hold. Only the last is redacted from the run's evidence. */
 function identifiersIn(sample: string): string[] {
   return [
     ...(EMAIL_IN_SAMPLE.test(sample) ? ["an email address"] : []),
-    ...(PHONE_IN_SAMPLE.test(sample) ? ["a phone number"] : []),
+    ...(LONG_NUMBER.test(sample) ? ["a long number, such as a phone, order or card number"] : []),
     ...(redactEncodedText(sample) !== sample
       ? ["text the run's evidence redacts (a key, a token or a file path)"]
       : []),

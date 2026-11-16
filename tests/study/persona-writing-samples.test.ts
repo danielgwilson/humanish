@@ -233,20 +233,24 @@ describe("parsing writing samples", () => {
   });
 
   it.each([
-    ["with spaces", phone],
-    ["with dashes and brackets", ["(020)", "7946", "0958"].join("-")],
-    ["as one run", ["0791", "1123456"].join("")],
-  ])("warns when a sample looks like it holds a phone number %s", (_shape, number) => {
-    const warnings = sampleWarnings([`call me on ${number}`]);
+    ["a phone number with spaces", phone],
+    ["a phone number with dashes", ["020", "7946", "0958"].join("-")],
+    ["a phone number with slashes", ["0791", "112", "3456"].join("/")],
+    ["a phone number with dots", ["020", "7946", "0958"].join(".")],
+    ["an order number", ["4821", "3377"].join("")],
+    ["a card number", ["4000", "0000", "0000", "0002"].join(" ")],
+    ["a date with a four-digit year, which has eight digits", ["12", "11", "2026"].join(".")],
+  ])("warns when a sample holds %s", (_shape, number) => {
+    const warnings = sampleWarnings([`it is ${number} ok`]);
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toMatch(/^writing_samples\[1\] .*phone number/);
+    expect(warnings[0]).toMatch(/^writing_samples\[1\] .*a long number/);
     expect(warnings[0]!.includes(number)).toBe(false);
   });
 
   it("gives one warning naming each kind a sample looks like it holds", () => {
     const warnings = sampleWarnings([`${email} or ${phone}`]);
     expect(warnings).toHaveLength(1);
-    expect(warnings[0]).toMatch(/email address.*phone number/);
+    expect(warnings[0]).toMatch(/email address.*long number/);
   });
 
   it.each([
@@ -254,6 +258,10 @@ describe("parsing writing samples", () => {
     "flight 2 at 9:40",
     "row 12 seat 4",
     "booked for 3 nights in 2027",
+    "it was \u00a312.99 last time",
+    "back on 14/11",
+    "gate B22, 45 min late",
+    "the 3.5 kg bag of compost",
   ])("does not warn about an ordinary sample with a number in it: %s", (sample) => {
     expect(sampleWarnings([sample])).toEqual([]);
   });

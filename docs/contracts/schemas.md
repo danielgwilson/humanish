@@ -989,7 +989,8 @@ before, each up to 280 characters once whitespace is collapsed. Extra, longer
 and non-text entries warn as constraints do. The persona section renders them
 after the background as one sentence that numbers each sample and writes it as
 a JSON string. A sample warns when it looks like it holds an email address, a
-phone number (seven digits apart by at most two separators), or text
+long number (seven digits, each apart from the next by at most one space, dot,
+dash or slash, which a date with a four-digit year also has), or text
 `redactEncodedText` would change. The participant reads it as written, and the
 brief redacts only the last kind. `traitsApplied` adds `writing_samples:<count>`.
 Persona compiler version 3 adds the samples; a persona without them renders the
