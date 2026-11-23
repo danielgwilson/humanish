@@ -58,9 +58,9 @@ export type StudyEvent =
 
 /**
  * The literal values to scrub from an onEvent warning: every provider key a plan can require, the
- * terminal runtime's CODEX_API_KEY, the Gemini analysis key and the declared subject env, from
- * every env the run could read (the `env` option and process.env). A callback can hold any of
- * them, and its warning is appended after the route sanitized its own.
+ * terminal runtime's CODEX_API_KEY, the Gemini analysis key, the declared subject env and the
+ * external catch's token, from every env the run could read (the `env` option and process.env).
+ * A callback can hold any of them, and its warning is appended after the route sanitized its own.
  */
 export function knownSecrets(
   config: StudyConfig,
@@ -68,11 +68,13 @@ export function knownSecrets(
   forwardedEnv: Readonly<Record<string, string | undefined>> | undefined,
 ): RunSecrets {
   const sources = [forwardedEnv, options.env, process.env];
+  const catchToken = config.comms?.email?.external?.authTokenEnv;
   const names = [
     ...KEY_ORDER,
     "CODEX_API_KEY",
     ...analysisKeyNames("gemini"),
     ...(config.subject.env ?? []),
+    ...(catchToken === undefined ? [] : [catchToken]),
   ];
   const secrets = new RunSecrets([]);
   for (const env of sources) for (const name of names) secrets.add([env?.[name]?.trim() ?? ""]);
