@@ -21,6 +21,7 @@ import {
   followDecision,
   followObserver,
   formatObserverHuman,
+  OBSERVER_SERVER_WARNING,
   unattendedObserverWarning,
   watchExposeRequested,
 } from "../observer-follow.js";
@@ -312,7 +313,7 @@ async function reportWatch(
       ...(server.openCommand ? { openCommand: server.openCommand } : {}),
       warnings: [
         ...rendered.warnings,
-        "Live observer server is polling observer-data.json with no-store caching.",
+        OBSERVER_SERVER_WARNING,
         ...(server.warning ? [server.warning] : []),
       ],
     };

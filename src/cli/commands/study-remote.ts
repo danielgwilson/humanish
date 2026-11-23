@@ -16,22 +16,35 @@ import { planRemoteRun, type RemotePlan } from "../../remote/plan.js";
 import { INSIDE_RUNNER_ENV } from "../../remote/runner.js";
 import type { CuaActorStudyResult } from "../../routes/computer-use/types.js";
 import type { TerminalProductStudyResult } from "../../routes/terminal/types.js";
+import { RUN_BUNDLE_FILE } from "../../run/bundle.js";
+import { openContainedRegularFile } from "../../run/contained-output.js";
+import { bindExistingRunArtifactPaths } from "../../run/paths.js";
 import type { RunResult } from "../../run/results.js";
+import { plural } from "../../run/text.js";
+import { isRecord } from "../../run/type-guards.js";
 import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
 import type { StudyConfig, StudySubject } from "../../study/types.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../substrates/e2b/lifetime.js";
 import { importE2BDesktop } from "../../substrates/e2b/sdk.js";
 import { loadModalModule, MODAL_MAX_SANDBOX_MS } from "../../substrates/modal/sdk.js";
 import {
+  analysisOutcomeText,
   type CliIo,
   formatRunHuman,
+  type HumanOutput,
+  markInvocationEnvelopeWritten,
   parseObserverPort,
+  type ResultOptions,
   type StudyCommandOptions,
   wantsJson,
   writeResult,
 } from "../io.js";
-import { writeRunResult } from "../run-findings.js";
+import { cli } from "../invocation.js";
+import { OBSERVER_SERVER_WARNING } from "../observer-follow.js";
+import { cwdFlag } from "../findings.js";
+import { readRunReport, type RunReport, writeRunReport } from "../run-findings.js";
 import { formatCuaStudyHuman, formatTerminalStudyHuman } from "./study-format.js";
+import { LIVE_SERVER_WARNING } from "./study-route-computer-use.js";
 
 type RemoteErrorCode = "HUMANISH_REMOTE_REFUSED" | "HUMANISH_REMOTE_FAILED";
 
@@ -249,6 +262,7 @@ export async function reportRemoteOutcome(
   cwd: string,
   outcome: RemoteOutcome,
   forwarded?: NonNullable<RunResult["remote"]>,
+  options: ResultOptions = {},
 ): Promise<void> {
   const remote = forwarded === undefined ? {} : { remote: forwarded };
   if (
@@ -279,20 +293,41 @@ export async function reportRemoteOutcome(
     io.setExitCode(detached ? 129 : outcome.exitCode === 0 ? 2 : outcome.exitCode);
     return;
   }
-  const result: RouteResult = { ...onThisMachine(outcome.result as RouteResult, cwd), ...remote };
-  if (outcome.error !== undefined) result.warnings = [...(result.warnings ?? []), outcome.error];
-  // The run directory was copied here, so the findings are read from this machine's copy.
-  if (result.route === "terminal")
-    await writeRunResult(command, io, cwd, result, formatTerminalStudyHuman);
-  else
-    await writeRunResult(command, io, cwd, result, (value) =>
-      formatCuaStudyHuman(value, REMOTE_SUBJECT),
+  if (!readableRunResult(outcome.result, outcome.runId)) {
+    reportUnreadResult(command, io, cwd, outcome, remote);
+    io.setExitCode(outcome.exitCode);
+    return;
+  }
+  const copied = outcome.files !== undefined;
+  const result: RouteResult = { ...onThisMachine(outcome.result, cwd, copied), ...remote };
+  if (outcome.error !== undefined) result.warnings = [...result.warnings, outcome.error];
+  if (!copied && outcome.error !== undefined)
+    writeRunReport(
+      command,
+      io,
+      result,
+      formatRouteResult,
+      unfinishedCopyReport(result, cwd),
+      options,
     );
+  else if (await publishedHere(cwd, result.runId))
+    // The run directory was copied here, so the findings are read from this machine's copy.
+    writeRunReport(
+      command,
+      io,
+      result,
+      formatRouteResult,
+      await readRunReport(cwd, result),
+      options,
+    );
+  // A run the runner refused, or one that ended before it published, has nothing here to analyze,
+  // so it ends as a local run refused before it was created does: on its own lines and error.
+  else writeResult(command, io, result, formatRouteResult, [], options);
   // The route's lines say how the run ended and the analysis lines what to run next; only where
   // its evidence landed is left to say. A copy that failed counted no files, and its warning says so.
-  if (!wantsJson(command) && outcome.files !== undefined)
+  if (!wantsJson(command) && copied)
     io.writeErr(
-      `Run ${outcome.runId}'s evidence (${outcome.files} files) is in .humanish/runs/${outcome.runId}.\n`,
+      `Run ${outcome.runId}'s evidence (${plural(outcome.files ?? 0, "file")}) is in .humanish/runs/${outcome.runId}.\n`,
     );
   io.setExitCode(outcome.exitCode);
 }
@@ -304,20 +339,133 @@ export async function reportRemoteOutcome(
  */
 const REMOTE_SUBJECT: StudySubject = { source: "app-url" };
 
+/** A runner's result in its route's own lines, as a local run of that route prints them. */
+function formatRouteResult(result: RouteResult): HumanOutput {
+  return result.route === "terminal"
+    ? formatTerminalStudyHuman(result)
+    : formatCuaStudyHuman(result, REMOTE_SUBJECT);
+}
+
+/**
+ * The end of the output for a run whose copy back failed: what arrived may lack the analysis or
+ * the files it cites, so none of it is read, and the command that finishes the copy comes next.
+ * The launcher reclaims the runner after such a copy, so that command also says what was lost.
+ */
+function unfinishedCopyReport(result: RouteResult, cwd: string): RunReport {
+  const next = cli(`observe --run ${result.runId}${cwdFlag(cwd)}`);
+  const message = `The run's evidence did not all arrive here, so what its analysis left is not read. ${next} finishes the copy while the runner is still there, and records what was lost when it is not.`;
+  const analysis = result.automaticAnalysis;
+  return {
+    message,
+    nextCommand: next,
+    lines: [
+      ...(analysis === undefined
+        ? []
+        : [`analysis: ${analysisOutcomeText(analysis)}`, `analysis: ${message}`]),
+      `next: ${next}`,
+    ],
+  };
+}
+
+/** Whether this machine's copy of run `runId` holds the run.json a run writes as it publishes. */
+async function publishedHere(cwd: string, runId: string): Promise<boolean> {
+  const paths = await bindExistingRunArtifactPaths(cwd, runId).catch(() => undefined);
+  const bundle =
+    paths === undefined
+      ? null
+      : await openContainedRegularFile(paths, RUN_BUNDLE_FILE).catch(() => null);
+  await bundle?.close();
+  return bundle !== null;
+}
+
 /** The result a runner's route wrote: only the computer-use and terminal routes run remotely. */
 type RouteResult = (CuaActorStudyResult | TerminalProductStudyResult) & {
   remote?: NonNullable<RunResult["remote"]>;
 };
 
 /**
+ * Whether a runner's result is run `runId`'s route result, with the fields the run writer and the
+ * route's lines read typed as this humanish writes them. The file crosses a process and can come
+ * from another humanish version, such as a run followed again after an upgrade.
+ */
+function readableRunResult(value: unknown, runId: string): value is RouteResult {
+  if (!isRecord(value)) return false;
+  const { observer, automaticAnalysis: analysis } = value;
+  const absentOr = (field: unknown, readable: (field: unknown) => boolean) =>
+    field === undefined || readable(field);
+  return (
+    (value.route === "computer-use" || value.route === "terminal") &&
+    value.runId === runId &&
+    typeof value.studyId === "string" &&
+    typeof value.ok === "boolean" &&
+    Array.isArray(value.warnings) &&
+    // The participant list, by the result's contract spelling.
+    absentOr(value["lanes"], Array.isArray) &&
+    absentOr(
+      observer,
+      () =>
+        isRecord(observer) &&
+        Array.isArray(observer.warnings) &&
+        absentOr(observer.observerPath, (path) => typeof path === "string"),
+    ) &&
+    absentOr(
+      analysis,
+      () =>
+        isRecord(analysis) &&
+        typeof analysis.state === "string" &&
+        absentOr(
+          analysis.result,
+          (result) => isRecord(result) && absentOr(result.warnings, Array.isArray),
+        ),
+    )
+  );
+}
+
+/**
+ * A runner's result that readableRunResult refuses, printed as the runner wrote it, with this
+ * machine's directory and a warning that says why it has no findings or route lines.
+ */
+function reportUnreadResult(
+  command: Command,
+  io: CliIo,
+  cwd: string,
+  outcome: RemoteOutcome,
+  remote: { remote?: NonNullable<RunResult["remote"]> },
+): void {
+  const unread = `The runner's result for run ${outcome.runId} could not be read as a run result, so it is shown as the runner wrote it.`;
+  const written = isRecord(outcome.result) ? outcome.result : {};
+  const document: Record<string, unknown> = { ...written, cwd, ...remote };
+  document.warnings = [
+    ...(Array.isArray(written.warnings) ? written.warnings : []),
+    ...(outcome.error === undefined ? [] : [outcome.error]),
+    unread,
+  ];
+  if (wantsJson(command)) io.writeOut(`${JSON.stringify(document, null, 2)}\n`);
+  else {
+    for (const warning of [unread, ...(outcome.error === undefined ? [] : [outcome.error])])
+      io.writeErr(`warning: ${warning}\n`);
+    io.writeErr(
+      `Run ${outcome.runId} ${written.ok === true && outcome.exitCode === 0 ? "passed" : "did not pass"}; its evidence (${plural(outcome.files ?? 0, "file")}) is in .humanish/runs/${outcome.runId}. Next: ${cli(`review --run ${outcome.runId}`)}\n`,
+    );
+  }
+  markInvocationEnvelopeWritten(command);
+}
+
+/**
  * The runner's result as it reads for this machine's copy of the run. The run directory arrives
  * here under the same project-relative path, so the relative paths hold. The runner's project
- * directory does not, nor the Observer address it gave: its file URL names the runner's disk, and
- * the server a computer-use run serves there stopped with the runner. A rejected analysis output
- * is kept outside the run directory, so it is not copied and goes with the runner.
+ * directory does not, nor the Observer address it gave: a file URL on the runner's disk, or the
+ * server a computer-use run serves there, which stopped with the runner. So the address names this
+ * machine's copy of the page once the copy finished, and the two warnings about that server go.
+ * A rejected analysis output is kept outside the run directory, so it is not copied and goes with
+ * the runner.
  */
-function onThisMachine(result: RouteResult, cwd: string): RouteResult {
-  const here: RouteResult = { ...result, cwd };
+function onThisMachine(result: RouteResult, cwd: string, copied: boolean): RouteResult {
+  const here: RouteResult = {
+    ...result,
+    cwd,
+    warnings: result.warnings.filter((warning) => warning !== LIVE_SERVER_WARNING),
+  };
   const analysis = result.automaticAnalysis;
   if (analysis?.result?.rejectedOutputPath !== undefined) {
     const { rejectedOutputPath: _notCopied, ...analyzed } = analysis.result;
@@ -328,10 +476,12 @@ function onThisMachine(result: RouteResult, cwd: string): RouteResult {
     here.observer = {
       ...observer,
       cwd,
-      ...(observer.observerPath === undefined
-        ? {}
-        : { observerUrl: pathToFileURL(path.join(cwd, observer.observerPath)).href }),
+      warnings: observer.warnings.filter((warning) => warning !== OBSERVER_SERVER_WARNING),
     };
+    // Before the copy finished, the page may not be here.
+    if (copied && observer.observerPath !== undefined)
+      here.observer.observerUrl = pathToFileURL(path.join(cwd, observer.observerPath)).href;
+    else delete here.observer.observerUrl;
   }
   return here;
 }
