@@ -61,6 +61,7 @@
           }
         },
         "status": "passed",
+        "judgedStatus": "passed",
         "ok": true,
         "diagnostics": {
           "category": "participant_outcome"
@@ -83,6 +84,9 @@
       "skipped": 0,
       "harnessErrors": 0,
       "hollow": 0,
+      "judged": {
+        "passed": 1
+      },
       "concurrency": 1,
       "waves": 1
     },

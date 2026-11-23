@@ -1,4 +1,5 @@
 import { withOutOfCreditsSummary } from "./out-of-credits.js";
+import type { ActorStatus } from "../../actors/contract.js";
 import { removeContainedOutputFile } from "../../run/contained-output.js";
 import { adapterScoreFailureMessage, applyBrowserScorer } from "../../study/adapter-extension.js";
 import { redactText } from "../../evidence/redaction.js";
@@ -6,6 +7,7 @@ import type { ObserverResult } from "../../observer/render.js";
 import type { RunBundle, RunRerunLineage, RunSubjectProvenance } from "../../run/bundle.js";
 import {
   foldScorerFailures,
+  judgedStatus,
   judgeExecution,
   judgeParticipantRecords,
   OUTCOME_POLICIES,
@@ -44,6 +46,26 @@ import { plannedAppUrl } from "./plan.js";
 import { studyResultIdentity } from "../../run/study-result.js";
 import { plural } from "../../run/text.js";
 
+/** The judged statuses of participants that did not pass, in the order and words the failure line uses. */
+const NOT_PASSED: readonly (readonly [ActorStatus, string])[] = [
+  ["blocked", "blocked"],
+  ["failed", "failed"],
+  ["timed_out", "timed out"],
+  ["incomplete", "incomplete"],
+  ["abandoned", "abandoned"],
+];
+
+/**
+ * The failure line's count of each judged status but passed, such as ", 2 blocked, 1 timed out",
+ * so that with the passed count it adds up to every participant that has a judged status.
+ */
+function notPassedCounts(judged: CuaParticipantSummary["judged"]): string {
+  return NOT_PASSED.flatMap(([status, word]) => {
+    const count = judged?.[status] ?? 0;
+    return count > 0 ? [`, ${count} ${word}`] : [];
+  }).join("");
+}
+
 /** Aggregate participant counts for the result projection. */
 function buildParticipantSummary(
   outcomes: ParticipantRunOutcome[] | undefined,
@@ -76,6 +98,13 @@ function buildParticipantSummary(
     if (outcome.noEngagement) hollow += 1;
     if (participantOutcomeOk(outcome, dryRun)) passed += 1;
   }
+  // Counted in one order, passed first, and a status no participant has is left out.
+  const statuses = outcomes.map((outcome) => judgedStatus(participantFactsOf(outcome)));
+  const judged: Partial<Record<ActorStatus, number>> = {};
+  for (const status of ["passed" as const, ...NOT_PASSED.map(([notPassed]) => notPassed)]) {
+    const count = statuses.filter((each) => each === status).length;
+    if (count > 0) judged[status] = count;
+  }
   return {
     strategy: CUA_FANOUT_STRATEGY,
     total: participantCount,
@@ -83,6 +112,7 @@ function buildParticipantSummary(
     skipped,
     harnessErrors,
     hollow,
+    judged,
     concurrency: participantPlan.concurrency,
     waves: participantPlan.waves,
   };
@@ -228,7 +258,7 @@ function cuaStudyResult(args: {
     return {
       code,
       message: observer.ok
-        ? `Fan-out run failed: ${summary.passed}/${plural(participantCount, "participant")} passed (${summary.skipped} skipped, ${plural(summary.harnessErrors, "harness error")}, ${summary.hollow} without engagement)${firstFailure}.`
+        ? `Fan-out run failed: ${summary.passed}/${plural(participantCount, "participant")} passed${notPassedCounts(summary.judged)} (${summary.skipped} skipped, ${plural(summary.harnessErrors, "harness error")}, ${summary.hollow} without engagement)${firstFailure}.`
         : (observer.error?.message ?? "Observer failed for the computer-use fan-out run."),
     };
   })();

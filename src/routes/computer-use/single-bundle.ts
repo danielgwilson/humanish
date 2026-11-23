@@ -26,12 +26,12 @@ import {
   aggregateTaskFunnels,
   formatParticipantOutcomes,
   formatRunTaskFunnel,
+  participantOutcomeDetails,
   participantSummary,
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
 import { participantCaption } from "../../run/participant-caption.js";
-import { actorEnding } from "../../actors/stop-cause.js";
-import { cuaGoalSource, ranUntilClockEnd } from "../../actors/goal-source.js";
+import { ranUntilClockEnd } from "../../actors/goal-source.js";
 import {
   describeSubjectState,
   phaseEventIdSuffix,
@@ -255,6 +255,9 @@ function singleStream(args: SingleParticipantBundleArgs, view: ParticipantView):
 function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView): RunEvent[] {
   const { publicAppUrl, desktopGeometry } = view;
   const { subject } = args;
+  // The session event's type names how the session ended; its level and words say what the run
+  // counts the participant as.
+  const counted = view.participant.judgedStatus ?? args.session?.status;
   const events: RunEvent[] = [
     {
       id: "event-000-created",
@@ -298,9 +301,9 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
       ? participantEvent(SINGLE, {
           id: "event-002-session",
           at: args.run.createdAt,
-          level: args.session.status === "passed" ? "info" : "warn",
+          level: counted === "passed" ? "info" : "warn",
           type: `cua-lab.session.${args.session.completionReason}`,
-          message: `${args.session.status}: ${args.session.reason}`,
+          message: `${counted}: ${args.session.reason}`,
         })
       : args.inProgress === true
         ? participantEvent(SINGLE, {
@@ -365,6 +368,7 @@ function singleEvents(args: SingleParticipantBundleArgs, view: ParticipantView):
 function singleSummary(
   args: SingleParticipantBundleArgs,
   view: ParticipantView,
+  stream: RunStream,
   facts: { tasks?: RunTaskFunnel; credibilityNote?: string },
 ): string {
   if (args.inProgress === true) {
@@ -378,15 +382,9 @@ function singleSummary(
       ? `1 participant was planned against ${view.subjectName}, but no session ran.`
       : `1 participant was planned, but the run failed before their session finished: ${view.reason}`;
   }
-  const ending = actorEnding(args.session.trace);
-  const goalSource = cuaGoalSource(args.session.trace);
-  const outcomes = formatParticipantOutcomes(view.tally, [
-    {
-      status: args.session.status,
-      ...(ending === undefined ? {} : { label: ending.label }),
-      ...(goalSource === undefined ? {} : { goalSource }),
-    },
-  ]);
+  // Read from the stream as withCuaReviewProvenance and the Observer read it, under the status
+  // the tally counted.
+  const outcomes = formatParticipantOutcomes(view.tally, participantOutcomeDetails([stream]));
   return [
     `1 participant took part: ${outcomes}.`,
     facts.tasks === undefined ? undefined : `Tasks: ${formatRunTaskFunnel(facts.tasks)}.`,
@@ -433,6 +431,7 @@ function singleReview(
       summary: `${args.hostSuspension === undefined ? "" : `${args.hostSuspension.summary} `}${args.outOfCredits === undefined ? "" : `${args.outOfCredits} `}${singleSummary(
         args,
         view,
+        stream,
         {
           ...(singleRunTasks === undefined ? {} : { tasks: singleRunTasks }),
           ...(credibilityNote === undefined ? {} : { credibilityNote }),

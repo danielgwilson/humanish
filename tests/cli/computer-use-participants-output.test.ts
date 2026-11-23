@@ -40,6 +40,7 @@ function runOf(count: number): CuaActorStudyResult {
         id: `lane-${String(n + 1).padStart(2, "0")}`,
         index: n + 1,
         status: ending.status,
+        judgedStatus: ending.status,
         ok: ending.status === "passed",
         session: {
           ...template.session!,
@@ -53,6 +54,26 @@ function runOf(count: number): CuaActorStudyResult {
       ...Array.from({ length: count }, () => SCREENSHOTS_WARNING),
       ...recorded.warnings.slice(4, 6),
     ],
+  };
+}
+
+/**
+ * Make one participant a passed session whose closing message reported a blocker, which the run
+ * counts as blocked.
+ */
+function selfReportedBlocker(run: CuaActorStudyResult, index: number): void {
+  const lane = run.lanes![index]!;
+  run.lanes![index] = {
+    ...lane,
+    status: "passed",
+    judgedStatus: "blocked",
+    ok: false,
+    session: {
+      ...lane.session!,
+      status: "passed",
+      completionReason: "goal_satisfied",
+      reason: "BLOCKED. The save button never enabled.",
+    },
   };
 }
 
@@ -126,6 +147,31 @@ describe("the participants a computer-use run prints", () => {
     );
     expect(lines).toHaveLength(31);
     expect(stdout(runOf(40))).toHaveLength(31);
+  });
+
+  it("prints the status the run counts a participant as, beside how its session ended", () => {
+    const run = runOf(10);
+    selfReportedBlocker(run, 1);
+    expect(participantLines(stdout(run))[1]).toBe(
+      "participant lane-02: blocked (goal_satisfied) · participant outcome · BLOCKED. The save button never enabled.",
+    );
+  });
+
+  it("counts and lists a participant that reported a blocker in a run of 17", () => {
+    const run = runOf(17);
+    run.lanes = run.lanes!.map((lane) => ({
+      ...lane,
+      status: "passed",
+      judgedStatus: "passed",
+      ok: true,
+      session: { ...lane.session!, completionReason: "goal_satisfied", reason: "Done." },
+    }));
+    selfReportedBlocker(run, 4);
+    expect(participantLines(stdout(run))).toEqual([
+      "participants: 17 · 16 passed · 1 blocked",
+      "participant lane-05: blocked (goal_satisfied) · participant outcome · BLOCKED. The save button never enabled.",
+      "not listed: 16 participants. The Observer shows each one.",
+    ]);
   });
 
   it("prints a warning the route repeats for every participant once", () => {

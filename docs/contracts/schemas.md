@@ -531,14 +531,22 @@ with no study, `observe`, and a refusal made before a route is picked keep
 `humanish.run-result.v1`. The evidence record stays `humanish.run-bundle.v4` in every case.
 The computer-use result carries `plan` (the pre-flight participant table: concurrency, waves,
 per-participant session budget, worst-case sandbox-minutes), `lanes[]` (always present,
-length 1 at N=1; per-participant status/session/sandbox/subject), and `laneSummary`
-(passed/skipped/harnessErrors/hollow counts). The top-level `session`/`sandbox`
+length 1 at N=1; per-participant status/judgedStatus/session/sandbox/subject), and `laneSummary`
+(passed/skipped/harnessErrors/hollow counts, and `judged`). In `lanes[]`, `status` is how the
+participant's session ended, `judgedStatus` is what the run counts it as (`judgedStatus` in
+`src/run/judge.ts`), and `ok` is `judgedStatus === "passed"`. A passed session that never engaged
+has `judgedStatus: "incomplete"`, one whose closing message reports a blocker has `"blocked"`, a
+harness failure has `"failed"` and a skipped participant has `"blocked"`; a dry-run participant has
+none. `laneSummary.judged` counts the participants under each judged status that at least one has,
+for example `{ "passed": 4, "blocked": 2 }`, and is absent on a dry run. The top-level `session`/`sandbox`
 mirror the first participant and `subject.commit` is unanimity-gated across participants
 (omitted with a divergence warning when participants resolve different commits). At N=1
 the run bundle is byte-stable with the pre-fan-out output; only the result
 projection changed. A fan-out run records a `cua-lab.fanout.plan` bundle event, and
 each participant's outcome event (`cua-lab.session.<completionReason>`, `cua-lab.session.error`
-or `cua-lab.session.blocked`) carries its reason;
+or `cua-lab.session.blocked`) carries its reason. A `cua-lab.session.<completionReason>` event's
+level is `info` when the participant's judged status is `passed` and `warn` otherwise, and its
+message names the judged status;
 `ok = observer.ok ∧ every participant ok ∧ no failed adapter or declared-scorer verdict`,
 where a dry-run participant is ok as synthetic and a live participant must pass
 `participantPassed` (`src/run/judge.ts`): not skipped, status `passed`, no harness

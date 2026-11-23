@@ -224,6 +224,25 @@ describe("computer-use completion provenance", () => {
     expect(withCuaReviewProvenance(next, run.streams)).toEqual(next);
   });
 
+  it("qualifies in place the completion line an earlier release wrote from the trace statuses", () => {
+    const judged = ["passed", "blocked", "passed", "passed", "blocked", "passed"] as const;
+    const run = bundle();
+    const streams = judged.map((judgedStatus) => ({ ...run.streams[0]!, judgedStatus }));
+    const review = {
+      ...run.review,
+      participants: tallyParticipantOutcomes([...judged]),
+      // What a fan-out run with two self-reported blockers wrote before its completion line read
+      // the judged status.
+      summary:
+        "6 participants took part, each in their own copy of the app: 4/6 recorded completions (completion source unavailable), 2 blocked; the gaps list the other 2.",
+    };
+    const next = withCuaReviewProvenance(review, streams);
+    expect(next.summary).toBe(
+      "6 participants took part, each in their own copy of the app: 4/6 reported reaching the goal, 2 blocked; the gaps list the other 2.",
+    );
+    expect(withCuaReviewProvenance(next, streams)).toEqual(next);
+  });
+
   it("rewrites the header an earlier release wrote, once", () => {
     const run = bundle();
     run.review.summary =

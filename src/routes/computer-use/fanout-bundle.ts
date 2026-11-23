@@ -1,9 +1,6 @@
 import { outOfCreditsSummary } from "./out-of-credits.js";
 import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
-import type { ActorStatus } from "../../actors/contract.js";
-import { actorEnding } from "../../actors/stop-cause.js";
-import { cuaGoalSource } from "../../actors/goal-source.js";
 import { redactEncodedText } from "../../evidence/encoded-text.js";
 import {
   REVIEW_SCHEMA,
@@ -20,6 +17,7 @@ import {
   formatParticipantOutcomes,
   formatRunTaskFunnel,
   gapsListClause,
+  participantOutcomeDetails,
   skippedSentence,
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
@@ -158,10 +156,6 @@ function fanoutReview(
   ).length;
   // What happened to the participants, with the denominator attached. The verdict above has to
   // collapse the run to one word; this does not (docs/principles/three-roles.md).
-  const terminalOutcomes = endedOutcomes(outcomes).filter(
-    (outcome): outcome is NonNullable<typeof outcome> & { session: { status: ActorStatus } } =>
-      outcome?.session?.status !== undefined,
-  );
   // In progress the tally would count only the participants that ended so far.
   const participants =
     args.inProgress !== true && judgment.tally.total > 0 ? judgment.tally : undefined;
@@ -171,15 +165,9 @@ function fanoutReview(
     .map((outcome) => outcome?.session?.trace.taskFunnel)
     .filter((funnel): funnel is TaskFunnel => funnel !== undefined);
   const runTasks = args.inProgress === true ? undefined : aggregateTaskFunnels(participantFunnels);
-  const participantEndings = terminalOutcomes.map((outcome) => {
-    const ending = actorEnding(outcome.session.trace);
-    const goalSource = cuaGoalSource(outcome.session.trace);
-    return {
-      status: outcome.session.status,
-      ...(ending === undefined ? {} : { label: ending.label }),
-      ...(goalSource === undefined ? {} : { goalSource }),
-    };
-  });
+  // Read from the streams as withCuaReviewProvenance and a stored review's reader read them, so
+  // the line written here is the line they find.
+  const participantEndings = participantOutcomeDetails(streams);
   const review: ReviewSummary = withCuaReviewProvenance(
     {
       schema: REVIEW_SCHEMA,

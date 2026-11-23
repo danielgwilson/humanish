@@ -108,12 +108,20 @@ function oneLine(text: string): string {
 }
 
 /**
+ * The status the run counts a participant as: its judged status, or its `status` when it has
+ * none, as on a dry run.
+ */
+function countedStatus(participant: CuaParticipantResult): string {
+  return participant.judgedStatus ?? participant.status;
+}
+
+/**
  * A participant's status, how it ended and its closing message. A participant the run skipped
  * before its session started has no ending to classify, so its line ends on the reason the run
  * recorded. That reason is the harness's own sentence, so it prints whole.
  */
 function participantLine(participant: CuaParticipantResult): string {
-  const { id, status, session, diagnostics, skippedReason } = participant;
+  const { id, session, diagnostics, skippedReason } = participant;
   const ending =
     skippedReason !== undefined
       ? [skippedReason]
@@ -121,7 +129,7 @@ function participantLine(participant: CuaParticipantResult): string {
         ? [formatCuaDiagnostics(diagnostics)]
         : [];
   return [
-    `participant ${id}: ${participantStatus(status)}${session ? ` (${session.completionReason})` : ""}`,
+    `participant ${id}: ${participantStatus(countedStatus(participant))}${session ? ` (${session.completionReason})` : ""}`,
     ...ending,
     ...(session ? [oneLine(session.reason)] : []),
   ].join(" · ");
@@ -136,11 +144,14 @@ function participantLines(participants: readonly CuaParticipantResult[]): string
   if (participants.length <= 1) return [];
   if (participants.length <= LISTED_PARTICIPANTS) return participants.map(participantLine);
   const counts = new Map<string, number>();
-  for (const { status } of participants)
-    counts.set(participantStatus(status), (counts.get(participantStatus(status)) ?? 0) + 1);
-  const notPassed = participants.filter(
-    ({ status }) => status !== "passed" && status !== "contract_proof_only",
-  );
+  for (const participant of participants) {
+    const word = participantStatus(countedStatus(participant));
+    counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+  const notPassed = participants.filter((participant) => {
+    const status = countedStatus(participant);
+    return status !== "passed" && status !== "contract_proof_only";
+  });
   const listed = notPassed.slice(0, LISTED_PARTICIPANTS);
   const unlistedNotPassed = notPassed.length - listed.length;
   return [

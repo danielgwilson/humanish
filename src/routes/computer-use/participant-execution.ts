@@ -1,5 +1,5 @@
 import { scheduledParticipantDeps } from "./participant-runs.js";
-import { judgeParticipantRecords } from "../../run/judge.js";
+import { judgedStatus, judgeParticipantRecords } from "../../run/judge.js";
 import type { CuaLoopResult } from "../../actors/computer-use/loop.js";
 import { createE2BParticipantDesktop } from "./e2b-desktop/desktop.js";
 import { createInProcessDesktop } from "./in-process-desktop.js";
@@ -7,7 +7,7 @@ import { cuaParticipantDiagnostics } from "./diagnostics.js";
 import { pastEndReason, runOnSchedule, type ParticipantArrival } from "../../study/arrivals.js";
 import { redactText, toErrorMessage } from "../../evidence/redaction.js";
 import { participantFrames } from "./participant-frames.js";
-import { participantOutcomeOk, participantFactsOf } from "./participant-facts.js";
+import { participantFactsOf } from "./participant-facts.js";
 import {
   closeParticipantModel,
   judgeParticipantSession,
@@ -356,10 +356,14 @@ export function toParticipantResult(
       diagnostics: cuaParticipantDiagnostics({ dryRun }),
     };
   }
+  const facts = participantFactsOf(outcome);
+  const judged = judgedStatus(facts);
+  const judgedField = judged === undefined ? {} : { judgedStatus: judged };
   if (outcome.skippedReason !== undefined) {
     return {
       ...base,
       status: "blocked",
+      ...judgedField,
       ok: false,
       diagnostics: cuaParticipantDiagnostics({ dryRun, skipped: true }),
       skippedReason: outcome.skippedReason,
@@ -367,11 +371,12 @@ export function toParticipantResult(
     };
   }
   const session = outcome.session;
-  const participantOk = participantOutcomeOk(outcome, dryRun);
+  const participantOk = judged === "passed";
   const status: CuaParticipantResult["status"] = session ? session.status : "failed";
   return {
     ...base,
     status,
+    ...judgedField,
     ok: participantOk,
     diagnostics: cuaParticipantDiagnostics({
       dryRun,
@@ -416,8 +421,7 @@ export function toParticipantResult(
       : {
           error: {
             code: outcome.failureCode ?? "HUMANISH_COMPUTER_USE_FAILED",
-            message: judgeParticipantRecords([participantFactsOf(outcome)]).participants[0]!
-              .notPassedMessage,
+            message: judgeParticipantRecords([facts]).participants[0]!.notPassedMessage,
           },
         }),
   };

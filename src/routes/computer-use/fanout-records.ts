@@ -341,14 +341,16 @@ function fanoutOutcomeEvents(
   const events: RunEvent[] = [];
   const record = (event: Omit<RunEvent, "simId" | "streamId">) =>
     events.push(participantEvent(spec, event));
-  // Per-participant session event.
+  // Per-participant session event. Its type names how the session ended; its level and words
+  // say what the run counts the participant as, so a reported blocker reads blocked here.
   if (session) {
+    const counted = view.participant.judgedStatus ?? session.status;
     record({
       id: nextEventId(`session-${spec.planned.id}`),
       at: args.run.createdAt,
-      level: session.status === "passed" ? "info" : "warn",
+      level: counted === "passed" ? "info" : "warn",
       type: `cua-lab.session.${session.completionReason}`,
-      message: `Participant ${spec.planned.id} ${session.status}: ${session.reason}`,
+      message: `Participant ${spec.planned.id} ${counted}: ${session.reason}`,
     });
   } else if (args.inProgress === true && outcome === undefined) {
     // A queued participant gets its session.running event when its session starts.
