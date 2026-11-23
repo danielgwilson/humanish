@@ -159,10 +159,13 @@ allowlist, contained file reads, read-only routes and no-store security headers.
 Served data may also include `runtime` with `state`, `observedAt`, and
 `source: "local-run-status"`. This is a current observation of a contained,
 matching `status.json`; it never changes the run's recorded verdict or participant
-outcomes. A fresh heartbeat means running, a record its process wrote as `finished` means
-finished, a record written as `interrupted` (by the CLI's signal handler, by a run that ended
-without publishing, or by `humanish reclaim`) means interrupted, and stale or
-invalid timing means unknown. While the run's own process analyzes it after the run ended,
+outcomes. The reading is `runLiveness`'s (`src/run/liveness.ts`), which `humanish runs` and
+the TUI also call: a fresh heartbeat means running, a record its process wrote as `finished`
+means finished, and a record written as `interrupted` (by the CLI's signal handler, by a run
+that ended without publishing, or by `humanish reclaim`) means interrupted. This page differs
+in two ways. A stopped heartbeat, which the CLI reads as interrupted, is `unknown` here. So is
+a record whose start is after its last update or whose times cannot be read, unless run.json
+records how the run ended. While the run's own process analyzes it after the run ended,
 `runtime.analysis` is `{ startedAt }`: the status band reads **Writing findings** and the
 Findings view shows the analysis as pending, with how long ago it started, before the analysis
 job exists. Missing, malformed, or mismatched records omit the
@@ -252,8 +255,10 @@ hosting. See the [CSP sandbox standard](https://developer.mozilla.org/en-US/docs
 
 History entries may include `runtimeState` from the same contained local status
 read as the Observer, and `display` from the run's Observer data. Their existing
-`status` remains the recorded verdict. The library's pip color and the sidebar's
-label read `display`. Running filters should use runtime state when present,
+`status` remains the recorded verdict. The library's pip color reads `display`. The sidebar's
+label reads `runtimeState` for a running, unknown or interrupted row and `display` otherwise,
+and says "Captured while running" for a running row once updates have stopped. Running filters
+should use runtime state when present,
 preserving the difference between an active study and its provisional evidence
 outcome.
 

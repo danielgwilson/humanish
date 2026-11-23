@@ -57,6 +57,8 @@ interface Surfaces {
   /** The served Observer's process status for the run. */
   runtime: string | undefined;
   liveness: string;
+  /** Why the run reads as it does, on the two surfaces that say: `runs --json` and verify. */
+  basis: { runs: string | undefined; verify: string | undefined };
 }
 
 async function readSurfaces(root: string, outcome: OutcomeCase): Promise<Surfaces> {
@@ -130,6 +132,7 @@ async function readSurfaces(root: string, outcome: OutcomeCase): Promise<Surface
       states,
       runtime: served.runtime?.state,
       liveness: verified.unfinished?.liveness ?? "finished",
+      basis: { runs: runs.runs[0]?.livenessBasis, verify: verified.unfinished?.basis },
     };
   } finally {
     await started.server.close();
@@ -228,6 +231,35 @@ it("verify agrees on missing status, fresh status and a finished bundle with sta
   expect(shown.get("synthetic/no-outcome-missing")!.liveness).toBe("interrupted");
   expect(shown.get("synthetic/no-outcome-fresh")!.liveness).toBe("running");
   expect(shown.get("synthetic/between-writes")!.liveness).toBe("finished");
+});
+
+// One reading of a run with no outcome, on every surface that says more than its state. A stale
+// heartbeat reads interrupted wherever a run's state is shown (the table above), with the basis
+// that says it is a presumption. The served Observer's process status alone calls it unknown,
+// since it may be serving a copy of the evidence from another machine.
+it("gives one basis for a run with no outcome wherever a surface says why", () => {
+  const read = (status: string) => {
+    const { basis, runtime } = shown.get(`synthetic/no-outcome-${status}`)!;
+    return { ...basis, served: runtime };
+  };
+  expect({
+    missing: read("missing"),
+    invalid: read("invalid"),
+    mismatched: read("mismatched"),
+    fresh: read("fresh"),
+    stale: read("stale"),
+  }).toEqual({
+    missing: { runs: "bundle", verify: "bundle", served: undefined },
+    invalid: { runs: "bundle", verify: "bundle", served: undefined },
+    mismatched: { runs: "bundle", verify: "bundle", served: undefined },
+    fresh: { runs: "heartbeat", verify: "heartbeat", served: "running" },
+    stale: { runs: "stale-heartbeat", verify: "stale-heartbeat", served: "unknown" },
+  });
+});
+
+it("reads a recorded interruption from run.json on every surface that says why", () => {
+  const { basis } = shown.get("synthetic/interrupted")!;
+  expect(basis).toEqual({ runs: "outcome", verify: "outcome" });
 });
 
 it("shows a finished bundle as finished in the served Observer's process status", () => {

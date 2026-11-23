@@ -9,7 +9,7 @@ import { requestAutomaticAnalysisCancellation } from "../analysis/automatic.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { RUN_STATUS_FILE, isRunStatusRecord } from "../run/status.js";
+import { RUN_STATUS_FILE, isRunStatusRecord, readRunStatus } from "../run/status.js";
 import { resolveRunPath } from "../run/locate.js";
 import { bindExistingRunArtifactPaths, isSafeRunIdSegment } from "../run/paths.js";
 import { openTarget } from "../observer/render.js";
@@ -222,6 +222,16 @@ export async function stopRun(
       schema: TUI_ACTION_SCHEMA,
       ok: false,
       message: `this run already stopped (${record.signal ?? "interrupted"}); Reclaim releases any sandbox it left`,
+    };
+  }
+
+  // The run list reads a record whose heartbeat stopped as interrupted and offers Reclaim. Its
+  // pid may belong to another process by now, and the signal below reaches a whole process group.
+  if (readRunStatus(record, Date.now()).basis === "stale-heartbeat") {
+    return {
+      schema: TUI_ACTION_SCHEMA,
+      ok: false,
+      message: `this run stopped updating its record at ${record.updatedAt}, so no process was signalled; Reclaim releases any sandbox it left`,
     };
   }
 

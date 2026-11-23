@@ -1,10 +1,6 @@
 import type { RunOutcome } from "./bundle.js";
-import {
-  classifyRunStatus,
-  isRunStatusRecord,
-  type RunLiveness,
-  type RunStatusRecord,
-} from "./status.js";
+import { simulationInProgress } from "./streams.js";
+import { isRunStatusRecord, readRunStatus, type RunStatusRecord } from "./status.js";
 
 interface LivenessBundle {
   simulations?: ReadonlyArray<{ status?: string | undefined } | undefined> | undefined;
@@ -12,32 +8,55 @@ interface LivenessBundle {
 }
 
 /**
- * The bundle-only reading, for a run with no usable status record. A bundle on disk usually means
- * the run reached its final write. But a live run now flushes an in-progress bundle as it goes (so
- * anything asking what a participant is doing has something to read), and that bundle marks its
- * simulations `running`. With no status record there is no freshness to judge, and the
- * reading of "it started, and nothing here says it finished" is interrupted, not finished.
+ * A run's liveness and the basis for it, with the fact the reading rests on. `outcome`: run.json
+ * records how the run ended. `status`, `heartbeat` and `stale-heartbeat`: a status record that
+ * names the run decides, as readRunStatus reads it. `bundle`: no usable status record names the
+ * run, so run.json's participants decide.
  */
-function bundleLiveness(bundle: LivenessBundle): RunLiveness {
-  const inProgress = (bundle.simulations ?? []).some(
-    (simulation) => simulation?.status === "running",
-  );
-  return inProgress ? "interrupted" : "finished";
-}
+export type RunLivenessReading =
+  | {
+      basis: "outcome";
+      liveness: "finished";
+      outcome: Extract<RunOutcome, { state: "finished" }>;
+    }
+  | {
+      basis: "outcome";
+      liveness: "interrupted";
+      outcome: Extract<RunOutcome, { state: "interrupted" }>;
+    }
+  | { basis: "status"; liveness: "finished" | "interrupted"; record: RunStatusRecord }
+  | { basis: "heartbeat"; liveness: "running"; record: RunStatusRecord }
+  | { basis: "stale-heartbeat"; liveness: "interrupted"; record: RunStatusRecord }
+  | { basis: "bundle"; liveness: "finished" | "interrupted" };
+
+/** Why a run reads as running, interrupted or finished. */
+export type RunLivenessBasis = RunLivenessReading["basis"];
 
 /**
- * One run's liveness: the bundle outcome, then usable status, then bundle-only evidence.
- * `readRunIndex` reads in the same order; `humanish verify` calls this with both in hand. `record`
- * is the status record the liveness came from, when there was one.
+ * One run's liveness: the bundle outcome, then a status record that names the run, then the
+ * bundle's participants. A caller that says more than the liveness switches on the basis.
+ *
+ * The bundle-only reading is for a run with no usable status record. A bundle on disk usually
+ * means the run reached its final write. But a live run flushes an in-progress bundle as it goes
+ * (so anything asking what a participant is doing has something to read), and that bundle holds
+ * each participant that has not ended as queued, preparing or running. With no status record
+ * there is no freshness to judge, and the reading of "it started, and nothing here says it
+ * finished" is interrupted.
  */
 export function runLiveness(
   runId: string,
   status: unknown,
   bundle: LivenessBundle,
   nowMs: number,
-): { liveness: RunLiveness; record?: RunStatusRecord } {
-  if (bundle.outcome !== undefined) return { liveness: bundle.outcome.state };
-  return isRunStatusRecord(status) && status.runId === runId
-    ? { liveness: classifyRunStatus(status, nowMs), record: status }
-    : { liveness: bundleLiveness(bundle) };
+): RunLivenessReading {
+  const { outcome } = bundle;
+  if (outcome?.state === "finished") return { basis: "outcome", liveness: "finished", outcome };
+  if (outcome?.state === "interrupted")
+    return { basis: "outcome", liveness: "interrupted", outcome };
+  if (isRunStatusRecord(status) && status.runId === runId)
+    return { ...readRunStatus(status, nowMs), record: status };
+  const inProgress = (bundle.simulations ?? []).some((simulation) =>
+    simulationInProgress(simulation?.status),
+  );
+  return { basis: "bundle", liveness: inProgress ? "interrupted" : "finished" };
 }

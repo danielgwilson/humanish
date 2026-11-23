@@ -255,6 +255,7 @@ export async function readCompletedAnalysisSource(
   }
   assertRecordingEnded({
     runId: loaded.bundle.runId,
+    outcome: loaded.bundle.outcome,
     status,
     runningStreams: loaded.bundle.streams.filter(
       (stream) =>

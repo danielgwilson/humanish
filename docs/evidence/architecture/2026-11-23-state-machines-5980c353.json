@@ -1,0 +1,2086 @@
+{
+  "schema": "humanish.state-machine-inventory.v1",
+  "date": "2026-11-23",
+  "source": {
+    "commit": "5980c353",
+    "roots": [
+      "src",
+      "observer",
+      "tui/src"
+    ]
+  },
+  "totals": {
+    "entries": 247,
+    "explicit": 38,
+    "implicit, left": 162,
+    "implicit, costly": 47
+  },
+  "areas": [
+    {
+      "area": "Run lifecycle on disk",
+      "totals": {
+        "explicit": 5,
+        "implicit, left": 17,
+        "implicit, costly": 3
+      },
+      "entries": [
+        {
+          "id": "01-1",
+          "name": "status.json record, writer side",
+          "governs": "run identity and liveness on disk",
+          "file": "src/run/status.ts",
+          "shape": "flag soup (three booleans plus a nullable record) behind a status string on disk; second writer outside the handle",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "01-2",
+          "name": "Run scope and run handle",
+          "governs": "one run's admission from start to close",
+          "file": "src/run/run.ts",
+          "shape": "flag soup in closures, with `RunLifecycleError` (`run.ts:221-223`) as the refusal",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-3",
+          "name": "Run publisher",
+          "governs": "write queue and publication order",
+          "file": "src/run/run.ts",
+          "shape": "control-flow position as state, plus an interrupt overlay variable",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-4",
+          "name": "run.json outcome",
+          "governs": "how the run ended",
+          "file": "src/run/bundle.ts",
+          "shape": "discriminated union on `state`",
+          "grade": "explicit"
+        },
+        {
+          "id": "01-5",
+          "name": "Run liveness derived on read",
+          "governs": "is this run alive",
+          "file": "src/run/status.ts",
+          "shape": "state derived on read, with at least 16 rules",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "01-6",
+          "name": "Automatic analysis phase in status.json",
+          "governs": "",
+          "file": "src/run/status.ts",
+          "shape": "state derived on read from an optional sub-record and heartbeat age",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-7",
+          "name": "Run display state",
+          "governs": "how a run reads wherever pass or fail is shown",
+          "file": "src/run/display.ts",
+          "shape": "one pure function and two tables",
+          "grade": "explicit"
+        },
+        {
+          "id": "01-8",
+          "name": "Participant status",
+          "governs": "in progress, raw and judged",
+          "file": "src/run/streams.ts",
+          "shape": "status string with scattered transitions; each flush re-derives the status from facts, and nothing checks the order",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "01-9",
+          "name": "Run judgment and execution outcome",
+          "governs": "",
+          "file": "src/run/judge.ts",
+          "shape": "already explicit: pure functions and a policy table",
+          "grade": "explicit"
+        },
+        {
+          "id": "01-10",
+          "name": "Live items file generations",
+          "governs": "",
+          "file": "src/run/live-items.ts",
+          "shape": "flag soup in a closure plus ordering (\"bytes on disk before run.json indexes them\")",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-11",
+          "name": "Sandbox create registry",
+          "governs": "creates in flight per run directory",
+          "file": "src/run/sandbox-creates.ts",
+          "shape": "flag soup per directory, plus a ticket protocol (`SandboxCreateTicket` `:151-160`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-12",
+          "name": "Sandbox receipt journal and owner lines",
+          "governs": "",
+          "file": "src/run/sandbox-receipts.ts",
+          "shape": "protocol (owner line before create, receipt when the id arrives, append-only, torn lines skipped)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-13",
+          "name": "Reclaim",
+          "governs": "per-sandbox outcome, receipt and rollup",
+          "file": "src/run/reclaim-outcomes.ts",
+          "shape": "union vocabulary declared in one module; transitions in `actOn` and `reclaimRoot`; receipt written before kills",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-14",
+          "name": "Preflight probe journal",
+          "governs": "",
+          "file": "src/run/preflight-receipts.ts",
+          "shape": "state derived on read from files, with one decision function",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-15",
+          "name": "Heartbeat and host suspensions",
+          "governs": "",
+          "file": "src/run/host-suspension.ts",
+          "shape": "small closure",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-16",
+          "name": "latest.json pointer",
+          "governs": "",
+          "file": "src/run/run.ts",
+          "shape": "one boolean plus ordering",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-17",
+          "name": "Active runs registry",
+          "governs": "",
+          "file": "src/run/active-runs.ts",
+          "shape": "module set",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-18",
+          "name": "Transient comms secret scope",
+          "governs": "",
+          "file": "src/run/transient-comms-secrets.ts",
+          "shape": "two flags",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-19",
+          "name": "Reviewer note publish",
+          "governs": "",
+          "file": "src/run/notes.ts",
+          "shape": "retry loop on `EEXIST`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-20",
+          "name": "Prune keep decision",
+          "governs": "",
+          "file": "src/run/prune.ts",
+          "shape": "state derived on read, in a fixed order",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-21",
+          "name": "Run index cache",
+          "governs": "",
+          "file": "src/run/run-index.ts",
+          "shape": "cache keyed on both files' stat, with liveness classified again at read time",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-22",
+          "name": "Study preparation",
+          "governs": "plan once, then run",
+          "file": "src/run-study.ts",
+          "shape": "already explicit as unions. The local VM handle is closed by hand on four exits (`:118`, `:129`, `:138`, `:171`)",
+          "grade": "explicit"
+        },
+        {
+          "id": "01-23",
+          "name": "Route shell admission",
+          "governs": "",
+          "file": "src/run/route-shell.ts",
+          "shape": "already explicit",
+          "grade": "explicit"
+        },
+        {
+          "id": "01-24",
+          "name": "Contained file write protocols",
+          "governs": "",
+          "file": "src/run/contained-output.ts",
+          "shape": "control-flow position: revalidate, temp file, sync, revalidate, rename; create with `O_EXCL`; append only at the caller's byte count, then `datasync`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "01-25",
+          "name": "Git command settle guard",
+          "governs": "",
+          "file": "src/run/git-state.ts",
+          "shape": "once-guard between timer, error and close",
+          "grade": "implicit, left"
+        }
+      ]
+    },
+    {
+      "area": "Computer-use session and participant inbox",
+      "totals": {
+        "explicit": 6,
+        "implicit, left": 19,
+        "implicit, costly": 5
+      },
+      "entries": [
+        {
+          "id": "02-1",
+          "name": "Session ending",
+          "governs": "the Stop value and its projection onto ActorStatus and stopCause",
+          "file": "src/actors/contract.ts",
+          "shape": "2 and 3. A closed status union with one exhaustive mapping from completionReason (explicit), plus an optional stop cause whose legal pairing with completionReason is implicit, plus the kind of goal_satisfied ending (participant end, stop condition, dwell, clock end) recorded only as a notice title or the stop cause and re-derived by each reader",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "02-2",
+          "name": "Lost provider request under a spend cap",
+          "governs": "",
+          "file": "src/actors/computer-use/loop/provider-call.ts",
+          "shape": "5 (retry protocol across two layers) and 1. The loop sees one caught `unknown` and decides from `session.requiresUsage`, `session.capDeclared` and the error's class; the provider decides its own retries from `spend !== undefined` and the HTTP status",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "02-3",
+          "name": "Usage certainty in the UsageLedger",
+          "governs": "",
+          "file": "src/actors/computer-use/loop/usage.ts",
+          "shape": "1. Six private flags plus one provider getter, read through three predicates that combine them differently: `unavailableForCap` (`usage.ts:337-345`), `interactionUsageIncomplete(capDeclared)` (`usage.ts:351-358`), `hasUnreportedUsage` (`usage.ts:332-334`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-4",
+          "name": "Participant clock",
+          "governs": "scheduled end, session cap, wind-down, held participant",
+          "file": "src/actors/computer-use/loop/types.ts",
+          "shape": "3. The phase (before wind-down, winding down, at end; scheduled versus cap; held or not) is recomputed from `end.atMs`, `end.windDownMs`, `end.kind` and `session.now()` by six readers. `heldToScheduledEnd` is evaluated three times in one turn (`loop.ts:190`, `217`, `244`), each with a fresh `now()`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-5",
+          "name": "Friction backstop",
+          "governs": "",
+          "file": "src/actors/computer-use/loop/backstop.ts",
+          "shape": "explicit. A readonly record and a pure fold that returns the next record, the hints and an optional trip reason",
+          "grade": "explicit"
+        },
+        {
+          "id": "02-6",
+          "name": "Closing request (debrief and impressions)",
+          "governs": "",
+          "file": "src/actors/computer-use/loop/debrief.ts",
+          "shape": "explicit unions for the plan, the reply and the recorded status (`completed / skipped / failed`, `contract.ts:647`), with the closingRetry handshake split between the loop (`debrief.ts:193-229`) and the provider's `openClosing`",
+          "grade": "explicit"
+        },
+        {
+          "id": "02-7",
+          "name": "Output-limit resend",
+          "governs": "",
+          "file": "loop.ts",
+          "shape": "5. A one-step retry carried by two loop locals and a provider promise that a set-aside reply leaves the conversation unchanged",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-8",
+          "name": "Idle watch run and wake",
+          "governs": "",
+          "file": "src/actors/computer-use/loop/watch.ts",
+          "shape": "1 for the run (two private fields), explicit union for the wake",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-9",
+          "name": "Desktop observer",
+          "governs": "dwell once, pending speech, pending handoff notes",
+          "file": "src/actors/computer-use/loop/observation.ts",
+          "shape": "1 and 5 (one retry of a stalled or dropped observe, skipped for `stallRecovery: \"fail_closed\"`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-10",
+          "name": "Next-request staging in the loop",
+          "governs": "",
+          "file": "src/actors/computer-use/loop.ts",
+          "shape": "1. Five fields that ride the next request once (hint, safety acks, previous execution, response id, askedToEnd)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-11",
+          "name": "Action and executor dispositions",
+          "governs": "",
+          "file": "src/actors/computer-use/loop/types.ts",
+          "shape": "explicit unions, decided in one function per batch",
+          "grade": "explicit"
+        },
+        {
+          "id": "02-12",
+          "name": "Provider failure receipt and phase",
+          "governs": "",
+          "file": "src/actors/computer-use/provider-error.ts",
+          "shape": "explicit. A closed code list, a closed phase list and a three-field receipt, validated in the constructor and on read",
+          "grade": "explicit"
+        },
+        {
+          "id": "02-13",
+          "name": "Single-dispatch settlement (fail_closed providers)",
+          "governs": "",
+          "file": "src/actors/computer-use/loop/provider-call.ts",
+          "shape": "4 and 5. A request that may return a continuing turn before it settles, a bounded cleanup grace, then booking",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-14",
+          "name": "OpenAI conversation mode and summary latches",
+          "governs": "",
+          "file": "src/actors/computer-use/openai-conversation.ts",
+          "shape": "two one-way latches, each flipped by one method that returns false when already flipped, so the retry loop is bounded",
+          "grade": "explicit"
+        },
+        {
+          "id": "02-15",
+          "name": "Anthropic conversation history and compaction",
+          "governs": "",
+          "file": "src/actors/computer-use/anthropic-conversation.ts",
+          "shape": "1. A conversation buffer with a compaction cut and a set-aside rule for interrupted replies",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-16",
+          "name": "Claude Code stream session transport",
+          "governs": "",
+          "file": "src/actors/local-agent/claude-session.ts",
+          "shape": "1 and 5. A request/result pairing protocol over NDJSON with an interrupt and receipt handshake",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-17",
+          "name": "Claude stream guard admission",
+          "governs": "",
+          "file": "src/actors/local-agent/claude-participant.ts",
+          "shape": "1. One boolean: a `result` before an admitted `init` is a refusal",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-18",
+          "name": "Port-call races",
+          "governs": "",
+          "file": "src/actors/computer-use/loop/race.ts",
+          "shape": "explicit error classes that classify why a wait ended; one `settled` guard per race (`race.ts:80-87`)",
+          "grade": "explicit"
+        },
+        {
+          "id": "02-C1",
+          "name": "Lease record state (`CommsLeaseState`)",
+          "governs": "cleanup authority for each participant's real provider inbox",
+          "file": "src/comms/lease-store.ts",
+          "shape": "2, plus 1 for an in-memory mirror. The journal is `$XDG_STATE_HOME/humanish/comms/run-<sha256>.json`; `ReceivingRun` keeps a clone in `participant.record` (`receiving.ts:176`) that is updated by hand for 2 of the 8 states (`receiving.ts:243,261`)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "02-C2",
+          "name": "Journal status and owner liveness",
+          "governs": "whether a run's inboxes are cleaned up, and by whom",
+          "file": "src/comms/lease-store.ts",
+          "shape": "2 and 3. A crashed run stays `active` with `owner.active: true`; readers infer the crash from `process.kill(pid, 0)` on the same host and get `null` from another host",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "02-C3",
+          "name": "Journal lock and takeover guard",
+          "governs": "one writer per run journal",
+          "file": "src/comms/lease-store.ts",
+          "shape": "5. O_EXCL files `<journal>.lock` and `<journal>.takeover`, plus a closure flag",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-C4",
+          "name": "ReceivingRun participant lifecycle",
+          "governs": "polling, publishing and finishing one participant's real inbox",
+          "file": "src/comms/receiving.ts",
+          "shape": "1 and 4. Eleven optional fields (`lease`, `surface`, `timer`, `task`, `readAbort`, `pendingPublication`, `finishing`, `finished`, `revision`, `publishedRevision`, `record`); evidence enums run `state` `acquiring / running / finished` (`receiving-types.ts:124`), `acquisition` `pending / active / failed` (`:108`), `cleanup` `pending / absent / deleting / unresolved` (`:109`); single-flight guards `pendingEvidence` (`receiving.ts:211-235`) and `pendingPublication` (`:352-382`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-C5",
+          "name": "Release retry and operation deadline",
+          "governs": "",
+          "file": "src/comms/receiving-common.ts",
+          "shape": "5. Three attempts 250 ms apart, `assertOwnership` and an identity check before each (`:76-93`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-C6",
+          "name": "AgentMail adapter",
+          "governs": "acquire, read and release",
+          "file": "src/comms/agentmail.ts",
+          "shape": "5, with counters in a budget object",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-C7",
+          "name": "Receiving inbox server on the desktop",
+          "governs": "start, publish snapshots, stop",
+          "file": "src/comms/receiving-surface.ts",
+          "shape": "1 and 5",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-C8",
+          "name": "In-sandbox email catch",
+          "governs": "deploy, ready, refresh the inbox surface, stop, drain, release",
+          "file": "src/comms/sandbox-catch.ts",
+          "shape": "4. Ordering rules in comments: deploy before the subject serve (`sandbox-catch.ts:97-98`); write the empty inbox before the loop (`e2b-desktop/comms.ts:122-124`); stop the surface loop before the drain (`teardown.ts:109-111`, `provisioned.ts:404-405`); advance `renderedCount` only after a successful render (`e2b-desktop/comms.ts:150`, `provisioned.ts:356`)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "02-C9",
+          "name": "Adopter-hosted catch",
+          "governs": "health, start cursor, drain from cursor",
+          "file": "src/comms/sandbox-catch.ts",
+          "shape": "5. The cursor is a line count passed between calls; `undefined` means the start read failed",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-C10",
+          "name": "Catch script listeners and SMTP session",
+          "governs": "",
+          "file": "src/comms/sandbox-catch-script.ts",
+          "shape": "4 and 5",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-C11",
+          "name": "Host catch command (`humanish comms catch`)",
+          "governs": "render, run, re-render",
+          "file": "src/comms/catch-host.ts",
+          "shape": "1 and 4",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "02-C12",
+          "name": "Connection save and study configure",
+          "governs": "O_EXCL locks and a preview/apply token",
+          "file": "src/comms/connections.ts",
+          "shape": "5",
+          "grade": "implicit, left"
+        }
+      ]
+    },
+    {
+      "area": "Computer-use and shared-world routes",
+      "totals": {
+        "explicit": 3,
+        "implicit, left": 22,
+        "implicit, costly": 8
+      },
+      "entries": [
+        {
+          "id": "03-C1",
+          "name": "Participant lifecycle, as the computer-use route sees it",
+          "governs": "from planned to ended or skipped",
+          "file": "src/routes/computer-use/types.ts",
+          "shape": "1 (flag soup in `ParticipantRunOutcome`: `session?`, `sessionError?`,",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "03-C2",
+          "name": "Participant status projection",
+          "governs": "the raw session status and the judged status on every surface",
+          "file": "src/run/judge.ts",
+          "shape": "2 and 3. `ActorStatus` (`src/actors/contract.ts:40-48`) and `RunSimulationStatus`",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "03-C3",
+          "name": "Participant start markers",
+          "governs": "five separate signals for \"this participant started\"",
+          "file": "src/routes/computer-use/participant-execution.ts",
+          "shape": "3 (each reader takes its own marker)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "03-C4",
+          "name": "Fan-out runner",
+          "governs": "schedule, slots, abort and the total-runner guard",
+          "file": "src/study/arrivals.ts",
+          "shape": "4 and 5 (queue/start/stop). A worker pool loop with an abort signal that ends",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C5",
+          "name": "Pipeline gate",
+          "governs": "holds a provisioned fan-out behind its first ready participant",
+          "file": "src/routes/computer-use/participant-execution.ts",
+          "shape": "already explicit. `state: \"vacant\" / \"held\" / \"open\" / \"closed\"`, `holder`, a",
+          "grade": "explicit"
+        },
+        {
+          "id": "03-C6",
+          "name": "Pre-start skip ladder",
+          "governs": "why a participant was skipped",
+          "file": "src/routes/computer-use/participant-execution.ts",
+          "shape": "1 and 2. A free string `skippedReason` plus a separate `outOfCredits` sub-flag;",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "03-C7",
+          "name": "Account credits latch",
+          "governs": "stops every later start once a request gets out-of-credits",
+          "file": "src/routes/computer-use/out-of-credits.ts",
+          "shape": "already explicit. One-way latch on an `AbortController`; never resets",
+          "grade": "explicit"
+        },
+        {
+          "id": "03-C8",
+          "name": "Study budget ledger",
+          "governs": "`caps.maxTotalUsd` across participants",
+          "file": "src/routes/computer-use/participant-model.ts",
+          "shape": "3. The crossed state is computed on read from a Map of per-participant",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C9",
+          "name": "ParticipantDesktop contract",
+          "governs": "prepare, openSession, finalize, snapshot on four substrates",
+          "file": "src/routes/computer-use/participant-desktop.ts",
+          "shape": "4 (call order) plus 1 (each implementation keeps its own closure flags)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C10",
+          "name": "E2B desktop preparation",
+          "governs": "acquire, receipt, hooks, comms, screen, files, subject, media, browser, screen saver",
+          "file": "src/routes/computer-use/e2b-desktop/desktop.ts",
+          "shape": "4 and 1. Statement order is the machine; 30 fields on `E2BParticipantState`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C11",
+          "name": "E2B desktop teardown",
+          "governs": "evidence collection, then media, then release",
+          "file": "src/routes/computer-use/e2b-desktop/teardown.ts",
+          "shape": "4 (try/finally order)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C12",
+          "name": "Sandbox release fact and provider-resource status",
+          "governs": "",
+          "file": "src/routes/computer-use/types.ts",
+          "shape": "1. `killed: boolean` plus optional `sandboxRelease.state: \"retained\" / \"unconfirmed\"`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C13",
+          "name": "Model close sequence",
+          "governs": "provider, Codex participant, close report, Claude session",
+          "file": "src/routes/computer-use/participant-model.ts",
+          "shape": "4 and 1 (`unconfirmed`, `refusal` accumulated across four try blocks)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C14",
+          "name": "Live trace flush",
+          "governs": "throttled in-progress bundle writer",
+          "file": "src/routes/computer-use/live-flush.ts",
+          "shape": "1 and 5. `flushWriting`, `flushDirty`, `flushClosed`, `flushTimer`,",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C15",
+          "name": "Screenshot frames",
+          "governs": "PNG during the session, WebP after",
+          "file": "src/routes/computer-use/participant-frames.ts",
+          "shape": "1 and 4 (`finished` flag; \"PNG removed only after the final bundle\" rule)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C16",
+          "name": "Desktop recording",
+          "governs": "recorder process, segment pulls and the final copy",
+          "file": "src/substrates/e2b/desktop-recording.ts",
+          "shape": "1 and 5. `stopping`/`exitedEarly`, `stopped`/`running`, `finishing` memo, spool",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C17",
+          "name": "In-sandbox comms catch surface loop",
+          "governs": "",
+          "file": "src/routes/computer-use/e2b-desktop/comms.ts",
+          "shape": "5. Loop on an `AbortController`; `renderedCount` cursor",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C18",
+          "name": "Network capture start",
+          "governs": "",
+          "file": "src/routes/computer-use/e2b-desktop/network.ts",
+          "shape": "1 (one boolean)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C19",
+          "name": "Route phases",
+          "governs": "admit, start, participants, finish",
+          "file": "src/routes/computer-use/route.ts",
+          "shape": "4, with `{ ok: false, result }` returns between phases (explicit discriminated",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C20",
+          "name": "Rerun source reading",
+          "governs": "which prior participants are rerunnable",
+          "file": "src/routes/computer-use/rerun-selection.ts",
+          "shape": "3. A source is a fan-out when it has a `cua-lab.fanout.plan` event and at least",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-C21",
+          "name": "Local VM study state",
+          "governs": "shared cleanup flag and session list",
+          "file": "src/routes/computer-use/local-vm.ts",
+          "shape": "1 (one boolean `cleanupUnconfirmed`, two lists)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-SW1",
+          "name": "Shared-world participant standing",
+          "governs": "one raw outcome, seven recorded fields, five rules",
+          "file": "src/routes/computer-use/types.ts",
+          "shape": "2 and 3. One raw outcome (`session?`, `sessionError?`, `skippedReason?`,",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "03-SW2",
+          "name": "Shared-world participant fan-out",
+          "governs": "start queue, stop signals, result collection",
+          "file": "src/study/arrivals.ts",
+          "shape": "4 and 5. Per participant: waiting in `runOnSchedule`, in flight inside",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "03-SW3",
+          "name": "LobbyHandoff",
+          "governs": "the external-public host-first barrier",
+          "file": "handoff.ts",
+          "shape": "5 and 1. A resolve-once `deferred` (`handoff.ts:54-81`), a deadline promise and",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "03-SW4",
+          "name": "Provisioned plane lifecycle",
+          "governs": "subject sandbox acquire to teardown",
+          "file": "src/substrates/e2b/subject-sandbox.ts",
+          "shape": "4. Phase order is the statement order at `provisioned.ts:535-544`; later phases",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-SW5",
+          "name": "State prober and inbox-surface render loops",
+          "governs": "",
+          "file": "provisioned.ts",
+          "shape": "1 and 5. `proberDisposed`, a `disposeSignal` with `releaseDispose`, two loop",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-SW6",
+          "name": "Live shared-world bundle",
+          "governs": "participants while the run is in progress",
+          "file": "provisioned.ts",
+          "shape": "3 with a frozen input. Built once with `actorResults: []`, so every participant",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "03-SW7",
+          "name": "Run failure cause",
+          "governs": "which error a failed shared-world run reports",
+          "file": "result.ts",
+          "shape": "1, read by one ordered cascade (handoff timeout, host handoff failure, run error,",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-SW8",
+          "name": "Plane selection and plane results",
+          "governs": "",
+          "file": "route.ts",
+          "shape": "a config enum picks the plane; `PlaneResults` is one record each plane fills by",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-SW9",
+          "name": "Live stream URL registry",
+          "governs": "",
+          "file": "types.ts",
+          "shape": "array of `{ streamId, url, ended? }`, the same rule as computer-use's",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-SW10",
+          "name": "Lobby-code vision reader guard",
+          "governs": "",
+          "file": "handoff.ts",
+          "shape": "closure flags `inFlight`, `reads`, and the caller's `done()`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-SW11",
+          "name": "External comms cursor and email receiving on a shared world",
+          "governs": "",
+          "file": "comms.ts",
+          "shape": "a send-count cursor captured at setup; receiving prepare then finish in a `finally`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "03-SW12",
+          "name": "Resolve-once latch helper",
+          "governs": "",
+          "file": "handoff.ts",
+          "shape": "already explicit; one `done` flag guards resolve and reject",
+          "grade": "explicit"
+        }
+      ]
+    },
+    {
+      "area": "Terminal, scripted and Codex",
+      "totals": {
+        "explicit": 1,
+        "implicit, left": 16,
+        "implicit, costly": 6
+      },
+      "entries": [
+        {
+          "id": "04-1",
+          "name": "Terminal session phases",
+          "governs": "the ordered steps of one live terminal run",
+          "file": "src/routes/terminal/session.ts",
+          "shape": "4 (control-flow position). One `try/catch/finally` in `session.ts:133-149` runs `acquire`, `probeReady`, then a `&&` chain of three steps that each return `false` to stop (`session.ts:137-141`), then `run.participantStarted()` and `execCodex` (`session.ts:142-143`); `teardown` runs in `finally` (`session.ts:148`); `finishLiveTerminalSession` runs after",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-2",
+          "name": "Terminal session outcome",
+          "governs": "how the live agent session ended",
+          "file": "src/routes/terminal/live-sandbox.ts",
+          "shape": "1 (flag soup). Five public mutable fields that every writer sets together; the constructor's values double as the \"not started\" sentinel (`live-sandbox.ts:84-86`: `failed`, `harness_error`, \"did not start\")",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "04-3",
+          "name": "Terminal run failure cause",
+          "governs": "which failure the result's error names",
+          "file": "src/routes/terminal/result.ts",
+          "shape": "3 (state derived on read). Three readers each derive the cause of a failed run from raw facts (`cleanup`, `capFailure`, `declaredScorerFailure`, `sessionError`, `observer.error`)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "04-4",
+          "name": "Terminal sandbox cleanup proof",
+          "governs": "whether the shell sandbox is proven gone",
+          "file": "src/routes/terminal/types.ts",
+          "shape": "1 (sentinel values). A boolean plus an integer sentinel (`0`, `1`, `-1`) plus prose",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "04-5",
+          "name": "Terminal runtime version status",
+          "governs": "whether the Codex release was observed",
+          "file": "src/actors/contract.ts",
+          "shape": "2 (status string with transitions in one function)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-6",
+          "name": "Terminal transcript capture",
+          "governs": "storing, then reading past the cap",
+          "file": "src/routes/terminal/recorder.ts",
+          "shape": "1 (closure flags in one factory)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-7",
+          "name": "Terminal participant text reader and verdict scanner",
+          "governs": "",
+          "file": "src/routes/terminal/participant-text.ts",
+          "shape": "1 (closure flags) and a first-wins latch",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-8",
+          "name": "Terminal lifecycle ledger",
+          "governs": "event names as the run's state log",
+          "file": "src/routes/terminal/recorder.ts",
+          "shape": "2 (status strings with no declared set). The names are not declared anywhere; the bundle derives each event's level by substring",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-9",
+          "name": "Scripted run phases",
+          "governs": "provision, one session per surface, release, finish",
+          "file": "src/routes/scripted/route.ts",
+          "shape": "4 (control flow) plus 3 (readers derive \"dry run\" from an empty result list)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-10",
+          "name": "Scripted surface session outcome",
+          "governs": "how one surface's journey ended",
+          "file": "src/actors/scripted-browser/actor.ts",
+          "shape": "2 (status pair set in one function by an `if` chain over `timedOut` and `capture.ok`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-11",
+          "name": "Scripted journey step loop",
+          "governs": "",
+          "file": "src/actors/scripted-browser/actor.ts",
+          "shape": "4 (loop position) with local flags",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-12",
+          "name": "Scripted subject sandbox",
+          "governs": "acquired, released, unconfirmed",
+          "file": "src/substrates/e2b/subject-sandbox.ts",
+          "shape": "1 (optional fields whose presence means a state)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-13",
+          "name": "Codex app-server session (the `codex-app-server` actor)",
+          "governs": "",
+          "file": "src/actors/codex/app-server.ts",
+          "shape": "1 and 4. Closure flags; the JSON-RPC handshake is the order of awaits: `initialize` request, `initialized` notification, optional `account/login/start`, `thread/start`, `turn/start`, then wait for the child to close (`app-server.ts:139-189`). No `turn/interrupt` or shutdown request is sent; the stop is SIGTERM (`app-server.ts:113,119,207`) and SIGKILL 2 s later (`app-server.ts:120`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-14",
+          "name": "Codex stdio client (app-server JSON-RPC transport)",
+          "governs": "",
+          "file": "src/actors/codex/app-server-client.ts",
+          "shape": "1 (optional fields whose presence means a state)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-15",
+          "name": "Codex app-server UI status",
+          "governs": "\"starting\" / \"running\" / end status",
+          "file": "src/actors/codex/app-server-ui.ts",
+          "shape": "2, plus `result?` whose presence means \"ended through a result\"",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-16",
+          "name": "Codex app-server trace items",
+          "governs": "started and completed events",
+          "file": "src/actors/codex/app-server-trace.ts",
+          "shape": "1. Each item event appends; the item's lifecycle is per entry",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-17",
+          "name": "Restricted Codex launch handshake phases",
+          "governs": "",
+          "file": "src/actors/computer-use/provider-error.ts",
+          "shape": "A ordered list of phase names declared in one place, entered by one linear function",
+          "grade": "explicit"
+        },
+        {
+          "id": "04-18",
+          "name": "Restricted Codex deadline",
+          "governs": "running, paused, stopped",
+          "file": "src/actors/codex/restricted-transport.ts",
+          "shape": "one class owns every transition; `code` is a first-wins latch",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-19",
+          "name": "Owned Codex process and the unclosed-children registry",
+          "governs": "",
+          "file": "src/actors/codex/restricted-transport.ts",
+          "shape": "1 (closure booleans) plus a process-wide set",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "04-20",
+          "name": "Restricted Codex session lifecycle",
+          "governs": "launch, request, idle, close",
+          "file": "src/actors/codex/restricted-session.ts",
+          "shape": "1 and 4. A documented state record (each field's comment names its readers) plus three closure promises; the transport's mode is which callbacks are installed and whether `closing` or `deadline.code` is set",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "04-21",
+          "name": "Restricted Codex turn",
+          "governs": "dispatch, acknowledgment, tool call, completion",
+          "file": "src/actors/codex/restricted-turn.ts",
+          "shape": "1 (flag soup). The phase is spread over five fields and a buffer",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "04-22",
+          "name": "Restricted Codex participant conversation (the Codex computer-use brain)",
+          "governs": "",
+          "file": "src/actors/codex/restricted-participant.ts",
+          "shape": "1 (flag soup in a documented record) plus a queued event channel. The native Codex run calls the `humanish_ui` tool; each tool call becomes the CUA loop's next turn, and the loop's next request answers it",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "04-23",
+          "name": "Restricted Codex result",
+          "governs": "status beside errorCode",
+          "file": "src/actors/codex/restricted-policy.ts",
+          "shape": "2. `status` is derived from `errorCode` in one function, but both are stored",
+          "grade": "implicit, left"
+        }
+      ]
+    },
+    {
+      "area": "Substrates, remote runs and the guest runtime",
+      "totals": {
+        "explicit": 6,
+        "implicit, left": 22,
+        "implicit, costly": 3
+      },
+      "entries": [
+        {
+          "id": "05-1",
+          "name": "Remote run record (`remote.json`)",
+          "governs": "whether a remote run's evidence is still on its runner",
+          "file": "src/remote/launch.ts",
+          "shape": "flag soup plus state derived on read. An optional `copyPending: true` and an optional `lostInCopy[]` in a JSON file. Each reader combines them with whether `run.json` exists and how many receipts `sandbox-receipts.ndjson` holds",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "05-2",
+          "name": "Remote follow loop",
+          "governs": "following a runner's run from the launcher until it ends",
+          "file": "src/remote/launch.ts",
+          "shape": "control-flow position as state plus flag soup. Closure variables `state` (the runner's `status.json` state, or undefined), `alive`, `answeredAt`, `stopAt`, `stoppedRunning`, `syncAt`, the `copied` map, `signals.requested`, and the heartbeat's suspension list read through `wokeAt` (`src/remote/launch.ts:262-265`)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "05-3",
+          "name": "Remote launch sequence",
+          "governs": "what exists on disk and in the provider before the follow loop",
+          "file": "src/remote/launch.ts",
+          "shape": "control-flow position as state. Order: run dir (`:94`); owner line, which refuses the run when it fails (`:100-108`); signal handlers (`:112`); project read and pack (`:117-120`); runner create, which writes its `runner` receipt (`:126`); setup start (`:134`); `remote.json` (`:140`); Observer proxy bind (`:149`); setup wait (`:154`); `startRemoteRun` (`:161`); follow (`:167`). Signal checks at `:121`, `:127`, `:155`. Any throw reclaims by receipt and tags (`:168-177`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-4",
+          "name": "Runner run state read",
+          "governs": "how the launcher learns the runner's run state",
+          "file": "src/remote/runner.ts",
+          "shape": "state derived on read, twice in one call. A bash loop in the runner compares the first `\"state\"` it greps from `status.json` (`grep -m1`, `src/remote/runner.ts:292`), whether `result.json` is non-empty, and `pgrep` of the watch process; the host then parses the whole `status.json` and reads top-level `state` (`src/remote/runner.ts:319-322`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-5",
+          "name": "Remote range copy",
+          "governs": "resumable copy of one large file with a partial file and a lock",
+          "file": "src/remote/copy-back.ts",
+          "shape": "protocol (lock, takeover, retry) whose state is files: `.copy-<sha32>` partial whose size encodes the next range, `.copy-<sha32>.lock` holding a pid, and the final file after rename",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-6",
+          "name": "Signals while a remote run is followed",
+          "governs": "the first signal decides",
+          "file": "src/remote/launch.ts",
+          "shape": "closure `requested: \"stop\" / \"detach\" / undefined` plus `exitCode`, set once (`src/remote/launch.ts:486-491`)",
+          "grade": "explicit"
+        },
+        {
+          "id": "05-7",
+          "name": "Sandbox release and kill outcome",
+          "governs": "what a kill, a startup cleanup or a check proved",
+          "file": "src/substrates/desktop-session.ts",
+          "shape": "state derived on read. The provider's answer (kill `true`/`false`, a thrown SandboxNotFoundError, any other throw, `E2B_DEBUG=true`, or a Modal exit code `null`/number/none) is read into six vocabularies: `DesktopReleaseResult` (status and reason), `DesktopCreateCleanup` (`killed / already_gone / unconfirmed`), `E2BReleaseReading` (`released` and `warning`), `E2BSandboxDestroyOutcome` (`killed / already-gone / kill-failed`), `E2BSandboxPresence` (`running / already-gone / check-failed`), and Modal's mapping onto E2B's booleans",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "05-8",
+          "name": "E2B sandbox acquisition",
+          "governs": "create, tag, receipt, then the handle",
+          "file": "src/substrates/e2b/sandbox.ts",
+          "shape": "control-flow position as state, documented at `src/substrates/e2b/sandbox.ts:1-9`. Ticket (refused when stopping) \u2192 owner line once per directory \u2192 create with one transient retry, refused when stopping (`:137-146`) \u2192 id observed by the startup guard (`:127-136`) \u2192 `ticket.created` \u2192 allocation \u2192 receipt unless the guard's report wrote it (`:154`) \u2192 handle; `finally` waits for reported receipts and settles the ticket (`:162-167`)",
+          "grade": "explicit"
+        },
+        {
+          "id": "05-9",
+          "name": "Owned desktop allocation",
+          "governs": "open once, close once",
+          "file": "src/substrates/desktop-session.ts",
+          "shape": "two closure fields, `opened` and the memoized `closing` promise",
+          "grade": "explicit"
+        },
+        {
+          "id": "05-10",
+          "name": "Guarded desktop create",
+          "governs": "cleanup authority for a create whose desktop startup fails",
+          "file": "src/substrates/e2b/sdk.ts",
+          "shape": "per-attempt closure fields `cleanupOwned`, `restoreKill`, the memoized `receipt`, set in a subclass constructor that runs before desktop startup",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-11",
+          "name": "Chrome DevTools readiness after launch",
+          "governs": "",
+          "file": "src/substrates/e2b/desktop-browser.ts",
+          "shape": "a discriminated union `ready / exited / timeout` with `waitedMs` and `logTail`; absent when python3 is missing",
+          "grade": "explicit"
+        },
+        {
+          "id": "05-12",
+          "name": "`CuaTypePhase` and the hosted type sequence",
+          "governs": "",
+          "file": "src/substrates/e2b/desktop-executor.ts",
+          "shape": "`CuaTypePhase` labels which step of a `type` failed (`text-tempfile / text-command`); it is an error classification, not a changing state. The sequence (mktemp, write, one paste, close) is control flow with no retry (`:142-144`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-13",
+          "name": "X11 action plan and run",
+          "governs": "held keys around an action's steps",
+          "file": "src/substrates/x11/translator.ts",
+          "shape": "already explicit. The translator returns steps as a discriminated union and one `switch` runs them (`src/substrates/x11/desktop.ts:94-128`); `holding` brackets them with keydown and one keyup (`:167-190`); `pointerThere` carries a read-pointer result to the next step (`:92`, `:97`, `:101`)",
+          "grade": "explicit"
+        },
+        {
+          "id": "05-14",
+          "name": "Detached process in a sandbox",
+          "governs": "launch, poll, timeout kill",
+          "file": "src/substrates/detached.ts",
+          "shape": "state derived on read from files in the sandbox: `/tmp/humanish-subject/<name>/pid`, `status` (written atomically by `mv`), `log.txt`. Two readers: the poll loop (`:165-190`) and `detachedProcessExited` (`:132-144`, used by `src/routes/computer-use/e2b-desktop/network.ts:206`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-15",
+          "name": "CDP holder announce",
+          "governs": "a detached DevTools process that reports on its first line",
+          "file": "src/substrates/e2b/desktop-cdp.ts",
+          "shape": "protocol. Start a detached holder, then poll its log for the first JSON line: up to 30 reads 500 ms apart for emulation (`:231-237`), 22 for network capture (`:389-400`); then retry the fidelity read-back up to 20 times (`:258-269`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-16",
+          "name": "Chrome browser state observer",
+          "governs": "once-only unavailable and drift reports",
+          "file": "src/substrates/e2b/desktop-cdp.ts",
+          "shape": "closure flags `reported`, `drifted` and the `checkedTargets` set",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-17",
+          "name": "Hosted desktop recording",
+          "governs": "start, pull segments, stop, finish",
+          "file": "src/substrates/e2b/desktop-recording.ts",
+          "shape": "flag soup across closures: `stopping` and `exitedEarly` (`:156`), `stopped` for size and `running` for a pull in flight (`:286`, `:299`), the memoized `finishing` (`:368`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-18",
+          "name": "Browser window geometry correction",
+          "governs": "",
+          "file": "src/substrates/e2b/desktop-geometry.ts",
+          "shape": "control flow: measure, move, resize up to twice, fullscreen once, settle up to 4 reads; `physicalWindow`, `unusable`, `cdpUnavailable` locals (`:358`, `:381`, `:415`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-19",
+          "name": "Subject sandbox",
+          "governs": "acquire, release, usage",
+          "file": "src/substrates/e2b/subject-sandbox.ts",
+          "shape": "flag soup on public mutable fields",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-20",
+          "name": "External handoff log cursor",
+          "governs": "",
+          "file": "src/substrates/e2b/desktop-handoff.ts",
+          "shape": "a line-count cursor into a log, reads serialized by a promise chain",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-21",
+          "name": "Modal desktop stream and the hosted media worker transport",
+          "governs": "",
+          "file": "src/substrates/modal/desktop.ts",
+          "shape": "nullable handles whose presence means started",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-22",
+          "name": "Local runtime status and the Lima host",
+          "governs": "",
+          "file": "src/substrates/local/runtime.ts",
+          "shape": "state derived on read from host facts: chip, `limactl` version and list, `/dev/kvm`, Docker context and info, image labels. Encoded as two boolean pairs, `{ok, installed}` with `assets?`, and `{ready, exists}`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-23",
+          "name": "Local Firecracker VM boot sequence",
+          "governs": "",
+          "file": "src/substrates/local/firecracker-desktop.ts",
+          "shape": "control-flow position as state, plus a record of acquired resources whose optional fields (`remoteWork?`, `tunnel?`, `container?`, `client?`) tell teardown what exists",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-24",
+          "name": "Guest bootstrap handshake across host, relay and guest",
+          "governs": "",
+          "file": "src/guest/bootstrap.ts",
+          "shape": "protocol over three processes. Host: `CONNECT 5251\\n`, expects `OK <n>\\n` (`src/guest/bootstrap.ts:354-381`), sends the bootstrap frame, reads the ready frame (`:395-409`), hands the stream to the browser-control client. Guest Node: reads the bootstrap (5 s), writes marker `A`, builds the desktop, hands off, attaches the dispatcher, writes the ready frame and marker `R` (`src/guest/runtime.ts:107-159`). Relay: an explicit counter `phase` 0, 1, 2 that accepts only `A` then `R` (`vsock.py:92-98`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-25",
+          "name": "Guest desktop setup phases",
+          "governs": "",
+          "file": "src/guest/runtime-desktop.ts",
+          "shape": "already explicit for the label: a union of 12 phases, set by `progress` before each step (`:517-521`) and attached to the setup error (`:617`). Order is control flow. `GuestDesktopState` holds what teardown must free, with `stopping` and the memoized `closing`",
+          "grade": "explicit"
+        },
+        {
+          "id": "05-26",
+          "name": "Guest child processes, native helpers and media worker",
+          "governs": "",
+          "file": "src/guest/runtime-processes.ts",
+          "shape": "closure flags per process, with message classification in `applyWorkerMessage` (`src/guest/desktop-media.ts:254-288`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-27",
+          "name": "Guest executor and its action progress",
+          "governs": "",
+          "file": "src/guest/desktop-executor.ts",
+          "shape": "a named state record (`busy`, `terminal`) and a per-action record (`dispatched`, `preparing`, `text`), read by two exported pure functions",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-28",
+          "name": "Guest Chromium text port",
+          "governs": "",
+          "file": "src/guest/chromium-text.ts",
+          "shape": "flag soup, documented field by field with the functions that set each (`:117-138`): `generation`, `closed`, `unusable`, `dialogSeen`, `busy`, `activeDisposal`; per operation `dispatched`, `stopped`, `phase`; per handle `used`, `disposed`, `dispatchedText`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-29",
+          "name": "Guest address bar arming",
+          "governs": "",
+          "file": "src/guest/browser-tools.ts",
+          "shape": "closure `addressBarArmed` and a `generation` counter",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-30",
+          "name": "Browser-control channel",
+          "governs": "client, dispatcher and framed transport",
+          "file": "src/browser-control/client.ts",
+          "shape": "flag soup on each end: `seq`/`lastSeq`, `busy`, `ready`, `closed`, `rawStream`, `pending`/`active`; transport `ended`, `handedOff`, `sending`, header and payload counters. Messages are explicit zod discriminated unions",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "05-31",
+          "name": "Subject provisioning pipeline and its phase events",
+          "governs": "",
+          "file": "src/subject/serve.ts",
+          "shape": "control-flow position as state, reported as an open string vocabulary `cua-lab.subject.<phase>.started/completed`. Phases are string literals at each call site: `clone`, `upload`, `upload-retry`, `extract`, `runtime`, `runtime-retry`, `install`, `install-retry`, `build`, `serve` (`started` only), `ready`, `state.before-build`, `state.before-start`, `state.after-ready`",
+          "grade": "implicit, left"
+        }
+      ]
+    },
+    {
+      "area": "Analysis, verify, feedback and evidence",
+      "totals": {
+        "explicit": 3,
+        "implicit, left": 17,
+        "implicit, costly": 4
+      },
+      "entries": [
+        {
+          "id": "06-1",
+          "name": "Automatic analysis job",
+          "governs": "the one post-run analysis claim of a run and how it ended",
+          "file": "src/analysis/job.ts",
+          "shape": "2 (status string, transitions in two files) plus 3 (staleness worked out on read) plus 1 (the `reason` code carries part of the state)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "06-2",
+          "name": "Run-status analysis phase",
+          "governs": "`status.json` `analysis`, written by the run's own process",
+          "file": "src/run/status.ts",
+          "shape": "1 (which optional fields are present gives the state) plus 3 (stale worked out on read)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "06-3",
+          "name": "\"Is analysis running, done, failed or absent\"",
+          "governs": "the readers",
+          "file": "",
+          "shape": "3. Each reader works out the state from `job.json`, `status.json`, the analysis store, or some mix of them",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "06-4",
+          "name": "`completeAutomaticAnalysis`",
+          "governs": "the post-run analysis boundary and its order",
+          "file": "src/analysis/automatic-completion.ts",
+          "shape": "4 (the steps must run in order) plus 1 (`started`, `ended`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-5",
+          "name": "`runAutomaticAnalysis`",
+          "governs": "one attempt's order and its failure flags",
+          "file": "src/analysis/automatic.ts",
+          "shape": "4 plus 1: `polling`, `storageFailed`, `cancellationFailed` (`automatic.ts:276-278`), an `AbortController` (272-275), two intervals (291-301)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-6",
+          "name": "Automatic analysis cancellation request (`cancel.json`)",
+          "governs": "",
+          "file": "src/analysis/job.ts",
+          "shape": "5 (a request file and a 250 ms poll, no acknowledgement file)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-7",
+          "name": "Analysis lock and stale-lock takeover (`.analysis-lock`)",
+          "governs": "",
+          "file": "src/analysis/analysis-lock.ts",
+          "shape": "5 (lock and takeover) plus 4 (mkdir, owner write, action, remove)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-8",
+          "name": "Attempt publication order",
+          "governs": "`start.json`, `receipt.json`, `analysis.json`",
+          "file": "src/analysis/store-executions.ts",
+          "shape": "4 (write order) plus 3 (each reader infers from which files exist)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-9",
+          "name": "Analysis artifact status",
+          "governs": "`complete`, `partial`, `failed`, `cancelled`",
+          "file": "src/analysis/types.ts",
+          "shape": "a status set by mutation inside one function; one validator owns the legal combinations",
+          "grade": "explicit"
+        },
+        {
+          "id": "06-10",
+          "name": "Attempt requests",
+          "governs": "cohort fan-out, stop on first failure, one output retry",
+          "file": "src/analysis/execute.ts",
+          "shape": "a discriminated union with one producer, plus retry state (`stopped` `execute.ts:643`; `held`, `retried`, `worstCase` `output-retry.ts:37-39`)",
+          "grade": "explicit"
+        },
+        {
+          "id": "06-11",
+          "name": "Provider request",
+          "governs": "`dispatched` and `timedOut` flags giving `AnalysisProviderResult.status`",
+          "file": "src/analysis/provider.ts",
+          "shape": "1 (`timedOut`, `dispatched` closure flags, 207-208) inside one function",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-12",
+          "name": "Loaded analysis state (`none`, `ready`, `stale`, `invalid`) and version selection",
+          "governs": "",
+          "file": "src/analysis/types.ts",
+          "shape": "3, worked out on read in one module",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-13",
+          "name": "Analysis progress phase (`admitted`, `requesting`, `validating`, `finished`)",
+          "governs": "",
+          "file": "src/analysis/execute.ts",
+          "shape": "a display callback; nothing reads it back",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-14",
+          "name": "\"Has the recording ended\"",
+          "governs": "the run and stream rules that analysis, export and verify use",
+          "file": "src/analysis/recording-ended.ts",
+          "shape": "3",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "06-15",
+          "name": "Feedback draft lifecycle",
+          "governs": "draft, verify, issue, URL",
+          "file": "src/feedback/feedback.ts",
+          "shape": "4 (each command reruns the ones before it) plus files on disk standing in for state",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-16",
+          "name": "Finding review",
+          "governs": "corrections `confirmed`, `dismissed`, `amended`",
+          "file": "src/analysis/types.ts",
+          "shape": "3. The current review is the last correction in `createdAt`, then id, order (`store.ts:332`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-17",
+          "name": "Redacted bundle export workspace",
+          "governs": "",
+          "file": "src/feedback/export-bundle.ts",
+          "shape": "1 plus 4: nullable `stage`, `rawSnapshot` and `claimed` handles, a `published` flag, released in `finally`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-18",
+          "name": "Share-safety grade",
+          "governs": "`share_ready`, `local_only`, `blocked`",
+          "file": "src/verify/verify.ts",
+          "shape": "a grade, recomputed by each verify. The worst-of-two rule is written again at five sites. It is a classification more than a lifecycle; reported because the lead asked",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-19",
+          "name": "Verify's unfinished-run facts (`UnfinishedRun`",
+          "governs": "liveness and sandboxes)",
+          "file": "src/verify/liveness.ts",
+          "shape": "3, in one function",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-20",
+          "name": "Guest desktop recorder process",
+          "governs": "",
+          "file": "src/evidence/desktop-recorder.ts",
+          "shape": "4 plus 1: `finishing ??=` (466-469), `forced`, `requestedStop`, `settled` (470-477), `abort` (467, 528-531)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-21",
+          "name": "Hosted recording spool",
+          "governs": "pull segments, stop when full, join",
+          "file": "src/evidence/desktop-recording-spool.ts",
+          "shape": "1 (`full`, `ended`, `kept`, `init`, `bytes`, `endMs`, 163-169) plus 5 (a pull queue, 249-253)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-22",
+          "name": "Recording artifact write",
+          "governs": "temp file, then rename",
+          "file": "src/evidence/desktop-recording-artifact.ts",
+          "shape": "4 (temp file, check size against metadata, identity check, rename, `finally` cleanup)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-23",
+          "name": "WebP transcoder worker",
+          "governs": "",
+          "file": "src/evidence/webp-transcoder.ts",
+          "shape": "1: `failed` (absorbing, 96-104), counters `queuedBytes` and `wanted`, and a per-job `abandoned` flag (30-38)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "06-24",
+          "name": "Browser network capture",
+          "governs": "per-request hop reducer and the index's gap reason",
+          "file": "src/evidence/browser-network.ts",
+          "shape": "already explicit. One reducer handles every holder event, and one expression derives `complete` and `reason`",
+          "grade": "explicit"
+        }
+      ]
+    },
+    {
+      "area": "CLI, keys and TUI",
+      "totals": {
+        "explicit": 5,
+        "implicit, left": 18,
+        "implicit, costly": 8
+      },
+      "entries": [
+        {
+          "id": "07-1",
+          "name": "Run display state",
+          "governs": "how a surface names a run's state (house style)",
+          "file": "src/run/display.ts",
+          "shape": "already explicit. One pure classifier over `{liveness, mode, verdict, ok,",
+          "grade": "explicit"
+        },
+        {
+          "id": "07-2",
+          "name": "Run state as each operator command reads it",
+          "governs": "",
+          "file": "",
+          "shape": "state derived on read (shape 3). Each command picks its own source order:",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "07-3",
+          "name": "Next-command hints",
+          "governs": "the next legal command for a state",
+          "file": "src/cli/io.ts",
+          "shape": "state derived on read (shape 3), one hint per producer",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "07-4",
+          "name": "Process exit code",
+          "governs": "",
+          "file": "src/cli/io.ts",
+          "shape": "flag soup and control-flow position (shapes 1 and 4). `process.exitCode` is",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "07-5",
+          "name": "Invocation output envelope",
+          "governs": "one JSON document per invocation",
+          "file": "src/cli/io.ts",
+          "shape": "one boolean per root command (shape 1)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-6",
+          "name": "Signal ownership across a run's phases",
+          "governs": "",
+          "file": "src/cli/commands/run-signals.ts",
+          "shape": "control-flow position as state (shape 4). Which handler owns SIGINT, SIGTERM and",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "07-7",
+          "name": "Run signal phase",
+          "governs": "one process's stop of its active runs",
+          "file": "src/run/active-runs.ts",
+          "shape": "flag soup (shape 1) inside a closure: `handlers` map, `stopping: Stopping[] /",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-8",
+          "name": "Remote run outcome as the CLI reports it",
+          "governs": "",
+          "file": "src/remote/launch.ts",
+          "shape": "flag soup (shape 1): `detached?`, `result?`, `error?`, `files?`, `exitCode`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-9",
+          "name": "Run placement",
+          "governs": "local, remote or refused",
+          "file": "study-remote.ts",
+          "shape": "already explicit: a discriminated union from one function",
+          "grade": "explicit"
+        },
+        {
+          "id": "07-10",
+          "name": "Observer follow decision and serve-until-signal",
+          "governs": "",
+          "file": "observer-follow.ts",
+          "shape": "an explicit decision function, plus a tri-state sentinel `ObserverPlan / null /",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-11",
+          "name": "Live Observer attachment during a watched run",
+          "governs": "",
+          "file": "study-route-computer-use.ts",
+          "shape": "flag soup with nullable handles (shape 1)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-12",
+          "name": "Analysis findings view (`FindingsState`)",
+          "governs": "",
+          "file": "src/cli/findings.ts",
+          "shape": "a declared union with an ordered rule ladder in one function, fed by state",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-13",
+          "name": "Project setup state",
+          "governs": "\"set up\", \"has a study\", \"has a run\"",
+          "file": "src/cli/orientation.ts",
+          "shape": "state derived on read (shape 3), three rules",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "07-14",
+          "name": "Doctor row status (`DoctorStatus`)",
+          "governs": "",
+          "file": "src/cli/doctor.ts",
+          "shape": "derived on read from three fields per row: `ok`, optional `checked`, optional",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-15",
+          "name": "Provider key presence and source",
+          "governs": "",
+          "file": "src/keys/key-resolution.ts",
+          "shape": "derived on read from one fill chain (env, overlay, vendor stores, user store)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-16",
+          "name": "`keys set` walk over missing keys",
+          "governs": "",
+          "file": "src/keys/key-status.ts",
+          "shape": "a loop with an outcome record (`stored`, `skipped`, `rejected?`, `stoppedAt?`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-17",
+          "name": "Settle-once guards",
+          "governs": "",
+          "file": "src/cli/secret-prompt.ts",
+          "shape": "closure boolean (shape 1)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-18",
+          "name": "Update check cache",
+          "governs": "",
+          "file": "src/cli/update-check.ts",
+          "shape": "optional fields on a file (`checkedAt`, `latest`, `notifiedAt`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-19",
+          "name": "Telemetry state and run facts",
+          "governs": "",
+          "file": "src/cli/telemetry.ts",
+          "shape": "a file with `enabled`, `noticed`; run facts derived on read from the result",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-20",
+          "name": "Init result mode",
+          "governs": "",
+          "file": "src/study/init.ts",
+          "shape": "a mode string from `getMode(options)` (not read)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-21",
+          "name": "Codex app-server keep-open command",
+          "governs": "",
+          "file": "src/actors/codex/app-server-ui.ts",
+          "shape": "control-flow position: write the running envelope, await completion, wait for one",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-22",
+          "name": "TUI navigation (house style)",
+          "governs": "",
+          "file": "tui/src/navigation.ts",
+          "shape": "already explicit: a pure reducer over a screen stack",
+          "grade": "explicit"
+        },
+        {
+          "id": "07-23",
+          "name": "TUI armed confirmations (`useArming`)",
+          "governs": "",
+          "file": "tui/src/arming.ts",
+          "shape": "explicit: one hook owns `{action, place, at}` and the last press time",
+          "grade": "explicit"
+        },
+        {
+          "id": "07-24",
+          "name": "TUI connections screen",
+          "governs": "view and confirm guard",
+          "file": "tui/src/screens/connections-screen.tsx",
+          "shape": "a discriminated union for the view (explicit) plus flag soup for busy state, and a",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "07-25",
+          "name": "TUI cursor identity across refreshes",
+          "governs": "",
+          "file": "tui/src/app.tsx",
+          "shape": "refs mutated in an effect (shapes 1 and 6). \"Did the person move\" is inferred by",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "07-26",
+          "name": "TUI overlays, launch notes and action notes",
+          "governs": "",
+          "file": "tui/src/app.tsx",
+          "shape": "UI state in several `useState` hooks (shape 6)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-27",
+          "name": "TUI run actions table",
+          "governs": "",
+          "file": "tui/src/screens/run-screen.tsx",
+          "shape": "explicit: a pure function from `(detail.automaticAnalysis.state, run.liveness,",
+          "grade": "explicit"
+        },
+        {
+          "id": "07-28",
+          "name": "TUI launch handshake",
+          "governs": "",
+          "file": "src/tui/launch.ts",
+          "shape": "protocol (shape 5): spawn detached with `--json --no-open --local`, then poll the",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-29",
+          "name": "TUI Stop",
+          "governs": "signalling a run's process group",
+          "file": "src/tui/actions.ts",
+          "shape": "state derived on read from the raw status record (shape 3)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "07-30",
+          "name": "TUI Observer session",
+          "governs": "",
+          "file": "src/tui/actions.ts",
+          "shape": "closure flags `serverPromise`, `closed`, `closePromise` (shape 1)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "07-31",
+          "name": "TUI host session and key handoff",
+          "governs": "",
+          "file": "src/cli/commands/tui.ts",
+          "shape": "a loop over mount/unmount with a module variable carrying the nav state across",
+          "grade": "implicit, left"
+        }
+      ]
+    },
+    {
+      "area": "Study planning and admission",
+      "totals": {
+        "explicit": 4,
+        "implicit, left": 11,
+        "implicit, costly": 4
+      },
+      "entries": [
+        {
+          "id": "08-1",
+          "name": "Study admission pipeline",
+          "governs": "the ordered stages a `humanish run` or `runStudy` passes before a run scope opens",
+          "file": "src/cli/commands/study-run.ts",
+          "shape": "4 (control-flow position as state) plus 3 (other entry points re-derive \"admissible\" by replaying a subset of the stages)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "08-2",
+          "name": "Live readiness",
+          "governs": "\"would a live run of this study be admitted on this machine\", derived by four readers",
+          "file": "src/study/requirements.ts",
+          "shape": "3 (state derived on read)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "08-3",
+          "name": "Check row verdict",
+          "governs": "the ok, missing, not-checked and note states of `doctor` and `study check` rows",
+          "file": "src/cli/doctor.ts",
+          "shape": "1 (flag soup: `ok`, `status?: \"note\"`, `checked?`) and 3 (each output derives the verdict on read)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "08-4",
+          "name": "Codex readiness probe result",
+          "governs": "whether the Codex CLI and account admit a launch",
+          "file": "src/study/doctor.ts",
+          "shape": "1 (`ready: boolean` beside `errorCode: string / null` and optional detail fields)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "08-5",
+          "name": "Preflight probe sandbox and its journal",
+          "governs": "create, journal, probe, kill, settle",
+          "file": "src/study/preflight-probes.ts",
+          "shape": "4 (try/finally ordering) and 1 (`allocation`, `acquired`, `failureMessage`, `journal` closure variables; `ctx.sandbox.created`, `killed?`)",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "08-6",
+          "name": "Preflight target status",
+          "governs": "whether each declared URL was probed and answered",
+          "file": "src/study/preflight.ts",
+          "shape": "1 (`status` plus `checked`, `reachable?`, `errorCode?`, `message`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "08-7",
+          "name": "Participant start queue",
+          "governs": "the plan's simulation and the runtime scheduler of one rule",
+          "file": "src/study/arrivals.ts",
+          "shape": "5 (queue/start protocol) and 1 (`startedAt?` absent means never started; a shared `next` counter and `results[]` across workers, `:574-591`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "08-8",
+          "name": "Participant schedule and end",
+          "governs": "when each participant starts and how its session ends",
+          "file": "src/study/arrivals.ts",
+          "shape": "already explicit: a discriminated union `scheduled_end / session_cap`, resolved in one function, read through `participantSession`, `participantEnd`, `describeWindows`",
+          "grade": "explicit"
+        },
+        {
+          "id": "08-9",
+          "name": "Plan and refusal unions",
+          "governs": "the typed state between planning and admission",
+          "file": "src/study/plan-types.ts",
+          "shape": "already explicit: one variant per route and per supported subject/desktop pairing (`plan-types.ts:1-4`), `CheckpointedState` and `AtLeastTwo` encode shared-world invariants in the type (`:206-221`), terminal live caps are required by the type (`:265-271`)",
+          "grade": "explicit"
+        },
+        {
+          "id": "08-10",
+          "name": "Subject state phases",
+          "governs": "seed steps before build, before start, after ready",
+          "file": "src/study/types.ts",
+          "shape": "4 (phase order is the order of three `await runState(...)` calls in another area); the declaration here is an enum",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "08-11",
+          "name": "`humanish migrate`",
+          "governs": "plan, stage, commit, clean up for v2 to v3 study files",
+          "file": "src/study/migrate/migrate.ts",
+          "shape": "4 (phase order in `migrateStudies`) and 1 (per-write optional fields)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "08-12",
+          "name": "`personas build` write loop",
+          "governs": "",
+          "file": "src/study/persona-build.ts",
+          "shape": "4 (check folder, check collisions, print fields, write each file) with a `listed` closure flag (`personas.ts:149-154`) and `result.written[]` as the progress counter",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "08-13",
+          "name": "`humanish init` plan and apply",
+          "governs": "",
+          "file": "src/study/init.ts",
+          "shape": "4 with an explicit mode union: plan everything, refuse without `--yes`, recheck paths, mkdir, write",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "08-14",
+          "name": "AGENTS.md section version",
+          "governs": "which release wrote humanish's section",
+          "file": "src/study/agents-section.ts",
+          "shape": "already explicit: `AgentsSectionReplacement = absent / unknown / replaced`, with a table of eight known release texts by length and sha256",
+          "grade": "explicit"
+        },
+        {
+          "id": "08-15",
+          "name": "Study file version and retired location",
+          "governs": "v3 read, v2 refused, `labs/` refused",
+          "file": "src/study/discover.ts",
+          "shape": "3, as a classifier with three detectors that agree on `schema === humanish.lab.v2`; `libraryConfigRefusal` also refuses v3 configs that carry 0.110 fields (`config.ts:173-178`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "08-16",
+          "name": "`StudyEvent` stream",
+          "governs": "what a library caller observes while a run runs",
+          "file": "src/study/run-study-events.ts",
+          "shape": "5 (an ordered protocol, `plan` -> `subject-phase`* -> `run-started` -> `analysis-started` -> `analysis-finished`, never declared as an order); fire-and-forget calls",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "08-17",
+          "name": "Task completion funnel",
+          "governs": "",
+          "file": "src/study/tasks.ts",
+          "shape": "already explicit: one class owns the state (`completions`, `fieldsSeen`), one transition method `observe` (`:101-120`), completion is absorbing, the verdict per task is derived in one `funnel()` (`:136-173`)",
+          "grade": "explicit"
+        },
+        {
+          "id": "08-18",
+          "name": "Declared scorer outcome",
+          "governs": "when a scorer can fail a run",
+          "file": "src/study/adapter-extension.ts",
+          "shape": "1 (an optional field whose presence switches failure semantics)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "08-19",
+          "name": "Scheduled deprecation of `execution.egressAllow`",
+          "governs": "warn now, refuse in a dated release",
+          "file": "src/study/warnings.ts",
+          "shape": "a dated transition (warned -> refused \"in the first minor release on or after 2026-11-04\") with nothing that enforces the date",
+          "grade": "implicit, left"
+        }
+      ]
+    },
+    {
+      "area": "Observer",
+      "totals": {
+        "explicit": 5,
+        "implicit, left": 20,
+        "implicit, costly": 6
+      },
+      "entries": [
+        {
+          "id": "09-1",
+          "name": "Served runtime observation",
+          "governs": "whether the run's process is alive, as the served page and history see it",
+          "file": "src/observer/data.ts",
+          "shape": "3 (derived on read from `status.json`, run.json's `outcome` and heartbeat age) with",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "09-2",
+          "name": "Run display",
+          "governs": "whether a run passed, inside Observer data and the run library",
+          "file": "src/run/display.ts",
+          "shape": "explicit. One function over a fact record, label and tone tables (`display.ts:47-69`)",
+          "grade": "explicit"
+        },
+        {
+          "id": "09-3",
+          "name": "Run status words on the page",
+          "governs": "the band, notices, sidebar row and library pip",
+          "file": "observer/components/run-status.tsx",
+          "shape": "3 and 1. Seven booleans (`going`, `interrupted`, `staleProcess`, `ended`, `offline`,",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "09-4",
+          "name": "Participant activity phase",
+          "governs": "queued, starting, active, ended",
+          "file": "src/run/streams.ts",
+          "shape": "2 and 3. A status string; each reader draws its own \"active\" line, and some also",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "09-5",
+          "name": "Participant status projection",
+          "governs": "judged status, labels and counts in Observer data",
+          "file": "src/observer/data.ts",
+          "shape": "pure projection with an override chain: `judgedStatus`, then the blocked rule, then",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-6",
+          "name": "Feed poll and connection",
+          "governs": "connecting, current, retrying, server stopped",
+          "file": "observer/lib/use-observer-feed.ts",
+          "shape": "1, 2 and 5. A status string plus an optional boolean plus a ref counter plus",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "09-7",
+          "name": "Analysis companion poll",
+          "governs": "",
+          "file": "observer/lib/use-observer-feed.ts",
+          "shape": "5, a timer loop with `disposed`, `timer`, `controller`",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-8",
+          "name": "Library page poller and history index",
+          "governs": "",
+          "file": "src/observer/library.ts",
+          "shape": "5. `var stopped = false` (`library.ts:130`) is never set true; fixed 15 s poll; one",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-9",
+          "name": "Feed cursor protocol",
+          "governs": "send back what the page holds, receive only new live items",
+          "file": "src/observer/feed-cursors.ts",
+          "shape": "explicit protocol. A one-spelling cursor grammar (`feed-cursors.ts:1-5,12-14`) and a",
+          "grade": "explicit"
+        },
+        {
+          "id": "09-10",
+          "name": "View navigation",
+          "governs": "grid, participant, comparison, findings, monitor",
+          "file": "observer/lib/use-observer-navigation.ts",
+          "shape": "6 and 1, with the hash as the persisted address (`observer/lib/route.ts:23-103`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-11",
+          "name": "Study clock",
+          "governs": "following, reviewing, playing, speed, selected frame",
+          "file": "observer/lib/use-study-playback.ts",
+          "shape": "one `useState` record with named transition callbacks, equivalent to a reducer",
+          "grade": "explicit"
+        },
+        {
+          "id": "09-12",
+          "name": "Local player playback (a participant opened from a finding or the comparison)",
+          "governs": "",
+          "file": "observer/lib/player-state.ts",
+          "shape": "explicit state type with pure transition functions; the hook adds two",
+          "grade": "explicit"
+        },
+        {
+          "id": "09-13",
+          "name": "Clock ownership between the study clock and an open participant",
+          "governs": "",
+          "file": "observer/lib/use-participant-player.ts",
+          "shape": "6 and 4. A keyed ownership record, a ref that marks the applied navigation, and",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-14",
+          "name": "Comparison clock and other-run loader",
+          "governs": "",
+          "file": "observer/components/comparison.tsx",
+          "shape": "6; a free-text `loadState` string is the loader's state (\"\", \"Loading recorded",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-15",
+          "name": "Autoplay intent from the URL",
+          "governs": "",
+          "file": "observer/lib/autoplay.ts",
+          "shape": "1, one ref",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-16",
+          "name": "Decoded image",
+          "governs": "loading, ready, error, retained previous capture",
+          "file": "observer/lib/use-decoded-image.ts",
+          "shape": "1 and 3",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-17",
+          "name": "Capture retry when the server answers again",
+          "governs": "",
+          "file": "observer/components/participant-card.tsx",
+          "shape": "1. The same \"previous `serverStopped` in state, adjust during render\" pattern twice",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-18",
+          "name": "Desktop video playback and screenshot fallback",
+          "governs": "",
+          "file": "observer/components/player-evidence.tsx",
+          "shape": "1 and 5 (play attempt counter guards late promises, `:52-65`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-19",
+          "name": "Drawn pointer glide",
+          "governs": "",
+          "file": "observer/lib/pointer-track.ts",
+          "shape": "explicit. Position is a pure function of time inside a capture; the only state is the",
+          "grade": "explicit"
+        },
+        {
+          "id": "09-20",
+          "name": "Live desktop stream tile",
+          "governs": "available, ended, fallback to replay",
+          "file": "src/observer/run-routes.ts",
+          "shape": "1 and 5. Presence of an array entry plus `ended?: true` mutated in place; the page",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "09-21",
+          "name": "Reviewer notes",
+          "governs": "add, save, failure",
+          "file": "observer/components/reviewer-notes.tsx",
+          "shape": "1 on the page (a `saving` flag and one `message` string for both success and",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-22",
+          "name": "Findings state",
+          "governs": "pending, ready, stale, failed, unknown",
+          "file": "src/analysis/types.ts",
+          "shape": "3. Four sources: loaded record state (`none / ready / stale / invalid`), the",
+          "grade": "implicit, costly"
+        },
+        {
+          "id": "09-23",
+          "name": "Saved moments",
+          "governs": "",
+          "file": "observer/lib/use-saved-moments.ts",
+          "shape": "1; the message is keyed by navigation revision (`:53-55`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-24",
+          "name": "Library layout",
+          "governs": "sidebar, phone drawer",
+          "file": "observer/lib/use-library-layout.ts",
+          "shape": "6",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-25",
+          "name": "Observer servers",
+          "governs": "start, serve, stop",
+          "file": "src/observer/render.ts",
+          "shape": "4. Bind, then seed the allowlist, then accept origins; `close` waits for note renders",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-26",
+          "name": "Share-safety admission cache for `serve --safe`",
+          "governs": "",
+          "file": "src/observer/serve.ts",
+          "shape": "4 and 1. Verify, hash, verify again, re-walk, re-hash, in that order (`:121-145`)",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-27",
+          "name": "ngrok tunnel start",
+          "governs": "",
+          "file": "src/observer/tunnel.ts",
+          "shape": "5, settle-once promise",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-28",
+          "name": "Observer artifact build lock",
+          "governs": "",
+          "file": "src/observer/artifact.ts",
+          "shape": "5, lock with takeover",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-29",
+          "name": "Port-in-use probe",
+          "governs": "",
+          "file": "src/observer/listen.ts",
+          "shape": "5, probe with two deadlines",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-30",
+          "name": "Per-request data source",
+          "governs": "run.json or the saved projection",
+          "file": "src/observer/run-routes.ts",
+          "shape": "3, a decision chain over file presence and readability",
+          "grade": "implicit, left"
+        },
+        {
+          "id": "09-31",
+          "name": "Small local UI flags",
+          "governs": "",
+          "file": "player-inspector.tsx",
+          "shape": "6, one `useState` each (tab, open, page, preview, hint)",
+          "grade": "implicit, left"
+        }
+      ]
+    }
+  ]
+}

@@ -330,19 +330,53 @@ export function beginRunStatus(
 export type RunLiveness = "running" | "interrupted" | "finished";
 
 /**
- * Classify a status record. Pure, so the TUI, the CLI and tests share one definition of "alive".
- * `nowMs` is passed in rather than read, so a classification is reproducible.
+ * A status record's liveness with the basis for it. `status`: the record says the run finished or
+ * was interrupted, written by its own process or by `humanish reclaim`. `heartbeat`: it says
+ * running and its last touch is within the stale window of now. `stale-heartbeat`: it says
+ * running and its heartbeat stopped, or is dated outside the window in either direction, which a
+ * dead process, a sleeping host and a record copied from a machine with another clock all leave.
+ * That one reads as interrupted, and a surface that must not presume it maps the basis.
  */
-export function classifyRunStatus(
+export type RunStatusReading =
+  | { basis: "status"; liveness: "finished" | "interrupted" }
+  | { basis: "heartbeat"; liveness: "running" }
+  | { basis: "stale-heartbeat"; liveness: "interrupted" };
+
+/**
+ * Whether a heartbeat written at `updatedAt` is fresh at `nowMs`: within the stale window, on
+ * either side of now. A record dated further in the future was written under another clock, so
+ * its age cannot be judged and it is not fresh.
+ */
+function heartbeatFresh(updatedAt: string, nowMs: number): boolean {
+  const updated = Date.parse(updatedAt);
+  return Number.isFinite(updated) && Math.abs(nowMs - updated) <= RUN_STATUS_STALE_MS;
+}
+
+/**
+ * Read a status record's liveness and the basis for it. Pure, so the TUI, the CLI, the Observer
+ * and tests share one definition of "alive". `nowMs` is passed in, so a reading is reproducible.
+ */
+export function readRunStatus(
   record: Pick<RunStatusRecord, "state" | "updatedAt">,
   nowMs: number,
-  staleMs: number = RUN_STATUS_STALE_MS,
-): RunLiveness {
-  if (record.state === "finished") return "finished";
-  if (record.state === "interrupted") return "interrupted";
-  const updated = Date.parse(record.updatedAt);
-  if (!Number.isFinite(updated)) return "interrupted";
-  return nowMs - updated <= staleMs ? "running" : "interrupted";
+): RunStatusReading {
+  if (record.state !== "running") return { basis: "status", liveness: record.state };
+  return heartbeatFresh(record.updatedAt, nowMs)
+    ? { basis: "heartbeat", liveness: "running" }
+    : { basis: "stale-heartbeat", liveness: "interrupted" };
+}
+
+/**
+ * Builds the record `humanish reclaim` writes over a `running` record whose heartbeat stopped:
+ * `interrupted` with reason `reclaimed`, ended at its last heartbeat. Undefined for any other
+ * record: a fresh one belongs to a live owner, and one that already says how the run ended stays.
+ */
+export function reclaimedRunStatus(
+  record: RunStatusRecord,
+  nowMs: number,
+): RunStatusRecord | undefined {
+  if (readRunStatus(record, nowMs).basis !== "stale-heartbeat") return undefined;
+  return { ...record, state: "interrupted", reason: "reclaimed", completedAt: record.updatedAt };
 }
 
 /** Automatic analysis as a status record shows it: running, ended, or stopped with its process. */
@@ -370,14 +404,13 @@ export function runAnalysisPhase(
       endedAt,
       ...(typeof state === "string" ? { outcome: state as RunAnalysisEndState } : {}),
     };
-  const updated = Date.parse(record.updatedAt);
-  return Number.isFinite(updated) && nowMs - updated <= RUN_STATUS_STALE_MS
+  return heartbeatFresh(record.updatedAt, nowMs)
     ? { state: "running", startedAt }
     : { state: "stopped", startedAt };
 }
 
 /** Whether `pid` names a process on this host. EPERM means one exists that this user cannot signal. */
-function processRunning(pid: number): boolean {
+export function processRunning(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
@@ -396,7 +429,7 @@ export function runOwnerGone(
   nowMs: number,
   running: (pid: number) => boolean = processRunning,
 ): boolean {
-  if (record.state !== "running" || classifyRunStatus(record, nowMs) === "running") return false;
+  if (readRunStatus(record, nowMs).basis !== "stale-heartbeat") return false;
   return record.pid !== process.pid && !running(record.pid);
 }
 

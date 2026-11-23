@@ -211,6 +211,34 @@ describe("pruning old runs", () => {
   });
 });
 
+describe("pruning a run that never wrote run.json", () => {
+  it("ages a run that stopped before it wrote run.json from the start its status record gives", async () => {
+    const cwd = await project();
+    // A file added later, such as a reclaim receipt, makes the folder look new.
+    await addRun(cwd, "left", {
+      ageDays: 0,
+      noBundle: true,
+      status: {
+        schema: "humanish.run-status.v1",
+        state: "interrupted",
+        reason: "no-publish",
+        mode: "live",
+        pid: 4242,
+        startedAt: new Date(NOW - 40 * DAY).toISOString(),
+        updatedAt: new Date(NOW - 40 * DAY).toISOString(),
+      },
+    });
+    const result = await pruneRuns(cwd, { olderThanMs: 30 * DAY, apply: false, nowMs: NOW });
+    expect(result.removable).toEqual([
+      {
+        runId: "left",
+        bytes: expect.any(Number),
+        createdAt: new Date(NOW - 40 * DAY).toISOString(),
+      },
+    ]);
+  });
+});
+
 describe("listing runs without sizes", () => {
   it("does not measure them, since the Observer lists runs on every poll", async () => {
     const cwd = await project();

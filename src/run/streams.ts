@@ -29,16 +29,45 @@ export type RunSimulationStatus =
   | "failed"
   | "contract_proof_only";
 
+/**
+ * Where each recorded status puts a participant: `in-progress` while it waits for its start, its
+ * desktop starts or it is at work, `ended` once its session has a result, and `proof-only` for
+ * the participants of a dry run, which is how a dry run ends. Every reader that asks whether a
+ * participant has ended reads this table, so a new status has to be placed here to compile.
+ */
+const SIMULATION_PHASES: Record<RunSimulationStatus, "in-progress" | "ended" | "proof-only"> = {
+  queued: "in-progress",
+  preparing: "in-progress",
+  running: "in-progress",
+  passed: "ended",
+  abandoned: "ended",
+  incomplete: "ended",
+  complete: "ended",
+  blocked: "ended",
+  timed_out: "ended",
+  failed: "ended",
+  contract_proof_only: "proof-only",
+};
+
 /** Statuses a stream ends in. Analysis requires every stream of a run in one of these. */
-export const TERMINAL_SIMULATION_STATUSES: ReadonlySet<RunSimulationStatus> = new Set([
-  "complete",
-  "passed",
-  "failed",
-  "blocked",
-  "timed_out",
-  "abandoned",
-  "incomplete",
-]);
+export const TERMINAL_SIMULATION_STATUSES: ReadonlySet<RunSimulationStatus> = new Set(
+  (Object.keys(SIMULATION_PHASES) as RunSimulationStatus[]).filter(
+    (status) => SIMULATION_PHASES[status] === "ended",
+  ),
+);
+
+/**
+ * Whether a recorded status is one of a participant whose session has not ended. A bundle that
+ * still holds one was not published as finished. A status this version does not know reads as
+ * not in progress, as it did before the table.
+ */
+export function simulationInProgress(status: string | undefined): boolean {
+  return (
+    status !== undefined &&
+    Object.hasOwn(SIMULATION_PHASES, status) &&
+    SIMULATION_PHASES[status as RunSimulationStatus] === "in-progress"
+  );
+}
 
 interface RunStreamCompletion {
   actorLogPath?: string;

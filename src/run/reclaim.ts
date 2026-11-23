@@ -32,12 +32,7 @@ import {
 } from "./preflight-receipts.js";
 import { readRunJsonIfExists, resolveRunPath, runJsonValue } from "./locate.js";
 import { RUN_BUNDLE_FILE } from "./bundle.js";
-import {
-  classifyRunStatus,
-  isRunStatusRecord,
-  RUN_STATUS_FILE,
-  type RunStatusRecord,
-} from "./status.js";
+import { isRunStatusRecord, reclaimedRunStatus, RUN_STATUS_FILE } from "./status.js";
 import { isRecord } from "./type-guards.js";
 import { isRunOutcome } from "./bundle-shape.js";
 import {
@@ -630,24 +625,16 @@ async function reclaimRoot(
 }
 
 /**
- * For `humanish reclaim`, which stops the run's sandboxes: a `running` record whose heartbeat is
- * stale becomes `interrupted` with reason `reclaimed` and `completedAt` at its last heartbeat. A
- * fresh record belongs to a live owner and is left alone, as is one that already ended. True when
- * it wrote one.
+ * For `humanish reclaim`, which stops the run's sandboxes: write the record reclaimedRunStatus
+ * gives a `running` record whose heartbeat is stale. True when it wrote one.
  */
 async function markStaleRunInterrupted(
   runPaths: PreparedRunArtifactPaths,
   nowMs: number,
 ): Promise<boolean> {
   const record = runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE));
-  if (!isRunStatusRecord(record) || record.state !== "running") return false;
-  if (classifyRunStatus(record, nowMs) === "running") return false;
-  const marked: RunStatusRecord = {
-    ...record,
-    state: "interrupted",
-    reason: "reclaimed",
-    completedAt: record.updatedAt,
-  };
+  const marked = isRunStatusRecord(record) ? reclaimedRunStatus(record, nowMs) : undefined;
+  if (marked === undefined) return false;
   await writeContainedOutputFile(
     runPaths,
     RUN_STATUS_FILE,
