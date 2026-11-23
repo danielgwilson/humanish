@@ -575,6 +575,9 @@ SIGTERM stops the run: humanish marks it interrupted and stops its sandboxes.
   If you did not keep it, `npx humanish runs --json` lists runs newest first.
 - In `runs --json`, a run whose participants are working has `display.state: running`; once they
   end, its `display` is their result and `analysis.state` is `running` while findings are written.
+  `livenessBasis` says why a run reads as running or interrupted. On an `interrupted` run,
+  `stale-heartbeat` means its process stopped updating its record, which a dead process and a
+  sleeping machine both leave, and `outcome` or `status` means the interruption is recorded.
 - `npx humanish review --run <id> --json` says where the run is: participants running, analysis
   running since a given time, or the findings.
 - If the run's process died, `npx humanish reclaim --run <id>` stops its sandboxes and marks it

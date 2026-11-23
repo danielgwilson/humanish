@@ -1600,12 +1600,31 @@ It is a derived index, not evidence. `run.json` remains the evidence-of-record;
 participant did, and when the two disagree the bundle wins. Fields that cannot be
 rebuilt from `run.json`: `pid`, `startedAt`, `updatedAt`, `completedAt` and `sandboxes`, which
 no bundle records, and, on a record written before `run.json` carried an
-`outcome`, `outcome.ok` and `outcome.execution`. A `running` record whose `updatedAt` is older than three
-touch intervals is interrupted, not alive. A dropped connection or a killed
-terminal leaves exactly that shape, so the record reads as interrupted
-(`classifyRunStatus` is the one shared definition). Fields are
+`outcome`, `outcome.ok` and `outcome.execution`. Fields are
 public-safe by construction: no hostname and no user paths, because a run
 directory may be shared.
+
+Every surface reads whether a run is alive through `runLiveness` (`src/run/liveness.ts`), which
+returns the liveness and the basis for it:
+
+| Basis             | The run has                                                                      | Reads as                                                                                           |
+| ----------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `outcome`         | a run.json with an `outcome`                                                     | the outcome's `state`                                                                              |
+| `status`          | no outcome, and a status record that says `finished` or `interrupted`            | that state                                                                                         |
+| `heartbeat`       | no outcome, and a `running` record touched within three touch intervals          | `running`                                                                                          |
+| `stale-heartbeat` | no outcome, and a `running` record whose `updatedAt` is older, or cannot be read | `interrupted`                                                                                      |
+| `bundle`          | no outcome and no status record that names it                                    | `interrupted` if a participant has not ended (`queued`, `preparing` or `running`), else `finished` |
+
+A dropped connection or a killed terminal leaves a `stale-heartbeat`, and so do a sleeping host
+and a run directory copied from another machine, so the reading is a presumption and the basis
+says so. `humanish runs --json` carries the basis as `livenessBasis` on each run, and
+`humanish verify --json` as `unfinished.basis`. The served Observer's `runtime.state` is the same
+reading with one difference: it shows a `stale-heartbeat` as `unknown`
+([Observer](../architecture/observer.md)). `readRunStatus` (`src/run/status.ts`) reads one status
+record this way and is the only code that compares a heartbeat to the stale window.
+
+`humanish runs` lists a run from its first status record. Before the run writes run.json, the
+listing takes its `mode` from the record and `createdAt` from the record's `startedAt`.
 
 ## Run Index, Run Detail, And The Terminal Surface
 
@@ -1631,7 +1650,8 @@ against 16ms cold and 2.8ms warm here, which is what makes a surface that
 refreshes on a cadence affordable. `derivedFrom` is reported so a surprising row
 can be traced to the file it came from. A run with receipts and no outcome is
 `interrupted` (the shape a dropped connection leaves), and so is an
-in-progress bundle reached without a status record: there is no freshness to
+in-progress bundle reached without a status record, one that still holds a participant
+as `queued`, `preparing` or `running`: there is no freshness to
 judge, and nothing in it says the run finished. A bundle with an `outcome` reached
 without a status record takes its liveness from `outcome.state`.
 

@@ -10,6 +10,7 @@ otherwise be re-litigated or explained again in a long comment.
 | [0002](0002-observer-is-one-self-contained-file.md)    | The Observer is one self-contained HTML file                                 |
 | [0003](0003-contained-paths-and-cleanup-authority.md)  | Managed paths bind to physical identities; cleanup uses create-time receipts |
 | [0004](0004-participant-desktops-stay-in-the-route.md) | Participant desktops stay in the computer-use route                          |
+| [0005](0005-a-shared-state-has-one-reader.md)          | A state that several surfaces show has one reader                            |
 
 Safety rules and route defaults (separate worlds, all declared participants running at once, local
 full-fidelity screenshots, dry run by default, loopback serving) are recorded with their
