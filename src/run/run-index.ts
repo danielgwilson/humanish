@@ -5,6 +5,7 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { runLiveness } from "./liveness.js";
+import { readRunOnRunner, type RunOnRunner } from "./remote-record.js";
 import { AnalysisCostCache, readIndexedAnalysisCost } from "./run-index-analysis.js";
 import type { RunAnalysisCost } from "./run-cost.js";
 
@@ -26,8 +27,11 @@ const RUN_INDEX_SCHEMA = "humanish.run-index.v1";
 
 export interface RunIndexEntry {
   runId: string;
-  /** Where the entry's facts came from: the status record, the bundle, or the directory alone. */
-  derivedFrom: "status" | "bundle" | "directory";
+  /**
+   * Where the entry's facts came from: the status record, the bundle, a remote record that says the
+   * run is on its runner, or the directory alone.
+   */
+  derivedFrom: "status" | "bundle" | "remote" | "directory";
   liveness: RunLiveness;
   mode?: "dry-run" | "live";
   /**
@@ -170,6 +174,17 @@ function entryFromStatus(record: RunStatusRecord, nowMs: number): RunIndexEntry 
   };
 }
 
+/** A remote run on its runner: only a live run executes remotely, since a dry run creates no sandbox. */
+function entryFromRemote(runId: string, remote: RunOnRunner, nowMs: number): RunIndexEntry {
+  return {
+    runId,
+    derivedFrom: "remote",
+    liveness: runLiveness(runId, undefined, {}, nowMs, remote).liveness,
+    mode: "live",
+    ...(remote.record.startedAt === undefined ? {} : { startedAt: remote.record.startedAt }),
+  };
+}
+
 /** The legacy shape this reads out of a bundle. Narrow on purpose: only listing facts. */
 interface BundleFacts {
   runId?: string;
@@ -268,8 +283,9 @@ export async function readRunIndex(
       unreadable.push(runId);
       continue;
     }
+    // Analysis runs where the run ran, so a run on its runner has none here yet.
     const analysisCost =
-      entry.derivedFrom === "directory"
+      entry.derivedFrom === "directory" || entry.derivedFrom === "remote"
         ? undefined
         : await readIndexedAnalysisCost(cwd, runId, cache?.analysis);
     runs.push(analysisCost === undefined ? entry : { ...entry, analysisCost });
@@ -296,6 +312,14 @@ async function readEntry(
   const bundleFile = path.join(runDir, RUN_BUNDLE_FILE);
 
   const [statusKey, bundleKey] = await Promise.all([statKey(statusFile), statKey(bundleFile)]);
+  // A remote run has no run.json here until its copy back. Its entry is read again on every
+  // refresh, not cached: the clock and a reclaim receipt change it, and neither file key does.
+  if (bundleKey === null) {
+    const remote = await readRunOnRunner((file) =>
+      readFile(path.join(runDir, file), "utf8").catch(() => undefined),
+    );
+    if (remote !== undefined) return entryFromRemote(runId, remote, nowMs);
+  }
   const key = JSON.stringify([statusKey, bundleKey]);
   const cached = cache?.get(runId, key);
   if (cached !== undefined) return withCurrentLiveness(cached, nowMs);

@@ -43,6 +43,22 @@ describe("the TUI's Stop signals only a run whose heartbeat is fresh", () => {
     expect(kill).not.toHaveBeenCalled();
   });
 
+  it("sends no signal for a remote run on its runner, and says how to follow or stop it", async () => {
+    // Its process is in a runner sandbox on the provider; this machine holds no pid of it.
+    await writeFixtureRun(cwd, { runId: "cua-remote", state: "remote" }, Date.now());
+    const kill = vi.spyOn(process, "kill").mockImplementation(() => true);
+
+    const result = await stopRun(cwd, "cua-remote");
+
+    expect(result).toEqual({
+      schema: "humanish.tui-action.v1",
+      ok: false,
+      message:
+        "this run executes in a runner sandbox on E2B, so no process here was signalled; `humanish observe --run cua-remote` follows it, and `humanish reclaim --run cua-remote` stops it",
+    });
+    expect(kill).not.toHaveBeenCalled();
+  });
+
   it("sends no signal to the pid of a record dated ahead of this machine's clock", async () => {
     // A run directory copied from a machine whose clock runs ahead: its pid names nothing here.
     const runDir = await writeFixtureRun(cwd, { runId: "r-ahead", state: "running" }, Date.now());

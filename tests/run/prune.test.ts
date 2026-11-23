@@ -201,6 +201,17 @@ describe("pruning old runs", () => {
     expect(result.kept).toEqual([{ runId: "remote", reason: "not-copied-back" }]);
   });
 
+  it("ages a run with no readable bundle by its folder", async () => {
+    const cwd = await project();
+    const root = await addRun(cwd, "torn", { ageDays: 0, noBundle: true });
+    const old = new Date(NOW - 40 * DAY);
+    await utimes(root, old, old);
+    const result = await pruneRuns(cwd, { olderThanMs: 30 * DAY, apply: false, nowMs: NOW });
+    expect(result.removable.map((run) => run.runId)).toEqual(["torn"]);
+  });
+});
+
+describe("pruning a run that never wrote run.json", () => {
   it("removes an old run whose remote.json is not JSON, as it would one with no record", async () => {
     const cwd = await project();
     const root = await addRun(cwd, "torn-record", {
@@ -215,17 +226,6 @@ describe("pruning old runs", () => {
     expect(result.removable.map((run) => run.runId)).toEqual(["torn-record"]);
   });
 
-  it("ages a run with no readable bundle by its folder", async () => {
-    const cwd = await project();
-    const root = await addRun(cwd, "torn", { ageDays: 0, noBundle: true });
-    const old = new Date(NOW - 40 * DAY);
-    await utimes(root, old, old);
-    const result = await pruneRuns(cwd, { olderThanMs: 30 * DAY, apply: false, nowMs: NOW });
-    expect(result.removable.map((run) => run.runId)).toEqual(["torn"]);
-  });
-});
-
-describe("pruning a run that never wrote run.json", () => {
   it("ages a run that stopped before it wrote run.json from the start its status record gives", async () => {
     const cwd = await project();
     // A file added later, such as a reclaim receipt, makes the folder look new.

@@ -476,6 +476,8 @@ function servedState(reading: RunLivenessReading): ServedState {
     case "status":
     case "heartbeat":
     case "bundle":
+    // Its runner runs on the provider, so a remote record reads the same on whichever host serves it.
+    case "remote":
       return reading.liveness;
     case "stale-heartbeat":
       return "unknown";

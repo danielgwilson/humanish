@@ -3,6 +3,7 @@
 // and the copy back rewrites it (src/remote/copy-back.ts). Everything that reads it calls
 // readRemoteRecord, so a listing, reattach, prune and verify read one file by one rule.
 
+import { RECLAIM_RECEIPT_ARTIFACT } from "./reclaim-outcomes.js";
 import { isSandboxProviderId, type SandboxProviderId } from "./sandbox-receipts.js";
 import { isRecord } from "./type-guards.js";
 
@@ -64,6 +65,30 @@ export function readRemoteRecord(text: string | undefined): RemoteRecordReading 
     lostInCopy: lost.filter((entry): entry is string => typeof entry === "string"),
     ...facts,
   };
+}
+
+/** A run whose remote record says its evidence is still on its runner. */
+export interface RunOnRunner {
+  record: Extract<RemoteRecordReading, { state: "pending" }>;
+  /**
+   * A reclaim receipt is in the run's directory. `humanish reclaim --run` stops the runner and
+   * leaves remote.json as it was, so the record alone would still say pending.
+   */
+  reclaimed: boolean;
+}
+
+/**
+ * The run on its runner that a run directory with no run.json holds, or undefined when its
+ * remote record does not say a copy is pending. `read` gives a file's text, or undefined when the
+ * directory has none; each caller reads with its own file access. The reclaim receipt is read
+ * only for a pending record, so a local run costs one read of a missing remote.json.
+ */
+export async function readRunOnRunner(
+  read: (file: string) => Promise<string | undefined>,
+): Promise<RunOnRunner | undefined> {
+  const record = readRemoteRecord(await read(REMOTE_RECORD_FILE));
+  if (record.state !== "pending") return undefined;
+  return { record, reclaimed: (await read(RECLAIM_RECEIPT_ARTIFACT)) !== undefined };
 }
 
 function readableTime<K extends "deadline" | "startedAt">(

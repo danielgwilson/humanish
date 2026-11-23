@@ -21,10 +21,13 @@ export interface FixtureRunSpec {
    * `running` writes a fresh record; `stale` writes a `running` record whose updatedAt is old
    * (an interrupted run: the process died without finalizing); `finished` writes a final record.
    * `legacy-bundle` writes only a run.json with the old `lab:<id>` convention and no record;
-   * `orphan` writes neither: receipts on disk and nothing else.
+   * `orphan` writes neither: receipts on disk and nothing else. `remote` writes what a remote
+   * run's directory holds until its copy back: the runner's receipt and a pending remote.json.
    */
-  state: "running" | "stale" | "finished" | "legacy-bundle" | "orphan";
+  state: "running" | "stale" | "finished" | "legacy-bundle" | "orphan" | "remote";
   startedAt?: string;
+  /** Only used by `remote`: when the runner's time limit ends. Defaults to an hour after `nowMs`. */
+  deadline?: string;
   /** Only used by `finished`: how long the run took. */
   durationMs?: number;
   verdict?: string;
@@ -52,6 +55,32 @@ export async function writeFixtureRun(
     await writeFile(
       path.join(runDir, "sandbox-receipts.ndjson"),
       `${JSON.stringify({ kind: "created" })}\n`,
+      "utf8",
+    );
+    return runDir;
+  }
+
+  if (spec.state === "remote") {
+    await writeFile(
+      path.join(runDir, "sandbox-receipts.ndjson"),
+      `${JSON.stringify({ at: startedAt, laneId: "runner", provider: "e2b", sandboxId: "fake-sb-runner" })}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(runDir, "remote.json"),
+      `${JSON.stringify(
+        {
+          schema: "humanish.remote-run.v1",
+          runId: spec.runId,
+          provider: "e2b",
+          route: "computer-use",
+          deadline: spec.deadline ?? new Date(nowMs + 3_600_000).toISOString(),
+          copyPending: true,
+          startedAt,
+        },
+        null,
+        2,
+      )}\n`,
       "utf8",
     );
     return runDir;

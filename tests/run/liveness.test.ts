@@ -120,6 +120,72 @@ describe("a run's liveness and the basis for it", () => {
   });
 });
 
+describe("the liveness of a remote run whose run.json is not here", () => {
+  const DEADLINE = "2026-08-19T11:00:00.000Z";
+  const pending = {
+    state: "pending" as const,
+    provider: "e2b" as const,
+    route: "computer-use",
+    deadline: DEADLINE,
+    startedAt: "2026-08-19T10:00:00.000Z",
+  };
+  const onRunner = { record: pending, reclaimed: false };
+
+  it("reads a run on its runner as running until the runner's deadline, and interrupted from it", () => {
+    expect(runLiveness(RUN_ID, undefined, {}, NOW, onRunner)).toEqual({
+      basis: "remote",
+      liveness: "running",
+      remote: pending,
+    });
+    expect(runLiveness(RUN_ID, undefined, {}, Date.parse(DEADLINE), onRunner)).toEqual({
+      basis: "remote",
+      liveness: "interrupted",
+      remote: pending,
+    });
+  });
+
+  it("reads a pending record with no deadline as running", () => {
+    const record = { state: "pending" as const, provider: "modal" as const };
+    expect(runLiveness(RUN_ID, undefined, {}, NOW, { record, reclaimed: false })).toEqual({
+      basis: "remote",
+      liveness: "running",
+      remote: record,
+    });
+  });
+
+  it("reads a run reclaimed here as interrupted before its deadline", () => {
+    expect(runLiveness(RUN_ID, undefined, {}, NOW, { record: pending, reclaimed: true })).toEqual({
+      basis: "remote",
+      liveness: "interrupted",
+      remote: pending,
+    });
+  });
+
+  it("reads run.json's outcome over the record, and the record over a status record or a bundle", () => {
+    const finished = {
+      state: "finished" as const,
+      ok: true,
+      execution: { succeeded: true, failures: [] },
+    };
+    expect(runLiveness(RUN_ID, undefined, { outcome: finished }, NOW, onRunner)).toMatchObject({
+      basis: "outcome",
+      liveness: "finished",
+    });
+    // A status.json copied from the runner holds the runner's pid and a heartbeat that stopped
+    // when it was copied.
+    const copied = status({ updatedAt: "2026-08-19T09:00:00.000Z" });
+    for (const record of [copied, status(), status({ state: "interrupted" })])
+      expect(runLiveness(RUN_ID, record, {}, NOW, onRunner)).toMatchObject({
+        basis: "remote",
+        liveness: "running",
+      });
+    expect(runLiveness(RUN_ID, undefined, ended, NOW, onRunner)).toMatchObject({
+      basis: "remote",
+      liveness: "running",
+    });
+  });
+});
+
 // Decision 0005: a state that more than one surface shows has one reader. For a run's liveness
 // that holds only while no other module compares a heartbeat to the stale window itself. This
 // catches a copy of the comparison that names the constant, in production code.

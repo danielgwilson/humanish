@@ -9,6 +9,8 @@ import { requestAutomaticAnalysisCancellation } from "../analysis/automatic.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { cli } from "../cli/invocation.js";
+import { readRunOnRunner } from "../run/remote-record.js";
 import { RUN_STATUS_FILE, isRunStatusRecord, readRunStatus } from "../run/status.js";
 import { resolveRunPath } from "../run/locate.js";
 import { bindExistingRunArtifactPaths, isSafeRunIdSegment } from "../run/paths.js";
@@ -193,6 +195,19 @@ export async function stopRun(
       await readFile(path.join(runPaths.absoluteRunRoot, RUN_STATUS_FILE), "utf8"),
     );
   } catch {
+    // A remote run has no status record here until its copy back: its process is in the runner.
+    const remote = await readRunOnRunner((file) =>
+      readFile(path.join(runPaths.absoluteRunRoot, file), "utf8").catch(() => undefined),
+    );
+    if (remote !== undefined) {
+      const { provider } = remote.record;
+      const where = provider === "modal" ? "Modal" : provider === "e2b" ? "E2B" : "its provider";
+      return {
+        schema: TUI_ACTION_SCHEMA,
+        ok: false,
+        message: `this run executes in a runner sandbox on ${where}, so no process here was signalled; \`${cli(`observe --run ${runId}`)}\` follows it, and \`${cli(`reclaim --run ${runId}`)}\` stops it`,
+      };
+    }
     return {
       schema: TUI_ACTION_SCHEMA,
       ok: false,

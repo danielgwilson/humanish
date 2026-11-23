@@ -13,6 +13,7 @@ import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/type-guards.js";
 import { RECLAIM_RECEIPT_ARTIFACT } from "../run/reclaim.js";
 import { runLiveness, type RunLivenessBasis, type RunLivenessReading } from "../run/liveness.js";
+import { REMOTE_RECORD_FILE } from "../run/remote-record.js";
 import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import { RUN_STATUS_FILE } from "../run/status.js";
 import { simulationInProgress } from "../run/streams.js";
@@ -85,6 +86,10 @@ function whatTheFilesSay(
       return `${RUN_STATUS_FILE} state is running and its owner updated it at ${reading.record.updatedAt}, so the run may still be writing`;
     case "stale-heartbeat":
       return `${RUN_STATUS_FILE} state is running and its owner stopped updating it at ${reading.record.updatedAt}`;
+    // Verify reads a run whose run.json is here and passes no remote record, so it gets this basis
+    // only if a later caller passes one. The sentence says what such a reading rests on.
+    case "remote":
+      return `${REMOTE_RECORD_FILE} says the run's evidence is still on its runner${reading.remote.deadline === undefined ? "" : `, whose time limit ends at ${reading.remote.deadline}`}`;
     case "bundle": {
       const unended = bundle.simulations.filter((simulation) =>
         simulationInProgress(simulation.status),
