@@ -2,7 +2,7 @@
 // is handed, so an edit after the item was recorded throws where it happens: an appended line in
 // the live file can never go stale behind the participant's list.
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ActorTraceItem } from "../../../src/actors/contract.js";
 import type { RunBundle } from "../../../src/run/bundle.js";
@@ -32,6 +32,10 @@ function flushFor(writes: RunBundle[]) {
 }
 
 describe("the live flush", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("freezes each item it is handed, nested fields included", async () => {
     const item = screenshot();
     const flush = flushFor([]);
@@ -54,5 +58,22 @@ describe("the live flush", () => {
     await flush.stop();
     expect(writes).toHaveLength(1);
     expect(writes[0]!.streams[0]!.liveActor?.items).toEqual([screenshot()]);
+  });
+
+  it("writes a participant's first items at once and holds the next write for 2 seconds", async () => {
+    vi.useFakeTimers();
+    const writes: RunBundle[] = [];
+    const flush = flushFor(writes);
+    flush.flush("participant-one", [screenshot()]);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(writes).toHaveLength(1);
+
+    flush.flush("participant-one", [screenshot(), { ...screenshot(), id: "screenshot-002" }]);
+    await vi.advanceTimersByTimeAsync(1_999);
+    expect(writes).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(writes).toHaveLength(2);
+    expect(writes[1]!.streams[0]!.liveActor?.items).toHaveLength(2);
+    await flush.stop();
   });
 });

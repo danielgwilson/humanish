@@ -629,14 +629,21 @@ describe("following a remote run", () => {
       const signals = watchSignals();
       try {
         const following = followRemoteRun({
-          launch: { cwd, env: {}, say: (line) => said.push(line) },
+          launch: {
+            cwd,
+            env: {},
+            say: (line) => {
+              // Ctrl-C once the follower has read the run's state, which its first line reports.
+              // A stop before that read ends a run that has not started, whatever its state.
+              if (said.push(line) === 1) setImmediate(() => process.emit("SIGINT"));
+            },
+          },
           runner,
           paths: created.paths,
           runId: "cua-remote",
           signals,
           proxyUrl: undefined,
         });
-        setTimeout(() => process.emit("SIGINT"), 500);
         const outcome = await following;
         expect(outcome).toMatchObject({ runId: "cua-remote", exitCode, result: { ok: true } });
         expect(said.filter((line) => /^Stopping|participants/.test(line))).toEqual([
