@@ -322,8 +322,11 @@ export function participantOutcomeDetails(
     if (!isActorStatus(status)) {
       return goalSource === "unavailable" ? [{ status: "passed" as const, goalSource }] : [];
     }
+    // A session the harness failed under, though the session itself did not fail, is a harness
+    // failure: its trace's stop says how the session ended, not why the participant failed.
+    const harnessFailedUnder = status === "failed" && actor.status !== "failed";
     const ending =
-      Array.isArray(actor.items) && actor.items.every(isRecord)
+      !harnessFailedUnder && Array.isArray(actor.items) && actor.items.every(isRecord)
         ? actorEnding(actor as unknown as ActorTrace)
         : undefined;
     return [

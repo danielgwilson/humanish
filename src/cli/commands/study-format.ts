@@ -111,7 +111,7 @@ function oneLine(text: string): string {
  * The status the run counts a participant as: its judged status, or its `status` when it has
  * none, as on a dry run.
  */
-function countedStatus(participant: CuaParticipantResult): string {
+function countedStatus(participant: { judgedStatus?: string | undefined; status: string }): string {
   return participant.judgedStatus ?? participant.status;
 }
 
@@ -274,7 +274,7 @@ export function formatCuaStudyHuman(
     ...participantLines(participants),
     ...(result.session && participants.length <= 1
       ? [
-          `session: ${participantStatus(result.session.status)} (${result.session.completionReason})${result.session.stopCause ? ` · ${formatCuaStopCause(result.session.stopCause)}` : ""} · ${result.session.reason}`,
+          `session: ${participantStatus(countedStatus({ judgedStatus: participants[0]?.judgedStatus, status: result.session.status }))} (${result.session.completionReason})${result.session.stopCause ? ` · ${formatCuaStopCause(result.session.stopCause)}` : ""} · ${result.session.reason}`,
           `screenshots: ${result.session.screenshots}`,
         ]
       : []),

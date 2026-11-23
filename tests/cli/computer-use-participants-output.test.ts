@@ -174,6 +174,26 @@ describe("the participants a computer-use run prints", () => {
     ]);
   });
 
+  it("prints the status the run counts a single participant as on its session line", () => {
+    const run = runOf(1);
+    selfReportedBlocker(run, 0);
+    run.ok = false;
+    run.session = { ...run.lanes![0]!.session! };
+    const lines = stdout(run);
+    expect(lines[0]).toBe("humanish run fanout-proof: live run failed");
+    expect(lines.filter((line) => line.startsWith("session:"))).toEqual([
+      "session: blocked (goal_satisfied) · BLOCKED. The save button never enabled.",
+    ]);
+  });
+
+  it("prints a single participant that passed on its session line as before", () => {
+    const run = runOf(1);
+    run.session = { ...run.lanes![0]!.session! };
+    expect(stdout(run).filter((line) => line.startsWith("session:"))).toEqual([
+      "session: passed (goal_satisfied) · Done.",
+    ]);
+  });
+
   it("prints a warning the route repeats for every participant once", () => {
     const warnings = stdout(runOf(100)).filter((line) => line.startsWith("warning: "));
     expect(warnings).toEqual([

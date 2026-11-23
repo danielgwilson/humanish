@@ -243,6 +243,28 @@ describe("computer-use completion provenance", () => {
     expect(withCuaReviewProvenance(next, streams)).toEqual(next);
   });
 
+  it("counts a participant the harness failed under a session that did not fail as a harness failure", () => {
+    const run = bundle();
+    const passed = { ...run.streams[0]!, judgedStatus: "passed" as const };
+    const failedUnder = {
+      ...run.streams[0]!,
+      status: "incomplete" as const,
+      judgedStatus: "failed" as const,
+      actor: {
+        ...run.streams[0]!.actor!,
+        status: "incomplete" as const,
+        completionReason: "budget_reached" as const,
+        stopCause: "time_limit" as const,
+      },
+    };
+    expect(
+      formatParticipantOutcomes(
+        tallyParticipantOutcomes(["passed", "failed"]),
+        participantOutcomeDetails([passed, failedUnder]),
+      ),
+    ).toBe("1/2 reported reaching the goal, 1 lost to a harness failure");
+  });
+
   it("rewrites the header an earlier release wrote, once", () => {
     const run = bundle();
     run.review.summary =
