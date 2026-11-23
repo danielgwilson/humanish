@@ -3,8 +3,8 @@
 // would have.
 import { readContainedRegularFile, type PreparedOutputRoot } from "../run/contained-output.js";
 import { bindExistingRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
+import { readRemoteRecord, REMOTE_RECORD_FILE } from "../run/remote-record.js";
 import {
-  isSandboxProviderId,
   parseSandboxReceipts,
   SANDBOX_RECEIPTS_ARTIFACT,
   type SandboxProviderId,
@@ -29,10 +29,10 @@ export interface RemoteRunHere {
 }
 
 /**
- * The remote run `runId` names, when its directory here has a remote.json and its copy has not
+ * The remote run `runId` names, when its directory here has a remote record and its copy has not
  * finished: run.json can be here already, since a run's small files arrive before its video. A
  * record written before copyPending existed has only run.json to go by. Undefined for any other
- * run, which the Observer serves from its files as before.
+ * run, which the Observer serves from its files as before, and for a remote.json it cannot read.
  */
 export async function remoteRunHere(
   cwd: string,
@@ -44,16 +44,11 @@ export async function remoteRunHere(
   } catch {
     return undefined;
   }
-  const record = await readText(paths, "remote.json");
-  if (record === undefined) return undefined;
-  const { provider, route, copyPending } = JSON.parse(record) as {
-    provider?: unknown;
-    route?: unknown;
-    copyPending?: unknown;
-  };
-  const pending = copyPending === true;
+  const record = readRemoteRecord(await readText(paths, REMOTE_RECORD_FILE));
+  if (record.state === "none") return undefined;
+  const pending = record.state === "pending";
   if (!pending && (await readText(paths, "run.json")) !== undefined) return undefined;
-  if (typeof provider !== "string" || !isSandboxProviderId(provider)) return undefined;
+  if (record.provider === undefined) return undefined;
   const journal = (await readText(paths, SANDBOX_RECEIPTS_ARTIFACT)) ?? "";
   // The runner is the only sandbox this machine creates, so its receipt comes first. A copy that
   // stopped partway has added the participants' receipts after it.
@@ -62,9 +57,9 @@ export async function remoteRunHere(
   return {
     paths,
     runId,
-    provider,
+    provider: record.provider,
     runnerId: runner.sandboxId,
-    liveObserver: route !== "terminal",
+    liveObserver: record.route !== "terminal",
   };
 }
 

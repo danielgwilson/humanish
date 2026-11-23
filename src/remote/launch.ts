@@ -13,6 +13,7 @@ import { writeContainedOutputFile } from "../run/contained-output.js";
 import { startHeartbeat, systemHostClock, type Heartbeat } from "../run/host-suspension.js";
 import { createRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { reclaimRunSandboxes } from "../run/reclaim.js";
+import { REMOTE_RECORD_FILE, REMOTE_RECORD_SCHEMA } from "../run/remote-record.js";
 import { appendSandboxOwner, type SandboxProviderId } from "../run/sandbox-receipts.js";
 import { loadE2BBaseModule } from "../substrates/e2b/base-module.js";
 import { e2bConnection } from "../substrates/e2b/connection.js";
@@ -137,12 +138,14 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
       project,
     });
     setup.catch(() => undefined);
+    const recordedAt = Date.now();
     await writeRemoteRecord(paths, {
       runId,
       provider: remote.provider,
       route: remote.route,
-      deadline: new Date(Date.now() + remote.runnerMs).toISOString(),
+      deadline: new Date(recordedAt + remote.runnerMs).toISOString(),
       copyPending: true,
+      startedAt: new Date(recordedAt).toISOString(),
     });
     // Bound before the run starts, so a taken --port fails before any participant exists. A
     // terminal run has no live Observer, here or locally: it renders one when it ends.
@@ -450,12 +453,14 @@ async function writeRemoteRecord(
     deadline: string;
     /** Until every file has arrived; `humanish observe` finishes the copy while this is set. */
     copyPending: true;
+    /** When this machine wrote the record: `humanish runs` lists the run from it until run.json arrives. */
+    startedAt: string;
   },
 ): Promise<void> {
   await writeContainedOutputFile(
     paths,
-    "remote.json",
-    `${JSON.stringify({ schema: "humanish.remote-run.v1", ...record }, null, 2)}\n`,
+    REMOTE_RECORD_FILE,
+    `${JSON.stringify({ schema: REMOTE_RECORD_SCHEMA, ...record }, null, 2)}\n`,
     "utf8",
   );
 }

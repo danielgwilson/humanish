@@ -56,4 +56,12 @@ describe("finding a remote run to follow", () => {
     for (const runId of ["cua-copied", "cua-local", "cua-missing"])
       expect(await remoteRunHere(cwd, runId)).toBeUndefined();
   });
+
+  it("leaves a run whose remote.json is not JSON to the Observer", async () => {
+    await remoteRun("cua-torn", {
+      "remote.json": '{ "schema": "humanish.remote-run.v1", "copyPending": tr',
+      "sandbox-receipts.ndjson": RUNNER_RECEIPT,
+    });
+    expect(await remoteRunHere(cwd, "cua-torn")).toBeUndefined();
+  });
 });

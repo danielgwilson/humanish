@@ -15,6 +15,7 @@ import {
   openContainedRegularFile,
   RUN_ARTIFACT_MAX_BYTES,
 } from "../run/contained-output.js";
+import { readRemoteRecord, REMOTE_RECORD_FILE } from "../run/remote-record.js";
 import { holdsKeyedSandboxId } from "../run/sandbox-ids.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import { mapWithConcurrency } from "../run/concurrency.js";
@@ -95,20 +96,11 @@ function listed(paths: readonly string[]): string {
 export async function recordingsLostInCopy(
   runPaths: PreparedRunArtifactPaths,
 ): Promise<ReadonlySet<string>> {
-  const read = await readContainedRegularFile(runPaths, "remote.json", 1024 * 1024);
-  if (read.status !== "read") return new Set();
-  try {
-    const { lostInCopy } = JSON.parse(Buffer.from(read.bytes).toString("utf8")) as {
-      lostInCopy?: unknown;
-    };
-    return new Set(
-      Array.isArray(lostInCopy)
-        ? lostInCopy.filter((entry): entry is string => typeof entry === "string")
-        : [],
-    );
-  } catch {
-    return new Set();
-  }
+  const read = await readContainedRegularFile(runPaths, REMOTE_RECORD_FILE, 1024 * 1024);
+  const record = readRemoteRecord(
+    read.status === "read" ? Buffer.from(read.bytes).toString("utf8") : undefined,
+  );
+  return new Set(record.state === "copied" ? record.lostInCopy : []);
 }
 
 /**
