@@ -11,12 +11,12 @@ import { readLatest, readRunJsonIfExists, runJsonValue } from "./locate.js";
 import { RECLAIM_RECEIPT_ARTIFACT } from "./reclaim-outcomes.js";
 import { redactText } from "../evidence/redaction.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "./sandbox-receipts.js";
-import { RUN_STATUS_FILE } from "./status.js";
+import { processRunning, RUN_STATUS_FILE } from "./status.js";
 import { isRecord } from "./type-guards.js";
 import { listRuns } from "./stored-runs.js";
 
 const HOUR_MS = 3_600_000;
-/** A heartbeat this recent means the run's process is alive. */
+/** A record touched this recently is kept: something may still be writing the run. */
 const RUNNING_WITHIN_MS = 5 * 60_000;
 /** Longer than any provider lets a sandbox live, so an older run has nothing left to stop. */
 const SANDBOX_GONE_AFTER_MS = 7 * 24 * HOUR_MS;
@@ -152,18 +152,15 @@ async function reasonToKeep(
   return undefined;
 }
 
-/** A recent heartbeat, which automatic analysis keeps up after `finished`, or a live owner. */
+/**
+ * Whether to keep a run because something may still be writing it. This is a keep rule, wider on
+ * purpose than the liveness every surface shows (runLiveness): a record in any state touched in
+ * the last five minutes, which covers a heartbeat that automatic analysis keeps up after
+ * `finished`, or a `running` record whose pid a process on this host holds. Deleting a run that
+ * is alive loses evidence, and keeping one that is not costs only disk.
+ */
 function runIsLive(status: Record<string, unknown>, nowMs: number): boolean {
   const updatedMs = typeof status.updatedAt === "string" ? Date.parse(status.updatedAt) : NaN;
   if (nowMs - updatedMs < RUNNING_WITHIN_MS) return true;
-  return status.state === "running" && typeof status.pid === "number" && pidIsAlive(status.pid);
-}
-
-function pidIsAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === "EPERM";
-  }
+  return status.state === "running" && typeof status.pid === "number" && processRunning(status.pid);
 }

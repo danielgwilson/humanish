@@ -21,6 +21,9 @@ reference under `docs/` by what it is for. To make a first change, start with
   control protocol and the guest runtime.
 - [architecture/state-driven-executor.md](architecture/state-driven-executor.md): the `ComputerUseExecutor`
   library path.
+- [architecture/shared-states.md](architecture/shared-states.md): the one reader for each state
+  that several surfaces show, such as whether a run is alive, and the shapes to copy for a state
+  with one owner.
 - [architecture/task-protocol-support.md](architecture/task-protocol-support.md): which routes
   accept `actor.tasks`.
 - [architecture/external-public-shared-world.md](architecture/external-public-shared-world.md) and

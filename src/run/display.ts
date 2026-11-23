@@ -6,7 +6,8 @@
 import type { RunOutcome } from "./bundle.js";
 import type { ExecutionFailure } from "./judge.js";
 import { type RunAnalysisPhase, type RunLiveness } from "./status.js";
-import { runLiveness } from "./liveness.js";
+import { runLiveness, type RunLivenessBasis } from "./liveness.js";
+import { simulationInProgress } from "./streams.js";
 import { plural } from "./text.js";
 
 /** The states a run is shown in. */
@@ -128,33 +129,40 @@ export interface DisplayedBundle {
   outcome?: RunOutcome | undefined;
 }
 
+/** A run's display facts as its files give them, with the basis its liveness rests on. */
+export type BundleDisplayFacts = RunDisplayFacts & { basis: RunLivenessBasis };
+
 /**
  * The facts for a run from its bundle. run.json's `outcome` decides when it has one. A bundle
  * without one is in progress, or was recorded before the field existed: its status record, when
  * given and naming the run, then says whether the run is alive and, for the older run, holds its ok.
- * With no record, a bundle whose simulations are still running is interrupted.
+ * With no record, a bundle that still holds a participant as queued, preparing or running is
+ * interrupted. A run that has written no run.json yet is read with a bundle that only names it.
  */
 export function bundleDisplayFacts(
   bundle: DisplayedBundle,
   status?: unknown,
   nowMs: number = Date.now(),
-): RunDisplayFacts {
-  const { liveness, record } = runLiveness(bundle.runId, status, bundle, nowMs);
-  const base = { liveness, mode: bundle.mode, verdict: bundle.review?.verdict };
-  const outcome = bundle.outcome;
-  if (outcome?.state === "interrupted") return base;
-  if (outcome?.state === "finished")
-    return {
-      ...base,
-      ok: outcome.ok,
-      failure: outcome.execution.failures[0],
-    };
+): BundleDisplayFacts {
+  const reading = runLiveness(bundle.runId, status, bundle, nowMs);
+  const base = {
+    liveness: reading.liveness,
+    basis: reading.basis,
+    mode: bundle.mode,
+    verdict: bundle.review?.verdict,
+  };
+  if (reading.basis === "outcome")
+    return reading.liveness === "interrupted"
+      ? base
+      : { ...base, ok: reading.outcome.ok, failure: reading.outcome.execution.failures[0] };
+  // A run recorded before run.json carried an outcome keeps its ok in the status record alone.
+  const recorded = reading.basis === "bundle" ? undefined : reading.record.outcome;
   return {
     ...base,
-    ...(typeof record?.outcome?.ok === "boolean" ? { ok: record.outcome.ok } : {}),
-    ...(record?.outcome?.execution?.failures[0] === undefined
+    ...(typeof recorded?.ok === "boolean" ? { ok: recorded.ok } : {}),
+    ...(recorded?.execution?.failures[0] === undefined
       ? {}
-      : { failure: record.outcome.execution.failures[0] }),
+      : { failure: recorded.execution.failures[0] }),
   };
 }
 
@@ -168,9 +176,9 @@ export function reviewOutcome(bundle: DisplayedBundle, status?: unknown): string
 
 /**
  * The summary and gaps a review shows beside its run's display. A run stopped while a participant
- * was still running keeps the review its last live flush wrote, which describes that session as
- * running. Once runDisplay reads the run as interrupted, the review says how many participants the
- * stop cut off instead.
+ * had not finished keeps the review its last live flush wrote, which describes that session as
+ * running. Once runDisplay reads the run as interrupted, the review says how many participants
+ * the stop cut off instead: those at work, and those still waiting for a start or a desktop.
  */
 export function displayedReview<T extends { summary: string; gaps: string[] }>(
   review: T,
@@ -178,15 +186,18 @@ export function displayedReview<T extends { summary: string; gaps: string[] }>(
   display: RunDisplay,
 ): T {
   const records = bundle.simulations ?? [];
-  const running = records.filter((record) => record?.status === "running").length;
-  if (display.state !== "interrupted" || running === 0) return review;
+  const unended = records.filter((record) => simulationInProgress(record?.status)).length;
+  if (display.state !== "interrupted" || unended === 0) return review;
+  const working = records.filter((record) => record?.status === "running").length === unended;
   const signal = bundle.outcome?.state === "interrupted" ? ` by ${bundle.outcome.signal}` : "";
-  const one = running === 1;
+  const one = unended === 1;
   return {
     ...review,
-    summary: `Interrupted${signal} while ${running} of ${plural(records.length, "participant")} ${one ? "was" : "were"} still running.`,
+    summary: `Interrupted${signal} while ${unended} of ${plural(records.length, "participant")} ${
+      working ? `${one ? "was" : "were"} still running` : "had not finished"
+    }.`,
     gaps: [
-      `${plural(running, "participant")} ${one ? "has" : "have"} no verdict: the run stopped before ${one ? "its session" : "their sessions"} ended.`,
+      `${plural(unended, "participant")} ${one ? "has" : "have"} no verdict: the run stopped before ${one ? "its session" : "their sessions"} ended.`,
     ],
   };
 }

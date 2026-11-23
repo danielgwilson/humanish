@@ -14,7 +14,7 @@ import {
   parseSandboxReceipts,
   SANDBOX_RECEIPTS_ARTIFACT,
 } from "../../../src/run/sandbox-receipts.js";
-import { classifyRunStatus, RUN_STATUS_STALE_MS } from "../../../src/run/status.js";
+import { readRunStatus, RUN_STATUS_STALE_MS } from "../../../src/run/status.js";
 import type { E2BDesktopCreateOptions, E2BDesktopModule } from "../../../src/substrates/e2b/sdk.js";
 import { runTerminal } from "../../helpers/route-run.js";
 
@@ -295,7 +295,9 @@ describe("terminal sandbox acquisition boundary", () => {
       updatedAt: string;
     };
     expect(status.state).toBe("running");
-    expect(classifyRunStatus(status, Date.now() + RUN_STATUS_STALE_MS + 1)).toBe("interrupted");
+    expect(readRunStatus(status, Date.now() + RUN_STATUS_STALE_MS + 1).liveness).toBe(
+      "interrupted",
+    );
   }, 60_000);
 
   it("an allocation whose id never reaches the run has no receipt, carries its tags and keeps its TTL", async () => {

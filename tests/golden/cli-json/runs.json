@@ -13,6 +13,7 @@
           "state": "string",
           "tone": "string"
         },
+        "livenessBasis": "string",
         "mode": "string",
         "path": "string",
         "runId": "string"

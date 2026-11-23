@@ -10,8 +10,8 @@ import type { RunAnalysisCost } from "./run-cost.js";
 
 import {
   RUN_STATUS_FILE,
-  classifyRunStatus,
   isRunStatusRecord,
+  readRunStatus,
   runAnalysisPhase,
   type RunAnalysisPhase,
   type RunLiveness,
@@ -344,7 +344,7 @@ function withCurrentLiveness(cached: RunIndexEntry, nowMs: number): RunIndexEntr
   if (cached.derivedFrom === "status" && cached.completedAt === undefined)
     return {
       ...cached,
-      liveness: classifyRunStatus({ state: "running", updatedAt: cached.updatedAt }, nowMs),
+      liveness: readRunStatus({ state: "running", updatedAt: cached.updatedAt }, nowMs).liveness,
     };
   if (cached.analysis === undefined || cached.analysis.state === "ended") return cached;
   const analysis = runAnalysisPhase(

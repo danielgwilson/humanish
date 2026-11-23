@@ -3,13 +3,17 @@
 // moves it on, since "wait" helps only a run that is still alive.
 
 import { cli } from "../cli/invocation.js";
-import { classifyRunStatus, runOwnerGone, type RunStatusRecord } from "../run/status.js";
+import type { RunOutcome } from "../run/bundle.js";
+import { runLiveness } from "../run/liveness.js";
+import { runOwnerGone, type RunStatusRecord } from "../run/status.js";
 import { studyProvenanceOf } from "../run/study-provenance.js";
 import { AnalysisSourceRefusedError } from "./source.js";
 
-/** What the gate reads: the run's status record, when it has one, and its streams. */
+/** What the gate reads: how run.json says the run ended, its status record, and its streams. */
 export interface RecordingFacts {
   runId: string;
+  /** run.json's outcome, which decides over the status record when the run recorded one. */
+  outcome?: RunOutcome | undefined;
   status: RunStatusRecord | undefined;
   /** How many of the bundle's streams are still running or still hold live items. */
   runningStreams: number;
@@ -17,10 +21,11 @@ export interface RecordingFacts {
 }
 
 /**
- * Throws the refusal for a recording that has not ended. A `finished` record, an `interrupted`
- * one, and a stale `running` one whose process is gone from this host have ended; analysis then
- * also needs every stream ended. A fresh `running` record is a live run, and a stale one whose pid
- * is still in use cannot be told apart from a live run, so both are refused.
+ * Throws the refusal for a recording that has not ended. A run whose run.json records how it
+ * ended, a `finished` or `interrupted` status record, and a stale `running` one whose process is
+ * gone from this host have ended; analysis then also needs every stream ended. A fresh heartbeat
+ * is a live run, and a stale one whose pid is still in use cannot be told apart from a live run,
+ * so both are refused.
  */
 export function assertRecordingEnded(
   facts: RecordingFacts,
@@ -29,18 +34,17 @@ export function assertRecordingEnded(
 ): void {
   const { runId, status } = facts;
   const runs = `\`${cli("runs")}\``;
-  if (status?.state === "running") {
-    if (classifyRunStatus(status, nowMs) === "running")
-      throw new AnalysisSourceRefusedError(
-        "ANALYSIS_RUN_ACTIVE",
-        `Participants are still running in this run, so its recording has not ended. Automatic analysis starts when they finish; ${runs} shows when the run is analyzing.`,
-      );
-    if (!runOwnerGone(status, nowMs, processRunning))
-      throw new AnalysisSourceRefusedError(
-        "ANALYSIS_RUN_UNCONFIRMED",
-        `This run's process stopped updating status.json at ${status.updatedAt}, but pid ${status.pid} is still in use on this machine, so humanish cannot tell whether the run is still writing. If the run is gone, \`${cli(`reclaim --run ${runId}`)}\` stops its sandboxes and marks it interrupted; then analyze it again.`,
-      );
-  }
+  const reading = runLiveness(runId, status, { outcome: facts.outcome }, nowMs);
+  if (reading.basis === "heartbeat")
+    throw new AnalysisSourceRefusedError(
+      "ANALYSIS_RUN_ACTIVE",
+      `Participants are still running in this run, so its recording has not ended. Automatic analysis starts when they finish; ${runs} shows when the run is analyzing.`,
+    );
+  if (reading.basis === "stale-heartbeat" && !runOwnerGone(reading.record, nowMs, processRunning))
+    throw new AnalysisSourceRefusedError(
+      "ANALYSIS_RUN_UNCONFIRMED",
+      `This run's process stopped updating status.json at ${reading.record.updatedAt}, but pid ${reading.record.pid} is still in use on this machine, so humanish cannot tell whether the run is still writing. If the run is gone, \`${cli(`reclaim --run ${runId}`)}\` stops its sandboxes and marks it interrupted; then analyze it again.`,
+    );
   if (facts.runningStreams === 0) return;
   if (status?.state === "finished")
     throw new AnalysisSourceRefusedError(

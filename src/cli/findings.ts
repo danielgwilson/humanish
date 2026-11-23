@@ -23,13 +23,13 @@ import {
   resolveRunPath,
   runJsonValue,
 } from "../run/locate.js";
+import { runLiveness } from "../run/liveness.js";
 import {
-  classifyRunStatus,
   isRunStatusRecord,
   RUN_STATUS_FILE,
   runAnalysisPhase,
   type RunAnalysisPhase,
-  type RunStatusRecord,
+  type RunLiveness,
 } from "../run/status.js";
 import type { RunBundle } from "../run/bundle.js";
 import { TERMINAL_SIMULATION_STATUSES } from "../run/streams.js";
@@ -506,16 +506,10 @@ function pendingFindings(
  * stopped, while some participant stream was still running. Undefined for any other run.
  */
 function cutOff(
-  bundle: Pick<RunBundle, "outcome" | "streams"> | undefined,
-  record: RunStatusRecord | null,
-  nowMs: number,
+  bundle: Pick<RunBundle, "streams"> | undefined,
+  liveness: RunLiveness,
 ): { stage: "cut-off"; running: number; streams: number } | undefined {
-  if (bundle === undefined || bundle.outcome?.state === "finished") return undefined;
-  if (
-    bundle.outcome === undefined &&
-    (record === null || classifyRunStatus(record, nowMs) !== "interrupted")
-  )
-    return undefined;
+  if (bundle === undefined || liveness !== "interrupted") return undefined;
   const running = bundle.streams.filter(
     (stream) => !TERMINAL_SIMULATION_STATUSES.has(stream.status) || stream.liveActor !== undefined,
   ).length;
@@ -737,6 +731,8 @@ export async function readRunAnalysis(
   const status = runJsonValue(await readRunJsonIfExists(prepared, RUN_STATUS_FILE));
   const record = isRunStatusRecord(status) && status.runId === runIdOf(prepared) ? status : null;
   const phase = record === null ? undefined : runAnalysisPhase(record, nowMs);
+  // The reading `humanish runs` shows, so the two never name different states for one run.
+  const { liveness } = runLiveness(runIdOf(prepared), record, bundle?.bundle ?? {}, nowMs);
   const stopped =
     phase?.state === "stopped" || loaded.automatic?.reason === "AUTOMATIC_ANALYSIS_STOPPED";
   const missingKeyReason = loaded.automatic?.reason ?? null;
@@ -750,11 +746,9 @@ export async function readRunAnalysis(
           updatedAt: record.updatedAt,
           ...(analyst === undefined ? {} : { analyst }),
         }
-      : bundle?.bundle.outcome === undefined &&
-          record !== null &&
-          classifyRunStatus(record, nowMs) === "running"
+      : liveness === "running"
         ? { stage: "participants" as const }
-        : cutOff(bundle?.bundle, record, nowMs);
+        : cutOff(bundle?.bundle, liveness);
   const codexSignedIn =
     missingKeyReason === "AUTOMATIC_ANALYSIS_KEY_MISSING"
       ? await (deps.codexSignedIn ?? codexSignedInHere)().catch(() => false)

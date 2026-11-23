@@ -16,7 +16,7 @@ import {
   RUN_STATUS_STALE_MS,
   RUN_STATUS_TOUCH_MS,
   beginRunStatus,
-  classifyRunStatus,
+  readRunStatus,
   isRunStatusRecord,
   runAnalysisPhase,
   runOwnerGone,
@@ -171,7 +171,7 @@ describe("run status: identity + liveness on disk", () => {
         completedAt: "2026-08-19T10:00:01.000Z",
       });
       expect(isRunStatusRecord(interrupted)).toBe(true);
-      expect(classifyRunStatus(interrupted, Date.now())).toBe("interrupted");
+      expect(readRunStatus(interrupted, Date.now()).liveness).toBe("interrupted");
 
       // The route keeps going until the process exits: its ticks and its finish change nothing.
       expect(vi.getTimerCount()).toBe(0);
@@ -312,26 +312,34 @@ describe("run status: identity + liveness on disk", () => {
     expect(runOwnerGone({ ...record, pid: process.pid }, now, () => false)).toBe(false);
   });
 
-  it("classifies liveness from the record: running, stale-means-interrupted, finished", () => {
+  it("reads liveness from the record with its basis: a heartbeat, a stopped one, or a recorded end", () => {
     const at = (iso: string) => ({ state: "running" as const, updatedAt: iso });
     const now = Date.parse("2026-08-19T10:01:00.000Z");
-    expect(classifyRunStatus(at("2026-08-19T10:00:58.000Z"), now)).toBe("running");
+    const fresh = { liveness: "running", basis: "heartbeat" };
+    const stale = { liveness: "interrupted", basis: "stale-heartbeat" };
+    expect(readRunStatus(at("2026-08-19T10:00:58.000Z"), now)).toEqual(fresh);
     // Exactly at the threshold is still alive; one millisecond past it is not.
-    expect(classifyRunStatus(at(new Date(now - RUN_STATUS_STALE_MS).toISOString()), now)).toBe(
-      "running",
+    expect(readRunStatus(at(new Date(now - RUN_STATUS_STALE_MS).toISOString()), now)).toEqual(
+      fresh,
     );
-    expect(classifyRunStatus(at(new Date(now - RUN_STATUS_STALE_MS - 1).toISOString()), now)).toBe(
-      "interrupted",
+    expect(readRunStatus(at(new Date(now - RUN_STATUS_STALE_MS - 1).toISOString()), now)).toEqual(
+      stale,
     );
+    // A clock stepped back a little leaves a live record dated just ahead of now. One dated
+    // further ahead was written under another clock, and its age cannot be judged.
+    expect(readRunStatus(at(new Date(now + RUN_STATUS_STALE_MS).toISOString()), now)).toEqual(
+      fresh,
+    );
+    expect(readRunStatus(at("2026-08-19T11:01:00.000Z"), now)).toEqual(stale);
     expect(
-      classifyRunStatus({ state: "finished", updatedAt: "2026-08-19T09:00:00.000Z" }, now),
-    ).toBe("finished");
+      readRunStatus({ state: "finished", updatedAt: "2026-08-19T09:00:00.000Z" }, now),
+    ).toEqual({ liveness: "finished", basis: "status" });
     // A record its stopped process wrote is interrupted at once, without waiting to go stale.
     expect(
-      classifyRunStatus({ state: "interrupted", updatedAt: "2026-08-19T10:00:59.000Z" }, now),
-    ).toBe("interrupted");
+      readRunStatus({ state: "interrupted", updatedAt: "2026-08-19T10:00:59.000Z" }, now),
+    ).toEqual({ liveness: "interrupted", basis: "status" });
     // A record whose timestamp cannot be parsed is interrupted, never optimistically alive.
-    expect(classifyRunStatus(at("not-a-date"), now)).toBe("interrupted");
+    expect(readRunStatus(at("not-a-date"), now)).toEqual(stale);
     // The threshold gives three touch intervals of slack, so a hiccup never mislabels a live run.
     expect(RUN_STATUS_STALE_MS).toBe(RUN_STATUS_TOUCH_MS * 3);
   });

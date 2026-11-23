@@ -35,10 +35,10 @@ import {
   type RunNoteFiles,
 } from "../run/note-files.js";
 import type { RunDisplay } from "../run/display.js";
+import { runLiveness, type RunLivenessReading } from "../run/liveness.js";
 import { analysisCostOf, runCost, runCostLabel, type RunAnalysisCost } from "../run/run-cost.js";
 import {
   RUN_STATUS_FILE,
-  RUN_STATUS_STALE_MS,
   runAnalysisPhase,
   isRunStatusRecord,
   type RunStatusRecord,
@@ -461,11 +461,31 @@ async function readLocalRunStatus(runRoot: PinnedDirectory): Promise<RunStatusRe
   }
 }
 
+/** The state the served page shows for the run's process. */
+type ServedState = NonNullable<ObserverData["runtime"]>["state"];
+
 /**
- * A recorded bundle outcome wins; otherwise runtime status reads the contained local heartbeat.
- * A stale heartbeat means unknown: neither an old timestamp nor a persisted PID proves that a
- * process died (the evidence may have been copied from another machine). A record its stopped
- * process wrote is interrupted. No PID is served/probed.
+ * The served state for a liveness reading. This page maps one basis to its own word: a stopped
+ * heartbeat is `unknown` here, where the CLI reads interrupted, because the page may be serving
+ * a run directory copied from another machine, and neither an old timestamp nor a stored pid
+ * proves that a process died. No pid is served or probed.
+ */
+function servedState(reading: RunLivenessReading): ServedState {
+  switch (reading.basis) {
+    case "outcome":
+    case "status":
+    case "heartbeat":
+    case "bundle":
+      return reading.liveness;
+    case "stale-heartbeat":
+      return "unknown";
+  }
+}
+
+/**
+ * The served observation of the run's process, from a status record that names the served run.
+ * A record whose start is after its last update, or whose times cannot be read, is not one any
+ * version writes, so it is no observation and reads `unknown` unless run.json records the end.
  */
 function withLocalRunStatus(
   record: RunStatusRecord | undefined,
@@ -480,19 +500,15 @@ function withLocalRunStatus(
   const started = Date.parse(record.startedAt);
   const updated = Date.parse(record.updatedAt);
   const timestampsValid =
-    Number.isFinite(started) && Number.isFinite(updated) && started <= updated && updated <= now;
-  let state: NonNullable<ObserverData["runtime"]>["state"] = "unknown";
-  if (isRunOutcome(outcome)) {
-    state = outcome.state;
-  } else if (timestampsValid) {
-    if (record.state === "finished") {
-      state = "finished";
-    } else if (record.state === "interrupted") {
-      state = "interrupted";
-    } else if (record.state === "running" && now - updated <= RUN_STATUS_STALE_MS) {
-      state = "running";
-    }
-  }
+    Number.isFinite(started) && Number.isFinite(updated) && started <= updated;
+  const reading = runLiveness(
+    data.run.runId,
+    record,
+    isRunOutcome(outcome) ? { outcome } : {},
+    now,
+  );
+  const state: ServedState =
+    reading.basis === "outcome" || timestampsValid ? servedState(reading) : "unknown";
   // The run's own process analyzes it after the run ended; the bundle outcome does not say so.
   const analysis = timestampsValid ? runAnalysisPhase(record, now) : undefined;
   return {

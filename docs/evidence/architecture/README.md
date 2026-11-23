@@ -171,3 +171,29 @@ paths as they were at that commit, so the doc path checks skip it
 | Date       | Measured   | History                                 | src files | src code lines | src folders per commit, all and without moves | Route baseline, landed and replayed | Summary                          |
 | ---------- | ---------- | --------------------------------------- | --------- | -------------- | --------------------------------------------- | ----------------------------------- | -------------------------------- |
 | 2026-10-06 | `4664a07d` | `origin/main` at `eb74165f`, since 2026-09-29 | 431       | 88,897         | 2.74 and 2.58                                 | 3.09 and 2.35                       | [summary](2026-10-06-4664a07d.md) |
+
+## State machine inventory
+
+A second kind of dated result in this folder lists the state machines in the code: every place
+whose behavior depends on a state that changes over time. It was made by reading `src/`,
+`observer/` and `tui/src/` area by area at one commit. No script produces it, and neither
+`pnpm check` nor CI reads it. Every entry came from reading: nothing was run to confirm a
+transition.
+
+Each entry has an id, a name, the first file to open, the shape the state takes today and a grade:
+
+| Grade            | Meaning                                                                                              |
+| ---------------- | ---------------------------------------------------------------------------------------------------- |
+| explicit         | The states and transitions are declared in one place: a union with one function, a reducer, a table |
+| implicit, left   | The state is spread over flags, optional fields or control flow, and is small and safe to leave      |
+| implicit, costly | The same, and it has a history of fix commits or readers that disagree about the state              |
+
+A few state machines appear in two areas' lists, since two areas read them. File paths are as they
+were at the measured commit, so the doc path checks skip the dated file.
+[Decision 0005](../../decisions/0005-a-shared-state-has-one-reader.md) is what was decided from
+the first inventory.
+
+| Date       | Measured   | Entries | explicit | implicit, left | implicit, costly | List                                               |
+| ---------- | ---------- | ------- | -------- | -------------- | ---------------- | -------------------------------------------------- |
+| 2026-11-23 | `5980c353` | 247     | 38       | 162            | 47               | [list](2026-11-23-state-machines-5980c353.md)      |
+
