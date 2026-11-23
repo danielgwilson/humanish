@@ -2,7 +2,7 @@
 // still running, automatic analysis running in the run's process, an analysis whose process
 // stopped, and a run that ended interrupted. Each run is a dry-run bundle marked live, with the
 // status.json and analysis job a real run leaves at that point written beside it.
-import { cp, readFile, writeFile } from "node:fs/promises";
+import { cp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Command, CommanderError } from "commander";
 import { describe, expect, it, vi } from "vitest";
@@ -61,6 +61,7 @@ async function liveRun(options: {
   bundle.study = { id: "signup", path: ".humanish/studies/signup.yaml", origin: "committed" };
   if (options.participants === "running") {
     bundle.streams[0]!.status = "running";
+    bundle.simulations[0]!.status = "running";
     delete bundle.outcome;
   } else {
     bundle.streams[0]!.status = "complete";
@@ -158,6 +159,18 @@ describe("review before the findings exist", () => {
     expect(analysis.next).toMatch(/run signup/);
   });
 
+  it("says a run with no status record and a participant still running was cut off", async () => {
+    // The shape a copied or hand-pruned run directory has: run.json's last live flush alone.
+    const { cwd, runRoot } = await liveRun({ participants: "running", status: {} });
+    await rm(path.join(runRoot, "status.json"));
+    const human = await runCli(cwd, ["runs"]);
+    expect(human.output).toMatch(new RegExp(`- ${RUN} live interrupted`));
+    const analysis = await review(cwd);
+    expect(analysis.state).toBe("skipped");
+    expect(analysis.message).not.toMatch(/No analysis has run/);
+    expect(analysis.next).toMatch(/run signup/);
+  });
+
   it("says analysis is running and when it started, before the job is claimed", async () => {
     const startedAt = iso(-90_000);
     const { cwd } = await liveRun({
@@ -234,6 +247,17 @@ describe("analyze names what to do with a run that is not finished", () => {
     const { cwd } = await liveRun({
       participants: "ended-unpublished",
       status: { state: "interrupted", reason: "no-publish", completedAt: iso(-1_000) },
+    });
+    const result = await analyze(cwd);
+    expect(result.error).toBeUndefined();
+    expect(result.ok).toBe(true);
+  });
+
+  it("a published run whose status record never caught up is analyzed", async () => {
+    // The process published run.json and stopped before it wrote the finished status record.
+    const { cwd } = await liveRun({
+      participants: "ended",
+      status: { updatedAt: iso(-600_000) },
     });
     const result = await analyze(cwd);
     expect(result.error).toBeUndefined();

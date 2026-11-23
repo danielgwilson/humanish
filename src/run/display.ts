@@ -6,7 +6,7 @@
 import type { RunOutcome } from "./bundle.js";
 import type { ExecutionFailure } from "./judge.js";
 import { type RunAnalysisPhase, type RunLiveness } from "./status.js";
-import { runLiveness } from "./liveness.js";
+import { runLiveness, type RunLivenessBasis } from "./liveness.js";
 import { plural } from "./text.js";
 
 /** The states a run is shown in. */
@@ -35,6 +35,8 @@ export interface RunDisplay {
 /** What runDisplay reads: whether the run is alive, what its participants experienced, and its ok. */
 export interface RunDisplayFacts {
   liveness: RunLiveness;
+  /** Why the liveness reads so, when the facts came from runLiveness. runDisplay does not read it. */
+  basis?: RunLivenessBasis | undefined;
   mode?: string | null | undefined;
   /** `review.verdict`. */
   verdict?: string | undefined;
@@ -132,15 +134,21 @@ export interface DisplayedBundle {
  * The facts for a run from its bundle. run.json's `outcome` decides when it has one. A bundle
  * without one is in progress, or was recorded before the field existed: its status record, when
  * given and naming the run, then says whether the run is alive and, for the older run, holds its ok.
- * With no record, a bundle whose simulations are still running is interrupted.
+ * With no record, a bundle whose simulations are still running is interrupted. A run that has
+ * written no run.json yet is read with a bundle that only names it: the record then gives its mode.
  */
 export function bundleDisplayFacts(
   bundle: DisplayedBundle,
   status?: unknown,
   nowMs: number = Date.now(),
 ): RunDisplayFacts {
-  const { liveness, record } = runLiveness(bundle.runId, status, bundle, nowMs);
-  const base = { liveness, mode: bundle.mode, verdict: bundle.review?.verdict };
+  const { liveness, basis, record } = runLiveness(bundle.runId, status, bundle, nowMs);
+  const base = {
+    liveness,
+    basis,
+    mode: bundle.mode ?? record?.mode,
+    verdict: bundle.review?.verdict ?? record?.outcome?.verdict,
+  };
   const outcome = bundle.outcome;
   if (outcome?.state === "interrupted") return base;
   if (outcome?.state === "finished")

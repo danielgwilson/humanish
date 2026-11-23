@@ -25,11 +25,13 @@ import {
   type DisplayedBundle,
   type RunDisplay,
 } from "./display.js";
+import type { RunLivenessBasis } from "./liveness.js";
 import {
   isRunStatusRecord,
   RUN_STATUS_FILE,
   runAnalysisPhase,
   type RunAnalysisPhase,
+  type RunStatusRecord,
 } from "./status.js";
 import { readLatest, readRunJsonIfExists, resolveRunPath, runJsonValue } from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
@@ -54,8 +56,13 @@ export interface RunsResult {
     path: string;
     /** The disk the run's files take, when the listing was asked for sizes. */
     bytes?: number;
-    /** How the run reads (runDisplay in src/run/display.ts); absent when it has no readable run.json. */
+    /**
+     * How the run reads (runDisplay in src/run/display.ts). Absent when the run has neither a
+     * readable run.json nor, before its first run.json, a status record that names it.
+     */
     display?: RunDisplay;
+    /** Why the run reads as running, interrupted or finished (runLiveness in src/run/liveness.ts). */
+    livenessBasis?: RunLivenessBasis;
     /** The automatic analysis its own process started after the run ended, from status.json. */
     analysis?: RunAnalysisPhase;
   }>;
@@ -134,17 +141,27 @@ export async function listRuns(
         new Error("humanish runs root changed physical destination."),
       );
     }
-    // A listing shows what it can read: a run.json it refuses lists like a missing one.
-    const bundle = runJsonValue(await readRunJsonIfExists(entryRunPaths, RUN_BUNDLE_FILE));
+    // A listing shows what it can read: a run.json it refuses has no display.
+    const bundleRead = await readRunJsonIfExists(entryRunPaths, RUN_BUNDLE_FILE);
+    const bundle = runJsonValue(bundleRead);
+    const started =
+      bundleRead.status === "missing" ? await startedRun(entryRunPaths, entryName) : undefined;
     runs.push({
       runId: entryName,
-      createdAt: isRecord(bundle) && typeof bundle.createdAt === "string" ? bundle.createdAt : null,
-      mode: isRecord(bundle) && typeof bundle.mode === "string" ? bundle.mode : null,
+      createdAt:
+        isRecord(bundle) && typeof bundle.createdAt === "string"
+          ? bundle.createdAt
+          : (started?.startedAt ?? null),
+      mode:
+        isRecord(bundle) && typeof bundle.mode === "string" ? bundle.mode : (started?.mode ?? null),
       path: path.join(RUNS_RELATIVE_ROOT, entryName),
       ...(options.sizes === true
         ? { bytes: await directoryBytes(entryRunPaths.physicalRunRoot) }
         : {}),
-      ...(await listedRunDisplay(entryRunPaths, bundle)),
+      ...(await listedRunDisplay(
+        entryRunPaths,
+        started === undefined ? bundle : { runId: entryName },
+      )),
     });
   }
 
@@ -169,6 +186,19 @@ export async function listRuns(
 }
 
 /**
+ * The status record of a run that has written no run.json yet, when it names the run. A run exists
+ * from its first status write, and its route writes run.json later, so a listing reads the record
+ * to show the run in between.
+ */
+async function startedRun(
+  runPaths: PreparedRunArtifactPaths,
+  runId: string,
+): Promise<RunStatusRecord | undefined> {
+  const status = runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE));
+  return isRunStatusRecord(status) && status.runId === runId ? status : undefined;
+}
+
+/**
  * A listed run's display, from its run.json and, for a bundle without an outcome, its status
  * record. Like the listing's other fields it reads the file without verifying it; a run.json
  * that is not an object naming a run gets none.
@@ -176,7 +206,11 @@ export async function listRuns(
 async function listedRunDisplay(
   runPaths: PreparedRunArtifactPaths,
   bundle: unknown,
-): Promise<{ display?: RunDisplay; analysis?: RunAnalysisPhase }> {
+): Promise<{
+  display?: RunDisplay;
+  livenessBasis?: RunLivenessBasis;
+  analysis?: RunAnalysisPhase;
+}> {
   const displayed = displayedBundle(bundle);
   if (displayed === undefined) return {};
   const status = runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE));
@@ -184,11 +218,11 @@ async function listedRunDisplay(
     isRunStatusRecord(status) && status.runId === displayed.runId
       ? runAnalysisPhase(status, Date.now())
       : undefined;
+  // A bundle with an outcome decides how the run ended; status.json only adds its analysis.
+  const facts = bundleDisplayFacts(displayed, displayed.outcome === undefined ? status : undefined);
   return {
-    // A bundle with an outcome decides how the run ended; status.json only adds its analysis.
-    display: runDisplay(
-      bundleDisplayFacts(displayed, displayed.outcome === undefined ? status : undefined),
-    ),
+    display: runDisplay(facts),
+    ...(facts.basis === undefined ? {} : { livenessBasis: facts.basis }),
     ...(analysis === undefined ? {} : { analysis }),
   };
 }

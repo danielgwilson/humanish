@@ -330,19 +330,52 @@ export function beginRunStatus(
 export type RunLiveness = "running" | "interrupted" | "finished";
 
 /**
- * Classify a status record. Pure, so the TUI, the CLI and tests share one definition of "alive".
- * `nowMs` is passed in rather than read, so a classification is reproducible.
+ * Why a status record reads as it does. `status`: the record says the run finished or was
+ * interrupted, written by its own process or by `humanish reclaim`. `heartbeat`: it says running
+ * and was touched within the stale window. `stale-heartbeat`: it says running and its heartbeat
+ * stopped, which a dead process, a sleeping host and a record copied from another machine all
+ * leave. That one reads as interrupted, and a surface that must not presume it says so.
  */
+export type RunStatusBasis = "status" | "heartbeat" | "stale-heartbeat";
+
+/**
+ * Read a status record's liveness and the basis for it. Pure, so the TUI, the CLI, the Observer
+ * and tests share one definition of "alive". `nowMs` is passed in, so a reading is reproducible.
+ */
+export function readRunStatus(
+  record: Pick<RunStatusRecord, "state" | "updatedAt">,
+  nowMs: number,
+  staleMs: number = RUN_STATUS_STALE_MS,
+): { liveness: RunLiveness; basis: RunStatusBasis } {
+  if (record.state !== "running") return { liveness: record.state, basis: "status" };
+  const updated = Date.parse(record.updatedAt);
+  return Number.isFinite(updated) && nowMs - updated <= staleMs
+    ? { liveness: "running", basis: "heartbeat" }
+    : { liveness: "interrupted", basis: "stale-heartbeat" };
+}
+
+/** A status record's liveness alone; readRunStatus also gives its basis. */
 export function classifyRunStatus(
   record: Pick<RunStatusRecord, "state" | "updatedAt">,
   nowMs: number,
   staleMs: number = RUN_STATUS_STALE_MS,
 ): RunLiveness {
-  if (record.state === "finished") return "finished";
-  if (record.state === "interrupted") return "interrupted";
-  const updated = Date.parse(record.updatedAt);
-  if (!Number.isFinite(updated)) return "interrupted";
-  return nowMs - updated <= staleMs ? "running" : "interrupted";
+  return readRunStatus(record, nowMs, staleMs).liveness;
+}
+
+/**
+ * The record `humanish reclaim` writes over a `running` record whose heartbeat stopped:
+ * `interrupted` with reason `reclaimed`, ended at its last heartbeat. Undefined for any other
+ * record: a fresh one belongs to a live owner, and one that already says how the run ended stays.
+ * The run's own process writes every other state (beginRunStatus), so the two writers of
+ * status.json are in this module.
+ */
+export function reclaimedRunStatus(
+  record: RunStatusRecord,
+  nowMs: number,
+): RunStatusRecord | undefined {
+  if (readRunStatus(record, nowMs).basis !== "stale-heartbeat") return undefined;
+  return { ...record, state: "interrupted", reason: "reclaimed", completedAt: record.updatedAt };
 }
 
 /** Automatic analysis as a status record shows it: running, ended, or stopped with its process. */
@@ -377,7 +410,7 @@ export function runAnalysisPhase(
 }
 
 /** Whether `pid` names a process on this host. EPERM means one exists that this user cannot signal. */
-function processRunning(pid: number): boolean {
+export function processRunning(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;

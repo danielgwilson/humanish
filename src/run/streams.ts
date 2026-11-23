@@ -29,6 +29,16 @@ export type RunSimulationStatus =
   | "failed"
   | "contract_proof_only";
 
+/**
+ * Statuses of a participant whose session has not ended: waiting for its start, its desktop
+ * starting, or at work. A bundle that still holds one was not published as finished.
+ */
+export const IN_PROGRESS_SIMULATION_STATUSES: ReadonlySet<string> = new Set([
+  "queued",
+  "preparing",
+  "running",
+] satisfies RunSimulationStatus[]);
+
 /** Statuses a stream ends in. Analysis requires every stream of a run in one of these. */
 export const TERMINAL_SIMULATION_STATUSES: ReadonlySet<RunSimulationStatus> = new Set([
   "complete",

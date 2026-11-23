@@ -12,9 +12,10 @@ import { readRunJsonIfExists, readRunTextIfExists, runJsonValue } from "../run/l
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/type-guards.js";
 import { RECLAIM_RECEIPT_ARTIFACT } from "../run/reclaim.js";
-import { runLiveness } from "../run/liveness.js";
+import { runLiveness, type RunLivenessBasis } from "../run/liveness.js";
 import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import { RUN_STATUS_FILE } from "../run/status.js";
+import { IN_PROGRESS_SIMULATION_STATUSES } from "../run/streams.js";
 import { plural } from "../run/text.js";
 import { cli } from "../cli/invocation.js";
 
@@ -26,6 +27,8 @@ const GONE_STATES = new Set(["killed", "already-gone"]);
 /** What verify can say about a run that is not finished. */
 export interface UnfinishedRun {
   liveness: "running" | "interrupted";
+  /** Why it reads so (runLiveness): a recorded state, a fresh or stopped heartbeat, or the bundle. */
+  basis: RunLivenessBasis;
   /**
    * clean: the run's reclaim receipt records every sandbox gone and a finished search of E2B by
    * the run's tags. unconfirmed: it records a sandbox not confirmed gone, or the run journaled one
@@ -49,30 +52,28 @@ export async function runNotFinished(
   const runId = path.basename(runPaths.absoluteRunRoot);
   // A status.json it refuses is no usable status, as a missing one is: the bundle decides.
   const status = runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE));
-  const { liveness, record } = runLiveness(runId, status, bundle, nowMs);
+  const { liveness, basis, record } = runLiveness(runId, status, bundle, nowMs);
   if (liveness === "finished") return { warnings: [] };
 
-  const seen: string[] = [];
-  if (bundle.outcome?.state === "interrupted") {
-    seen.push(`run.json records interruption by ${bundle.outcome.signal} at ${bundle.outcome.at}`);
-  } else if (record === undefined) {
-    const running = bundle.simulations.filter((simulation) => simulation.status === "running");
-    seen.push(
-      `the run has no usable ${RUN_STATUS_FILE} and ${running.length} of ${bundle.simulations.length} simulations are still running`,
-    );
-  } else if (liveness === "running") {
-    seen.push(
-      `${RUN_STATUS_FILE} state is ${record.state} and its owner updated it at ${record.updatedAt}, so the run may still be writing`,
-    );
-  } else if (record.state === "interrupted") {
-    seen.push(
-      `${RUN_STATUS_FILE} state is interrupted${record.signal === undefined ? "" : ` by ${record.signal}`} at ${record.updatedAt}`,
-    );
-  } else {
-    seen.push(
-      `${RUN_STATUS_FILE} state is ${record.state} and its owner stopped updating it at ${record.updatedAt}`,
-    );
-  }
+  const unended = bundle.simulations.filter((simulation) =>
+    IN_PROGRESS_SIMULATION_STATUSES.has(simulation.status),
+  ).length;
+  const seen = [
+    {
+      outcome: () =>
+        bundle.outcome?.state === "interrupted"
+          ? `run.json records interruption by ${bundle.outcome.signal} at ${bundle.outcome.at}`
+          : "run.json records that the run did not finish",
+      bundle: () =>
+        `the run has no usable ${RUN_STATUS_FILE} and ${unended} of ${bundle.simulations.length} simulations have not ended`,
+      heartbeat: () =>
+        `${RUN_STATUS_FILE} state is running and its owner updated it at ${record?.updatedAt}, so the run may still be writing`,
+      status: () =>
+        `${RUN_STATUS_FILE} state is interrupted${record?.signal === undefined ? "" : ` by ${record.signal}`} at ${record?.updatedAt}`,
+      "stale-heartbeat": () =>
+        `${RUN_STATUS_FILE} state is running and its owner stopped updating it at ${record?.updatedAt}`,
+    }[basis](),
+  ];
   const runningStreams = bundle.streams.filter((stream) => stream.status === "running").length;
   seen.push(`${runningStreams} of ${bundle.streams.length} streams are still running`);
 
@@ -81,7 +82,7 @@ export async function runNotFinished(
     warnings: [
       `${RUN_NOT_FINISHED}: ${seen.join("; ")}. ${reclaim.text} Verify ok covers the integrity of what was written; it does not mean the run finished.`,
     ],
-    unfinished: { liveness, sandboxes: reclaim.sandboxes },
+    unfinished: { liveness, basis, sandboxes: reclaim.sandboxes },
   };
 }
 

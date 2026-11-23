@@ -35,10 +35,10 @@ import {
   type RunNoteFiles,
 } from "../run/note-files.js";
 import type { RunDisplay } from "../run/display.js";
+import { runLiveness } from "../run/liveness.js";
 import { analysisCostOf, runCost, runCostLabel, type RunAnalysisCost } from "../run/run-cost.js";
 import {
   RUN_STATUS_FILE,
-  RUN_STATUS_STALE_MS,
   runAnalysisPhase,
   isRunStatusRecord,
   type RunStatusRecord,
@@ -462,10 +462,12 @@ async function readLocalRunStatus(runRoot: PinnedDirectory): Promise<RunStatusRe
 }
 
 /**
- * A recorded bundle outcome wins; otherwise runtime status reads the contained local heartbeat.
- * A stale heartbeat means unknown: neither an old timestamp nor a persisted PID proves that a
- * process died (the evidence may have been copied from another machine). A record its stopped
- * process wrote is interrupted. No PID is served/probed.
+ * The served observation of the run's process, read by the rule every surface shares (runLiveness).
+ * This page maps one basis differently: a stale heartbeat is `unknown` here, where the CLI reads
+ * interrupted, because the page may be serving evidence copied from another machine, and neither
+ * an old timestamp nor a stored pid proves that a process died. A record whose timestamps run
+ * backwards or lie in the future is not an observation, so it is unknown too. No pid is served
+ * or probed.
  */
 function withLocalRunStatus(
   record: RunStatusRecord | undefined,
@@ -481,18 +483,14 @@ function withLocalRunStatus(
   const updated = Date.parse(record.updatedAt);
   const timestampsValid =
     Number.isFinite(started) && Number.isFinite(updated) && started <= updated && updated <= now;
-  let state: NonNullable<ObserverData["runtime"]>["state"] = "unknown";
-  if (isRunOutcome(outcome)) {
-    state = outcome.state;
-  } else if (timestampsValid) {
-    if (record.state === "finished") {
-      state = "finished";
-    } else if (record.state === "interrupted") {
-      state = "interrupted";
-    } else if (record.state === "running" && now - updated <= RUN_STATUS_STALE_MS) {
-      state = "running";
-    }
-  }
+  const { liveness, basis } = runLiveness(
+    record.runId,
+    record,
+    isRunOutcome(outcome) ? { outcome } : {},
+    now,
+  );
+  const state: NonNullable<ObserverData["runtime"]>["state"] =
+    basis === "outcome" || (timestampsValid && basis !== "stale-heartbeat") ? liveness : "unknown";
   // The run's own process analyzes it after the run ended; the bundle outcome does not say so.
   const analysis = timestampsValid ? runAnalysisPhase(record, now) : undefined;
   return {

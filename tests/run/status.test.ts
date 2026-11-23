@@ -17,6 +17,7 @@ import {
   RUN_STATUS_TOUCH_MS,
   beginRunStatus,
   classifyRunStatus,
+  reclaimedRunStatus,
   isRunStatusRecord,
   runAnalysisPhase,
   runOwnerGone,
@@ -334,6 +335,33 @@ describe("run status: identity + liveness on disk", () => {
     expect(classifyRunStatus(at("not-a-date"), now)).toBe("interrupted");
     // The threshold gives three touch intervals of slack, so a hiccup never mislabels a live run.
     expect(RUN_STATUS_STALE_MS).toBe(RUN_STATUS_TOUCH_MS * 3);
+  });
+
+  it("reclaim rewrites only a running record whose heartbeat stopped", () => {
+    const now = Date.parse("2026-08-19T10:01:00.000Z");
+    const record: RunStatusRecord = {
+      schema: RUN_STATUS_SCHEMA,
+      runId: "run-r",
+      state: "running",
+      mode: "live",
+      pid: 4242,
+      startedAt: "2026-08-19T09:50:00.000Z",
+      updatedAt: "2026-08-19T10:00:00.000Z",
+    };
+    expect(reclaimedRunStatus(record, now)).toEqual({
+      ...record,
+      state: "interrupted",
+      reason: "reclaimed",
+      completedAt: "2026-08-19T10:00:00.000Z",
+    });
+    // A live owner's record, and one that already says how the run ended, stay as they are.
+    expect(reclaimedRunStatus({ ...record, updatedAt: "2026-08-19T10:00:58.000Z" }, now)).toBe(
+      undefined,
+    );
+    expect(reclaimedRunStatus({ ...record, state: "finished" }, now)).toBe(undefined);
+    expect(reclaimedRunStatus({ ...record, state: "interrupted", signal: "SIGINT" }, now)).toBe(
+      undefined,
+    );
   });
 
   it("a status write failure never breaks the run it describes", async () => {

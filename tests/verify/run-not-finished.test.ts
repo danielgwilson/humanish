@@ -118,7 +118,7 @@ describe("verify on a run that did not finish", () => {
       warnings: [
         `RUN_NOT_FINISHED: status.json state is running and its owner stopped updating it at ${stopped}; 1 of 1 streams are still running. Sandboxes unknown: reclaim-receipt.json records 2 of 2 sandboxes gone, but it records no finished search of E2B by this run's tags; \`humanish reclaim --run ${RUN}\` searches. ${TAIL}`,
       ],
-      unfinished: { liveness: "interrupted", sandboxes: "unknown" },
+      unfinished: { liveness: "interrupted", basis: "stale-heartbeat", sandboxes: "unknown" },
     });
     await expect(indexLiveness()).resolves.toBe("interrupted");
   });
@@ -153,7 +153,11 @@ describe("verify on a run that did not finish", () => {
     });
 
     const { warnings, unfinished } = await notFinished();
-    expect(unfinished).toEqual({ liveness: "interrupted", sandboxes: "unconfirmed" });
+    expect(unfinished).toEqual({
+      liveness: "interrupted",
+      basis: "stale-heartbeat",
+      sandboxes: "unconfirmed",
+    });
     expect(warnings[0]).toContain(
       "Sandboxes unconfirmed: reclaim-receipt.json records 0 of 1 sandboxes gone, and 1 journaled sandboxes are not in it;",
     );
@@ -167,7 +171,7 @@ describe("verify on a run that did not finish", () => {
       warnings: [
         `RUN_NOT_FINISHED: status.json state is running and its owner stopped updating it at ${stopped}; 1 of 1 streams are still running. Sandboxes unknown: it has no reclaim-receipt.json and journaled 2 sandboxes; \`humanish reclaim --run ${RUN}\` stops those and searches E2B by this run's tags for any whose id never reached a receipt. ${TAIL}`,
       ],
-      unfinished: { liveness: "interrupted", sandboxes: "unknown" },
+      unfinished: { liveness: "interrupted", basis: "stale-heartbeat", sandboxes: "unknown" },
     });
     await expect(indexLiveness()).resolves.toBe("interrupted");
   });
@@ -176,10 +180,11 @@ describe("verify on a run that did not finish", () => {
     const now = new Date().toISOString();
     await kill(now);
 
-    const { warnings } = await notFinished();
+    const { warnings, unfinished } = await notFinished();
     expect(warnings[0]).toContain(
       `status.json state is running and its owner updated it at ${now}, so the run may still be writing`,
     );
+    expect(unfinished).toMatchObject({ liveness: "running", basis: "heartbeat" });
     await expect(indexLiveness()).resolves.toBe("running");
   });
 
@@ -189,7 +194,7 @@ describe("verify on a run that did not finish", () => {
     bundle.outcome = { state: "interrupted", ok: false, signal: "SIGTERM", at: stopped };
     await writeJson("run.json", bundle);
     const { warnings, unfinished } = await notFinished();
-    expect(unfinished?.liveness).toBe("interrupted");
+    expect(unfinished).toMatchObject({ liveness: "interrupted", basis: "outcome" });
     expect(warnings[0]).toContain(`run.json records interruption by SIGTERM at ${stopped}`);
   });
 
@@ -197,10 +202,11 @@ describe("verify on a run that did not finish", () => {
     await kill(stopped);
     await rm(path.join(runDir, RUN_STATUS_FILE));
 
-    const { warnings } = await notFinished();
+    const { warnings, unfinished } = await notFinished();
     expect(warnings[0]).toMatch(
-      /^RUN_NOT_FINISHED: the run has no usable status\.json and 1 of 1 simulations are still running; 1 of 1 streams are still running\. /,
+      /^RUN_NOT_FINISHED: the run has no usable status\.json and 1 of 1 simulations have not ended; 1 of 1 streams are still running\. /,
     );
+    expect(unfinished).toMatchObject({ liveness: "interrupted", basis: "bundle" });
     await expect(indexLiveness()).resolves.toBe("interrupted");
   });
 });
@@ -224,7 +230,11 @@ describe("verify's sandbox state for a run that did not finish", () => {
       })),
     });
     const result = await notFinished();
-    expect(result.unfinished).toEqual({ liveness: "interrupted", sandboxes: "clean" });
+    expect(result.unfinished).toEqual({
+      liveness: "interrupted",
+      basis: "stale-heartbeat",
+      sandboxes: "clean",
+    });
     expect(result.warnings[0]).toContain("Sandboxes clean: reclaim-receipt.json records 2 of 2");
   });
 
@@ -252,7 +262,11 @@ describe("verify's sandbox state for a run that did not finish", () => {
 
     const result = await notFinished();
 
-    expect(result.unfinished).toEqual({ liveness: "interrupted", sandboxes: "unconfirmed" });
+    expect(result.unfinished).toEqual({
+      liveness: "interrupted",
+      basis: "stale-heartbeat",
+      sandboxes: "unconfirmed",
+    });
     expect(result.warnings[0]).toContain(
       "Sandboxes unconfirmed: sandbox-receipts.ndjson is larger than 33554432 bytes",
     );
@@ -262,7 +276,11 @@ describe("verify's sandbox state for a run that did not finish", () => {
     await kill(stopped);
     await rm(path.join(runDir, "sandbox-receipts.ndjson"));
     const result = await notFinished();
-    expect(result.unfinished).toEqual({ liveness: "interrupted", sandboxes: "unknown" });
+    expect(result.unfinished).toEqual({
+      liveness: "interrupted",
+      basis: "stale-heartbeat",
+      sandboxes: "unknown",
+    });
     expect(result.warnings[0]).toContain("Sandboxes unknown: it has no reclaim-receipt.json");
   });
 });
