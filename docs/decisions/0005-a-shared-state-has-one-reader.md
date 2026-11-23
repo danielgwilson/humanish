@@ -5,7 +5,7 @@ Accepted.
 ## Context
 
 A read-through of `src/`, `observer/` and `tui/` listed 247 state machines and graded each one
-([the inventory](../evidence/architecture/2026-11-23-state-machines-5980c353.md)). 38 declare
+([the inventory](https://github.com/danielgwilson/humanish/blob/main/docs/evidence/architecture/2026-11-23-state-machines-5980c353.md)). 38 declare
 their states and transitions in one place. 162 are implicit, small and safe to leave: most are a
 closure or a class with a few flags that only its own module reads, such as `UsageLedger`
 (`src/actors/computer-use/loop/usage.ts`). 47 are implicit and costly: each had a history of fix
