@@ -16,7 +16,7 @@ import { isRecord } from "./type-guards.js";
 import { listRuns } from "./stored-runs.js";
 
 const HOUR_MS = 3_600_000;
-/** A heartbeat this recent means the run's process is alive. */
+/** A record touched this recently is kept: something may still be writing the run. */
 const RUNNING_WITHIN_MS = 5 * 60_000;
 /** Longer than any provider lets a sandbox live, so an older run has nothing left to stop. */
 const SANDBOX_GONE_AFTER_MS = 7 * 24 * HOUR_MS;

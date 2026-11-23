@@ -35,6 +35,7 @@ describe("a run's liveness and the basis for it", () => {
     expect(runLiveness(RUN_ID, status(), { ...running, outcome: finished }, NOW)).toEqual({
       liveness: "finished",
       basis: "outcome",
+      outcome: finished,
     });
     const interrupted = {
       state: "interrupted" as const,
@@ -45,6 +46,7 @@ describe("a run's liveness and the basis for it", () => {
     expect(runLiveness(RUN_ID, undefined, { ...ended, outcome: interrupted }, NOW)).toEqual({
       liveness: "interrupted",
       basis: "outcome",
+      outcome: interrupted,
     });
   });
 
@@ -73,11 +75,14 @@ describe("a run's liveness and the basis for it", () => {
       basis: "stale-heartbeat",
       record: stale,
     });
-    // A heartbeat that cannot be read is no heartbeat.
-    expect(runLiveness(RUN_ID, status({ updatedAt: "not-a-date" }), running, NOW)).toMatchObject({
-      liveness: "interrupted",
-      basis: "stale-heartbeat",
-    });
+    // A heartbeat that cannot be read is no heartbeat, and neither is one dated an hour ahead:
+    // a record copied from a machine with another clock says nothing about a process here.
+    for (const updatedAt of ["not-a-date", "2026-08-19T11:01:00.000Z"]) {
+      expect(runLiveness(RUN_ID, status({ updatedAt }), running, NOW)).toMatchObject({
+        liveness: "interrupted",
+        basis: "stale-heartbeat",
+      });
+    }
   });
 
   it("reads a bundle whose participants have not all ended as interrupted, whatever they wait on", () => {
@@ -116,14 +121,16 @@ describe("a run's liveness and the basis for it", () => {
 });
 
 // Decision 0005: a state that more than one surface shows has one reader. For a run's liveness
-// that holds only while no other module compares a heartbeat to the stale window itself, which is
-// how the served Observer and the analysis gate came to read a run differently from the CLI.
+// that holds only while no other module compares a heartbeat to the stale window itself. This
+// catches a copy of the comparison that names the constant, in production code.
 describe("the stale window of a run's heartbeat", () => {
   it("is read only by src/run/status.ts", async () => {
     const readers: string[] = [];
     for (const root of ["src", path.join("tui", "src"), "observer"]) {
       const files = (await readdir(root, { recursive: true })).filter(
-        (file) => /\.tsx?$/.test(file) && !file.split(path.sep).includes("node_modules"),
+        (file) =>
+          /\.tsx?$/.test(file) &&
+          !file.split(path.sep).some((part) => part === "node_modules" || part === "tests"),
       );
       for (const file of files) {
         // Comment lines name the constant without reading it.

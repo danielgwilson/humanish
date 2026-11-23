@@ -144,8 +144,8 @@ export async function listRuns(
     // A listing shows what it can read: a run.json it refuses has no display.
     const bundleRead = await readRunJsonIfExists(entryRunPaths, RUN_BUNDLE_FILE);
     const bundle = runJsonValue(bundleRead);
-    const started =
-      bundleRead.status === "missing" ? await startedRun(entryRunPaths, entryName) : undefined;
+    const status = runJsonValue(await readRunJsonIfExists(entryRunPaths, RUN_STATUS_FILE));
+    const started = bundleRead.status === "missing" ? startedRun(status, entryName) : undefined;
     runs.push({
       runId: entryName,
       createdAt:
@@ -158,10 +158,10 @@ export async function listRuns(
       ...(options.sizes === true
         ? { bytes: await directoryBytes(entryRunPaths.physicalRunRoot) }
         : {}),
-      ...(await listedRunDisplay(
-        entryRunPaths,
-        started === undefined ? bundle : { runId: entryName },
-      )),
+      ...listedRunDisplay(
+        started === undefined ? displayedBundle(bundle) : { runId: entryName },
+        status,
+      ),
     });
   }
 
@@ -188,14 +188,13 @@ export async function listRuns(
 /**
  * The status record of a run that has written no run.json yet, when it names the run. A run exists
  * from its first status write, and its route writes run.json later, so a listing reads the record
- * to show the run in between.
+ * to show the run in between. A record that says `finished` is none: a finished run published a
+ * run.json, so one without it has lost its evidence and is listed without a display.
  */
-async function startedRun(
-  runPaths: PreparedRunArtifactPaths,
-  runId: string,
-): Promise<RunStatusRecord | undefined> {
-  const status = runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE));
-  return isRunStatusRecord(status) && status.runId === runId ? status : undefined;
+function startedRun(status: unknown, runId: string): RunStatusRecord | undefined {
+  return isRunStatusRecord(status) && status.runId === runId && status.state !== "finished"
+    ? status
+    : undefined;
 }
 
 /**
@@ -203,26 +202,23 @@ async function startedRun(
  * record. Like the listing's other fields it reads the file without verifying it; a run.json
  * that is not an object naming a run gets none.
  */
-async function listedRunDisplay(
-  runPaths: PreparedRunArtifactPaths,
-  bundle: unknown,
-): Promise<{
-  display?: RunDisplay;
-  livenessBasis?: RunLivenessBasis;
-  analysis?: RunAnalysisPhase;
-}> {
-  const displayed = displayedBundle(bundle);
+function listedRunDisplay(
+  displayed: DisplayedBundle | undefined,
+  status: unknown,
+): { display?: RunDisplay; livenessBasis?: RunLivenessBasis; analysis?: RunAnalysisPhase } {
   if (displayed === undefined) return {};
-  const status = runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE));
   const analysis =
     isRunStatusRecord(status) && status.runId === displayed.runId
       ? runAnalysisPhase(status, Date.now())
       : undefined;
   // A bundle with an outcome decides how the run ended; status.json only adds its analysis.
-  const facts = bundleDisplayFacts(displayed, displayed.outcome === undefined ? status : undefined);
+  const { basis, ...facts } = bundleDisplayFacts(
+    displayed,
+    displayed.outcome === undefined ? status : undefined,
+  );
   return {
     display: runDisplay(facts),
-    ...(facts.basis === undefined ? {} : { livenessBasis: facts.basis }),
+    livenessBasis: basis,
     ...(analysis === undefined ? {} : { analysis }),
   };
 }
@@ -309,7 +305,10 @@ export async function readReview(
         : undefined;
   const projected = streams ? withCuaReviewProvenance(review, streams) : review;
   const displayed = displayedBundle(bundle);
-  const { display } = runPaths ? await listedRunDisplay(runPaths, bundle) : {};
+  const status = runPaths
+    ? runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE))
+    : undefined;
+  const { display } = listedRunDisplay(displayed, status);
   return {
     ...(displayed === undefined || display === undefined
       ? projected

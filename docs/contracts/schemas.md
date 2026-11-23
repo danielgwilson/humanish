@@ -1604,27 +1604,33 @@ no bundle records, and, on a record written before `run.json` carried an
 public-safe by construction: no hostname and no user paths, because a run
 directory may be shared.
 
-Every surface reads whether a run is alive through `runLiveness` (`src/run/liveness.ts`), which
-returns the liveness and the basis for it:
+`runLiveness` (`src/run/liveness.ts`) reads whether a run is alive and returns the liveness with
+the basis for it:
 
-| Basis             | The run has                                                                      | Reads as                                                                                           |
-| ----------------- | -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `outcome`         | a run.json with an `outcome`                                                     | the outcome's `state`                                                                              |
-| `status`          | no outcome, and a status record that says `finished` or `interrupted`            | that state                                                                                         |
-| `heartbeat`       | no outcome, and a `running` record touched within three touch intervals          | `running`                                                                                          |
-| `stale-heartbeat` | no outcome, and a `running` record whose `updatedAt` is older, or cannot be read | `interrupted`                                                                                      |
-| `bundle`          | no outcome and no status record that names it                                    | `interrupted` if a participant has not ended (`queued`, `preparing` or `running`), else `finished` |
+| Basis             | The run has                                                                                             | Reads as                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `outcome`         | a run.json with an `outcome`                                                                            | the outcome's `state`                                                                              |
+| `status`          | no outcome, and a status record that says `finished` or `interrupted`                                   | that state                                                                                         |
+| `heartbeat`       | no outcome, and a `running` record whose `updatedAt` is within three touch intervals of now             | `running`                                                                                          |
+| `stale-heartbeat` | no outcome, and a `running` record whose `updatedAt` is older, further in the future, or cannot be read | `interrupted`                                                                                      |
+| `bundle`          | no outcome and no well-formed status record that names it                                               | `interrupted` if a participant has not ended (`queued`, `preparing` or `running`), else `finished` |
 
 A dropped connection or a killed terminal leaves a `stale-heartbeat`, and so do a sleeping host
-and a run directory copied from another machine, so the reading is a presumption and the basis
-says so. `humanish runs --json` carries the basis as `livenessBasis` on each run, and
-`humanish verify --json` as `unfinished.basis`. The served Observer's `runtime.state` is the same
-reading with one difference: it shows a `stale-heartbeat` as `unknown`
-([Observer](../architecture/observer.md)). `readRunStatus` (`src/run/status.ts`) reads one status
-record this way and is the only code that compares a heartbeat to the stale window.
+and a run directory copied from another machine, so that reading is a presumption and the basis
+says so. `bundle` with `interrupted` is a presumption too. `humanish runs`, `review`, `stats`,
+`verify` and the TUI show the liveness as read. `humanish runs --json` carries the basis as
+`livenessBasis` on each run that has a display, and `humanish verify --json` as
+`unfinished.basis`. The served Observer's `runtime.state`, `humanish analyze` and the TUI's Stop
+each treat a `stale-heartbeat` differently, and
+[shared states and their readers](../architecture/shared-states.md) says how and lists the
+readers that still apply a rule of their own. `readRunStatus` (`src/run/status.ts`) reads one
+status record this way; `tests/run/liveness.test.ts` fails when other production code names the
+stale window.
 
 `humanish runs` lists a run from its first status record. Before the run writes run.json, the
-listing takes its `mode` from the record and `createdAt` from the record's `startedAt`.
+listing takes its `mode` from the record and `createdAt` from the record's `startedAt`, and
+`humanish runs prune` ages it from that time. A record that says `finished` beside no run.json
+gets no display: its evidence is gone.
 
 ## Run Index, Run Detail, And The Terminal Surface
 

@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -10,7 +10,7 @@ import { writeFixtureRun } from "../helpers/run-fixtures.js";
 // The fixture's status record names pid 4242. No test here lets a signal reach a real process.
 const PID = 4242;
 
-describe("the TUI's Stop reads a run by the rule its run list uses", () => {
+describe("the TUI's Stop signals only a run whose heartbeat is fresh", () => {
   let cwd: string;
   beforeEach(async () => {
     cwd = await mkdtemp(path.join(tmpdir(), "humanish-tui-stop-"));
@@ -40,6 +40,21 @@ describe("the TUI's Stop reads a run by the rule its run list uses", () => {
 
     expect(result.ok).toBe(false);
     expect(result.message).toMatch(/Reclaim/);
+    expect(kill).not.toHaveBeenCalled();
+  });
+
+  it("sends no signal to the pid of a record dated ahead of this machine's clock", async () => {
+    // A run directory copied from a machine whose clock runs ahead: its pid names nothing here.
+    const runDir = await writeFixtureRun(cwd, { runId: "r-ahead", state: "running" }, Date.now());
+    const file = path.join(runDir, "status.json");
+    const record = JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>;
+    record.updatedAt = new Date(Date.now() + 3_600_000).toISOString();
+    await writeFile(file, JSON.stringify(record));
+    const kill = vi.spyOn(process, "kill").mockImplementation(() => true);
+
+    const result = await stopRun(cwd, "r-ahead");
+
+    expect(result.ok).toBe(false);
     expect(kill).not.toHaveBeenCalled();
   });
 });

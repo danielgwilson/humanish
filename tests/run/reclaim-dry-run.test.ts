@@ -70,6 +70,20 @@ describe("humanish reclaim on a dry run", () => {
     );
   });
 
+  it("leaves the record of a run whose heartbeat is fresh as it is", async () => {
+    await editJson("status.json", (status) => {
+      status.state = "running";
+      status.updatedAt = new Date().toISOString();
+      delete status.completedAt;
+      delete status.outcome;
+    });
+    const reclaimed = await reclaimRunSandboxes(cwd, RUN, { loadModule });
+    expect(reclaimed).not.toHaveProperty("markedInterrupted");
+    expect(JSON.parse(await readFile(path.join(runRoot, "status.json"), "utf8"))).toMatchObject({
+      state: "running",
+    });
+  });
+
   it.each([false, true])(
     "reports it clean for the dry run and loads no E2B SDK (check %s)",
     async (check) => {

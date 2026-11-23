@@ -143,9 +143,10 @@ A run whose process ended before it published (a crash, or a refusal after the r
 recorded `interrupted` with `reason: no-publish`, and one whose process was killed is marked
 `interrupted` by `humanish reclaim`. `humanish analyze` accepts an interrupted run when every
 participant stream ended; when one was still running it refuses with
-`ANALYSIS_RUN_INCOMPLETE` and names `humanish run <study>`. It refuses a run that is still alive
-with `ANALYSIS_RUN_ACTIVE`, and a run whose heartbeat stopped while its pid is still in use with
-`ANALYSIS_RUN_UNCONFIRMED`, naming `humanish reclaim --run <id>`. When the process running an
+`ANALYSIS_RUN_INCOMPLETE` and names `humanish run <study>`. A run whose run.json records how
+it ended is read from that record, whatever its status record says. Otherwise it refuses a run
+that is still alive with `ANALYSIS_RUN_ACTIVE`, and a run whose heartbeat stopped while its pid
+is still in use with `ANALYSIS_RUN_UNCONFIRMED`, naming `humanish reclaim --run <id>`. When the process running an
 automatic analysis stops before it finishes, `review` says so and names the `analyze` command
 that runs it again. That command takes over the run's `.analysis-lock` when the process that
 held it is gone, and says so in a warning.

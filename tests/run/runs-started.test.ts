@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -44,6 +44,40 @@ describe("humanish runs lists a run from its first status record", () => {
 
     expect(run?.display).toEqual({ state: "interrupted", label: "interrupted", tone: "warn" });
     expect(run?.livenessBasis).toBe("stale-heartbeat");
+  });
+
+  it("shows a run that stopped before it wrote run.json as interrupted", async () => {
+    // A run its route refused after it started: its process recorded that it left without a bundle.
+    const runDir = await writeFixtureRun(cwd, { runId: "r-left", state: "running" }, Date.now());
+    const file = path.join(runDir, "status.json");
+    const record = JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>;
+    await writeFile(
+      file,
+      JSON.stringify({ ...record, state: "interrupted", reason: "no-publish" }),
+    );
+
+    const [run] = (await listRuns(cwd)).runs;
+
+    expect(run?.display).toEqual({ state: "interrupted", label: "interrupted", tone: "warn" });
+    expect(run?.livenessBasis).toBe("status");
+  });
+
+  it("gives a finished record with no run.json no display: its evidence is gone", async () => {
+    const runDir = await writeFixtureRun(cwd, {
+      runId: "r-lost",
+      state: "finished",
+      verdict: "pass",
+    });
+    await rm(path.join(runDir, "run.json"));
+
+    const [run] = (await listRuns(cwd)).runs;
+
+    expect(run).toEqual({
+      runId: "r-lost",
+      createdAt: null,
+      mode: null,
+      path: path.join(".humanish", "runs", "r-lost"),
+    });
   });
 
   it("gives a directory with neither record no display", async () => {

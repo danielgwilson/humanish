@@ -330,13 +330,27 @@ export function beginRunStatus(
 export type RunLiveness = "running" | "interrupted" | "finished";
 
 /**
- * Why a status record reads as it does. `status`: the record says the run finished or was
- * interrupted, written by its own process or by `humanish reclaim`. `heartbeat`: it says running
- * and was touched within the stale window. `stale-heartbeat`: it says running and its heartbeat
- * stopped, which a dead process, a sleeping host and a record copied from another machine all
- * leave. That one reads as interrupted, and a surface that must not presume it says so.
+ * A status record's liveness with the basis for it. `status`: the record says the run finished or
+ * was interrupted, written by its own process or by `humanish reclaim`. `heartbeat`: it says
+ * running and its last touch is within the stale window of now. `stale-heartbeat`: it says
+ * running and its heartbeat stopped, or is dated outside the window in either direction, which a
+ * dead process, a sleeping host and a record copied from a machine with another clock all leave.
+ * That one reads as interrupted, and a surface that must not presume it maps the basis.
  */
-export type RunStatusBasis = "status" | "heartbeat" | "stale-heartbeat";
+export type RunStatusReading =
+  | { basis: "status"; liveness: "finished" | "interrupted" }
+  | { basis: "heartbeat"; liveness: "running" }
+  | { basis: "stale-heartbeat"; liveness: "interrupted" };
+
+/**
+ * Whether a heartbeat written at `updatedAt` is fresh at `nowMs`: within the stale window, on
+ * either side of now. A record dated further in the future was written under another clock, so
+ * its age cannot be judged and it is not fresh.
+ */
+function heartbeatFresh(updatedAt: string, nowMs: number): boolean {
+  const updated = Date.parse(updatedAt);
+  return Number.isFinite(updated) && Math.abs(nowMs - updated) <= RUN_STATUS_STALE_MS;
+}
 
 /**
  * Read a status record's liveness and the basis for it. Pure, so the TUI, the CLI, the Observer
@@ -345,30 +359,17 @@ export type RunStatusBasis = "status" | "heartbeat" | "stale-heartbeat";
 export function readRunStatus(
   record: Pick<RunStatusRecord, "state" | "updatedAt">,
   nowMs: number,
-  staleMs: number = RUN_STATUS_STALE_MS,
-): { liveness: RunLiveness; basis: RunStatusBasis } {
-  if (record.state !== "running") return { liveness: record.state, basis: "status" };
-  const updated = Date.parse(record.updatedAt);
-  return Number.isFinite(updated) && nowMs - updated <= staleMs
-    ? { liveness: "running", basis: "heartbeat" }
-    : { liveness: "interrupted", basis: "stale-heartbeat" };
-}
-
-/** A status record's liveness alone; readRunStatus also gives its basis. */
-export function classifyRunStatus(
-  record: Pick<RunStatusRecord, "state" | "updatedAt">,
-  nowMs: number,
-  staleMs: number = RUN_STATUS_STALE_MS,
-): RunLiveness {
-  return readRunStatus(record, nowMs, staleMs).liveness;
+): RunStatusReading {
+  if (record.state !== "running") return { basis: "status", liveness: record.state };
+  return heartbeatFresh(record.updatedAt, nowMs)
+    ? { basis: "heartbeat", liveness: "running" }
+    : { basis: "stale-heartbeat", liveness: "interrupted" };
 }
 
 /**
- * The record `humanish reclaim` writes over a `running` record whose heartbeat stopped:
+ * Builds the record `humanish reclaim` writes over a `running` record whose heartbeat stopped:
  * `interrupted` with reason `reclaimed`, ended at its last heartbeat. Undefined for any other
  * record: a fresh one belongs to a live owner, and one that already says how the run ended stays.
- * The run's own process writes every other state (beginRunStatus), so the two writers of
- * status.json are in this module.
  */
 export function reclaimedRunStatus(
   record: RunStatusRecord,
@@ -403,8 +404,7 @@ export function runAnalysisPhase(
       endedAt,
       ...(typeof state === "string" ? { outcome: state as RunAnalysisEndState } : {}),
     };
-  const updated = Date.parse(record.updatedAt);
-  return Number.isFinite(updated) && nowMs - updated <= RUN_STATUS_STALE_MS
+  return heartbeatFresh(record.updatedAt, nowMs)
     ? { state: "running", startedAt }
     : { state: "stopped", startedAt };
 }
@@ -429,7 +429,7 @@ export function runOwnerGone(
   nowMs: number,
   running: (pid: number) => boolean = processRunning,
 ): boolean {
-  if (record.state !== "running" || classifyRunStatus(record, nowMs) === "running") return false;
+  if (readRunStatus(record, nowMs).basis !== "stale-heartbeat") return false;
   return record.pid !== process.pid && !running(record.pid);
 }
 

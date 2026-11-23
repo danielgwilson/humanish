@@ -12,10 +12,10 @@ import { readRunJsonIfExists, readRunTextIfExists, runJsonValue } from "../run/l
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
 import { isRecord } from "../run/type-guards.js";
 import { RECLAIM_RECEIPT_ARTIFACT } from "../run/reclaim.js";
-import { runLiveness, type RunLivenessBasis } from "../run/liveness.js";
+import { runLiveness, type RunLivenessBasis, type RunLivenessReading } from "../run/liveness.js";
 import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import { RUN_STATUS_FILE } from "../run/status.js";
-import { IN_PROGRESS_SIMULATION_STATUSES } from "../run/streams.js";
+import { simulationInProgress } from "../run/streams.js";
 import { plural } from "../run/text.js";
 import { cli } from "../cli/invocation.js";
 
@@ -52,38 +52,46 @@ export async function runNotFinished(
   const runId = path.basename(runPaths.absoluteRunRoot);
   // A status.json it refuses is no usable status, as a missing one is: the bundle decides.
   const status = runJsonValue(await readRunJsonIfExists(runPaths, RUN_STATUS_FILE));
-  const { liveness, basis, record } = runLiveness(runId, status, bundle, nowMs);
-  if (liveness === "finished") return { warnings: [] };
+  const reading = runLiveness(runId, status, bundle, nowMs);
+  if (reading.liveness === "finished") return { warnings: [] };
 
-  const unended = bundle.simulations.filter((simulation) =>
-    IN_PROGRESS_SIMULATION_STATUSES.has(simulation.status),
-  ).length;
+  // Counted the way review and analyze count them, so the three name the same number for a run.
+  const unended = bundle.streams.filter((stream) => simulationInProgress(stream.status)).length;
   const seen = [
-    {
-      outcome: () =>
-        bundle.outcome?.state === "interrupted"
-          ? `run.json records interruption by ${bundle.outcome.signal} at ${bundle.outcome.at}`
-          : "run.json records that the run did not finish",
-      bundle: () =>
-        `the run has no usable ${RUN_STATUS_FILE} and ${unended} of ${bundle.simulations.length} simulations have not ended`,
-      heartbeat: () =>
-        `${RUN_STATUS_FILE} state is running and its owner updated it at ${record?.updatedAt}, so the run may still be writing`,
-      status: () =>
-        `${RUN_STATUS_FILE} state is interrupted${record?.signal === undefined ? "" : ` by ${record.signal}`} at ${record?.updatedAt}`,
-      "stale-heartbeat": () =>
-        `${RUN_STATUS_FILE} state is running and its owner stopped updating it at ${record?.updatedAt}`,
-    }[basis](),
+    whatTheFilesSay(reading, bundle),
+    `${unended} of ${bundle.streams.length} streams have not ended`,
   ];
-  const runningStreams = bundle.streams.filter((stream) => stream.status === "running").length;
-  seen.push(`${runningStreams} of ${bundle.streams.length} streams are still running`);
 
   const reclaim = await reclaimState(runPaths, runId);
   return {
     warnings: [
       `${RUN_NOT_FINISHED}: ${seen.join("; ")}. ${reclaim.text} Verify ok covers the integrity of what was written; it does not mean the run finished.`,
     ],
-    unfinished: { liveness, basis, sandboxes: reclaim.sandboxes },
+    unfinished: { liveness: reading.liveness, basis: reading.basis, sandboxes: reclaim.sandboxes },
   };
+}
+
+/** What verify saw on disk that makes the run read as running or interrupted, by its basis. */
+function whatTheFilesSay(
+  reading: Exclude<RunLivenessReading, { liveness: "finished" }>,
+  bundle: RunBundle,
+): string {
+  switch (reading.basis) {
+    case "outcome":
+      return `run.json records interruption by ${reading.outcome.signal} at ${reading.outcome.at}`;
+    case "status":
+      return `${RUN_STATUS_FILE} state is interrupted${reading.record.signal === undefined ? "" : ` by ${reading.record.signal}`} at ${reading.record.updatedAt}`;
+    case "heartbeat":
+      return `${RUN_STATUS_FILE} state is running and its owner updated it at ${reading.record.updatedAt}, so the run may still be writing`;
+    case "stale-heartbeat":
+      return `${RUN_STATUS_FILE} state is running and its owner stopped updating it at ${reading.record.updatedAt}`;
+    case "bundle": {
+      const unended = bundle.simulations.filter((simulation) =>
+        simulationInProgress(simulation.status),
+      ).length;
+      return `the run has no usable ${RUN_STATUS_FILE} and ${unended} of ${bundle.simulations.length} simulations have not ended`;
+    }
+  }
 }
 
 /** What the reclaim receipt says about this run's sandboxes, and what to run. */

@@ -34,16 +34,16 @@ export function assertRecordingEnded(
 ): void {
   const { runId, status } = facts;
   const runs = `\`${cli("runs")}\``;
-  const { basis, record } = runLiveness(runId, status, { outcome: facts.outcome }, nowMs);
-  if (basis === "heartbeat")
+  const reading = runLiveness(runId, status, { outcome: facts.outcome }, nowMs);
+  if (reading.basis === "heartbeat")
     throw new AnalysisSourceRefusedError(
       "ANALYSIS_RUN_ACTIVE",
       `Participants are still running in this run, so its recording has not ended. Automatic analysis starts when they finish; ${runs} shows when the run is analyzing.`,
     );
-  if (basis === "stale-heartbeat" && record && !runOwnerGone(record, nowMs, processRunning))
+  if (reading.basis === "stale-heartbeat" && !runOwnerGone(reading.record, nowMs, processRunning))
     throw new AnalysisSourceRefusedError(
       "ANALYSIS_RUN_UNCONFIRMED",
-      `This run's process stopped updating status.json at ${record.updatedAt}, but pid ${record.pid} is still in use on this machine, so humanish cannot tell whether the run is still writing. If the run is gone, \`${cli(`reclaim --run ${runId}`)}\` stops its sandboxes and marks it interrupted; then analyze it again.`,
+      `This run's process stopped updating status.json at ${reading.record.updatedAt}, but pid ${reading.record.pid} is still in use on this machine, so humanish cannot tell whether the run is still writing. If the run is gone, \`${cli(`reclaim --run ${runId}`)}\` stops its sandboxes and marks it interrupted; then analyze it again.`,
     );
   if (facts.runningStreams === 0) return;
   if (status?.state === "finished")

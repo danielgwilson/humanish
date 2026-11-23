@@ -402,8 +402,9 @@ older run's `ok`; for a run with `outcome` in `run.json`, `status.json` copies i
 The bundle's outcome wins even if the process stopped before updating `status.json`.
 Without an outcome or a usable status record naming the run, a bundle with a simulation that
 has not ended (`queued`, `preparing` or `running`) reads as interrupted. A fresh status record
-keeps an in-progress bundle running. `runLiveness` (`src/run/liveness.ts`) is the one reader, and
-[the status record's section](schemas.md) lists the basis it returns with each reading.
+keeps an in-progress bundle running. `runLiveness` (`src/run/liveness.ts`) reads it, and
+[the status record's section](schemas.md#run-status-identity--liveness-index) lists the basis it
+returns with each reading.
 
 Every surface that shows whether a run passed calls `runDisplay`
 (`src/run/display.ts`) with the run's liveness, verdict and `ok`: the Observer
@@ -1073,15 +1074,16 @@ in-progress bundle that can pass every check. When the run is not finished,
 `warnings[]` carries one entry starting with the stable code `RUN_NOT_FINISHED`.
 `ok` does not change. `shareSafety` changes only for a v2 bundle that holds a participant's
 in-progress items (`liveActor`): it is `local_only` with the reason `RUN_NOT_FINISHED`, since no
-trace index binds those items. Verify decides "not finished" by the run
-index's rule, which the TUI and `humanish stats` use: the run's `status.json` when
-it is well formed and names the run, else a `simulations[]` entry that has not ended in the
-bundle. A `running` record updated within the stale window reads as still
-writing; an older one reads as interrupted. The warning names what verify saw:
+trace index binds those items. Verify decides "not finished" with `runLiveness`
+(`src/run/liveness.ts`), as `humanish runs`, the TUI and `humanish stats` do: run.json's
+`outcome`, then the run's `status.json` when it is well formed and names the run, then a
+`simulations[]` entry that has not ended in the bundle. A `running` record updated within the
+stale window reads as still writing; an older one reads as interrupted. The warning names what
+verify saw:
 
 - the record's state and its last `updatedAt`, or the `simulations[]` entries that have not ended when
   there is no usable record;
-- how many streams are still `running`;
+- how many streams have not ended (`queued`, `preparing` or `running`);
 - the sandbox state, and what `reclaim-receipt.json` records: how many of the run's
   sandboxes are gone (killed or already gone), and how many journaled sandboxes it does
   not cover. It matches its outcomes to the receipts by `sandboxIdDigest`; a reclaim

@@ -154,6 +154,17 @@ describe("displayedReview", () => {
     expect(shown.gaps).not.toEqual(live.gaps);
   });
 
+  it("counts a participant that was still waiting for its start among those cut off", () => {
+    const waiting = { ...stopped, simulations: [{ status: "queued" }, { status: "passed" }] };
+    const shown = displayedReview(live, waiting, runDisplay(bundleDisplayFacts(waiting)));
+    expect(shown.summary).toBe(
+      "Interrupted by SIGTERM while 1 of 2 participants had not finished.",
+    );
+    expect(shown.gaps).toEqual([
+      "1 participant has no verdict: the run stopped before its session ended.",
+    ]);
+  });
+
   it("keeps the review of a run that is not interrupted or had no participant running", () => {
     const running = { runId: "run-a", simulations: [{ status: "running" }] };
     expect(displayedReview(live, running, runDisplay({ liveness: "running" }))).toBe(live);

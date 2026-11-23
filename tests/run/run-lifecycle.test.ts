@@ -20,7 +20,7 @@ import {
   writeContainedOutputFile,
   writePreparedRunLatestPointer,
 } from "../../src/run/contained-output.js";
-import { classifyRunStatus, RUN_STATUS_STALE_MS } from "../../src/run/status.js";
+import { readRunStatus, RUN_STATUS_STALE_MS } from "../../src/run/status.js";
 
 // A narrow wrapper around the two writers, so a test can fail or hold one exact publication step.
 vi.mock("../../src/run/contained-output.js", async (importOriginal) => {
@@ -434,9 +434,9 @@ describe("the run's start and its token", () => {
     }
     const status = await readStatus("killed");
     expect(status.state).toBe("running");
-    expect(classifyRunStatus(status, Date.parse(status.updatedAt) + RUN_STATUS_STALE_MS + 1)).toBe(
-      "interrupted",
-    );
+    expect(
+      readRunStatus(status, Date.parse(status.updatedAt) + RUN_STATUS_STALE_MS + 1).liveness,
+    ).toBe("interrupted");
   });
 
   it("status.json says the run is analyzing while automatic analysis runs, then how it ended", async () => {

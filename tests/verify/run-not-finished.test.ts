@@ -116,7 +116,7 @@ describe("verify on a run that did not finish", () => {
     await expect(notFinished()).resolves.toEqual({
       ok: true,
       warnings: [
-        `RUN_NOT_FINISHED: status.json state is running and its owner stopped updating it at ${stopped}; 1 of 1 streams are still running. Sandboxes unknown: reclaim-receipt.json records 2 of 2 sandboxes gone, but it records no finished search of E2B by this run's tags; \`humanish reclaim --run ${RUN}\` searches. ${TAIL}`,
+        `RUN_NOT_FINISHED: status.json state is running and its owner stopped updating it at ${stopped}; 1 of 1 streams have not ended. Sandboxes unknown: reclaim-receipt.json records 2 of 2 sandboxes gone, but it records no finished search of E2B by this run's tags; \`humanish reclaim --run ${RUN}\` searches. ${TAIL}`,
       ],
       unfinished: { liveness: "interrupted", basis: "stale-heartbeat", sandboxes: "unknown" },
     });
@@ -169,7 +169,7 @@ describe("verify on a run that did not finish", () => {
     await expect(notFinished()).resolves.toEqual({
       ok: true,
       warnings: [
-        `RUN_NOT_FINISHED: status.json state is running and its owner stopped updating it at ${stopped}; 1 of 1 streams are still running. Sandboxes unknown: it has no reclaim-receipt.json and journaled 2 sandboxes; \`humanish reclaim --run ${RUN}\` stops those and searches E2B by this run's tags for any whose id never reached a receipt. ${TAIL}`,
+        `RUN_NOT_FINISHED: status.json state is running and its owner stopped updating it at ${stopped}; 1 of 1 streams have not ended. Sandboxes unknown: it has no reclaim-receipt.json and journaled 2 sandboxes; \`humanish reclaim --run ${RUN}\` stops those and searches E2B by this run's tags for any whose id never reached a receipt. ${TAIL}`,
       ],
       unfinished: { liveness: "interrupted", basis: "stale-heartbeat", sandboxes: "unknown" },
     });
@@ -198,13 +198,28 @@ describe("verify on a run that did not finish", () => {
     expect(warnings[0]).toContain(`run.json records interruption by SIGTERM at ${stopped}`);
   });
 
+  it("counts a participant that was waiting for its start as not ended, as review does", async () => {
+    await kill(stopped);
+    const bundle = await readJson<RunBundle>("run.json");
+    for (const stream of bundle.streams) stream.status = "queued";
+    for (const simulation of bundle.simulations) simulation.status = "queued";
+    await writeJson("run.json", bundle);
+    await rm(path.join(runDir, RUN_STATUS_FILE));
+
+    const { warnings, unfinished } = await notFinished();
+    expect(warnings[0]).toMatch(
+      /^RUN_NOT_FINISHED: the run has no usable status\.json and 1 of 1 simulations have not ended; 1 of 1 streams have not ended\. /,
+    );
+    expect(unfinished).toMatchObject({ liveness: "interrupted", basis: "bundle" });
+  });
+
   it("falls back to the bundle when the run has no status record", async () => {
     await kill(stopped);
     await rm(path.join(runDir, RUN_STATUS_FILE));
 
     const { warnings, unfinished } = await notFinished();
     expect(warnings[0]).toMatch(
-      /^RUN_NOT_FINISHED: the run has no usable status\.json and 1 of 1 simulations have not ended; 1 of 1 streams are still running\. /,
+      /^RUN_NOT_FINISHED: the run has no usable status\.json and 1 of 1 simulations have not ended; 1 of 1 streams have not ended\. /,
     );
     expect(unfinished).toMatchObject({ liveness: "interrupted", basis: "bundle" });
     await expect(indexLiveness()).resolves.toBe("interrupted");
