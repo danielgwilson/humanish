@@ -86,10 +86,10 @@ function whatTheFilesSay(
       return `${RUN_STATUS_FILE} state is running and its owner updated it at ${reading.record.updatedAt}, so the run may still be writing`;
     case "stale-heartbeat":
       return `${RUN_STATUS_FILE} state is running and its owner stopped updating it at ${reading.record.updatedAt}`;
-    // Verify reads a run whose run.json is here and passes no remote record, so it gets this basis
-    // only if a later caller passes one. The sentence says what such a reading rests on.
+    // Verify reads only a run whose run.json is here, so it passes no remote record and never gets
+    // this basis. The switch still places it, with what such a reading rests on.
     case "remote":
-      return `${REMOTE_RECORD_FILE} says the run's evidence is still on its runner${reading.remote.deadline === undefined ? "" : `, whose time limit ends at ${reading.remote.deadline}`}`;
+      return `${REMOTE_RECORD_FILE} says the run's evidence is still on its runner${reading.remote.deadline === undefined ? "" : `, whose time limit is ${reading.remote.deadline}`}`;
     case "bundle": {
       const unended = bundle.simulations.filter((simulation) =>
         simulationInProgress(simulation.status),

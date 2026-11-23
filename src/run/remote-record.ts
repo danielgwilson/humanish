@@ -1,7 +1,8 @@
 // A remote run's record in its run directory here: where the run executes and whether its evidence
 // is still on its runner. `humanish run` writes it when it creates the runner (src/remote/launch.ts)
-// and the copy back rewrites it (src/remote/copy-back.ts). Everything that reads it calls
-// readRemoteRecord, so a listing, reattach, prune and verify read one file by one rule.
+// and the copy back rewrites it (src/remote/copy-back.ts), keeping every key it read. Every reader
+// of what it says calls readRemoteRecord, so a listing, reattach, prune and verify read one file by
+// one rule.
 
 import { RECLAIM_RECEIPT_ARTIFACT } from "./reclaim-outcomes.js";
 import { isSandboxProviderId, type SandboxProviderId } from "./sandbox-receipts.js";
@@ -37,8 +38,9 @@ export type RemoteRecordReading =
 
 /**
  * remote.json's text, or undefined when the run directory has none, as its reading. It never
- * throws. A record with no `schema` is read as this one, since the tests of its writers write it
- * that way; a record that names another schema is none.
+ * throws. A record that names another schema is none, since another version may mean other
+ * things by its keys. One with no `schema` is read as this one: every version writes it, so its
+ * absence names no other version.
  */
 export function readRemoteRecord(text: string | undefined): RemoteRecordReading {
   if (text === undefined) return { state: "none" };

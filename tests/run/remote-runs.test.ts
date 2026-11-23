@@ -98,6 +98,21 @@ describe("humanish runs lists a remote run that is on its runner", () => {
       { runId: "r-orphan", createdAt: null, mode: null, path: runPath("r-orphan") },
     ]);
   });
+
+  it("reads a run whose run.json has arrived by its own files, whatever remote.json says", async () => {
+    // A copy that stopped partway leaves the record pending beside the run's small files.
+    const runDir = await writeFixtureRun(cwd, { runId: "cua-partway", state: "finished" });
+    await writeFile(
+      path.join(runDir, "remote.json"),
+      JSON.stringify({ schema: "humanish.remote-run.v1", provider: "e2b", copyPending: true }),
+    );
+
+    const [run] = (await listRuns(cwd)).runs;
+    const [entry] = (await readRunIndex(cwd)).runs;
+
+    expect([run?.display?.state, run?.livenessBasis]).toEqual(["passed", "status"]);
+    expect([entry?.derivedFrom, entry?.liveness]).toEqual(["status", "finished"]);
+  });
 });
 
 // The run index is what `humanish stats` and the TUI list runs from.
