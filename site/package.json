@@ -18,7 +18,7 @@
     "fumadocs-core": "16.17.10",
     "fumadocs-mdx": "15.4.10",
     "fumadocs-ui": "16.17.10",
-    "next": "16.4.4",
+    "next": "16.4.6",
     "posthog-js": "^1.434.17",
     "react": "catalog:",
     "react-dom": "catalog:",
