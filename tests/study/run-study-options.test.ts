@@ -489,6 +489,41 @@ describe("an onEvent warning carries no known secret", () => {
     expect(result.warnings[0]).not.toContain(openaiKey);
     expect(result.warnings[0]).toContain("[REDACTED_SECRET]");
   });
+
+  it("scrubs the Anthropic key of a study whose participant runs on a Claude model", () => {
+    const anthropicKey = "synthetic-anthropic-value-3b8d";
+    const labConfig = config("cuAppUrl", {
+      actor: { type: "computer-use", model: "claude-haiku-5-5" },
+    });
+    const result = normalize(labConfig, {
+      env: { ANTHROPIC_API_KEY: anthropicKey },
+      onEvent: () => {
+        throw new Error(`request with ${anthropicKey} failed`);
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    result.emit!(emptyPlan());
+    expect(result.warnings).toEqual([
+      "RunStudyOptions.onEvent failed on plan: request with [REDACTED_SECRET] failed",
+    ]);
+  });
+
+  it("scrubs the Modal token pair of a study on a Modal desktop", () => {
+    const tokenId = "synthetic-modal-id-value-6e21";
+    const tokenSecret = "synthetic-modal-secret-value-0c94";
+    const labConfig = config("cuAppUrl", { execution: { target: "modal-desktop" } });
+    const result = normalize(labConfig, {
+      env: { MODAL_TOKEN_ID: tokenId, MODAL_TOKEN_SECRET: tokenSecret },
+      onEvent: () => {
+        throw new Error(`sandbox create as ${tokenId}:${tokenSecret} failed`);
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    result.emit!(emptyPlan());
+    expect(result.warnings).toEqual([
+      "RunStudyOptions.onEvent failed on plan: sandbox create as [REDACTED_SECRET]:[REDACTED_SECRET] failed",
+    ]);
+  });
 });
 
 describe("an onEvent failure never escapes", () => {

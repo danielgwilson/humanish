@@ -11,8 +11,12 @@ import { analysisKeyNames, describeMissingKeys } from "../keys/key-resolution.js
 import { participantRate, unpricedCapMessage } from "../run/pricing.js";
 import type { Brain, StudyPlan, Requirement } from "./plan-types.js";
 
-/** Provider keys in the order the routes name them in a refusal: every participant vendor's first. */
-const KEY_ORDER = [
+/**
+ * Every provider key a `key` requirement can name, in the order the routes name them in a
+ * refusal: every participant vendor's first. A key missing here is never refused and never
+ * scrubbed from an onEvent warning.
+ */
+export const KEY_ORDER = [
   ...Object.values(PARTICIPANT_VENDORS).map((vendor) => vendor.keyName),
   "E2B_API_KEY",
   "MODAL_TOKEN_ID",
