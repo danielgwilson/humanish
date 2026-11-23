@@ -70,6 +70,14 @@ function participantCounts(summary: CuaParticipantSummary, participantCount: num
   return `${summary.passed}/${plural(participantCount, "participant")} passed${notPassed} (${notPassed === "" ? causes : `across all ${participantCount}: ${causes}`})`;
 }
 
+/**
+ * The cause a fan-out failure line names after its counts, or "" when it names none. The line
+ * ends in one period, so a cause that brings its own gives it up.
+ */
+function namedCause(cause: string | undefined): string {
+  return cause === undefined ? "" : `; ${cause.replace(/\.$/, "")}`;
+}
+
 /** Aggregate participant counts for the result projection. */
 function buildParticipantSummary(
   outcomes: ParticipantRunOutcome[] | undefined,
@@ -247,14 +255,14 @@ function cuaStudyResult(args: {
       };
     }
     const failing = (outcomes ?? []).find((outcome) => !participantOk(outcome));
-    const firstFailure =
-      suspended !== undefined
-        ? `; ${suspended.replace(/\.$/, "")}`
-        : failing?.sessionError !== undefined
-          ? `; first failure: ${failing.sessionError}`
-          : failing === undefined && args.outcome.execution.failures[0] !== undefined
-            ? `; ${args.outcome.execution.failures[0].message}`
-            : "";
+    const firstFailure = namedCause(
+      suspended ??
+        (failing?.sessionError !== undefined
+          ? `first failure: ${failing.sessionError}`
+          : failing === undefined
+            ? args.outcome.execution.failures[0]?.message
+            : undefined),
+    );
     // A participant whose desktop failed for a known cause gives the run that cause's code.
     const codedFailure = (outcomes ?? []).find((outcome) => outcome.failureCode !== undefined);
     const code: CuaActorStudyErrorCode =

@@ -1808,7 +1808,7 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
     // Every participant passed, so the counts in parentheses read as they always have. The
     // execution failure's own period stays before the line's.
     expect(outcome.result.error?.message).toBe(
-      "Fan-out run failed: 2/2 participants passed (0 skipped, 1 harness error, 0 without engagement); participant-2: Model provider cleanup is unconfirmed..",
+      "Fan-out run failed: 2/2 participants passed (0 skipped, 1 harness error, 0 without engagement); participant-2: Model provider cleanup is unconfirmed.",
     );
   });
 
