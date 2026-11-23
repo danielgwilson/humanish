@@ -326,7 +326,11 @@ describe("a remote run reclaimed here", () => {
   it("reads running beside a receipt that names another run or records no sandbox", async () => {
     const runDir = await writeFixtureRun(cwd, { runId: "cua-other", state: "remote" }, Date.now());
     for (const receipt of [
-      { runId: "cua-elsewhere", state: "clean", outcomes: [{ sandboxId: "x", state: "killed" }] },
+      {
+        runId: "cua-elsewhere",
+        state: "clean",
+        outcomes: [{ sandboxId: "fake-elsewhere", state: "killed" }],
+      },
       { runId: "cua-other", state: "clean", outcomes: [] },
       "{ not json",
     ]) {
