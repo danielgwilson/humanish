@@ -150,6 +150,36 @@ describe("TUI key summary follows the configured route", () => {
     });
   });
 
+  it("requires the Modal token pair plus the runtime key for a study on a Modal terminal", async () => {
+    const config = {
+      ...base,
+      route: "terminal",
+      subject: {
+        source: "terminal-product",
+        product: { name: "example-cli", publicSurfaces: ["https://example.test"] },
+      },
+      actor: { type: "codex-exec", mission: "Use the CLI." },
+      caps: { maxUsd: 0, maxMinutes: 5 },
+      execution: {
+        target: "modal-terminal",
+        runtimeAuth: "openai-env",
+        terminal: { transport: "exec-stream", stdin: "disabled" },
+      },
+    };
+    expect(
+      await summary(config, {
+        MODAL_TOKEN_ID: "synthetic-credential-modal-id",
+        MODAL_TOKEN_SECRET: "synthetic-credential-modal-secret",
+        CODEX_API_KEY: "synthetic-credential-model",
+      }),
+    ).toMatchObject({ keysReady: true });
+    const missing = await summary(config, {
+      MODAL_TOKEN_SECRET: "synthetic-credential-modal-secret",
+      CODEX_API_KEY: "synthetic-credential-model",
+    });
+    expect(missing).toMatchObject({ keysReady: false, missingKeys: ["MODAL_TOKEN_ID"] });
+  });
+
   it("names a clone subject's missing env after the provider keys", async () => {
     const clone = admissionLab("cuClone", {
       id: "key-check",
