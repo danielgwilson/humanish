@@ -220,6 +220,34 @@ describe("the run index reads a remote run that is on its runner", () => {
     ]);
   });
 
+  it("under the study its remote record names, which the runs listing does not carry", async () => {
+    await writeFixtureRun(cwd, {
+      runId: "cua-remote",
+      state: "remote",
+      startedAt: STARTED,
+      deadline: DEADLINE,
+      labId: "checkout-flow",
+      labPath: "humanish/studies/checkout-flow.yaml",
+      labOrigin: "committed",
+    });
+
+    expect((await readRunIndex(cwd, { nowMs: NOW })).runs).toEqual([
+      {
+        runId: "cua-remote",
+        derivedFrom: "remote",
+        liveness: "running",
+        mode: "live",
+        study: {
+          id: "checkout-flow",
+          path: "humanish/studies/checkout-flow.yaml",
+          origin: "committed",
+        },
+        startedAt: STARTED,
+      },
+    ]);
+    expect((await listRuns(cwd)).runs[0]).not.toHaveProperty("study");
+  });
+
   it("reads a local run that left only receipts as it did before", async () => {
     await writeFixtureRun(cwd, { runId: "r-orphan", state: "orphan" });
 

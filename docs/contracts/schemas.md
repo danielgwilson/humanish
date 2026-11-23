@@ -1676,8 +1676,9 @@ status.json before run.json. Read by its record, `humanish runs --json` lists it
 (from a `running` status record's when the record has none, else `null`), `display.state`
 `running` or `interrupted` and `livenessBasis: remote`. `humanish runs` then prints one more line
 before its totals that names `humanish observe --run <id>` for the runs that read `running`.
-`humanish stats` counts it as a live run by the same reading. The run index gives it no study, so
-the TUI counts it only among the runs with no study. A run with run.json here reads no remote
+`humanish stats` counts it as a live run by the same reading. The run index gives it the study its
+record names, so the TUI lists it under that study. A record written before `study` names none,
+and the TUI counts that run only among the runs with no study. A run with run.json here reads no remote
 record, so it costs a listing no extra read; a run without one costs one read of remote.json,
 one of `reclaim-receipt.json` when the record is pending, and in the run index one of status.json
 before its cache.
@@ -1688,9 +1689,13 @@ before its cache.
 default for a hosted computer-use study with a public app URL and for a live terminal study.
 `humanish run` writes it on this machine once it has created the runner sandbox:
 `{ schema, runId, provider: e2b | modal, route: computer-use | terminal, deadline, copyPending:
-true, startedAt }`. `deadline` is when the runner sandbox's time limit ends. `startedAt` is when
-this machine wrote the record; an older record has none. It holds no credential and no raw
-sandbox id: the runner's id is its `runner` receipt in `sandbox-receipts.ndjson`.
+true, startedAt, study? }` (`pendingRemoteRecord` in `src/run/remote-record.ts`). `deadline` is
+when the runner sandbox's time limit ends. `startedAt` is when this machine wrote the record.
+`study` is `{ id, path?, origin? }`, the study file the run came from, as a status record writes
+it, and is absent for a run that came from no study file. An older record has neither
+`startedAt` nor `study`; a `study` without a non-empty string `id` reads as none. It holds no
+credential and no raw sandbox id: the runner's id is its `runner` receipt in
+`sandbox-receipts.ndjson`.
 
 When every file has been copied back, the copy removes `copyPending`. When `humanish observe
 --run` finds the runner gone, it removes `copyPending` and adds `lostInCopy`, the recordings that
@@ -1728,8 +1733,8 @@ cheapest-source-first: the `status.json` record, else the bundle, else the run
 directory alone. A run with no run.json that reads `remote` (its remote run
 record is pending and no status record records its end) is read from that
 record first, as `derivedFrom: remote` with `mode: live`, the record's
-`startedAt` and the `remote` liveness, again on every refresh, since the clock
-and a reclaim receipt change it. `{ runId, derivedFrom: status | bundle | remote | directory, liveness,
+`study` and `startedAt` and the `remote` liveness, again on every refresh, since
+the clock and a reclaim receipt change it. `{ runId, derivedFrom: status | bundle | remote | directory, liveness,
 mode?, pid?, study?, startedAt?, updatedAt?, completedAt?, verdict?, ok?,
 failure?, participants?, estimatedCostUsd?, estimatedCostComplete?,
 analysisCost?, durationMs?, analysis? }`. `analysis` is the status record's automatic analysis as

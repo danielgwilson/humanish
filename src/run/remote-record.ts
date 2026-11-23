@@ -6,12 +6,13 @@
 
 import { RECLAIM_RECEIPT_ARTIFACT, reclaimReceipt, sandboxGone } from "./reclaim-receipt.js";
 import { isSandboxProviderId, type SandboxProviderId } from "./sandbox-receipts.js";
+import { studyFields, studyProvenanceOf, type RunStudyProvenance } from "./study-provenance.js";
 import { isIsoTime, isRecord } from "./type-guards.js";
 
 /** The file, relative to the run directory. */
 export const REMOTE_RECORD_FILE = "remote.json";
 
-export const REMOTE_RECORD_SCHEMA = "humanish.remote-run.v1";
+const REMOTE_RECORD_SCHEMA = "humanish.remote-run.v1";
 
 /** What a record says about where its run executes, each fact only when it can be read. */
 interface RemoteRecordFacts {
@@ -22,6 +23,36 @@ interface RemoteRecordFacts {
   deadline?: string;
   /** When this machine wrote the record, as an ISO time; a record written before the field has none. */
   startedAt?: string;
+  /**
+   * The study file the run came from, so a listing can place the run under its study before its
+   * own records are copied back. A record written before the field has none.
+   */
+  study?: RunStudyProvenance;
+}
+
+/**
+ * The record `humanish run` writes once it has created the runner: where the run executes, when
+ * the runner's time limit ends, and that its evidence is still to be copied back.
+ */
+export function pendingRemoteRecord(run: {
+  runId: string;
+  provider: SandboxProviderId;
+  route: string;
+  deadline: string;
+  startedAt: string;
+  study?: RunStudyProvenance | undefined;
+}): Record<string, unknown> {
+  return {
+    schema: REMOTE_RECORD_SCHEMA,
+    runId: run.runId,
+    provider: run.provider,
+    route: run.route,
+    deadline: run.deadline,
+    // Until every file has arrived; `humanish observe` finishes the copy while this is set.
+    copyPending: true,
+    startedAt: run.startedAt,
+    ...studyFields(run.study),
+  };
 }
 
 /**
@@ -62,6 +93,7 @@ export function readRemoteRecord(text: string | undefined): RemoteRecordReading 
     ...(typeof value.route === "string" ? { route: value.route } : {}),
     ...readableTime("deadline", value.deadline),
     ...readableTime("startedAt", value.startedAt),
+    ...studyFields(studyProvenanceOf({ study: value.study })),
   };
   if (value.copyPending === true) return { state: "pending", ...facts };
   const lost = Array.isArray(value.lostInCopy) ? (value.lostInCopy as unknown[]) : [];

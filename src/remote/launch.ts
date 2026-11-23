@@ -13,8 +13,9 @@ import { writeContainedOutputFile } from "../run/contained-output.js";
 import { startHeartbeat, systemHostClock, type Heartbeat } from "../run/host-suspension.js";
 import { createRunArtifactPaths, type PreparedRunArtifactPaths } from "../run/paths.js";
 import { reclaimRunSandboxes } from "../run/reclaim.js";
-import { REMOTE_RECORD_FILE, REMOTE_RECORD_SCHEMA } from "../run/remote-record.js";
+import { pendingRemoteRecord, REMOTE_RECORD_FILE } from "../run/remote-record.js";
 import { appendSandboxOwner, type SandboxProviderId } from "../run/sandbox-receipts.js";
+import type { RunStudyProvenance } from "../run/study-provenance.js";
 import { loadE2BBaseModule } from "../substrates/e2b/base-module.js";
 import { e2bConnection } from "../substrates/e2b/connection.js";
 import { E2B_SYSTEM_CA_BUNDLE, holdKeysInEgress } from "../substrates/e2b/egress-keys.js";
@@ -67,6 +68,8 @@ export interface RemoteContext {
 export interface RemoteLaunch extends RemoteContext {
   /** The study file, relative to cwd. */
   study: string;
+  /** Which study the run came from, recorded in remote.json so a listing can place the run. */
+  provenance?: RunStudyProvenance;
   remote: RemotePlan;
   /** Local Observer port; 0 picks a free one. */
   port: number;
@@ -144,8 +147,8 @@ export async function launchRemoteRun(launch: RemoteLaunch): Promise<RemoteOutco
       provider: remote.provider,
       route: remote.route,
       deadline: new Date(recordedAt + remote.runnerMs).toISOString(),
-      copyPending: true,
       startedAt: new Date(recordedAt).toISOString(),
+      study: launch.provenance,
     });
     // Bound before the run starts, so a taken --port fails before any participant exists. A
     // terminal run has no live Observer, here or locally: it renders one when it ends.
@@ -446,21 +449,12 @@ function message(error: unknown): string {
  */
 async function writeRemoteRecord(
   paths: PreparedRunArtifactPaths,
-  record: {
-    runId: string;
-    provider: string;
-    route: string;
-    deadline: string;
-    /** Until every file has arrived; `humanish observe` finishes the copy while this is set. */
-    copyPending: true;
-    /** When this machine wrote the record: `humanish runs` lists the run from it until run.json arrives. */
-    startedAt: string;
-  },
+  run: Parameters<typeof pendingRemoteRecord>[0],
 ): Promise<void> {
   await writeContainedOutputFile(
     paths,
     REMOTE_RECORD_FILE,
-    `${JSON.stringify({ schema: REMOTE_RECORD_SCHEMA, ...record }, null, 2)}\n`,
+    `${JSON.stringify(pendingRemoteRecord(run), null, 2)}\n`,
     "utf8",
   );
 }

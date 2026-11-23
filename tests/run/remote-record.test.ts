@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { readRemoteRecord } from "../../src/run/remote-record.js";
+import { pendingRemoteRecord, readRemoteRecord } from "../../src/run/remote-record.js";
 
 const SCHEMA = "humanish.remote-run.v1";
 const DEADLINE = "2026-11-23T12:00:00.000Z";
@@ -102,5 +102,68 @@ describe("reading a run's remote.json", () => {
         record({ provider: "modal", lostInCopy: ["recordings/p01/desktop.mp4", 7, null] }),
       ),
     ).toEqual({ state: "copied", lostInCopy: ["recordings/p01/desktop.mp4"], provider: "modal" });
+  });
+
+  it("reads back every fact of the record a remote launch writes, its study included", () => {
+    const study = {
+      id: "checkout-flow",
+      path: "humanish/studies/checkout-flow.yaml",
+      origin: "committed" as const,
+    };
+    const written = pendingRemoteRecord({
+      runId: "cua-remote",
+      provider: "modal",
+      route: "computer-use",
+      deadline: DEADLINE,
+      startedAt: STARTED,
+      study,
+    });
+
+    expect(written).toEqual({
+      schema: SCHEMA,
+      runId: "cua-remote",
+      provider: "modal",
+      route: "computer-use",
+      deadline: DEADLINE,
+      copyPending: true,
+      startedAt: STARTED,
+      study,
+    });
+    expect(readRemoteRecord(JSON.stringify(written))).toEqual({
+      state: "pending",
+      provider: "modal",
+      route: "computer-use",
+      deadline: DEADLINE,
+      startedAt: STARTED,
+      study,
+    });
+  });
+
+  it("writes no study for a run that came from no study file", () => {
+    const written = pendingRemoteRecord({
+      runId: "cua-remote",
+      provider: "e2b",
+      route: "terminal",
+      deadline: DEADLINE,
+      startedAt: STARTED,
+    });
+    expect(written).not.toHaveProperty("study");
+  });
+
+  it.each([
+    ["a string", "checkout-flow"],
+    ["no id", { path: "humanish/studies/checkout-flow.yaml" }],
+    ["an empty id", { id: "" }],
+    ["null", null],
+  ])("reads a record whose study is %s without one", (_name, study) => {
+    expect(readRemoteRecord(record({ copyPending: true, study }))).toEqual({ state: "pending" });
+  });
+
+  it("keeps only the study fields it can read", () => {
+    expect(
+      readRemoteRecord(
+        record({ copyPending: true, study: { id: "checkout-flow", origin: "elsewhere", path: 7 } }),
+      ),
+    ).toEqual({ state: "pending", study: { id: "checkout-flow" } });
   });
 });

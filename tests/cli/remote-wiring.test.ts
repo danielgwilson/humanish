@@ -9,7 +9,7 @@ import { stringify } from "yaml";
 // `humanish run` from its arguments to the launcher: the launcher is replaced, so no runner is
 // created, and this humanish counts as a built package a runner could install.
 const launches = vi.hoisted(() => ({
-  calls: [] as { study: string; provider: string }[],
+  calls: [] as { study: string; provider: string; provenance?: unknown }[],
   outcome: undefined as unknown,
 }));
 const modal = vi.hoisted(() => ({ missing: false }));
@@ -26,8 +26,16 @@ vi.mock("../../src/substrates/modal/sdk.js", async (importOriginal) => {
 vi.mock("../../src/remote/launch.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/remote/launch.js")>()),
   runsFromPackage: () => true,
-  launchRemoteRun: async (launch: { study: string; remote: { provider: string } }) => {
-    launches.calls.push({ study: launch.study, provider: launch.remote.provider });
+  launchRemoteRun: async (launch: {
+    study: string;
+    remote: { provider: string };
+    provenance?: unknown;
+  }) => {
+    launches.calls.push({
+      study: launch.study,
+      provider: launch.remote.provider,
+      provenance: launch.provenance,
+    });
     return launches.outcome;
   },
 }));
@@ -153,7 +161,14 @@ describe("humanish run on a study that runs remotely", () => {
       files: 12,
     };
     const { exitCode, stderr, json } = await run([id, "--json"]);
-    expect(launches.calls).toEqual([{ study: `humanish/studies/${id}.yaml`, provider: "modal" }]);
+    expect(launches.calls).toEqual([
+      {
+        study: `humanish/studies/${id}.yaml`,
+        provider: "modal",
+        // Recorded in the run's remote.json, so a listing places the run under its study.
+        provenance: { id, path: `humanish/studies/${id}.yaml`, origin: "committed" },
+      },
+    ]);
     expect(exitCode).toBe(0);
     expect(json).toMatchObject({
       ok: true,
@@ -250,7 +265,14 @@ describe("humanish run on a study that runs remotely", () => {
       files: 9,
     };
     const { exitCode, json } = await run([id, "--json"]);
-    expect(launches.calls).toEqual([{ study: `humanish/studies/${id}.yaml`, provider: "e2b" }]);
+    expect(launches.calls).toEqual([
+      {
+        study: `humanish/studies/${id}.yaml`,
+        provider: "e2b",
+        // Recorded in the run's remote.json, so a listing places the run under its study.
+        provenance: { id, path: `humanish/studies/${id}.yaml`, origin: "committed" },
+      },
+    ]);
     expect(exitCode).toBe(0);
     expect(json).toMatchObject({ ok: true, remote: { provider: "e2b" }, warnings: [] });
   });

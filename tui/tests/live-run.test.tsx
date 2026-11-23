@@ -1,12 +1,14 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 import React from "react";
-import { describe, expect, it, vi, type MockInstance } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi, type MockInstance } from "vitest";
 
 import { App } from "../src/app.js";
 import type { RunDetail } from "../../src/run/detail.js";
-import type { RunIndexEntry } from "../../src/run/run-index.js";
+import { pendingRemoteRecord } from "../../src/run/remote-record.js";
+import { readRunIndex, type RunIndexEntry } from "../../src/run/run-index.js";
 import type { TuiCapabilities, TuiOptions } from "../../src/tui/contract.js";
 import { KEY, normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
 import { LABS, NOW, RUNS } from "./fixtures.js";
@@ -247,18 +249,29 @@ describe("watching a run", () => {
 });
 
 // A remote run's participants are recorded on its runner until its copy back, so no participant is
-// named here at any age. The run index gives such a run no study today; one is set here so that
-// each live surface can show it.
+// named here at any age. Its remote record names its study, so each live surface lists it.
 describe("a run that executes in a runner sandbox", () => {
-  const remote: RunIndexEntry = {
-    runId: RUNS[0]!.runId,
-    derivedFrom: "remote",
-    liveness: "running",
-    mode: "live",
-    study: { id: "signup-flow" },
-    startedAt: new Date(NOW - 3 * 3_600_000).toISOString(),
-  };
-  const runs = [remote, ...RUNS.slice(1)];
+  // The entry is the run index's reading of the record a remote launch writes, three hours in.
+  let runs: RunIndexEntry[] = [];
+  let project: string;
+  beforeAll(async () => {
+    project = await mkdtemp(path.join(tmpdir(), "humanish-tui-remote-"));
+    const runId = RUNS[0]!.runId;
+    const runDir = path.join(project, ".humanish", "runs", runId);
+    await mkdir(runDir, { recursive: true });
+    const record = pendingRemoteRecord({
+      runId,
+      provider: "e2b",
+      route: "computer-use",
+      deadline: new Date(NOW + 3_600_000).toISOString(),
+      startedAt: new Date(NOW - 3 * 3_600_000).toISOString(),
+      study: { id: "signup-flow", path: "humanish/labs/signup-flow.yaml", origin: "committed" },
+    });
+    await writeFile(path.join(runDir, "remote.json"), JSON.stringify(record));
+    const index = await readRunIndex(project, { nowMs: NOW });
+    runs = [...index.runs, ...RUNS.slice(1)];
+  });
+  afterAll(() => rm(project, { recursive: true, force: true }));
 
   async function studiesList() {
     return renderToText(<App options={options(null, runs)} now={NOW} tick={0} />, {

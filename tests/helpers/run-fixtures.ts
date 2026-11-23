@@ -8,6 +8,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { pendingRemoteRecord } from "../../src/run/remote-record.js";
 import { RUN_STATUS_FILE, RUN_STATUS_SCHEMA } from "../../src/run/status.js";
 
 export interface FixtureRunSpec {
@@ -66,18 +67,26 @@ export async function writeFixtureRun(
       `${JSON.stringify({ at: startedAt, laneId: "runner", provider: "e2b", sandboxId: "fake-sb-runner" })}\n`,
       "utf8",
     );
+    // The record a remote launch writes, with the study a labId names.
     await writeFile(
       path.join(runDir, "remote.json"),
       `${JSON.stringify(
-        {
-          schema: "humanish.remote-run.v1",
+        pendingRemoteRecord({
           runId: spec.runId,
           provider: "e2b",
           route: "computer-use",
           deadline: spec.deadline ?? new Date(nowMs + 3_600_000).toISOString(),
-          copyPending: true,
           startedAt,
-        },
+          ...(spec.labId === undefined
+            ? {}
+            : {
+                study: {
+                  id: spec.labId,
+                  ...(spec.labPath === undefined ? {} : { path: spec.labPath }),
+                  ...(spec.labOrigin === undefined ? {} : { origin: spec.labOrigin }),
+                },
+              }),
+        }),
         null,
         2,
       )}\n`,

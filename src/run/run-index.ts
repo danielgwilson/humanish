@@ -184,6 +184,7 @@ function entryFromRemote(
     derivedFrom: "remote",
     liveness: reading.liveness,
     mode: "live",
+    ...studyEntry(reading.remote.study),
     ...(reading.remote.startedAt === undefined ? {} : { startedAt: reading.remote.startedAt }),
   };
 }
