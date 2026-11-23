@@ -109,6 +109,7 @@ async function run(args: string[]) {
   const out = stdout.join("");
   return {
     exitCode,
+    stdout: out,
     stderr: stderr.join(""),
     json: out.trim().startsWith("{") ? (JSON.parse(out) as Record<string, unknown>) : undefined,
   };
@@ -138,6 +139,48 @@ describe("humanish run on a study that runs remotely", () => {
     // The command names the keys before the runner starts, and never prints their values.
     expect(stderr).toMatch(/OPENAI_API_KEY/);
     expect(stderr).not.toMatch(/synthetic-/);
+  });
+
+  it("prints the runner's result through the route's lines, then where its evidence is", async () => {
+    const id = await remoteStudy();
+    launches.outcome = {
+      runId: "cua-remote",
+      exitCode: 0,
+      files: 12,
+      result: {
+        schema: "humanish.study-result.v1",
+        route: "computer-use",
+        studyId: id,
+        ok: true,
+        cwd: "/home/user/project",
+        actor: "openai-computer-use",
+        appUrl: "https://app.example.com/",
+        dryRun: false,
+        runId: "cua-remote",
+        session: {
+          status: "passed",
+          completionReason: "goal_satisfied",
+          reason: "Done.",
+          screenshots: 3,
+        },
+        warnings: [],
+      },
+    };
+    const { exitCode, stdout, stderr } = await run([id]);
+    expect(exitCode).toBe(0);
+    expect(stdout.split("\n")).toEqual([
+      `humanish run ${id}: live run finished`,
+      "route: computer-use",
+      "run: cua-remote",
+      "actor: openai-computer-use",
+      "subject: https://app.example.com/",
+      "session: passed (goal_satisfied) · Done.",
+      "screenshots: 3",
+      "",
+    ]);
+    expect(stderr.split("\n").at(-2)).toBe(
+      "Run cua-remote's evidence (12 files) is in .humanish/runs/cua-remote.",
+    );
   });
 
   it("exits 129 with the detached code when the terminal closes and the run goes on", async () => {

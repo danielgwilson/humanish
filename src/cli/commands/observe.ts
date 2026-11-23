@@ -605,5 +605,5 @@ async function observeRemoteRun(
       error: `could not reach its runner: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
-  reportRemoteOutcome(command, io, resolve(cwd), outcome);
+  await reportRemoteOutcome(command, io, resolve(cwd), outcome);
 }

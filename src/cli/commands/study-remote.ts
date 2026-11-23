@@ -1,6 +1,7 @@
 // `--remote` on run and watch: plan here, refuse what cannot run remotely, then launch and follow
 // the run in a runner sandbox (src/remote/launch.ts). The result and exit code are the run's own.
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import type { Command } from "commander";
 
@@ -13,9 +14,11 @@ import {
 } from "../../remote/launch.js";
 import { planRemoteRun, type RemotePlan } from "../../remote/plan.js";
 import { INSIDE_RUNNER_ENV } from "../../remote/runner.js";
+import type { CuaActorStudyResult } from "../../routes/computer-use/types.js";
+import type { TerminalProductStudyResult } from "../../routes/terminal/types.js";
 import type { RunResult } from "../../run/results.js";
 import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
-import type { StudyConfig } from "../../study/types.js";
+import type { StudyConfig, StudySubject } from "../../study/types.js";
 import { concurrentSandboxes, sandboxCeiling } from "../../substrates/e2b/lifetime.js";
 import { importE2BDesktop } from "../../substrates/e2b/sdk.js";
 import { loadModalModule, MODAL_MAX_SANDBOX_MS } from "../../substrates/modal/sdk.js";
@@ -27,6 +30,8 @@ import {
   wantsJson,
   writeResult,
 } from "../io.js";
+import { writeRunResult } from "../run-findings.js";
+import { formatCuaStudyHuman, formatTerminalStudyHuman } from "./study-format.js";
 
 type RemoteErrorCode = "HUMANISH_REMOTE_REFUSED" | "HUMANISH_REMOTE_FAILED";
 
@@ -198,7 +203,7 @@ export async function runRemoteStudy(args: {
     );
     return;
   }
-  reportRemoteOutcome(args.command, io, cwd, outcome, forwarded);
+  await reportRemoteOutcome(args.command, io, cwd, outcome, forwarded);
 }
 
 /** The line that says, before the runner exists, where each of this machine's keys goes. */
@@ -234,14 +239,17 @@ function localOnlyFlags(options: StudyCommandOptions): string[] {
   ].flat();
 }
 
-/** The command's result and exit code for a remote run that ended, stopped or detached. */
-export function reportRemoteOutcome(
+/**
+ * The command's result and exit code for a remote run that ended, stopped or detached. A run that
+ * ended is written as a local run of its route writes it.
+ */
+export async function reportRemoteOutcome(
   command: Command,
   io: CliIo,
   cwd: string,
   outcome: RemoteOutcome,
   forwarded?: NonNullable<RunResult["remote"]>,
-): void {
+): Promise<void> {
   const remote = forwarded === undefined ? {} : { remote: forwarded };
   if (
     outcome.detached === true ||
@@ -271,14 +279,59 @@ export function reportRemoteOutcome(
     io.setExitCode(detached ? 129 : outcome.exitCode === 0 ? 2 : outcome.exitCode);
     return;
   }
-  const result: RunResult = { ...(outcome.result as RunResult), cwd, ...remote };
+  const result: RouteResult = { ...onThisMachine(outcome.result as RouteResult, cwd), ...remote };
   if (outcome.error !== undefined) result.warnings = [...(result.warnings ?? []), outcome.error];
-  if (wantsJson(command)) io.writeOut(`${JSON.stringify(result, null, 2)}\n`);
-  else {
-    if (outcome.error !== undefined) io.writeErr(`warning: ${outcome.error}\n`);
-    io.writeErr(
-      `Run ${outcome.runId} ${result.ok && outcome.exitCode === 0 ? "passed" : "did not pass"}; its evidence (${outcome.files ?? 0} files) is in .humanish/runs/${outcome.runId}. Next: humanish review --run ${outcome.runId}\n`,
+  // The run directory was copied here, so the findings are read from this machine's copy.
+  if (result.route === "terminal")
+    await writeRunResult(command, io, cwd, result, formatTerminalStudyHuman);
+  else
+    await writeRunResult(command, io, cwd, result, (value) =>
+      formatCuaStudyHuman(value, REMOTE_SUBJECT),
     );
-  }
+  // The route's lines say how the run ended and the analysis lines what to run next; only where
+  // its evidence landed is left to say. A copy that failed counted no files, and its warning says so.
+  if (!wantsJson(command) && outcome.files !== undefined)
+    io.writeErr(
+      `Run ${outcome.runId}'s evidence (${outcome.files} files) is in .humanish/runs/${outcome.runId}.\n`,
+    );
   io.setExitCode(outcome.exitCode);
+}
+
+/**
+ * The subject the computer-use lines name when a result has no app URL. Only an app-url study runs
+ * remotely on that route (planRemoteRun), and its result carries the URL from admission on, so
+ * this needs no study file, which `observe --run` does not have.
+ */
+const REMOTE_SUBJECT: StudySubject = { source: "app-url" };
+
+/** The result a runner's route wrote: only the computer-use and terminal routes run remotely. */
+type RouteResult = (CuaActorStudyResult | TerminalProductStudyResult) & {
+  remote?: NonNullable<RunResult["remote"]>;
+};
+
+/**
+ * The runner's result as it reads for this machine's copy of the run. The run directory arrives
+ * here under the same project-relative path, so the relative paths hold. The runner's project
+ * directory does not, nor the Observer address it gave: its file URL names the runner's disk, and
+ * the server a computer-use run serves there stopped with the runner. A rejected analysis output
+ * is kept outside the run directory, so it is not copied and goes with the runner.
+ */
+function onThisMachine(result: RouteResult, cwd: string): RouteResult {
+  const here: RouteResult = { ...result, cwd };
+  const analysis = result.automaticAnalysis;
+  if (analysis?.result?.rejectedOutputPath !== undefined) {
+    const { rejectedOutputPath: _notCopied, ...analyzed } = analysis.result;
+    here.automaticAnalysis = { ...analysis, result: analyzed };
+  }
+  if (result.observer !== undefined) {
+    const { serverUrl: _stopped, ...observer } = result.observer;
+    here.observer = {
+      ...observer,
+      cwd,
+      ...(observer.observerPath === undefined
+        ? {}
+        : { observerUrl: pathToFileURL(path.join(cwd, observer.observerPath)).href }),
+    };
+  }
+  return here;
 }

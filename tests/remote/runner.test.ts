@@ -348,6 +348,26 @@ describe("starting the runner's run", () => {
     expect(started[0]?.command).toContain("'--local'");
     expect(started[0]?.env).toMatchObject({ HUMANISH_INSIDE_RUNNER: "1" });
   });
+
+  it("sends no telemetry from it, so the launcher's event is the only one for the run", async () => {
+    const started: (Readonly<Record<string, string>> | undefined)[] = [];
+    const runner = {
+      sandbox: {},
+      shell: {
+        start: async (_command: string, options?: { env?: Readonly<Record<string, string>> }) => {
+          started.push(options?.env);
+          return { exitCode: 0, stdout: "", stderr: "" };
+        },
+      },
+    } as unknown as Runner;
+    await startRemoteRun(runner, {
+      study: "study.yaml",
+      runId: "cua-remote",
+      ownerKey: "1111222233334444",
+      env: {},
+    });
+    expect(started[0]).toMatchObject({ DO_NOT_TRACK: "1", HUMANISH_TELEMETRY_DISABLED: "1" });
+  });
 });
 
 describe("the keys a runner receives", () => {
