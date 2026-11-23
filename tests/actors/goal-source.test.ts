@@ -224,6 +224,47 @@ describe("computer-use completion provenance", () => {
     expect(withCuaReviewProvenance(next, run.streams)).toEqual(next);
   });
 
+  it("qualifies in place the completion line an earlier release wrote from the trace statuses", () => {
+    const judged = ["passed", "blocked", "passed", "passed", "blocked", "passed"] as const;
+    const run = bundle();
+    const streams = judged.map((judgedStatus) => ({ ...run.streams[0]!, judgedStatus }));
+    const review = {
+      ...run.review,
+      participants: tallyParticipantOutcomes([...judged]),
+      // What a fan-out run with two self-reported blockers wrote before its completion line read
+      // the judged status.
+      summary:
+        "6 participants took part, each in their own copy of the app: 4/6 recorded completions (completion source unavailable), 2 blocked; the gaps list the other 2.",
+    };
+    const next = withCuaReviewProvenance(review, streams);
+    expect(next.summary).toBe(
+      "6 participants took part, each in their own copy of the app: 4/6 reported reaching the goal, 2 blocked; the gaps list the other 2.",
+    );
+    expect(withCuaReviewProvenance(next, streams)).toEqual(next);
+  });
+
+  it("counts a participant the harness failed under a session that did not fail as a harness failure", () => {
+    const run = bundle();
+    const passed = { ...run.streams[0]!, judgedStatus: "passed" as const };
+    const failedUnder = {
+      ...run.streams[0]!,
+      status: "incomplete" as const,
+      judgedStatus: "failed" as const,
+      actor: {
+        ...run.streams[0]!.actor!,
+        status: "incomplete" as const,
+        completionReason: "budget_reached" as const,
+        stopCause: "time_limit" as const,
+      },
+    };
+    expect(
+      formatParticipantOutcomes(
+        tallyParticipantOutcomes(["passed", "failed"]),
+        participantOutcomeDetails([passed, failedUnder]),
+      ),
+    ).toBe("1/2 reported reaching the goal, 1 lost to a harness failure");
+  });
+
   it("rewrites the header an earlier release wrote, once", () => {
     const run = bundle();
     run.review.summary =

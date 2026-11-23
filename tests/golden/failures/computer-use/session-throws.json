@@ -60,6 +60,7 @@
           }
         },
         "status": "failed",
+        "judgedStatus": "failed",
         "ok": false,
         "diagnostics": {
           "category": "execution_error"
@@ -86,6 +87,9 @@
       "skipped": 0,
       "harnessErrors": 1,
       "hollow": 0,
+      "judged": {
+        "failed": 1
+      },
       "concurrency": 1,
       "waves": 1
     },

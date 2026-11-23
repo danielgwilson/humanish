@@ -531,14 +531,31 @@ with no study, `observe`, and a refusal made before a route is picked keep
 `humanish.run-result.v1`. The evidence record stays `humanish.run-bundle.v4` in every case.
 The computer-use result carries `plan` (the pre-flight participant table: concurrency, waves,
 per-participant session budget, worst-case sandbox-minutes), `lanes[]` (always present,
-length 1 at N=1; per-participant status/session/sandbox/subject), and `laneSummary`
-(passed/skipped/harnessErrors/hollow counts). The top-level `session`/`sandbox`
+length 1 at N=1; per-participant status/judgedStatus/session/sandbox/subject), and `laneSummary`
+(passed/skipped/harnessErrors/hollow counts, and `judged`). In `lanes[]`, `status` is how the
+participant's session ended (`blocked` for a skipped participant, `failed` when the harness failed
+before a session), `judgedStatus` is what the run counts it as (`judgedStatus` in
+`src/run/judge.ts`), and `ok` is `judgedStatus === "passed"` for a live participant; a dry-run
+participant is ok as a contract. A passed session that never engaged has
+`judgedStatus: "incomplete"`, and one whose closing message reports a blocker has `"blocked"`. A
+participant whose session threw, whose desktop failed under a session that did not pass, or whose
+session ended in `harness_error` has `"failed"`, as does an `actor_error` session. A
+provider-cleanup or provider-policy failure leaves the participant `"passed"` and counts only in
+`laneSummary.harnessErrors`. A skipped participant has `"blocked"`, or `"failed"` when its desktop
+also failed. A dry-run participant has no `judgedStatus`, and neither does a live participant the
+result has no outcome for, which has `status: "contract_proof_only"` and `ok: false`.
+`laneSummary.judged` counts the participants under each judged status that at least one has, for
+example `{ "passed": 4, "blocked": 2 }`; its keys are `passed`, `blocked`, `failed`, `timed_out`,
+`incomplete` and `abandoned`. It is absent on a dry run and when the result has no participant
+outcomes. The top-level `session`/`sandbox`
 mirror the first participant and `subject.commit` is unanimity-gated across participants
 (omitted with a divergence warning when participants resolve different commits). At N=1
 the run bundle is byte-stable with the pre-fan-out output; only the result
 projection changed. A fan-out run records a `cua-lab.fanout.plan` bundle event, and
 each participant's outcome event (`cua-lab.session.<completionReason>`, `cua-lab.session.error`
-or `cua-lab.session.blocked`) carries its reason;
+or `cua-lab.session.blocked`) carries its reason. A `cua-lab.session.<completionReason>` event's
+level is `info` when the participant's judged status is `passed` and `warn` otherwise, and its
+message names the judged status;
 `ok = observer.ok ∧ every participant ok ∧ no failed adapter or declared-scorer verdict`,
 where a dry-run participant is ok as synthetic and a live participant must pass
 `participantPassed` (`src/run/judge.ts`): not skipped, status `passed`, no harness
@@ -551,7 +568,9 @@ The source run must be a live CUA fan-out bundle. humanish creates a new run for
 the selected failed/blocked/timed-out/hollow participants (or explicit participant ids), leaves
 the source verdict unchanged, and records lineage as `run.rerun` plus a
 `cua-lab.fanout.rerun` event: source run id, selected participant ids, and previous participant
-statuses/reasons. This is intentionally not automatic retry; a passing rerun is a
+statuses/reasons. Each `run.rerun.previous[]` entry keeps the source stream's `status` and adds its
+`judgedStatus` when the source recorded one; the event names a participant whose two differ as
+`p2 was blocked (session passed/goal_satisfied)`. This is intentionally not automatic retry; a passing rerun is a
 nondeterminism candidate for human/product scoring, not a rewrite of the old run.
 Without `--participants`, a participant is selected when its stream's `judgedStatus` is not `passed`.
 That field is the judge's status (`judgedStatus` in `src/run/judge.ts`), so a goal_satisfied

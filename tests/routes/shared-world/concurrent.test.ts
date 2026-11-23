@@ -35,6 +35,7 @@ import { isSharedWorldComposition } from "../../../src/study/routing.js";
 import { prepareStudy, runStudyWith } from "../../../src/run-study.js";
 import { routeOf } from "../../../src/study/plan.js";
 import { sharedWorldRouteRun } from "../../../src/cli/commands/study-route-shared-world.js";
+import { createProgram } from "../../../src/cli/program.js";
 import {
   extractLobbyCodeFromNarration,
   parseLobbyCodeReply,
@@ -1370,6 +1371,41 @@ describe("the shared-world route (the heart: real orchestration + rendezvous lat
         (event) => event.level === "warn" && event.message.includes("does not count as a pass"),
       ),
     ).toBe(true);
+  });
+
+  it("leaves a participant that self-reports a blocker out of the goal count `humanish review` prints", async () => {
+    const state = { worldVersion: 0 };
+    const { env, deps } = baseSeams(state, makeRendezvous(3), (index) =>
+      index === 0
+        ? {
+            status: "passed",
+            completionReason: "goal_satisfied",
+            reason: "BLOCKED.\nThe save button never enabled.",
+          }
+        : undefined,
+    );
+    const result = await runSharedWorld({
+      cwd,
+      config: concurrentConfig(3, 3),
+      dryRun: false,
+      env,
+      deps,
+    });
+    const out: string[] = [];
+    const program = createProgram({
+      writeOut: (text) => out.push(text),
+      writeErr: () => {},
+      setExitCode: () => {},
+    });
+    program.exitOverride();
+    await program.parseAsync(["node", "humanish", "review", "--run", result.runId, "--cwd", cwd]);
+    // The headline, a blank line, the summary, a blank line, then the gaps.
+    expect(out.join("").split("\n").slice(2, 6)).toEqual([
+      "3 participants used one shared app at the same time. 2 of 3 reached the goal; the gaps list the other 1. The app's shared state changed 1 time during the run.",
+      "",
+      "gaps:",
+      "- persona-01: BLOCKED.",
+    ]);
   });
 
   it("routes through runStudy to the concurrent backend", async () => {

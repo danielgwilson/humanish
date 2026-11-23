@@ -219,8 +219,24 @@ export interface CuaParticipantResult {
   device: string;
   /** Requested E2B/X screen resolution. See the run stream's desktopGeometry for measurements. */
   resolution: [number, number];
-  /** Terminal participant status; "blocked" = skipped (gate or study budget); "contract_proof_only" = dry-run. */
+  /**
+   * How the participant's session ended, as its trace records it. Without a session it is
+   * "blocked" when the run skipped the participant (the pipeline gate, the study budget, its
+   * scheduled end or the account's credits), "failed" when the harness failed before a session,
+   * and "contract_proof_only" on a dry run or when the result has no outcome for it.
+   */
   status: ActorStatus | "blocked" | "contract_proof_only";
+  /**
+   * What the run counts the participant as (`judgedStatus` in src/run/judge.ts). A passed session
+   * that never engaged is `incomplete` and one whose closing message reports a blocker is
+   * `blocked`. A session that threw, whose desktop failed under it without a pass, or that ended in
+   * `harness_error` or `actor_error` is `failed`; a provider-cleanup or provider-policy failure
+   * leaves it `passed` and counts only in `laneSummary.harnessErrors`. A skip is `blocked`, or
+   * `failed` when its desktop also failed. Absent on a dry run and when the result has no outcome
+   * for the participant.
+   */
+  judgedStatus?: ActorStatus;
+  /** For a live participant, `judgedStatus === "passed"`; a dry-run participant is ok as a contract. */
   ok: boolean;
   session?: {
     status: ActorStatus;
@@ -257,6 +273,12 @@ export interface CuaParticipantSummary {
   harnessErrors: number;
   /** Participants that returned goal_satisfied with zero engagement (hollow). */
   hollow: number;
+  /**
+   * How many participants the run counts under each judged status (`lanes[].judgedStatus`), for
+   * the statuses with at least one. The values sum to the participants that have a judged status.
+   * Absent on a dry run and when the result has no participant outcomes.
+   */
+  judged?: Partial<Record<ActorStatus, number>>;
   concurrency: number;
   waves: number;
 }

@@ -97,6 +97,7 @@ describe("runs saved by 0.107", () => {
           laneId: "desktop-power",
           streamId: "stream-003",
           status: "failed",
+          judgedStatus: "failed",
           reason: "transient actor transport failed",
         },
       ],

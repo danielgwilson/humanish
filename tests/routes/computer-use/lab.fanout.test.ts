@@ -1805,7 +1805,11 @@ describe("cua fan-out: live with fake substrate ($0, real orchestration)", () =>
         message: "participant-2: Model provider cleanup is unconfirmed.",
       },
     ]);
-    expect(outcome.result.error?.message).toContain("Model provider cleanup is unconfirmed.");
+    // Every participant passed, so the counts in parentheses read as they always have. The
+    // execution failure's own period stays before the line's.
+    expect(outcome.result.error?.message).toBe(
+      "Fan-out run failed: 2/2 participants passed (0 skipped, 1 harness error, 0 without engagement); participant-2: Model provider cleanup is unconfirmed.",
+    );
   });
 
   it("keeps the verdict when the sandbox kill fails: cleanup does not judge", async () => {

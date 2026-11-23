@@ -298,9 +298,17 @@ export function formatParticipantOutcomes(
   return parts.join(", ");
 }
 
-/** Presentation details tolerate optional legacy actor payloads without changing their tallies. */
+const isActorStatus = (value: unknown): value is ActorStatus =>
+  (ACTOR_STATUSES as readonly unknown[]).includes(value);
+
+/**
+ * Each participant's ending as the completion line reads it. The status is the one the review's
+ * tally counted: the stream's judged status, so a passed session that reported a blocker is
+ * blocked here as it is in the tally, or the trace's own status in a bundle without one.
+ * Presentation details tolerate optional legacy actor payloads without changing their tallies.
+ */
 export function participantOutcomeDetails(
-  streams: readonly { actor?: unknown; status?: unknown }[],
+  streams: readonly { actor?: unknown; status?: unknown; judgedStatus?: unknown }[],
   goalSourceOf: (
     actor: unknown,
     recordedStatus: unknown,
@@ -310,16 +318,20 @@ export function participantOutcomeDetails(
     if (!isRecord(stream.actor)) return [];
     const actor = stream.actor;
     const goalSource = goalSourceOf(actor, stream.status);
-    if (!(ACTOR_STATUSES as readonly string[]).includes(String(actor.status))) {
+    const status = isActorStatus(stream.judgedStatus) ? stream.judgedStatus : actor.status;
+    if (!isActorStatus(status)) {
       return goalSource === "unavailable" ? [{ status: "passed" as const, goalSource }] : [];
     }
+    // A session the harness failed under, though the session itself did not fail, is a harness
+    // failure: its trace's stop says how the session ended, not why the participant failed.
+    const harnessFailedUnder = status === "failed" && actor.status !== "failed";
     const ending =
-      Array.isArray(actor.items) && actor.items.every(isRecord)
+      !harnessFailedUnder && Array.isArray(actor.items) && actor.items.every(isRecord)
         ? actorEnding(actor as unknown as ActorTrace)
         : undefined;
     return [
       {
-        status: actor.status as ActorStatus,
+        status,
         ...(ending === undefined ? {} : { label: ending.label }),
         ...(goalSource === undefined ? {} : { goalSource }),
       },
@@ -330,7 +342,7 @@ export function participantOutcomeDetails(
 /** Refresh a CUA completion claim from recorded traces, leaving original evidence and enums intact. */
 export function withCuaReviewProvenance(
   review: ReviewSummary,
-  streams: readonly { actor?: unknown; status?: unknown }[],
+  streams: readonly { actor?: unknown; status?: unknown; judgedStatus?: unknown }[],
 ): ReviewSummary {
   const details = participantOutcomeDetails(streams);
   if (
@@ -364,6 +376,12 @@ export function withCuaReviewProvenance(
     review.participants,
     participantOutcomeDetails(streams, cuaEndpointSource),
   );
+  // Earlier releases read each trace's own status, so a participant the judge did not pass, such
+  // as one whose passed session reported a blocker, stood among the completions.
+  const traceStatusLine = participantCompletionLine(
+    review.participants,
+    participantOutcomeDetails(streams.map(({ actor, status }) => ({ actor, status }))),
+  );
   // A summary with no count gets it in a header. Earlier releases wrote a header in other words.
   const header = `${plural(total, "participant")} took part: ${outcomes}.${tasks} `;
   const olderHeader = `Run gate: ${review.verdict}. Participants: ${outcomes}.${tasks} Recorded summary: `;
@@ -375,7 +393,9 @@ export function withCuaReviewProvenance(
         ? review.summary
         : review.summary.includes(endpointLine)
           ? review.summary.split(endpointLine).join(qualifiedLine)
-          : `${header}${review.summary}`;
+          : review.summary.includes(traceStatusLine)
+            ? review.summary.split(traceStatusLine).join(qualifiedLine)
+            : `${header}${review.summary}`;
   return {
     ...review,
     summary,

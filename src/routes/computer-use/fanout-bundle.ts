@@ -1,9 +1,6 @@
 import { outOfCreditsSummary } from "./out-of-credits.js";
 import { e2bDesktopTemplate } from "../../substrates/e2b/sandbox.js";
 import { receivingPublication } from "../../comms/receiving-runtime.js";
-import type { ActorStatus } from "../../actors/contract.js";
-import { actorEnding } from "../../actors/stop-cause.js";
-import { cuaGoalSource } from "../../actors/goal-source.js";
 import { redactEncodedText } from "../../evidence/encoded-text.js";
 import {
   REVIEW_SCHEMA,
@@ -12,6 +9,7 @@ import {
   type ReviewSummary,
   type RunBundle,
   type RunEvent,
+  type RunRerunLineage,
   type RunSimulation,
 } from "../../run/bundle.js";
 import type { RunStream } from "../../run/streams.js";
@@ -20,6 +18,7 @@ import {
   formatParticipantOutcomes,
   formatRunTaskFunnel,
   gapsListClause,
+  participantOutcomeDetails,
   skippedSentence,
   withCuaReviewProvenance,
 } from "../../run/outcomes.js";
@@ -61,6 +60,20 @@ function fanoutPlanEvents(args: CuaFanoutBundleArgs): RunEvent[] {
     message: `Fan-out plan: ${plural(args.participantPlan.laneCount, "participant")} (${args.participantPlan.strategy}), concurrency ${args.participantPlan.concurrency}, ${plural(args.participantPlan.waves, "wave")}; session budget ${Math.round(args.participantPlan.perLaneSessionBudgetMs / 1000)}s per participant${args.participantPlan.schedule?.ownBudgets === true ? " without its own end or cap" : ""}; worst-case ~${args.participantPlan.worstCaseSandboxMinutes} sandbox-minutes${args.dryRun ? " (dry-run: $0)" : ""}.${args.participantPlan.schedule === undefined ? "" : ` Schedule: ${describeArrivals(args.participantPlan.schedule)}`} Participants: ${args.participantPlan.lanes.map(formatParticipantPlanEntry).join(", ")}.`,
   });
   return events;
+}
+
+/**
+ * How a rerun's event names one participant of its source run: how its session ended, and before
+ * that what the source run counted it as when the two differ, as for a passed session that
+ * reported a blocker.
+ */
+function priorEnding(prior: RunRerunLineage["previous"][number]): string {
+  const ended = `${prior.status}${prior.completionReason ? `/${prior.completionReason}` : ""}`;
+  const counted =
+    prior.judgedStatus === undefined || prior.judgedStatus === prior.status
+      ? ended
+      : `${prior.judgedStatus} (session ${ended})`;
+  return `${prior.laneId} was ${counted}`;
 }
 
 /** The outcomes of the participants that ended, in roster order: every one in a final bundle. */
@@ -158,10 +171,6 @@ function fanoutReview(
   ).length;
   // What happened to the participants, with the denominator attached. The verdict above has to
   // collapse the run to one word; this does not (docs/principles/three-roles.md).
-  const terminalOutcomes = endedOutcomes(outcomes).filter(
-    (outcome): outcome is NonNullable<typeof outcome> & { session: { status: ActorStatus } } =>
-      outcome?.session?.status !== undefined,
-  );
   // In progress the tally would count only the participants that ended so far.
   const participants =
     args.inProgress !== true && judgment.tally.total > 0 ? judgment.tally : undefined;
@@ -171,15 +180,9 @@ function fanoutReview(
     .map((outcome) => outcome?.session?.trace.taskFunnel)
     .filter((funnel): funnel is TaskFunnel => funnel !== undefined);
   const runTasks = args.inProgress === true ? undefined : aggregateTaskFunnels(participantFunnels);
-  const participantEndings = terminalOutcomes.map((outcome) => {
-    const ending = actorEnding(outcome.session.trace);
-    const goalSource = cuaGoalSource(outcome.session.trace);
-    return {
-      status: outcome.session.status,
-      ...(ending === undefined ? {} : { label: ending.label }),
-      ...(goalSource === undefined ? {} : { goalSource }),
-    };
-  });
+  // Read from the streams as withCuaReviewProvenance and a stored review's reader read them, so
+  // the line written here is the line they find.
+  const participantEndings = participantOutcomeDetails(streams);
   const review: ReviewSummary = withCuaReviewProvenance(
     {
       schema: REVIEW_SCHEMA,
@@ -320,7 +323,7 @@ export function buildCuaFanoutBundle(args: CuaFanoutBundleArgs): RunBundle {
       at: args.run.createdAt,
       level: "info",
       type: "cua-lab.fanout.rerun",
-      message: `Rerun selected ${plural(args.rerun.selectedLaneIds.length, "participant")} from ${args.rerun.sourceRunId}: ${args.rerun.previous.map((prior) => `${prior.laneId} was ${prior.status}${prior.completionReason ? `/${prior.completionReason}` : ""}`).join(", ")}. This is a new linked run; the source run verdict is unchanged.`,
+      message: `Rerun selected ${plural(args.rerun.selectedLaneIds.length, "participant")} from ${args.rerun.sourceRunId}: ${args.rerun.previous.map(priorEnding).join(", ")}. This is a new linked run; the source run verdict is unchanged.`,
     });
   }
 

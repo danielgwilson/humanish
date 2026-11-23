@@ -14,8 +14,12 @@ import {
   type CuaActorSessionOptions,
 } from "../../../src/actors/computer-use/actor.js";
 import type { CuaProvider } from "../../../src/actors/computer-use/loop.js";
-import type { ParticipantClosingReport } from "../../../src/actors/contract.js";
-import type { RunBundle } from "../../../src/run/bundle.js";
+import type {
+  ParticipantClosingReport,
+  ParticipantDeclaredOutcome,
+} from "../../../src/actors/contract.js";
+import type { RunBundle, RunEvent } from "../../../src/run/bundle.js";
+import { readReview } from "../../../src/run/stored-runs.js";
 import { runStudyWith } from "../../../src/run-study.js";
 import { parseStudy } from "../../../src/study/config.js";
 import { lab } from "../../admission/fixtures.js";
@@ -66,6 +70,27 @@ function reader(report: string | ParticipantClosingReport): CuaProvider {
     },
   };
 }
+
+/** A participant who clicks once and then ends its session with `message`, declaring `outcome`. */
+function ender(message: string, outcome: ParticipantDeclaredOutcome): CuaProvider {
+  let turns = 0;
+  return {
+    ...reader(""),
+    id: `ender-${outcome}`,
+    async nextTurn() {
+      turns += 1;
+      return turns === 1
+        ? { actions: [{ kind: "click", x: 10, y: 20 }], pendingSafetyChecks: [], done: false }
+        : { actions: [], pendingSafetyChecks: [], done: true, message, outcome };
+    },
+  };
+}
+
+const SAVED = "REACHED THE GOAL. The note is saved.";
+const SAVE_BLOCKED = "BLOCKED. The save button never enabled.";
+const GAVE_UP = "DID NOT REACH THE GOAL. I could not find the export menu.";
+/** Not a message: the participant's session throws before it ends. */
+const SESSION_THROWS = "<the session throws>";
 
 let cwd: string;
 beforeEach(async () => {
@@ -245,5 +270,185 @@ describe("a closing report's outcome field at a clock end", () => {
     );
     expect(run.trace.declaredOutcome).toBe("not_reached");
     expect(run.bundle.review?.participants).toMatchObject({ reachedGoal: 0, ranUntilEnd: 1 });
+  });
+});
+
+/**
+ * Run one participant per message in roster order, one at a time, each ending its session with
+ * its message: SAVE_BLOCKED declares a blocker, GAVE_UP declares the goal not reached,
+ * SESSION_THROWS throws, and any other message declares the goal reached. A rerun runs the
+ * participants it selects from `roster` participants, in roster order.
+ */
+async function runEnders(
+  messages: readonly string[],
+  rerun?: { sourceRunId: string; roster: number },
+) {
+  const parsed = parseStudy(
+    lab("cuAppUrl", {
+      mode: "live",
+      participants: Array.from({ length: rerun?.roster ?? messages.length }, (_, index) => ({
+        id: `p${index + 1}`,
+      })),
+      execution: { concurrency: 1 },
+    }),
+  );
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  let next = 0;
+  const outcome = await runStudyWith(
+    parsed.config,
+    {
+      cwd,
+      env: KEYS,
+      ...(rerun === undefined ? {} : { rerun: { sourceRunId: rerun.sourceRunId } }),
+    },
+    {
+      desktopModule: async () => makeFanoutModule().module,
+      runSession: async (options: CuaActorSessionOptions) => {
+        const message = messages[next++]!;
+        if (message === SESSION_THROWS) throw new Error("The desktop stopped answering.");
+        const declared =
+          message === SAVE_BLOCKED ? "blocked" : message === GAVE_UP ? "not_reached" : "reached";
+        return runCuaActorSession({ ...options, provider: ender(message, declared) });
+      },
+      analysis: { run: vi.fn() },
+    },
+  );
+  if (outcome.route !== "computer-use") throw new Error(`ran on ${outcome.route}`);
+  const runId = outcome.result.runId;
+  const runDir = path.join(cwd, ".humanish", "runs", runId);
+  const read = (file: string) => readFile(path.join(runDir, file), "utf8");
+  const bundle = JSON.parse(await read("run.json")) as RunBundle;
+  const events = (await read("events.ndjson"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line) as RunEvent);
+  const actorFiles = await Promise.all(
+    bundle
+      .streams!.flatMap((stream) =>
+        stream.artifacts!.filter((artifact) => artifact.kind === "trace"),
+      )
+      .map(async (trace) => (JSON.parse(await read(trace.path)) as { status: string }).status),
+  );
+  const observer = JSON.parse(await read("observer/observer-data.json")) as {
+    run: { participantsLine?: string };
+  };
+  return {
+    runId,
+    result: outcome.result,
+    bundle,
+    events,
+    reviewMd: await read("review.md"),
+    participantsLine: observer.run.participantsLine,
+    actorFiles,
+  };
+}
+
+/** Each participant's session event: its level and words. */
+const sessionEvents = (events: readonly RunEvent[]) =>
+  events
+    .filter((event) => event.type === "cua-lab.session.goal_satisfied")
+    .map(({ level, message }) => ({ level, message }));
+
+/** Six participants, two of whom report a blocker. */
+const SIX = [SAVED, SAVE_BLOCKED, SAVED, SAVED, SAVE_BLOCKED, SAVED];
+
+describe("participants whose closing message reports a blocker", () => {
+  it("get a warning session event in a fan-out run that names them blocked", async () => {
+    const run = await runEnders(SIX);
+    expect(sessionEvents(run.events)).toEqual([
+      { level: "info", message: `Participant p1 passed: ${SAVED}` },
+      { level: "warn", message: `Participant p2 blocked: ${SAVE_BLOCKED}` },
+      { level: "info", message: `Participant p3 passed: ${SAVED}` },
+      { level: "info", message: `Participant p4 passed: ${SAVED}` },
+      { level: "warn", message: `Participant p5 blocked: ${SAVE_BLOCKED}` },
+      { level: "info", message: `Participant p6 passed: ${SAVED}` },
+    ]);
+  });
+
+  it("are counted as blocked in a fan-out run's review summary, which reads back the same", async () => {
+    const run = await runEnders(SIX);
+    expect(run.bundle.review.summary).toBe(
+      "6 participants took part, each in their own copy of the app: 4/6 reported reaching the goal, 2 blocked, 2 reported friction; the gaps list the other 2.",
+    );
+    expect(run.reviewMd).toContain("4/6 reported reaching the goal, 2 blocked");
+    expect(run.reviewMd).not.toContain("completion source unavailable");
+    expect(await readReview(cwd, run.runId)).toMatchObject({ summary: run.bundle.review.summary });
+    expect(run.participantsLine).toBe(
+      "4/6 reported reaching the goal, 2 blocked, 2 reported friction",
+    );
+  });
+
+  it("are counted by judged status in a fan-out run's result", async () => {
+    const run = await runEnders(SIX);
+    expect(run.result.ok).toBe(false);
+    expect(run.result.laneSummary).toMatchObject({ passed: 4, judged: { passed: 4, blocked: 2 } });
+    expect(run.result.error?.message).toBe(
+      "Fan-out run failed: 4/6 participants passed, 2 blocked (across all 6: 0 skipped, 0 harness errors, 0 without engagement).",
+    );
+    expect(run.result.lanes!.map((lane) => [lane.id, lane.status, lane.judgedStatus])).toEqual([
+      ["p1", "passed", "passed"],
+      ["p2", "passed", "blocked"],
+      ["p3", "passed", "passed"],
+      ["p4", "passed", "passed"],
+      ["p5", "passed", "blocked"],
+      ["p6", "passed", "passed"],
+    ]);
+  });
+
+  it("are counted beside the causes across all participants in a fan-out failure line", async () => {
+    const run = await runEnders([SAVED, SAVE_BLOCKED, SESSION_THROWS]);
+    // The failed participant is also the harness error, so the counts overlap.
+    expect(run.result.error?.message).toBe(
+      "Fan-out run failed: 1/3 participants passed, 1 blocked, 1 failed (across all 3: 0 skipped, 1 harness error, 0 without engagement).",
+    );
+  });
+
+  it("are named by how the source run counted them and how their sessions ended in a rerun's event", async () => {
+    const source = await runEnders([SAVED, SAVE_BLOCKED, GAVE_UP]);
+    const rerun = await runEnders([SAVED, SAVED], { sourceRunId: source.runId, roster: 3 });
+    expect(
+      rerun.events
+        .filter((event) => event.type === "cua-lab.fanout.rerun")
+        .map((event) => event.message),
+    ).toEqual([
+      `Rerun selected 2 participants from ${source.runId}: p2 was blocked (session passed/goal_satisfied), p3 was abandoned/gave_up. This is a new linked run; the source run verdict is unchanged.`,
+    ]);
+  });
+
+  it("keep passed as their session's status in every fan-out record of it", async () => {
+    const run = await runEnders(SIX);
+    const raw = new Set([
+      ...run.actorFiles,
+      ...run.bundle.simulations.map((simulation) => simulation.status),
+      ...run.bundle.streams!.flatMap((stream) => [
+        stream.status,
+        stream.actor!.status,
+        stream.ui!.actorStatus,
+      ]),
+      ...run.result.lanes!.map((lane) => lane.session!.status),
+      run.result.session!.status,
+    ]);
+    expect([...raw]).toEqual(["passed"]);
+    expect(run.bundle.streams!.map((stream) => stream.judgedStatus)).toEqual([
+      "passed",
+      "blocked",
+      "passed",
+      "passed",
+      "blocked",
+      "passed",
+    ]);
+  });
+
+  it("gets a warning session event that names it blocked in a single-participant run", async () => {
+    const run = await runEnders([SAVE_BLOCKED]);
+    expect(sessionEvents(run.events)).toEqual([
+      { level: "warn", message: `blocked: ${SAVE_BLOCKED}` },
+    ]);
+    expect(run.result.lanes!.map((lane) => [lane.status, lane.judgedStatus])).toEqual([
+      ["passed", "blocked"],
+    ]);
+    expect(run.actorFiles).toEqual(["passed"]);
+    expect(run.bundle.simulations[0]!.status).toBe("passed");
+    expect(run.bundle.streams![0]!.judgedStatus).toBe("blocked");
   });
 });

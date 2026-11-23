@@ -551,6 +551,8 @@ export interface RunRerunLineage {
     laneId: string;
     streamId?: string;
     status: string;
+    /** The source stream's judgedStatus, when it recorded one: what that run counted it as. */
+    judgedStatus?: string;
     reason?: string;
     actorStatus?: string;
     completionReason?: string;
