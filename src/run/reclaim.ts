@@ -49,8 +49,6 @@ import {
 } from "./sandbox-creates.js";
 import {
   earlierOutcomes,
-  GONE,
-  RECLAIM_RECEIPT_ARTIFACT,
   RECLAIM_RESULT_SCHEMA,
   receiptWriter,
   rootState,
@@ -62,6 +60,7 @@ import {
   type ReclaimState,
   type ReclaimTagSearch,
 } from "./reclaim-outcomes.js";
+import { RECLAIM_RECEIPT_ARTIFACT, sandboxGone } from "./reclaim-receipt.js";
 import { redactText, toErrorMessage } from "../evidence/redaction.js";
 import { runIdOf, type PreparedRunArtifactPaths } from "./paths.js";
 import { cli } from "../cli/invocation.js";
@@ -600,7 +599,7 @@ async function reclaimRoot(
   const covered = provenance && tagSearch.status === "done";
   const outcomes = set.snapshot(
     earlier.map((outcome) =>
-      GONE.has(outcome.state) || outcome.source === "receipt" || !covered
+      sandboxGone(outcome.state) || outcome.source === "receipt" || !covered
         ? outcome
         : {
             ...outcome,
@@ -616,7 +615,7 @@ async function reclaimRoot(
   return {
     kind: "done",
     state,
-    exhausted: searched && outcomes.every((outcome) => GONE.has(outcome.state)),
+    exhausted: searched && outcomes.every((outcome) => sandboxGone(outcome.state)),
     receiptCount: receipts.length,
     outcomes,
     tagSearch,

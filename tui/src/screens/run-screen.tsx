@@ -7,7 +7,7 @@ import type { RunIndexEntry } from "../../../src/run/run-index.js";
 import { formatDuration, normalizeThought, participantNote } from "../../../src/run/projection.js";
 import { indexedRunCost, runCostLabel } from "../../../src/run/run-cost.js";
 import { fitLabelToWidth } from "../fit-text.js";
-import { glyphColor, gutter, verdictGlyph } from "../frame.js";
+import { glyphColor, gutter, unnamedRunLabel, verdictGlyph } from "../frame.js";
 import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
@@ -147,10 +147,10 @@ export function RunScreen({
 function headline(run: RunIndexEntry, participant: RunParticipant | undefined): string {
   if (run.liveness === "interrupted") return "interrupted: no outcome recorded";
   if (run.liveness === "running") {
-    // Until the run has written a participant record there is nobody to name, and "starting…" is
+    // Until the run has written a participant record there is nobody to name, and saying so is
     // the true thing to say rather than a sentence with a hole where the person goes.
     const who = participant?.label;
-    return who === undefined ? "starting…" : `${who} is working`;
+    return who === undefined ? unnamedRunLabel(run) : `${who} is working`;
   }
   const display = runDisplay(run);
   const counts = run.participants;

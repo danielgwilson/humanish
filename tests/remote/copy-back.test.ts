@@ -347,6 +347,19 @@ describe("the end of a copy of a large file", () => {
     }
   });
 
+  it("excuses no recording when remote.json is not JSON", async () => {
+    const { cwd, paths } = await runHere();
+    try {
+      await writeFile(
+        path.join(cwd, ".humanish", "runs", "cua-remote", "remote.json"),
+        '{ "lostInCopy": ["recordings/gone/desktop.mp4"',
+      );
+      expect([...(await recordingsLostInCopy(paths))]).toEqual([]);
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  });
+
   it("refuses a video the disk here has no room for, after the rest of the run", async () => {
     const { home, runner, runDir } = await localRunner();
     const { cwd, paths } = await runHere();

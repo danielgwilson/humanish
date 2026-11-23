@@ -7,8 +7,9 @@ import { RUN_BUNDLE_FILE } from "./bundle.js";
 import { bindExistingRunArtifactPaths, validatePreparedRunArtifactPaths } from "./paths.js";
 import type { PreparedRunArtifactPaths } from "./paths.js";
 import { bindExistingManagedHumanishOutputDirectory } from "./contained-output.js";
-import { readLatest, readRunJsonIfExists, runJsonValue } from "./locate.js";
-import { RECLAIM_RECEIPT_ARTIFACT } from "./reclaim-outcomes.js";
+import { readLatest, readRunJsonIfExists, readRunTextIfExists, runJsonValue } from "./locate.js";
+import { RECLAIM_RECEIPT_ARTIFACT } from "./reclaim-receipt.js";
+import { readRemoteRecord, REMOTE_RECORD_FILE } from "./remote-record.js";
 import { redactText } from "../evidence/redaction.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "./sandbox-receipts.js";
 import { processRunning, RUN_STATUS_FILE } from "./status.js";
@@ -141,8 +142,15 @@ async function reasonToKeep(
     );
   const status = await read(RUN_STATUS_FILE);
   if (isRecord(status) && runIsLive(status, nowMs)) return "running";
-  const remote = await read("remote.json");
-  if (isRecord(remote) && (remote.copyPending === true || !(await exists(RUN_BUNDLE_FILE))))
+  const remoteRead = await readRunTextIfExists(paths, REMOTE_RECORD_FILE);
+  const remote = readRemoteRecord(remoteRead.status === "read" ? remoteRead.text : undefined);
+  // A record this version cannot read may be a newer version's only pointer to its runner. A record
+  // from before copyPending existed says nothing of the copy; run.json decides for it.
+  if (
+    remote.state === "pending" ||
+    remote.state === "unreadable" ||
+    (remote.state === "copied" && !(await exists(RUN_BUNDLE_FILE)))
+  )
     return "not-copied-back";
   // Deleting the journal would lose the only way to stop those sandboxes by id.
   if (ageMs < SANDBOX_GONE_AFTER_MS && (await exists(SANDBOX_RECEIPTS_ARTIFACT))) {

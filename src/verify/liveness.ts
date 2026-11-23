@@ -10,9 +10,9 @@ import type { RunBundle } from "../run/bundle.js";
 import { refusalText } from "../run/contained-output.js";
 import { readRunJsonIfExists, readRunTextIfExists, runJsonValue } from "../run/locate.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
-import { isRecord } from "../run/type-guards.js";
-import { RECLAIM_RECEIPT_ARTIFACT } from "../run/reclaim.js";
+import { RECLAIM_RECEIPT_ARTIFACT, reclaimReceipt, sandboxGone } from "../run/reclaim-receipt.js";
 import { runLiveness, type RunLivenessBasis, type RunLivenessReading } from "../run/liveness.js";
+import { REMOTE_RECORD_FILE } from "../run/remote-record.js";
 import { parseSandboxReceipts, SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import { RUN_STATUS_FILE } from "../run/status.js";
 import { simulationInProgress } from "../run/streams.js";
@@ -21,8 +21,6 @@ import { cli } from "../cli/invocation.js";
 
 /** The stable code every RUN_NOT_FINISHED warning starts with. */
 const RUN_NOT_FINISHED = "RUN_NOT_FINISHED";
-
-const GONE_STATES = new Set(["killed", "already-gone"]);
 
 /** What verify can say about a run that is not finished. */
 export interface UnfinishedRun {
@@ -85,6 +83,10 @@ function whatTheFilesSay(
       return `${RUN_STATUS_FILE} state is running and its owner updated it at ${reading.record.updatedAt}, so the run may still be writing`;
     case "stale-heartbeat":
       return `${RUN_STATUS_FILE} state is running and its owner stopped updating it at ${reading.record.updatedAt}`;
+    // Verify reads only a run whose run.json is here, so it passes no remote record and never gets
+    // this basis. The switch still places it, with what such a reading rests on.
+    case "remote":
+      return `${REMOTE_RECORD_FILE} says the run's evidence is still on its runner${reading.remote.deadline === undefined ? "" : `, whose time limit is ${reading.remote.deadline}`}`;
     case "bundle": {
       const unended = bundle.simulations.filter((simulation) =>
         simulationInProgress(simulation.status),
@@ -127,7 +129,7 @@ async function reclaimState(
       text: `Sandboxes unknown: it has no ${RECLAIM_RECEIPT_ARTIFACT} and journaled ${plural(journaled.size, "sandbox", "sandboxes")}; ${command} stops those and searches E2B by this run's tags for any whose id never reached a receipt.`,
     };
   const { outcomes } = receipt;
-  const gone = outcomes.filter((outcome) => GONE_STATES.has(outcome.state)).length;
+  const gone = outcomes.filter((outcome) => sandboxGone(outcome.state)).length;
   const reclaimed = new Set(outcomes.map((outcome) => outcome.digest));
   const missing = [...journaled].filter((id) => !reclaimed.has(id)).length;
   const recorded = `${RECLAIM_RECEIPT_ARTIFACT} records ${gone} of ${outcomes.length} sandboxes gone${
@@ -147,22 +149,4 @@ async function reclaimState(
     sandboxes: "unknown",
     text: `Sandboxes unknown: ${recorded}, but it records no finished search of E2B by this run's tags; ${command} searches.`,
   };
-}
-
-/** A reclaim receipt written for this run, or undefined when there is none. */
-function reclaimReceipt(
-  receipt: unknown,
-  runId: string,
-): { state?: string; outcomes: { digest: string; state: string }[] } | undefined {
-  if (!isRecord(receipt) || receipt.runId !== runId || !Array.isArray(receipt.outcomes))
-    return undefined;
-  const outcomes: { digest: string; state: string }[] = [];
-  for (const outcome of receipt.outcomes as unknown[]) {
-    if (!isRecord(outcome)) return undefined;
-    const { sandboxId, sandboxIdDigest: recorded, state } = outcome;
-    if (typeof sandboxId !== "string" || typeof state !== "string") return undefined;
-    const digest = typeof recorded === "string" ? recorded : sandboxIdDigest(sandboxId);
-    outcomes.push({ digest, state });
-  }
-  return typeof receipt.state === "string" ? { state: receipt.state, outcomes } : { outcomes };
 }

@@ -14,6 +14,7 @@ import {
   writeContainedOutputFile,
 } from "../run/contained-output.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
+import { REMOTE_RECORD_FILE } from "../run/remote-record.js";
 import { pointLatestRunAt } from "../run/run.js";
 import { SANDBOX_RECEIPTS_ARTIFACT } from "../run/sandbox-receipts.js";
 import {
@@ -106,12 +107,12 @@ async function updateRemoteRecord(
   paths: PreparedRunArtifactPaths,
   change: (record: Record<string, unknown>) => Record<string, unknown>,
 ): Promise<void> {
-  const read = await readContainedRegularFile(paths, "remote.json", 1024 * 1024);
+  const read = await readContainedRegularFile(paths, REMOTE_RECORD_FILE, 1024 * 1024);
   if (read.status !== "read") return;
   const record = JSON.parse(Buffer.from(read.bytes).toString("utf8")) as Record<string, unknown>;
   await writeContainedOutputFile(
     paths,
-    "remote.json",
+    REMOTE_RECORD_FILE,
     `${JSON.stringify(change(record), null, 2)}\n`,
     "utf8",
   );

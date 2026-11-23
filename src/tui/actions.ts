@@ -9,6 +9,9 @@ import { requestAutomaticAnalysisCancellation } from "../analysis/automatic.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { cli } from "../cli/invocation.js";
+import { cwdFlag } from "../cli/findings.js";
+import { readRemoteRecord, REMOTE_RECORD_FILE } from "../run/remote-record.js";
 import { RUN_STATUS_FILE, isRunStatusRecord, readRunStatus } from "../run/status.js";
 import { resolveRunPath } from "../run/locate.js";
 import { bindExistingRunArtifactPaths, isSafeRunIdSegment } from "../run/paths.js";
@@ -193,6 +196,8 @@ export async function stopRun(
       await readFile(path.join(runPaths.absoluteRunRoot, RUN_STATUS_FILE), "utf8"),
     );
   } catch {
+    const remote = await remoteRunStop(cwd, runId, runPaths.absoluteRunRoot);
+    if (remote !== undefined) return remote;
     return {
       schema: TUI_ACTION_SCHEMA,
       ok: false,
@@ -224,6 +229,10 @@ export async function stopRun(
       message: `this run already stopped (${record.signal ?? "interrupted"}); Reclaim releases any sandbox it left`,
     };
   }
+
+  // A status record beside a remote record came from the runner, so its pid names no process here.
+  const remote = await remoteRunStop(cwd, runId, runPaths.absoluteRunRoot);
+  if (remote !== undefined) return remote;
 
   // The run list reads a record whose heartbeat stopped as interrupted and offers Reclaim. Its
   // pid may belong to another process by now, and the signal below reaches a whole process group.
@@ -272,5 +281,37 @@ export async function stopRun(
     ok: true,
     message:
       "asked the run to stop; it marks itself interrupted and kills its E2B sandboxes, and Reclaim retries any kill it could not confirm",
+  };
+}
+
+/**
+ * What Stop says for a run whose directory holds a remote record, in any state but no file, or
+ * undefined for a local run. It never signals: the run's process is in its runner sandbox.
+ * Ctrl-C under `observe --run` asks the runner's run to stop, waits for it to end and copies its
+ * evidence back before the runner is reclaimed (src/remote/launch.ts), so that is the stop that
+ * keeps the evidence. A reclaim kills the runner, which holds every file not yet copied.
+ */
+async function remoteRunStop(
+  cwd: string,
+  runId: string,
+  runRoot: string,
+): Promise<TuiActionResult | undefined> {
+  const record = readRemoteRecord(
+    await readFile(path.join(runRoot, REMOTE_RECORD_FILE), "utf8").catch(() => undefined),
+  );
+  if (record.state === "none") return undefined;
+  if (record.state !== "pending")
+    return {
+      schema: TUI_ACTION_SCHEMA,
+      ok: false,
+      message: `this run's directory holds a ${REMOTE_RECORD_FILE}, so it ran in a runner sandbox and no process on this machine is its own; no signal was sent`,
+    };
+  const where =
+    record.provider === "modal" ? "Modal" : record.provider === "e2b" ? "E2B" : "its provider";
+  const run = `--run ${runId}${cwdFlag(cwd)}`;
+  return {
+    schema: TUI_ACTION_SCHEMA,
+    ok: false,
+    message: `this run executes in a runner sandbox on ${where}, so no process here was signalled. To stop it and keep its evidence, run \`${cli(`observe ${run}`)}\` and press Ctrl-C there once it says the run is running; \`${cli(`reclaim ${run}`)}\` stops its runner at once and loses what has not been copied back`,
   };
 }

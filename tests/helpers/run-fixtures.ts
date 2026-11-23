@@ -8,6 +8,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { pendingRemoteRecord } from "../../src/run/remote-record.js";
 import { RUN_STATUS_FILE, RUN_STATUS_SCHEMA } from "../../src/run/status.js";
 
 export interface FixtureRunSpec {
@@ -21,10 +22,13 @@ export interface FixtureRunSpec {
    * `running` writes a fresh record; `stale` writes a `running` record whose updatedAt is old
    * (an interrupted run: the process died without finalizing); `finished` writes a final record.
    * `legacy-bundle` writes only a run.json with the old `lab:<id>` convention and no record;
-   * `orphan` writes neither: receipts on disk and nothing else.
+   * `orphan` writes neither: receipts on disk and nothing else. `remote` writes what a remote
+   * run's directory holds until its copy back: the runner's receipt and a pending remote.json.
    */
-  state: "running" | "stale" | "finished" | "legacy-bundle" | "orphan";
+  state: "running" | "stale" | "finished" | "legacy-bundle" | "orphan" | "remote";
   startedAt?: string;
+  /** Only used by `remote`: when the runner's time limit ends. Defaults to an hour after `nowMs`. */
+  deadline?: string;
   /** Only used by `finished`: how long the run took. */
   durationMs?: number;
   verdict?: string;
@@ -52,6 +56,40 @@ export async function writeFixtureRun(
     await writeFile(
       path.join(runDir, "sandbox-receipts.ndjson"),
       `${JSON.stringify({ kind: "created" })}\n`,
+      "utf8",
+    );
+    return runDir;
+  }
+
+  if (spec.state === "remote") {
+    await writeFile(
+      path.join(runDir, "sandbox-receipts.ndjson"),
+      `${JSON.stringify({ at: startedAt, laneId: "runner", provider: "e2b", sandboxId: "fake-sb-runner" })}\n`,
+      "utf8",
+    );
+    // The record a remote launch writes, with the study a labId names.
+    await writeFile(
+      path.join(runDir, "remote.json"),
+      `${JSON.stringify(
+        pendingRemoteRecord({
+          runId: spec.runId,
+          provider: "e2b",
+          route: "computer-use",
+          deadline: spec.deadline ?? new Date(nowMs + 3_600_000).toISOString(),
+          startedAt,
+          ...(spec.labId === undefined
+            ? {}
+            : {
+                study: {
+                  id: spec.labId,
+                  ...(spec.labPath === undefined ? {} : { path: spec.labPath }),
+                  ...(spec.labOrigin === undefined ? {} : { origin: spec.labOrigin }),
+                },
+              }),
+        }),
+        null,
+        2,
+      )}\n`,
       "utf8",
     );
     return runDir;

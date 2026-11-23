@@ -4,7 +4,6 @@ import path from "node:path";
 import {
   BROWSER_NETWORK_GAPS,
   BROWSER_NETWORK_SCHEMA,
-  isIsoTime,
   networkLogPath,
   networkRecordProblem,
   type BrowserNetworkIndex,
@@ -20,7 +19,7 @@ import {
 import { boundJsonLines } from "../run/live-items.js";
 import { streamParticipantIdOf } from "../run/participant-records.js";
 import type { PreparedRunArtifactPaths } from "../run/paths.js";
-import { isNonNegativeSafeInteger, isRecord } from "../run/type-guards.js";
+import { isIsoTime, isNonNegativeSafeInteger, isRecord } from "../run/type-guards.js";
 
 // A participant's browser network log is a public-safety surface: a header, a cookie or a query
 // string in it would have no shape the text scan matches. So verify reads each log a stream index

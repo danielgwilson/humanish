@@ -212,6 +212,29 @@ describe("pruning old runs", () => {
 });
 
 describe("pruning a run that never wrote run.json", () => {
+  it("keeps an old run whose remote.json it cannot read, which may be its only pointer to a runner", async () => {
+    const cwd = await project();
+    for (const [runId, text] of [
+      ["torn-record", '{ "copyPending": tr'],
+      ["newer-record", JSON.stringify({ schema: "humanish.remote-run.v2", copyPending: true })],
+    ] as const) {
+      const root = await addRun(cwd, runId, {
+        ageDays: 40,
+        noBundle: true,
+        files: { "remote.json": text },
+      });
+      const old = new Date(NOW - 40 * DAY);
+      await utimes(root, old, old);
+    }
+    const result = await pruneRuns(cwd, { olderThanMs: 30 * DAY, apply: true, nowMs: NOW });
+    expect(result.removable).toEqual([]);
+    expect(result.kept).toEqual([
+      { runId: "newer-record", reason: "not-copied-back" },
+      { runId: "torn-record", reason: "not-copied-back" },
+    ]);
+    expect((await runsIn(cwd)).sort()).toEqual(["newer-record", "torn-record"]);
+  });
+
   it("ages a run that stopped before it wrote run.json from the start its status record gives", async () => {
     const cwd = await project();
     // A file added later, such as a reclaim receipt, makes the folder look new.

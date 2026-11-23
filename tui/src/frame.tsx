@@ -4,6 +4,7 @@ import React from "react";
 import { PALETTE } from "./palette.js";
 import { color } from "./text-props.js";
 import { runDisplay, type RunDisplay, type RunDisplayFacts } from "../../src/run/display.js";
+import type { RunIndexEntry } from "../../src/run/run-index.js";
 import { terminalRendersUnicode } from "../../src/routes/terminal/encoding.js";
 
 /**
@@ -94,6 +95,15 @@ export function spinnerFrame(tick: number): string {
 /** The selection cursor, and the gutter that keeps unselected rows from shifting under it. */
 export function gutter(active: boolean): string {
   return active ? (terminalRendersUnicode() ? "❯" : ">") : " ";
+}
+
+/**
+ * What a live run's row says where it would name its participant, before one is named here. A
+ * local run names one once it writes its first participant record. A remote run's participants are
+ * recorded on its runner until its copy back, so at any age it says where it is.
+ */
+export function unnamedRunLabel(run: Pick<RunIndexEntry, "derivedFrom">): string {
+  return run.derivedFrom === "remote" ? "on its runner" : "starting…";
 }
 
 /** A run as the glyph reads it: its display facts, and the spinner's tick while it runs. */

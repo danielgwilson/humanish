@@ -20,6 +20,7 @@ import { RUN_BUNDLE_FILE } from "../../run/bundle.js";
 import { openContainedRegularFile } from "../../run/contained-output.js";
 import { bindExistingRunArtifactPaths } from "../../run/paths.js";
 import type { RunResult } from "../../run/results.js";
+import type { RunStudyProvenance } from "../../run/study-provenance.js";
 import { plural } from "../../run/text.js";
 import { isRecord } from "../../run/type-guards.js";
 import { planStudy, resolveStudyDryRun } from "../../study/plan.js";
@@ -168,6 +169,8 @@ export async function runRemoteStudy(args: {
   io: CliIo;
   options: StudyCommandOptions;
   studyPath: string;
+  /** Which study the run comes from, as a local run records it in its status record. */
+  study: RunStudyProvenance;
   remote: RemotePlan;
 }): Promise<void> {
   const { io, options } = args;
@@ -200,6 +203,7 @@ export async function runRemoteStudy(args: {
     outcome = await launchRemoteRun({
       cwd,
       study: path.relative(cwd, path.resolve(cwd, args.studyPath)).split(path.sep).join("/"),
+      provenance: args.study,
       remote: args.remote,
       env: process.env,
       port,

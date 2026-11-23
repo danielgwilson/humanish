@@ -7,6 +7,7 @@ import type { RunOutcome } from "./bundle.js";
 import type { ExecutionFailure } from "./judge.js";
 import { type RunAnalysisPhase, type RunLiveness } from "./status.js";
 import { runLiveness, type RunLivenessBasis } from "./liveness.js";
+import type { RunOnRunner } from "./remote-record.js";
 import { simulationInProgress } from "./streams.js";
 import { plural } from "./text.js";
 
@@ -137,14 +138,16 @@ export type BundleDisplayFacts = RunDisplayFacts & { basis: RunLivenessBasis };
  * without one is in progress, or was recorded before the field existed: its status record, when
  * given and naming the run, then says whether the run is alive and, for the older run, holds its ok.
  * With no record, a bundle that still holds a participant as queued, preparing or running is
- * interrupted. A run that has written no run.json yet is read with a bundle that only names it.
+ * interrupted. A run that has written no run.json yet is read with a bundle that only names it,
+ * and with its remote record when it has one (runLiveness).
  */
 export function bundleDisplayFacts(
   bundle: DisplayedBundle,
   status?: unknown,
   nowMs: number = Date.now(),
+  remote?: RunOnRunner,
 ): BundleDisplayFacts {
-  const reading = runLiveness(bundle.runId, status, bundle, nowMs);
+  const reading = runLiveness(bundle.runId, status, bundle, nowMs, remote);
   const base = {
     liveness: reading.liveness,
     basis: reading.basis,
@@ -156,7 +159,8 @@ export function bundleDisplayFacts(
       ? base
       : { ...base, ok: reading.outcome.ok, failure: reading.outcome.execution.failures[0] };
   // A run recorded before run.json carried an outcome keeps its ok in the status record alone.
-  const recorded = reading.basis === "bundle" ? undefined : reading.record.outcome;
+  const recorded =
+    reading.basis === "bundle" || reading.basis === "remote" ? undefined : reading.record.outcome;
   return {
     ...base,
     ...(typeof recorded?.ok === "boolean" ? { ok: recorded.ok } : {}),

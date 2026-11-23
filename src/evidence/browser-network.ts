@@ -4,7 +4,7 @@ import { setImmediate as nextTurn } from "node:timers/promises";
 import type { TracePage } from "../actors/contract.js";
 import { assertSafeOutputPathSegment } from "../run/contained-output.js";
 import { scrubSandboxIds } from "../run/sandbox-ids.js";
-import { isNonNegativeSafeInteger, isRecord } from "../run/type-guards.js";
+import { isIsoTime, isNonNegativeSafeInteger, isRecord } from "../run/type-guards.js";
 import {
   originKeepsNoWithheldLabel,
   pageProblem,
@@ -173,7 +173,6 @@ const METHODS: ReadonlySet<string> = new Set([
   "OTHER",
 ]);
 const FAILED = /^ERR_[A-Z0-9_]{1,64}$/;
-const ISO_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 type Cache = "memory" | "disk" | "prefetch" | "service-worker" | "back-forward";
 
@@ -208,13 +207,6 @@ interface Hop {
   end?: number;
   failed?: string;
   done: boolean;
-}
-
-/** Whether `value` is an ISO time as `Date.prototype.toISOString` writes one. */
-export function isIsoTime(value: unknown): value is string {
-  if (typeof value !== "string" || !ISO_TIME.test(value)) return false;
-  const time = Date.parse(value);
-  return Number.isFinite(time) && new Date(time).toISOString() === value;
 }
 
 /** The run-relative path of a participant's network log. */

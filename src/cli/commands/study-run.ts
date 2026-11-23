@@ -167,6 +167,7 @@ export async function runStudyCommand(args: {
         io: args.io,
         options: args.options,
         studyPath: resolved.path,
+        study,
         remote,
       }),
     );

@@ -25,7 +25,8 @@ import {
   type DisplayedBundle,
   type RunDisplay,
 } from "./display.js";
-import type { RunLivenessBasis } from "./liveness.js";
+import { runLiveness, type RunLivenessBasis } from "./liveness.js";
+import { readRunOnRunner, type RunOnRunner } from "./remote-record.js";
 import {
   isRunStatusRecord,
   RUN_STATUS_FILE,
@@ -33,7 +34,13 @@ import {
   type RunAnalysisPhase,
   type RunStatusRecord,
 } from "./status.js";
-import { readLatest, readRunJsonIfExists, resolveRunPath, runJsonValue } from "./locate.js";
+import {
+  readLatest,
+  readRunJsonIfExists,
+  readRunTextIfExists,
+  resolveRunPath,
+  runJsonValue,
+} from "./locate.js";
 import { withCuaReviewProvenance } from "./outcomes.js";
 import { displayedTraces, loadStreamTraces } from "./stream-trace.js";
 import { isNodeError, isRecord } from "./type-guards.js";
@@ -58,7 +65,8 @@ export interface RunsResult {
     bytes?: number;
     /**
      * How the run reads (runDisplay in src/run/display.ts). Absent when the run has neither a
-     * readable run.json nor, before its first run.json, a status record that names it.
+     * readable run.json nor, before its first run.json, a status record that names it or a
+     * remote record that says it is on its runner.
      */
     display?: RunDisplay;
     /** Why the run reads as running, interrupted or finished (runLiveness in src/run/liveness.ts). */
@@ -145,22 +153,45 @@ export async function listRuns(
     const bundleRead = await readRunJsonIfExists(entryRunPaths, RUN_BUNDLE_FILE);
     const bundle = runJsonValue(bundleRead);
     const status = runJsonValue(await readRunJsonIfExists(entryRunPaths, RUN_STATUS_FILE));
-    const started = bundleRead.status === "missing" ? startedRun(status, entryName) : undefined;
+    const missing = bundleRead.status === "missing";
+    const started = missing ? startedRun(status, entryName) : undefined;
+    // Only a run with no run.json here pays for this read, so a listing of local runs does not.
+    const onRunner = missing
+      ? await readRunOnRunner(entryName, async (file) => {
+          const read = await readRunTextIfExists(entryRunPaths, file);
+          return read.status === "read" ? read.text : undefined;
+        })
+      : undefined;
+    // The record speaks for the run only where its liveness rests on it. A status record that
+    // records the run's end decides first, and the run is listed as it would be with no record.
+    const remote =
+      onRunner !== undefined &&
+      runLiveness(entryName, status, {}, Date.now(), onRunner).basis === "remote"
+        ? onRunner
+        : undefined;
     runs.push({
       runId: entryName,
       createdAt:
         isRecord(bundle) && typeof bundle.createdAt === "string"
           ? bundle.createdAt
-          : (started?.startedAt ?? null),
+          : (remote?.record.startedAt ?? started?.startedAt ?? null),
+      // Only a live run executes remotely: a dry run creates no sandbox, so it runs here.
       mode:
-        isRecord(bundle) && typeof bundle.mode === "string" ? bundle.mode : (started?.mode ?? null),
+        isRecord(bundle) && typeof bundle.mode === "string"
+          ? bundle.mode
+          : remote === undefined
+            ? (started?.mode ?? null)
+            : "live",
       path: path.join(RUNS_RELATIVE_ROOT, entryName),
       ...(options.sizes === true
         ? { bytes: await directoryBytes(entryRunPaths.physicalRunRoot) }
         : {}),
       ...listedRunDisplay(
-        started === undefined ? displayedBundle(bundle) : { runId: entryName },
+        started === undefined && remote === undefined
+          ? displayedBundle(bundle)
+          : { runId: entryName },
         status,
+        remote,
       ),
     });
   }
@@ -199,12 +230,13 @@ function startedRun(status: unknown, runId: string): RunStatusRecord | undefined
 
 /**
  * A listed run's display, from its run.json and, for a bundle without an outcome, its status
- * record. Like the listing's other fields it reads the file without verifying it; a run.json
- * that is not an object naming a run gets none.
+ * record, or for a run with no run.json, its remote record. Like the listing's other fields it
+ * reads the file without verifying it; a run.json that is not an object naming a run gets none.
  */
 function listedRunDisplay(
   displayed: DisplayedBundle | undefined,
   status: unknown,
+  remote?: RunOnRunner,
 ): { display?: RunDisplay; livenessBasis?: RunLivenessBasis; analysis?: RunAnalysisPhase } {
   if (displayed === undefined) return {};
   const analysis =
@@ -215,6 +247,8 @@ function listedRunDisplay(
   const { basis, ...facts } = bundleDisplayFacts(
     displayed,
     displayed.outcome === undefined ? status : undefined,
+    Date.now(),
+    remote,
   );
   return {
     display: runDisplay(facts),

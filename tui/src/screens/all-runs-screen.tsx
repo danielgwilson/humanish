@@ -11,7 +11,7 @@ import {
 } from "../../../src/run/projection.js";
 import { indexedRunCost } from "../../../src/run/run-cost.js";
 import { fitLabelToWidth } from "../fit-text.js";
-import { gutter, spinnerFrame } from "../frame.js";
+import { gutter, spinnerFrame, unnamedRunLabel } from "../frame.js";
 import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
@@ -78,7 +78,7 @@ export function AllRunsScreen({
         <RunRow
           key={run.runId}
           run={run}
-          who={personaOf(details.get(run.runId)) ?? "starting…"}
+          who={personaOf(details.get(run.runId)) ?? unnamedRunLabel(run)}
           study={labels.get(run.runId) ?? run.study?.id ?? ""}
           expectedMs={expected.get(run.study?.id ?? "")}
           active={window.start + offset === selected}
