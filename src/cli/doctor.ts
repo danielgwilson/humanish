@@ -467,9 +467,16 @@ async function probeDoctorKeys(
     const planned = resolved.ok
       ? planStudy(resolved.config, { cwd, dryRun: false, env })
       : undefined;
-    if (planned?.ok === true)
+    const target = resolved.ok ? resolved.config.execution?.target : undefined;
+    if (planned?.ok === true) {
       for (const requirement of planned.planned.plan.requirements)
         if (requirement.kind === "key") keyNames.add(requirement.name);
+    } else if (target === "modal-desktop" || target === "modal-terminal") {
+      // A refused plan lists no keys. A study on Modal still gets its token rows, so the person
+      // sees whether the tokens resolve while they fix the refusal.
+      const modal = await import("../substrates/modal/sdk.js");
+      keyNames.add(modal.MODAL_TOKEN_ID_ENV).add(modal.MODAL_TOKEN_SECRET_ENV);
+    }
     // A study whose participants run on another vendor than OpenAI reads that vendor's key.
     const { actorParticipantModel } = await import("../actors/computer-use/models.js");
     const { PARTICIPANT_VENDORS } = await import("../actors/computer-use/providers.js");
