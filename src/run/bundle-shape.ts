@@ -222,6 +222,7 @@ function isRunRerunLineage(value: unknown): value is RunRerunLineage {
         (entry.streamId === undefined || typeof entry.streamId === "string") &&
         typeof entry.status === "string" &&
         entry.status.trim().length > 0 &&
+        (entry.judgedStatus === undefined || typeof entry.judgedStatus === "string") &&
         (entry.reason === undefined || typeof entry.reason === "string") &&
         (entry.actorStatus === undefined || typeof entry.actorStatus === "string") &&
         (entry.completionReason === undefined || typeof entry.completionReason === "string"),

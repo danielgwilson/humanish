@@ -175,6 +175,7 @@ function snapshotPriorParticipant(stream: RunStream): {
       laneId: stream.laneId,
       streamId: stream.id,
       status: stream.status,
+      ...(stream.judgedStatus === undefined ? {} : { judgedStatus: stream.judgedStatus }),
       ...(reason === undefined ? {} : { reason }),
       ...(actorStatus === undefined ? {} : { actorStatus }),
       ...(completionReason === undefined ? {} : { completionReason }),

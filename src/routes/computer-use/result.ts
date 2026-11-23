@@ -56,14 +56,18 @@ const NOT_PASSED: readonly (readonly [ActorStatus, string])[] = [
 ];
 
 /**
- * The failure line's count of each judged status but passed, such as ", 2 blocked, 1 timed out",
- * so that with the passed count it adds up to every participant that has a judged status.
+ * The failure line's counts: the participants that passed and those under each other judged
+ * status, which add up to every participant that has one, then the causes in parentheses. The
+ * causes count across all participants, so a skipped participant is also a blocked one and a
+ * harness error can be a failed one; the parentheses say so when another status is named.
  */
-function notPassedCounts(judged: CuaParticipantSummary["judged"]): string {
-  return NOT_PASSED.flatMap(([status, word]) => {
-    const count = judged?.[status] ?? 0;
+function participantCounts(summary: CuaParticipantSummary, participantCount: number): string {
+  const notPassed = NOT_PASSED.flatMap(([status, word]) => {
+    const count = summary.judged?.[status] ?? 0;
     return count > 0 ? [`, ${count} ${word}`] : [];
   }).join("");
+  const causes = `${summary.skipped} skipped, ${plural(summary.harnessErrors, "harness error")}, ${summary.hollow} without engagement`;
+  return `${summary.passed}/${plural(participantCount, "participant")} passed${notPassed} (${notPassed === "" ? causes : `across all ${participantCount}: ${causes}`})`;
 }
 
 /** Aggregate participant counts for the result projection. */
@@ -258,7 +262,7 @@ function cuaStudyResult(args: {
     return {
       code,
       message: observer.ok
-        ? `Fan-out run failed: ${summary.passed}/${plural(participantCount, "participant")} passed${notPassedCounts(summary.judged)} (${summary.skipped} skipped, ${plural(summary.harnessErrors, "harness error")}, ${summary.hollow} without engagement)${firstFailure}.`
+        ? `Fan-out run failed: ${participantCounts(summary, participantCount)}${firstFailure}.`
         : (observer.error?.message ?? "Observer failed for the computer-use fan-out run."),
     };
   })();
