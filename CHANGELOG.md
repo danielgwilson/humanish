@@ -8,6 +8,17 @@ The Unreleased section holds the full notes for the next version until it is tag
 
 ## Unreleased
 
+## 0.162.0: Every command reads a run's state the same way, and a remote run reports like a local one (2026-11-23)
+
+humanish 0.162.0 makes each command give the same answer about a run. `runs`, `review`, `stats`,
+`verify`, the TUI, the Observer and `analyze` read whether a run is alive through one function, and
+`runs --json` says what that reading rests on. A remote run, the default for a hosted study with a
+public app URL, lists as running while it is on its runner and prints its findings when it ends, as
+a local run does. A participant who reported a blocker reads as blocked in the terminal and in
+`run --json`, as it already did in the Observer.
+
+[Release notes](https://github.com/danielgwilson/humanish/releases/tag/v0.162.0)
+
 ## 0.161.0: Participants type and stay like the people who use your app, and personas come from real sessions (2026-11-16)
 
 humanish 0.161.0 makes participants behave more like the people who use an app. They now read a
