@@ -45,7 +45,7 @@ export async function remoteRunHere(
     return undefined;
   }
   const record = readRemoteRecord(await readText(paths, REMOTE_RECORD_FILE));
-  if (record.state === "none") return undefined;
+  if (record.state === "none" || record.state === "unreadable") return undefined;
   const pending = record.state === "pending";
   if (!pending && (await readText(paths, "run.json")) !== undefined) return undefined;
   if (record.provider === undefined) return undefined;

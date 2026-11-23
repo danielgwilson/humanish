@@ -9,15 +9,18 @@ const STARTED = "2026-11-23T10:00:00.000Z";
 const record = (fields: Record<string, unknown>) => JSON.stringify({ schema: SCHEMA, ...fields });
 
 describe("reading a run's remote.json", () => {
+  it("reads no file as no record", () => {
+    expect(readRemoteRecord(undefined)).toEqual({ state: "none" });
+  });
+
   it.each([
-    ["no file", undefined],
     ["text that is not JSON", "{ copyPending: true"],
     ["JSON that is not an object", "[]"],
     ["JSON null", "null"],
     ["a JSON string", '"pending"'],
-    ["another schema", JSON.stringify({ schema: "humanish.run-status.v1", copyPending: true })],
-  ])("reads %s as no record", (_name, text) => {
-    expect(readRemoteRecord(text)).toEqual({ state: "none" });
+    ["another schema", JSON.stringify({ schema: "humanish.remote-run.v2", copyPending: true })],
+  ])("reads %s as a record it cannot read, apart from no file", (_name, text) => {
+    expect(readRemoteRecord(text)).toEqual({ state: "unreadable" });
   });
 
   it("reads a record whose copy is pending with every fact it names", () => {
@@ -57,6 +60,15 @@ describe("reading a run's remote.json", () => {
       ),
     ).toEqual({ state: "pending" });
   });
+
+  it.each([["1"], ["2026-11-23"], ["2026-11-23T12:00:00Z"], ["2026-13-40T00:00:00.000Z"]])(
+    "reads a time of %s, which is not an ISO date-time as humanish writes one, as no time",
+    (time) => {
+      expect(
+        readRemoteRecord(record({ copyPending: true, deadline: time, startedAt: time })),
+      ).toEqual({ state: "pending" });
+    },
+  );
 
   it("reads a record with no schema, as the tests of its writers write one", () => {
     expect(readRemoteRecord(JSON.stringify({ copyPending: true }))).toEqual({ state: "pending" });

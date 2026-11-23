@@ -4,8 +4,8 @@
 
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import { runLiveness } from "./liveness.js";
-import { readRunOnRunner, type RunOnRunner } from "./remote-record.js";
+import { runLiveness, type RunLivenessReading } from "./liveness.js";
+import { readRunOnRunner } from "./remote-record.js";
 import { AnalysisCostCache, readIndexedAnalysisCost } from "./run-index-analysis.js";
 import type { RunAnalysisCost } from "./run-cost.js";
 
@@ -175,13 +175,16 @@ function entryFromStatus(record: RunStatusRecord, nowMs: number): RunIndexEntry 
 }
 
 /** A remote run on its runner: only a live run executes remotely, since a dry run creates no sandbox. */
-function entryFromRemote(runId: string, remote: RunOnRunner, nowMs: number): RunIndexEntry {
+function entryFromRemote(
+  runId: string,
+  reading: Extract<RunLivenessReading, { basis: "remote" }>,
+): RunIndexEntry {
   return {
     runId,
     derivedFrom: "remote",
-    liveness: runLiveness(runId, undefined, {}, nowMs, remote).liveness,
+    liveness: reading.liveness,
     mode: "live",
-    ...(remote.record.startedAt === undefined ? {} : { startedAt: remote.record.startedAt }),
+    ...(reading.remote.startedAt === undefined ? {} : { startedAt: reading.remote.startedAt }),
   };
 }
 
@@ -314,11 +317,23 @@ async function readEntry(
   const [statusKey, bundleKey] = await Promise.all([statKey(statusFile), statKey(bundleFile)]);
   // A remote run has no run.json here until its copy back. Its entry is read again on every
   // refresh, not cached: the clock and a reclaim receipt change it, and neither file key does.
+  // Only such a directory has its status record read before the cache, since a record of the
+  // run's end decides over the remote record.
   if (bundleKey === null) {
-    const remote = await readRunOnRunner((file) =>
+    const remote = await readRunOnRunner(runId, (file) =>
       readFile(path.join(runDir, file), "utf8").catch(() => undefined),
     );
-    if (remote !== undefined) return entryFromRemote(runId, remote, nowMs);
+    const reading =
+      remote === undefined
+        ? undefined
+        : runLiveness(
+            runId,
+            statusKey === null ? undefined : await readJson(statusFile),
+            {},
+            nowMs,
+            remote,
+          );
+    if (reading?.basis === "remote") return entryFromRemote(runId, reading);
   }
   const key = JSON.stringify([statusKey, bundleKey]);
   const cached = cache?.get(runId, key);

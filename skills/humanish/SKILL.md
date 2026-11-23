@@ -559,9 +559,11 @@ SIGTERM stops the run: humanish marks it interrupted and stops its sandboxes.
 - A computer-use study on `e2b-desktop` or `modal-desktop` with a public `app-url`, or a live
   terminal study on `e2b-terminal` or `modal-terminal`, runs remotely by default: its own process runs in a sandbox on that provider, so a sleeping machine does not
   stop it. `run` still blocks and exits with the run's code; SIGTERM still stops the run. Until its
-  bundle is copied back, `runs --json` lists it with `livenessBasis: remote` and `display.state`
-  `running`, or `interrupted` once its runner's time limit passed or `reclaim --run <id>` stopped
-  it; `npx humanish observe --run <id>` follows it.
+  bundle is copied back, `runs --json` lists it with `livenessBasis: remote`. `display.state`
+  `running` there means its evidence is on its runner and has not been copied back: the run may
+  still be going there or may have ended. `interrupted` means its runner's time limit passed or a
+  reclaim recorded the runner gone. `npx humanish observe --run <id>` asks the runner, follows the
+  run and copies it back. `review --run <id>` and `verify --run <id>` need that copy first.
   If its terminal closes, the command exits 129 with `HUMANISH_REMOTE_DETACHED` and the run goes
   on; `observe --run <id>` copies it back. `--local` keeps one run on this machine,
   `execution.remote: false` every run of a study. The JSON result's `remote.keys` names the keys
@@ -578,9 +580,11 @@ SIGTERM stops the run: humanish marks it interrupted and stops its sandboxes.
 - In `runs --json`, a run whose participants are working has `display.state: running`; once they
   end, its `display` is their result and `analysis.state` is `running` while findings are written.
   `livenessBasis` says what that reading rests on. `outcome` and `status` are recorded: the run
-  or `reclaim` wrote how it ended. `remote` means the run executes in a runner sandbox and its
-  evidence has not been copied back. `stale-heartbeat` and `bundle` are presumed: the run's record
-  stopped updating, or it has none, which a dead process and a sleeping machine both leave.
+  or `reclaim` wrote how it ended. `remote`, `stale-heartbeat` and `bundle` are presumed. `remote`
+  is read from this machine's clock and files without asking the provider: the run executes in a
+  runner sandbox and its evidence has not been copied back. `stale-heartbeat` and `bundle` mean
+  the run's record stopped updating, or it has none, which a dead process and a sleeping machine
+  both leave.
 - `npx humanish review --run <id> --json` says where the run is: participants running, analysis
   running since a given time, or the findings.
 - If the run's process died, `npx humanish reclaim --run <id>` stops its sandboxes and marks it

@@ -26,11 +26,11 @@ import {
   type ContainedRefusal,
   type PreparedOutputRoot,
 } from "./contained-output.js";
+import { RECLAIM_RECEIPT_ARTIFACT, sandboxGone } from "./reclaim-receipt.js";
 import { scrubSandboxIds } from "./sandbox-ids.js";
 import { isRecord } from "./type-guards.js";
 
 export const RECLAIM_RESULT_SCHEMA = "humanish.reclaim-result.v1";
-export const RECLAIM_RECEIPT_ARTIFACT = "reclaim-receipt.json";
 
 /**
  * killed = kill(id) confirmed; already-gone = the server no longer knows the id (TTL or a prior
@@ -39,7 +39,7 @@ export const RECLAIM_RECEIPT_ARTIFACT = "reclaim-receipt.json";
  * this version cannot reach, so nothing was attempted; pending = the kill had not answered when
  * the receipt was written. `--check` writes running, already-gone or check-failed instead.
  */
-export type ReclaimOutcomeState =
+type ReclaimOutcomeState =
   | "killed"
   | "already-gone"
   | "kill-failed"
@@ -216,7 +216,6 @@ async function actOn(
     : { ...rest, state: attempt.state };
 }
 
-export const GONE = new Set<ReclaimOutcomeState>(["killed", "already-gone"]);
 const OUTCOME_STATES = new Set<string>([
   "killed",
   "already-gone",
@@ -296,7 +295,7 @@ export function rootState(
   searched: boolean,
 ): ReclaimState {
   if (check && outcomes.some((outcome) => outcome.state === "running")) return "running";
-  const gone = outcomes.every((outcome) => GONE.has(outcome.state));
+  const gone = outcomes.every((outcome) => sandboxGone(outcome.state));
   if (!gone) return check ? "unknown" : "unconfirmed";
   return searched ? "clean" : "unknown";
 }

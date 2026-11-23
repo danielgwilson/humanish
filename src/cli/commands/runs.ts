@@ -29,7 +29,7 @@ import {
   type HumanOutput,
 } from "../io.js";
 import { plural } from "../../run/text.js";
-import { type AnalysisFindings, readRunFindings } from "../findings.js";
+import { type AnalysisFindings, cwdFlag, readRunFindings } from "../findings.js";
 import { formatFindings } from "../findings-text.js";
 import { cli } from "../invocation.js";
 
@@ -587,7 +587,24 @@ function formatRunsHuman(result: RunsResult): HumanOutput {
         const label = `${run.display?.label ?? "unreadable"}${analysis === undefined ? "" : `, ${analysis}`}`;
         return `- ${run.runId} ${run.mode ?? "unknown"} ${label} ${formatBytes(run.bytes ?? 0)} ${run.createdAt ?? "unknown"} ${run.path}`;
       }),
+      ...onRunnersLine(result),
       `${plural(result.runs.length, "run")}, ${formatBytes(result.totalBytes ?? 0)}. Free disk with ${cli("runs prune --older-than 30d")}.`,
     ].join("\n") + "\n"
   );
+}
+
+/**
+ * The command for runs whose evidence is on their runners: the listing reads them from this
+ * machine's files, and only `observe --run` asks the runner and copies the run back.
+ */
+function onRunnersLine(result: RunsResult): string[] {
+  const remote = result.runs.filter(
+    (run) => run.livenessBasis === "remote" && run.display?.state === "running",
+  );
+  if (remote.length === 0) return [];
+  const one = remote.length === 1;
+  const run = one ? remote[0]!.runId : "<run id>";
+  return [
+    `${plural(remote.length, "run")} ${one ? "is on its runner" : "are on their runners"}. Follow ${one ? "it" : "one"} and copy it back with ${cli(`observe --run ${run}${cwdFlag(result.cwd)}`)}.`,
+  ];
 }

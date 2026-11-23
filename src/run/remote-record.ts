@@ -4,9 +4,9 @@
 // of what it says calls readRemoteRecord, so a listing, reattach, prune and verify read one file by
 // one rule.
 
-import { RECLAIM_RECEIPT_ARTIFACT } from "./reclaim-outcomes.js";
+import { RECLAIM_RECEIPT_ARTIFACT, reclaimReceipt, sandboxGone } from "./reclaim-receipt.js";
 import { isSandboxProviderId, type SandboxProviderId } from "./sandbox-receipts.js";
-import { isRecord } from "./type-guards.js";
+import { isIsoTime, isRecord } from "./type-guards.js";
 
 /** The file, relative to the run directory. */
 export const REMOTE_RECORD_FILE = "remote.json";
@@ -25,20 +25,23 @@ interface RemoteRecordFacts {
 }
 
 /**
- * A run's remote record. `none`: no remote.json here (a local run), or one this version cannot
- * read. `pending`: its evidence is still on its runner, so the run is there or its copy has not
+ * A run's remote record. `none`: no remote.json here, as for a local run. `unreadable`: a
+ * remote.json this version cannot read: not JSON, not an object, or another schema. It may be
+ * the only pointer to a runner that a newer version wrote, so a caller that deletes keeps it.
+ * `pending`: its evidence is still on its runner, so the run is there or its copy has not
  * finished. `copied`: the record does not say a copy is pending, so the copy finished or gave up,
  * and `lostInCopy` lists the recordings that never arrived. A record written before copyPending
  * existed reads as copied too, so a caller that needs the bundle also looks for run.json.
  */
 export type RemoteRecordReading =
   | { state: "none" }
+  | { state: "unreadable" }
   | ({ state: "pending" } & RemoteRecordFacts)
   | ({ state: "copied"; lostInCopy: string[] } & RemoteRecordFacts);
 
 /**
  * remote.json's text, or undefined when the run directory has none, as its reading. It never
- * throws. A record that names another schema is none, since another version may mean other
+ * throws. A record that names another schema is unreadable, since another version may mean other
  * things by its keys. One with no `schema` is read as this one: every version writes it, so its
  * absence names no other version.
  */
@@ -48,10 +51,10 @@ export function readRemoteRecord(text: string | undefined): RemoteRecordReading 
   try {
     value = JSON.parse(text);
   } catch {
-    return { state: "none" };
+    return { state: "unreadable" };
   }
   if (!isRecord(value) || (value.schema !== undefined && value.schema !== REMOTE_RECORD_SCHEMA))
-    return { state: "none" };
+    return { state: "unreadable" };
   const facts: RemoteRecordFacts = {
     ...(typeof value.provider === "string" && isSandboxProviderId(value.provider)
       ? { provider: value.provider }
@@ -73,8 +76,8 @@ export function readRemoteRecord(text: string | undefined): RemoteRecordReading 
 export interface RunOnRunner {
   record: Extract<RemoteRecordReading, { state: "pending" }>;
   /**
-   * A reclaim receipt is in the run's directory. `humanish reclaim --run` stops the runner and
-   * leaves remote.json as it was, so the record alone would still say pending.
+   * The run's reclaim receipt records every sandbox it found gone. `humanish reclaim --run` stops
+   * the runner and leaves remote.json as it was, so the record alone would still say pending.
    */
   reclaimed: boolean;
 }
@@ -84,20 +87,42 @@ export interface RunOnRunner {
  * remote record does not say a copy is pending. `read` gives a file's text, or undefined when the
  * directory has none; each caller reads with its own file access. The reclaim receipt is read
  * only for a pending record, so a local run costs one read of a missing remote.json.
+ *
+ * Reclaim writes its receipt before its first kill, so a receipt from a kill that failed, timed
+ * out or was stopped is there while the runner goes on. Only a receipt for this run that records
+ * at least one sandbox, every one of them gone, counts as reclaimed.
  */
 export async function readRunOnRunner(
+  runId: string,
   read: (file: string) => Promise<string | undefined>,
 ): Promise<RunOnRunner | undefined> {
   const record = readRemoteRecord(await read(REMOTE_RECORD_FILE));
   if (record.state !== "pending") return undefined;
-  return { record, reclaimed: (await read(RECLAIM_RECEIPT_ARTIFACT)) !== undefined };
+  const receipt = reclaimReceipt(parsed(await read(RECLAIM_RECEIPT_ARTIFACT)), runId);
+  const reclaimed =
+    receipt !== undefined &&
+    receipt.outcomes.length > 0 &&
+    receipt.outcomes.every((outcome) => sandboxGone(outcome.state));
+  return { record, reclaimed };
 }
 
+/** A file's JSON, or undefined when there is no file or it is not JSON. */
+function parsed(text: string | undefined): unknown {
+  if (text === undefined) return undefined;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A time the writer wrote with toISOString. Date.parse alone would take "1" as the year 2001, and
+ * a deadline read that way would end a run that is still going.
+ */
 function readableTime<K extends "deadline" | "startedAt">(
   key: K,
   value: unknown,
 ): Partial<Record<K, string>> {
-  return typeof value === "string" && Number.isFinite(Date.parse(value))
-    ? ({ [key]: value } as Record<K, string>)
-    : {};
+  return isIsoTime(value) ? ({ [key]: value } as Record<K, string>) : {};
 }

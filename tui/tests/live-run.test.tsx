@@ -6,6 +6,7 @@ import { describe, expect, it, vi, type MockInstance } from "vitest";
 
 import { App } from "../src/app.js";
 import type { RunDetail } from "../../src/run/detail.js";
+import type { RunIndexEntry } from "../../src/run/run-index.js";
 import type { TuiCapabilities, TuiOptions } from "../../src/tui/contract.js";
 import { KEY, normalizeFrame, renderToText } from "../src/testing/render-to-text.js";
 import { LABS, NOW, RUNS } from "./fixtures.js";
@@ -242,6 +243,57 @@ describe("watching a run", () => {
       expect(line.length).toBeLessThanOrEqual(45);
     }
     await expectGolden("run-live-45", normalized);
+  });
+});
+
+// A remote run's participants are recorded on its runner until its copy back, so no participant is
+// named here at any age. The run index gives such a run no study today; one is set here so that
+// each live surface can show it.
+describe("a run that executes in a runner sandbox", () => {
+  const remote: RunIndexEntry = {
+    runId: RUNS[0]!.runId,
+    derivedFrom: "remote",
+    liveness: "running",
+    mode: "live",
+    study: { id: "signup-flow" },
+    startedAt: new Date(NOW - 3 * 3_600_000).toISOString(),
+  };
+  const runs = [remote, ...RUNS.slice(1)];
+
+  async function studiesList() {
+    return renderToText(<App options={options(null, runs)} now={NOW} tick={0} />, {
+      columns: 80,
+      rows: 30,
+      until: (frame) => frame.includes("on its runner"),
+    });
+  }
+
+  it("says where it is on the studies list, the study and its card", async () => {
+    const surface = await studiesList();
+    const studies = surface.last;
+    await surface.press(KEY.enter, (frame) => frame.includes("❯ Start a dry run"));
+    let study = "";
+    for (let index = 0; index < 4; index += 1) {
+      study = await surface.press(KEY.down);
+      if (/❯[^\n]*on its runner/.test(study)) break;
+    }
+    const card = await surface.press(KEY.enter, (frame) => frame.includes("Stop this run"));
+    surface.unmount();
+    for (const frame of [studies, study, card]) {
+      expect(frame).toContain("on its runner");
+      expect(frame).not.toContain("starting…");
+    }
+  });
+
+  it("says where it is on the list of every live run", async () => {
+    const surface = await studiesList();
+    for (let index = 0; index < 8; index += 1) {
+      const frame = await surface.press(KEY.down);
+      if (/❯\s+All runs/.test(frame)) break;
+    }
+    const all = await surface.press(KEY.enter, (frame) => frame.includes("on its runner"));
+    surface.unmount();
+    expect(all).not.toContain("starting…");
   });
 });
 

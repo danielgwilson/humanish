@@ -161,7 +161,7 @@ describe("the liveness of a remote run whose run.json is not here", () => {
     });
   });
 
-  it("reads run.json's outcome over the record, and the record over a status record or a bundle", () => {
+  it("reads run.json's outcome and a recorded end over the record, and the record over a running one", () => {
     const finished = {
       state: "finished" as const,
       ok: true,
@@ -171,10 +171,17 @@ describe("the liveness of a remote run whose run.json is not here", () => {
       basis: "outcome",
       liveness: "finished",
     });
-    // A status.json copied from the runner holds the runner's pid and a heartbeat that stopped
+    // A copy that stopped partway can bring the runner's status.json without its run.json.
+    expect(runLiveness(RUN_ID, status({ state: "finished" }), {}, NOW, onRunner)).toMatchObject({
+      basis: "status",
+      liveness: "finished",
+    });
+    expect(
+      runLiveness(RUN_ID, status({ state: "interrupted", signal: "SIGTERM" }), {}, NOW, onRunner),
+    ).toMatchObject({ basis: "status", liveness: "interrupted" });
+    // A running record copied from the runner holds the runner's pid and a heartbeat that stopped
     // when it was copied.
-    const copied = status({ updatedAt: "2026-08-19T09:00:00.000Z" });
-    for (const record of [copied, status(), status({ state: "interrupted" })])
+    for (const record of [status({ updatedAt: "2026-08-19T09:00:00.000Z" }), status()])
       expect(runLiveness(RUN_ID, record, {}, NOW, onRunner)).toMatchObject({
         basis: "remote",
         liveness: "running",

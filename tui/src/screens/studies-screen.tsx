@@ -6,7 +6,7 @@ import type { StudyRow } from "../../../src/run/projection.js";
 import type { StudyListResult } from "../../../src/study/discover.js";
 import { formatDuration, studySummaryLine, listWindow } from "../../../src/run/projection.js";
 import { fitLabelToWidth } from "../fit-text.js";
-import { glyphColor, gutter, spinnerFrame } from "../frame.js";
+import { glyphColor, gutter, spinnerFrame, unnamedRunLabel } from "../frame.js";
 import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
@@ -277,9 +277,9 @@ function liveStatus(
 ): string {
   const started = live.startedAt === undefined ? Number.NaN : Date.parse(live.startedAt);
   const elapsed = Number.isFinite(started) ? clockOf(now - started) : undefined;
-  // Until the run has written a participant record there is nobody to name, and "starting…" is the
+  // Until the run has written a participant record there is nobody to name, and saying so is the
   // true thing to say rather than borrowing the study's own id and passing it off as a person.
-  const label = who ?? "starting…";
+  const label = who ?? unnamedRunLabel(live);
   const extra = row.live > 1 ? ` +${row.live - 1}` : "";
   return elapsed === undefined ? `${label}${extra}` : `${label} · ${elapsed}${extra}`;
 }

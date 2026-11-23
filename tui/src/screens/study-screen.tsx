@@ -15,7 +15,7 @@ import {
   participantNote,
   studySummaryLine,
 } from "../../../src/run/projection.js";
-import { glyphColor, gutter, verdictGlyph } from "../frame.js";
+import { glyphColor, gutter, unnamedRunLabel, verdictGlyph } from "../frame.js";
 import { PALETTE } from "../palette.js";
 import { color } from "../text-props.js";
 
@@ -457,7 +457,7 @@ function LiveRun({
           <Text color={PALETTE.ok}>{verdictGlyph({ liveness: "running", tick })} </Text>
         </Box>
         <Text {...color(active ? PALETTE.accent : undefined)} bold={active} wrap="truncate-end">
-          {participant?.label ?? "starting…"}
+          {participant?.label ?? unnamedRunLabel(run)}
         </Text>
         <Box flexGrow={1} />
         <Text dimColor>{elapsed === undefined ? "" : `${elapsed}${of}`}</Text>

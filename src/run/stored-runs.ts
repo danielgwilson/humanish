@@ -25,7 +25,7 @@ import {
   type DisplayedBundle,
   type RunDisplay,
 } from "./display.js";
-import type { RunLivenessBasis } from "./liveness.js";
+import { runLiveness, type RunLivenessBasis } from "./liveness.js";
 import { readRunOnRunner, type RunOnRunner } from "./remote-record.js";
 import {
   isRunStatusRecord,
@@ -156,12 +156,19 @@ export async function listRuns(
     const missing = bundleRead.status === "missing";
     const started = missing ? startedRun(status, entryName) : undefined;
     // Only a run with no run.json here pays for this read, so a listing of local runs does not.
-    const remote = missing
-      ? await readRunOnRunner(async (file) => {
+    const onRunner = missing
+      ? await readRunOnRunner(entryName, async (file) => {
           const read = await readRunTextIfExists(entryRunPaths, file);
           return read.status === "read" ? read.text : undefined;
         })
       : undefined;
+    // The record speaks for the run only where its liveness rests on it. A status record that
+    // records the run's end decides first, and the run is listed as it would be with no record.
+    const remote =
+      onRunner !== undefined &&
+      runLiveness(entryName, status, {}, Date.now(), onRunner).basis === "remote"
+        ? onRunner
+        : undefined;
     runs.push({
       runId: entryName,
       createdAt:

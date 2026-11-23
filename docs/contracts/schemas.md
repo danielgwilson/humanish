@@ -1625,21 +1625,37 @@ public-safe by construction: no hostname and no user paths, because a run
 directory may be shared.
 
 `runLiveness` (`src/run/liveness.ts`) reads whether a run is alive and returns the liveness with
-the basis for it:
+the basis for it. The first row that matches decides:
 
-| Basis             | The run has                                                                                             | Reads as                                                                                                                 |
-| ----------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `outcome`         | a run.json with an `outcome`                                                                            | the outcome's `state`                                                                                                    |
-| `remote`          | no run.json, and a [remote run record](#remote-run-record) whose `copyPending` is `true`                | `running` until the record's `deadline`; `interrupted` from then, or once `reclaim-receipt.json` is in the run directory |
-| `status`          | no outcome, and a status record that says `finished` or `interrupted`                                   | that state                                                                                                               |
-| `heartbeat`       | no outcome, and a `running` record whose `updatedAt` is within three touch intervals of now             | `running`                                                                                                                |
-| `stale-heartbeat` | no outcome, and a `running` record whose `updatedAt` is older, further in the future, or cannot be read | `interrupted`                                                                                                            |
-| `bundle`          | no outcome and no well-formed status record that names it                                               | `interrupted` if a participant has not ended (`queued`, `preparing` or `running`), else `finished`                       |
+| Basis             | The run has                                                                                                                             | Reads as                                                                                                                                                               |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `outcome`         | a run.json with an `outcome`                                                                                                            | the outcome's `state`                                                                                                                                                  |
+| `status`          | no outcome, and a status record that says `finished` or `interrupted`                                                                   | that state                                                                                                                                                             |
+| `remote`          | no outcome, no run.json, no status record of the run's end, and a [remote run record](#remote-run-record) whose `copyPending` is `true` | `running` until the record's `deadline`, or with no readable `deadline`; `interrupted` from the deadline, or once the run's reclaim receipt records its sandboxes gone |
+| `heartbeat`       | no outcome, and a `running` record whose `updatedAt` is within three touch intervals of now                                             | `running`                                                                                                                                                              |
+| `stale-heartbeat` | no outcome, and a `running` record whose `updatedAt` is older, further in the future, or cannot be read                                 | `interrupted`                                                                                                                                                          |
+| `bundle`          | no outcome and no well-formed status record that names it                                                                               | `interrupted` if a participant has not ended (`queued`, `preparing` or `running`), else `finished`                                                                     |
 
 A dropped connection or a killed terminal leaves a `stale-heartbeat`, and so do a sleeping host
 and a run directory copied from another machine, so that reading is a presumption and the basis
-says so. `bundle` with `interrupted` is a presumption too. `humanish runs`, `review`, `stats`,
-`verify` and the TUI show the liveness as read. `humanish runs --json` carries the basis as
+says so. `bundle` with `interrupted` is a presumption too.
+
+`remote` is a presumption as well: it is read from this machine's clock and files, and no
+provider is asked. `running` under `remote` means the run's evidence is on its runner and has not
+been copied back; the run may still be going there or may have ended. `humanish observe --run
+<id>` asks the runner, follows the run and copies it back. `interrupted` under `remote` means the
+runner's time limit passed or a reclaim recorded the runner gone. A deadline is readable only as
+an ISO time as `toISOString` writes one, and a pending record without one reads `running` until
+it is copied back or reclaimed. The reclaim receipt counts only when it names the run, records at
+least one sandbox and records every one of them `killed` or `already-gone`: reclaim writes the
+receipt before its first kill, so one from a kill that failed leaves the run to its deadline. A
+status record that says `finished` or `interrupted` decides before the remote record, since the
+runner's own process wrote it. The remote record decides over a `running` one, which a copy
+brought from the runner with the runner's pid and a heartbeat that stopped when it was copied.
+
+`humanish runs`, `stats` and the TUI show the liveness as read. `review` and `verify` read only a
+run whose run.json is here, so for a run that reads `remote` they report run.json missing until
+`humanish observe --run <id>` copies the run back. `humanish runs --json` carries the basis as
 `livenessBasis` on each run that has a display, and `humanish verify --json` as
 `unfinished.basis`. The served Observer's `runtime.state`, `humanish analyze` and the TUI's Stop
 each treat a `stale-heartbeat` differently, and
@@ -1653,13 +1669,18 @@ listing takes its `mode` from the record and `createdAt` from the record's `star
 `humanish runs prune` ages it from that time. A record that says `finished` beside no run.json
 gets no display: its evidence is gone.
 
-Until its copy back, a remote run has no run.json or status record here, and the `remote` basis
-reads it. `humanish runs --json` lists it with `mode: live`, since only a live run executes remotely,
-`createdAt` from the remote record's `startedAt` (`null` for a record without one), `display.state`
-`running` or `interrupted` and `livenessBasis: remote`. `humanish stats` and the TUI count it as a
-live run by the same reading. A run with run.json here reads no remote record, so it costs a
-listing no extra read; a run without one costs one read of remote.json, and one of
-`reclaim-receipt.json` when the record is pending.
+Until its copy back, a remote run has no run.json here, and it is read by its remote run record
+unless a status record of the run's end has arrived: a copy that stopped partway can bring
+status.json before run.json. Read by its record, `humanish runs --json` lists it with
+`mode: live`, since only a live run executes remotely, `createdAt` from the record's `startedAt`
+(from a `running` status record's when the record has none, else `null`), `display.state`
+`running` or `interrupted` and `livenessBasis: remote`. `humanish runs` then prints one more line
+before its totals that names `humanish observe --run <id>` for the runs that read `running`.
+`humanish stats` counts it as a live run by the same reading. The run index gives it no study, so
+the TUI counts it only among the runs with no study. A run with run.json here reads no remote
+record, so it costs a listing no extra read; a run without one costs one read of remote.json,
+one of `reclaim-receipt.json` when the record is pending, and in the run index one of status.json
+before its cache.
 
 ## Remote Run Record
 
@@ -1675,21 +1696,25 @@ When every file has been copied back, the copy removes `copyPending`. When `huma
 --run` finds the runner gone, it removes `copyPending` and adds `lostInCopy`, the recordings that
 never arrived. `humanish reclaim --run <id>` stops the runner and leaves the record as it is.
 
-`readRemoteRecord` (`src/run/remote-record.ts`) reads the file as `none`, `pending` or `copied`
-and never throws: a file that is not JSON, not an object, or names another schema reads as
-`none`, as a local run with no file does. A record written before `copyPending` existed reads as
+`readRemoteRecord` (`src/run/remote-record.ts`) reads the file as `none` (no file), `unreadable`
+(not JSON, not an object, or another schema), `pending` or `copied`, and never throws. A record
+with no `schema` reads as this one. A record written before `copyPending` existed reads as
 `copied`, so a reader that needs the bundle also looks for run.json. These commands read it:
 
 - `humanish runs`, `stats` and the TUI, for a run with no run.json here: a pending record gives
-  the `remote` liveness basis, and a pending record beside `reclaim-receipt.json` reads
-  `interrupted`.
+  the `remote` liveness basis above. An unreadable record reads as no record.
 - `humanish observe --run <id>` reconnects to the runner of a pending record, or of a record with
-  no run.json beside it, and finishes the copy.
-- `humanish runs prune` keeps a run whose record is pending or has no run.json beside it, as
-  `not-copied-back`.
+  no run.json beside it, and finishes the copy. It leaves a run with an unreadable record to the
+  Observer.
+- `humanish runs prune` keeps a run whose record is pending, unreadable, or has no run.json beside
+  it, as `not-copied-back`: an unreadable record may be a newer version's only pointer to its
+  runner.
 - `humanish verify` excuses each recording in `lostInCopy` and warns that it was lost.
-- The TUI's Stop sends no signal for a pending record with no status record here, and names
-  `humanish observe --run <id>` and `humanish reclaim --run <id>`.
+- The TUI's Stop sends no signal for a run with a record in any state, since a status record
+  beside one came from the runner. For a pending record it says to run
+  `humanish observe --run <id>` and press Ctrl-C there, which stops the run and copies its
+  evidence back before the runner is reclaimed, and that `humanish reclaim --run <id>` stops the
+  runner at once and loses what has not been copied back.
 
 ## Run Index, Run Detail, And The Terminal Surface
 
@@ -1700,10 +1725,11 @@ them is a claim about what a participant did.
 
 `humanish.run-index.v1` is the listing projection. One entry per run, read
 cheapest-source-first: the `status.json` record, else the bundle, else the run
-directory alone. A run with no run.json whose remote run record is pending is
-read from that record first, as `derivedFrom: remote` with `mode: live`, the
-record's `startedAt` and the `remote` liveness, again on every refresh, since
-the clock and a reclaim receipt change it. `{ runId, derivedFrom: status | bundle | remote | directory, liveness,
+directory alone. A run with no run.json that reads `remote` (its remote run
+record is pending and no status record records its end) is read from that
+record first, as `derivedFrom: remote` with `mode: live`, the record's
+`startedAt` and the `remote` liveness, again on every refresh, since the clock
+and a reclaim receipt change it. `{ runId, derivedFrom: status | bundle | remote | directory, liveness,
 mode?, pid?, study?, startedAt?, updatedAt?, completedAt?, verdict?, ok?,
 failure?, participants?, estimatedCostUsd?, estimatedCostComplete?,
 analysisCost?, durationMs?, analysis? }`. `analysis` is the status record's automatic analysis as
