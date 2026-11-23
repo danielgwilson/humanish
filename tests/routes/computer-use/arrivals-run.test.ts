@@ -1,7 +1,7 @@
 // A computer-use study with a declared schedule, run on fake desktops ($0, real orchestration and
-// real time with sub-second offsets): each participant's desktop is created at its start, a
-// participant whose start comes while every slot is busy waits, and run.json records each
-// participant's scheduled and actual start. One participant's harness error ends only that
+// real time, with offsets of about two seconds at most): each participant's desktop is created at
+// its start, a participant whose start comes while every slot is busy waits, and run.json records
+// each participant's scheduled and actual start. One participant's harness error ends only that
 // participant. A dry run records the offsets.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -275,9 +275,11 @@ describe("a computer-use study whose participant fails partway through the sched
   });
 
   it("starts every later arrival on time when one participant's desktop stalls 10 minutes in", async () => {
-    // One minute of the schedule is 20 ms here: customers arrive at +5, +15, +25 and +35 minutes,
-    // and the support agent's desktop stops answering 10 minutes into its session.
-    const minute = 20;
+    // One minute of the schedule is 60 ms here: customers arrive at +5, +15, +25 and +35 minutes,
+    // and the support agent's desktop stops answering 10 minutes into its session. The stall has
+    // to land before the third customer is due, so a shorter minute leaves a busy machine too
+    // little room.
+    const minute = 60;
     const stall = "desktop executor error: deadline_exceeded; disposition: outcome_uncertain";
     let stalledAt: number | undefined;
     const timed = timedModule();
@@ -368,8 +370,19 @@ describe("the live bundle of a computer-use study with a declared schedule", () 
         live: bundle.streams.map((stream) => stream.liveActor !== undefined && !stream.actor),
       };
     };
-    const seen: Awaited<ReturnType<typeof read>>[] = [];
-    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    type Seen = Awaited<ReturnType<typeof read>>;
+    const seen: Seen[] = [];
+    // The live bundle once `ready` holds. A write lands late on a busy machine, so each state is
+    // waited for. After 15 s the bundle is returned as it is, and a state that never came shows in
+    // the comparison below.
+    const readWhen = async (ready: (now: Seen) => boolean): Promise<Seen> => {
+      const giveUpAt = Date.now() + 15_000;
+      for (;;) {
+        const now = await read();
+        if (ready(now) || Date.now() >= giveUpAt) return now;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+    };
     const base = seams(timedModule().module);
     let sessions = 0;
     const outcome = await runStudyWith(
@@ -388,16 +401,14 @@ describe("the live bundle of a computer-use study with a declared schedule", () 
         ...base,
         runSession: async (options: CuaActorSessionOptions) => {
           sessions += 1;
-          // The support agent works for 3 s; the customer starts at +300 ms and ends first.
+          // The support agent works until the customer, who starts at +300 ms, has ended.
           if (sessions === 1) {
-            await wait(3_000);
-            seen.push(await read());
+            seen.push(await readWhen((now) => now.statuses[1] === "passed"));
             return base.runSession(options);
           }
           const result = await base.runSession(options);
-          // The customer's first items were written at once, with no write before them.
-          await wait(200);
-          seen.push(await read());
+          // The customer's items are in the bundle while its session is still open.
+          seen.push(await readWhen((now) => now.live[1] === true));
           return result;
         },
       },
