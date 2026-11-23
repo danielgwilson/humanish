@@ -165,6 +165,69 @@ describe("TUI key summary follows the configured route", () => {
   });
 });
 
+describe("TUI key summary for a study on Anthropic or Modal", () => {
+  it("requires desktop plus the Anthropic key for a participant on a Claude model", async () => {
+    const claude = {
+      ...base,
+      actor: { type: "computer-use", model: "claude-haiku-5-5", mission: "Use the app." },
+    };
+    expect(
+      await summary(claude, {
+        E2B_API_KEY: "synthetic-credential-desktop",
+        ANTHROPIC_API_KEY: "synthetic-credential-model",
+      }),
+    ).toMatchObject({ keysReady: true });
+    const missing = await summary(claude, { E2B_API_KEY: "synthetic-credential-desktop" });
+    expect(missing).toMatchObject({ keysReady: false, missingKeys: ["ANTHROPIC_API_KEY"] });
+  });
+
+  it("requires the Modal token pair plus the model key for a study on a Modal desktop", async () => {
+    const modal = { ...base, execution: { target: "modal-desktop" } };
+    expect(
+      await summary(modal, {
+        MODAL_TOKEN_ID: "synthetic-credential-modal-id",
+        MODAL_TOKEN_SECRET: "synthetic-credential-modal-secret",
+        OPENAI_API_KEY: "synthetic-credential-model",
+      }),
+    ).toMatchObject({ keysReady: true });
+    const missing = await summary(modal, {
+      MODAL_TOKEN_ID: "synthetic-credential-modal-id",
+      OPENAI_API_KEY: "synthetic-credential-model",
+    });
+    expect(missing).toMatchObject({ keysReady: false, missingKeys: ["MODAL_TOKEN_SECRET"] });
+  });
+
+  it("requires the Modal token pair plus the runtime key for a study on a Modal terminal", async () => {
+    const config = {
+      ...base,
+      route: "terminal",
+      subject: {
+        source: "terminal-product",
+        product: { name: "example-cli", publicSurfaces: ["https://example.test"] },
+      },
+      actor: { type: "codex-exec", mission: "Use the CLI." },
+      caps: { maxUsd: 0, maxMinutes: 5 },
+      execution: {
+        target: "modal-terminal",
+        runtimeAuth: "openai-env",
+        terminal: { transport: "exec-stream", stdin: "disabled" },
+      },
+    };
+    expect(
+      await summary(config, {
+        MODAL_TOKEN_ID: "synthetic-credential-modal-id",
+        MODAL_TOKEN_SECRET: "synthetic-credential-modal-secret",
+        CODEX_API_KEY: "synthetic-credential-model",
+      }),
+    ).toMatchObject({ keysReady: true });
+    const missing = await summary(config, {
+      MODAL_TOKEN_SECRET: "synthetic-credential-modal-secret",
+      CODEX_API_KEY: "synthetic-credential-model",
+    });
+    expect(missing).toMatchObject({ keysReady: false, missingKeys: ["MODAL_TOKEN_ID"] });
+  });
+});
+
 describe("TUI caps summary", () => {
   it("shows a computer-use lab's execution.caps", async () => {
     const capped = { ...base, caps: { maxUsd: 2, maxTotalUsd: 5 } };

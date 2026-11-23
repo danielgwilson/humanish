@@ -11,7 +11,7 @@ import { localRuntimeStatus, type LocalRuntimeStatus } from "../substrates/local
 
 import { planStudy, resolveStudyDryRun, routeOf } from "./plan.js";
 import { localCodexParticipantCheck } from "./doctor.js";
-import { requiredKeys, requiredSubjectEnv } from "./requirements.js";
+import { keyNamesOf, requiredKeys, requiredSubjectEnv } from "./requirements.js";
 import {
   automaticAnalysisBudget,
   formatAutomaticAnalysisBudget,
@@ -182,11 +182,10 @@ export async function readStudySummary(
     const email = inspected.config.comms?.email;
     const receivingKey =
       email?.kind === "real" ? await receivingRequiredKey(cwd, email.connection) : undefined;
+    // Every name the plan can read is probed, so a key the planner requires is never reported
+    // missing only because nobody looked for it. `required` below still decides which are reported.
     const candidates = [
-      "OPENAI_API_KEY",
-      "CODEX_API_KEY",
-      "E2B_API_KEY",
-      ...subjectKeys,
+      ...keyNamesOf(planned.planned.plan),
       ...(receivingKey ? [receivingKey] : []),
     ];
     const probes = await probeKeySources(candidates, {

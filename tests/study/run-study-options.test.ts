@@ -489,6 +489,56 @@ describe("an onEvent warning carries no known secret", () => {
     expect(result.warnings[0]).not.toContain(openaiKey);
     expect(result.warnings[0]).toContain("[REDACTED_SECRET]");
   });
+
+  it("scrubs the value of ANTHROPIC_API_KEY", () => {
+    const anthropicKey = "synthetic-anthropic-value-3b8d";
+    const result = normalize(config("cuAppUrl"), {
+      env: { ANTHROPIC_API_KEY: anthropicKey },
+      onEvent: () => {
+        throw new Error(`request with ${anthropicKey} failed`);
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    result.emit!(emptyPlan());
+    expect(result.warnings).toEqual([
+      "RunStudyOptions.onEvent failed on plan: request with [REDACTED_SECRET] failed",
+    ]);
+  });
+
+  it("scrubs the values of MODAL_TOKEN_ID and MODAL_TOKEN_SECRET", () => {
+    const tokenId = "synthetic-modal-id-value-6e21";
+    const tokenSecret = "synthetic-modal-secret-value-0c94";
+    const result = normalize(config("cuAppUrl"), {
+      env: { MODAL_TOKEN_ID: tokenId, MODAL_TOKEN_SECRET: tokenSecret },
+      onEvent: () => {
+        throw new Error(`sandbox create as ${tokenId}:${tokenSecret} failed`);
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    result.emit!(emptyPlan());
+    expect(result.warnings).toEqual([
+      "RunStudyOptions.onEvent failed on plan: sandbox create as [REDACTED_SECRET]:[REDACTED_SECRET] failed",
+    ]);
+  });
+
+  it("scrubs the value of the variable comms.email.external.authTokenEnv names", () => {
+    const token = "synthetic-catch-token-value-58e7";
+    const external = {
+      catchBaseUrl: "https://catch.example.test",
+      authTokenEnv: "SYNTH_CATCH_TOKEN",
+    };
+    const result = normalize(config("cuAppUrl", { comms: { email: { kind: "fake", external } } }), {
+      env: { SYNTH_CATCH_TOKEN: token },
+      onEvent: () => {
+        throw new Error(`drain with ${token} failed`);
+      },
+    });
+    if (!result.ok) throw new Error(result.message);
+    result.emit!(emptyPlan());
+    expect(result.warnings).toEqual([
+      "RunStudyOptions.onEvent failed on plan: drain with [REDACTED_SECRET] failed",
+    ]);
+  });
 });
 
 describe("an onEvent failure never escapes", () => {

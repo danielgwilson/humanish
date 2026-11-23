@@ -11,13 +11,20 @@ import { analysisKeyNames, describeMissingKeys } from "../keys/key-resolution.js
 import { participantRate, unpricedCapMessage } from "../run/pricing.js";
 import type { Brain, StudyPlan, Requirement } from "./plan-types.js";
 
-/** Provider keys in the order the routes name them in a refusal: every participant vendor's first. */
-const KEY_ORDER = [
+/**
+ * Every provider key a `key` requirement can name, in the order the routes name them in a
+ * refusal: every participant vendor's first. keysCheck refuses a run only for a missing key on
+ * this list, and knownSecrets scrubs the value of each one from an onEvent warning.
+ */
+export const KEY_ORDER = [
   ...Object.values(PARTICIPANT_VENDORS).map((vendor) => vendor.keyName),
   "E2B_API_KEY",
   "MODAL_TOKEN_ID",
   "MODAL_TOKEN_SECRET",
 ] as const;
+// Fails to compile when a `key` requirement can name a key that KEY_ORDER leaves out.
+type KeyName = Extract<Requirement, { kind: "key" }>["name"];
+({}) satisfies Record<Exclude<KeyName, (typeof KEY_ORDER)[number]>, never>;
 
 const present = (env: Record<string, string | undefined>, name: string): boolean =>
   (env[name]?.trim() ?? "") !== "";

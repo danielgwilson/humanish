@@ -445,8 +445,9 @@ function versionCheck(env: NodeJS.ProcessEnv): DoctorCheck[] {
   ];
 }
 
-/** Probes the live-run keys, plus the participant vendor's key, the receiving-email key a
- * real-comms study names and the Gemini key a study analyzed on Gemini reads. */
+/** Probes the live-run keys, plus every key a live plan of the study requires, the participant
+ * vendor's key, the receiving-email key a real-comms study names and the Gemini key a study
+ * analyzed on Gemini reads. */
 async function probeDoctorKeys(
   cwd: string,
   env: NodeJS.ProcessEnv,
@@ -459,9 +460,23 @@ async function probeDoctorKeys(
   if (study) {
     const { resolveStudyManifest } = await import("../study/discover.js");
     const resolved = await resolveStudyManifest(cwd, study);
-    // A study on Modal reads the Modal token pair, which no other study needs.
-    if (resolved.ok && resolved.config.execution?.target === "modal-terminal")
-      for (const name of ["MODAL_TOKEN_ID", "MODAL_TOKEN_SECRET"]) keyNames.add(name);
+    // The plan names the keys its route requires, such as the Modal token pair for either Modal
+    // target. It is planned live whatever the file's mode, so a dry-run study lists the keys its
+    // live run would need.
+    const { planStudy } = await import("../study/plan.js");
+    const planned = resolved.ok
+      ? planStudy(resolved.config, { cwd, dryRun: false, env })
+      : undefined;
+    const target = resolved.ok ? resolved.config.execution?.target : undefined;
+    if (planned?.ok === true) {
+      for (const requirement of planned.planned.plan.requirements)
+        if (requirement.kind === "key") keyNames.add(requirement.name);
+    } else if (target === "modal-desktop" || target === "modal-terminal") {
+      // A refused plan lists no keys. A study on Modal still gets its token rows, so the person
+      // sees whether the tokens resolve while they fix the refusal.
+      const modal = await import("../substrates/modal/sdk.js");
+      keyNames.add(modal.MODAL_TOKEN_ID_ENV).add(modal.MODAL_TOKEN_SECRET_ENV);
+    }
     // A study whose participants run on another vendor than OpenAI reads that vendor's key.
     const { actorParticipantModel } = await import("../actors/computer-use/models.js");
     const { PARTICIPANT_VENDORS } = await import("../actors/computer-use/providers.js");
