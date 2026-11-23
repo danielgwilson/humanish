@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { createProgram } from "../../src/cli/program.js";
 import { readRunIndex, RunIndexCache } from "../../src/run/run-index.js";
 import { computeStats } from "../../src/run/stats.js";
 import { listRuns } from "../../src/run/stored-runs.js";
@@ -48,6 +49,26 @@ describe("humanish runs lists a remote run that is on its runner", () => {
         livenessBasis: "remote",
       },
     ]);
+  });
+
+  it("prints it as a live run that is running", async () => {
+    await writeFixtureRun(
+      cwd,
+      { runId: "cua-remote", state: "remote", startedAt: STARTED },
+      Date.now(),
+    );
+    const out: string[] = [];
+    const program = createProgram({
+      writeOut: (text) => out.push(text),
+      writeErr: () => undefined,
+      setExitCode: () => undefined,
+    });
+
+    await program.parseAsync(["node", "humanish", "runs", "--cwd", cwd], { from: "node" });
+
+    expect(out.join("")).toMatch(
+      /^- cua-remote live running \d+ \w+ 2026-11-23T10:00:00\.000Z \.humanish\/runs\/cua-remote$/m,
+    );
   });
 
   it("shows it as interrupted once its runner's deadline has passed", async () => {

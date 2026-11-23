@@ -54,6 +54,7 @@ workflow without leaking private upstream truth into core.
 | Adapter score                     | `humanish.adapter-score.v1` (`RunBundle.adapterScore`; namespaced; route-specific acceptance semantics)                                                                                                                                                                                                                                                                                                                         | see Product-Adapter Extension Seam below                                            |
 | Adapter artifact                  | `humanish.adapter-artifact.v1` (`RunBundle.adapterArtifacts[]`; namespaced; local relative proof references)                                                                                                                                                                                                                                                                                                                    | see Product-Adapter Extension Seam below                                            |
 | Shared-world evidence             | `humanish.shared-world.v1` (additive `RunBundle.sharedWorld` + `RunBundle.attributionClass`; `topologyMode: sequential \| concurrent`)                                                                                                                                                                                                                                                                                          | see Shared-World Evidence below                                                     |
+| Remote run record                 | `humanish.remote-run.v1` (`remote.json` in a remote run's directory: where it executes and whether its evidence is still on its runner)                                                                                                                                                                                                                                                                                         | see Remote Run Record below                                                         |
 | Comms thread                      | `humanish.comms-thread.v1` (off-app email/SMS the app sent, captured; a `kind: log` run-dir artifact of digests only: from/to/subject/link digests + one OTP count, never raw)                                                                                                                                                                                                                                                  | see `comms` under Study File                                                        |
 | Serve result                      | `humanish.serve-result.v1` (`src/observer/serve.ts` is authoritative)                                                                                                                                                                                                                                                                                                                                                           | none (command result envelope; see Serve Result below)                              |
 | Serve control plane               | reserved (`/_humanish/api/*` answers `501` `HUMANISH_SERVE_CONTROL_PLANE_DISABLED` in v1)                                                                                                                                                                                                                                                                                                                                       | none                                                                                |
@@ -1626,13 +1627,14 @@ directory may be shared.
 `runLiveness` (`src/run/liveness.ts`) reads whether a run is alive and returns the liveness with
 the basis for it:
 
-| Basis             | The run has                                                                                             | Reads as                                                                                           |
-| ----------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `outcome`         | a run.json with an `outcome`                                                                            | the outcome's `state`                                                                              |
-| `status`          | no outcome, and a status record that says `finished` or `interrupted`                                   | that state                                                                                         |
-| `heartbeat`       | no outcome, and a `running` record whose `updatedAt` is within three touch intervals of now             | `running`                                                                                          |
-| `stale-heartbeat` | no outcome, and a `running` record whose `updatedAt` is older, further in the future, or cannot be read | `interrupted`                                                                                      |
-| `bundle`          | no outcome and no well-formed status record that names it                                               | `interrupted` if a participant has not ended (`queued`, `preparing` or `running`), else `finished` |
+| Basis             | The run has                                                                                             | Reads as                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `outcome`         | a run.json with an `outcome`                                                                            | the outcome's `state`                                                                                                    |
+| `remote`          | no run.json, and a [remote run record](#remote-run-record) whose `copyPending` is `true`                | `running` until the record's `deadline`; `interrupted` from then, or once `reclaim-receipt.json` is in the run directory |
+| `status`          | no outcome, and a status record that says `finished` or `interrupted`                                   | that state                                                                                                               |
+| `heartbeat`       | no outcome, and a `running` record whose `updatedAt` is within three touch intervals of now             | `running`                                                                                                                |
+| `stale-heartbeat` | no outcome, and a `running` record whose `updatedAt` is older, further in the future, or cannot be read | `interrupted`                                                                                                            |
+| `bundle`          | no outcome and no well-formed status record that names it                                               | `interrupted` if a participant has not ended (`queued`, `preparing` or `running`), else `finished`                       |
 
 A dropped connection or a killed terminal leaves a `stale-heartbeat`, and so do a sleeping host
 and a run directory copied from another machine, so that reading is a presumption and the basis
@@ -1651,6 +1653,44 @@ listing takes its `mode` from the record and `createdAt` from the record's `star
 `humanish runs prune` ages it from that time. A record that says `finished` beside no run.json
 gets no display: its evidence is gone.
 
+Until its copy back, a remote run has no run.json or status record here, and the `remote` basis
+reads it. `humanish runs --json` lists it with `mode: live`, since only a live run executes remotely,
+`createdAt` from the remote record's `startedAt` (`null` for a record without one), `display.state`
+`running` or `interrupted` and `livenessBasis: remote`. `humanish stats` and the TUI count it as a
+live run by the same reading. A run with run.json here reads no remote record, so it costs a
+listing no extra read; a run without one costs one read of remote.json, and one of
+`reclaim-receipt.json` when the record is pending.
+
+## Remote Run Record
+
+`humanish.remote-run.v1` is `remote.json` in the run directory of a remote run, which is the
+default for a hosted computer-use study with a public app URL and for a live terminal study.
+`humanish run` writes it on this machine once it has created the runner sandbox:
+`{ schema, runId, provider: e2b | modal, route: computer-use | terminal, deadline, copyPending:
+true, startedAt }`. `deadline` is when the runner sandbox's time limit ends. `startedAt` is when
+this machine wrote the record; an older record has none. It holds no credential and no raw
+sandbox id: the runner's id is its `runner` receipt in `sandbox-receipts.ndjson`.
+
+When every file has been copied back, the copy removes `copyPending`. When `humanish observe
+--run` finds the runner gone, it removes `copyPending` and adds `lostInCopy`, the recordings that
+never arrived. `humanish reclaim --run <id>` stops the runner and leaves the record as it is.
+
+`readRemoteRecord` (`src/run/remote-record.ts`) reads the file as `none`, `pending` or `copied`
+and never throws: a file that is not JSON, not an object, or names another schema reads as
+`none`, as a local run with no file does. A record written before `copyPending` existed reads as
+`copied`, so a reader that needs the bundle also looks for run.json. These commands read it:
+
+- `humanish runs`, `stats` and the TUI, for a run with no run.json here: a pending record gives
+  the `remote` liveness basis, and a pending record beside `reclaim-receipt.json` reads
+  `interrupted`.
+- `humanish observe --run <id>` reconnects to the runner of a pending record, or of a record with
+  no run.json beside it, and finishes the copy.
+- `humanish runs prune` keeps a run whose record is pending or has no run.json beside it, as
+  `not-copied-back`.
+- `humanish verify` excuses each recording in `lostInCopy` and warns that it was lost.
+- The TUI's Stop sends no signal for a pending record with no status record here, and names
+  `humanish observe --run <id>` and `humanish reclaim --run <id>`.
+
 ## Run Index, Run Detail, And The Terminal Surface
 
 Three derived projections that exist so a surface can list, classify and watch
@@ -1660,7 +1700,10 @@ them is a claim about what a participant did.
 
 `humanish.run-index.v1` is the listing projection. One entry per run, read
 cheapest-source-first: the `status.json` record, else the bundle, else the run
-directory alone. `{ runId, derivedFrom: status | bundle | directory, liveness,
+directory alone. A run with no run.json whose remote run record is pending is
+read from that record first, as `derivedFrom: remote` with `mode: live`, the
+record's `startedAt` and the `remote` liveness, again on every refresh, since
+the clock and a reclaim receipt change it. `{ runId, derivedFrom: status | bundle | remote | directory, liveness,
 mode?, pid?, study?, startedAt?, updatedAt?, completedAt?, verdict?, ok?,
 failure?, participants?, estimatedCostUsd?, estimatedCostComplete?,
 analysisCost?, durationMs?, analysis? }`. `analysis` is the status record's automatic analysis as
