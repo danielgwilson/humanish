@@ -81,6 +81,37 @@ describe("TUI key summary follows the configured route", () => {
     ).toMatchObject({ keysReady: true });
   });
 
+  it("requires desktop plus the Anthropic key for a participant on a Claude model", async () => {
+    const claude = {
+      ...base,
+      actor: { type: "computer-use", model: "claude-haiku-5-5", mission: "Use the app." },
+    };
+    expect(
+      await summary(claude, {
+        E2B_API_KEY: "synthetic-credential-desktop",
+        ANTHROPIC_API_KEY: "synthetic-credential-model",
+      }),
+    ).toMatchObject({ keysReady: true });
+    const missing = await summary(claude, { E2B_API_KEY: "synthetic-credential-desktop" });
+    expect(missing).toMatchObject({ keysReady: false, missingKeys: ["ANTHROPIC_API_KEY"] });
+  });
+
+  it("requires the Modal token pair plus the model key for a study on a Modal desktop", async () => {
+    const modal = { ...base, execution: { target: "modal-desktop" } };
+    expect(
+      await summary(modal, {
+        MODAL_TOKEN_ID: "synthetic-credential-modal-id",
+        MODAL_TOKEN_SECRET: "synthetic-credential-modal-secret",
+        OPENAI_API_KEY: "synthetic-credential-model",
+      }),
+    ).toMatchObject({ keysReady: true });
+    const missing = await summary(modal, {
+      MODAL_TOKEN_ID: "synthetic-credential-modal-id",
+      OPENAI_API_KEY: "synthetic-credential-model",
+    });
+    expect(missing).toMatchObject({ keysReady: false, missingKeys: ["MODAL_TOKEN_SECRET"] });
+  });
+
   it("does not block local-agent participants on the optional analysis key", async () => {
     const result = await summary(
       { ...base, actor: { type: "local-agent", localAgent: "codex", mission: "Use the app." } },
