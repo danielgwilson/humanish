@@ -142,6 +142,13 @@ export async function showObserver(args: {
   }
 }
 
+/**
+ * The Observer result's warning that a server serves it. A remote run's result drops it, since the
+ * server ran in the runner.
+ */
+export const OBSERVER_SERVER_WARNING =
+  "Live observer server is polling observer-data.json with no-store caching.";
+
 export function withObserverServer(
   rendered: ObserverResult,
   server: ObserverServer,
@@ -154,7 +161,7 @@ export function withObserverServer(
     ...(server.openCommand ? { openCommand: server.openCommand } : {}),
     warnings: [
       ...rendered.warnings,
-      "Live observer server is polling observer-data.json with no-store caching.",
+      OBSERVER_SERVER_WARNING,
       ...(server.warning ? [server.warning] : []),
     ],
   };

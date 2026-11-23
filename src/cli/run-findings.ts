@@ -10,7 +10,14 @@ import type { AutomaticAnalysisOutcome } from "../analysis/job.js";
 import { cwdFlag, readRunFindings, type AnalysisFindings, type FindingsDeps } from "./findings.js";
 import { formatFindingsSummary } from "./findings-text.js";
 import { cli } from "./invocation.js";
-import { analysisOutcomeText, type CliIo, type HumanOutput, wantsJson, writeResult } from "./io.js";
+import {
+  analysisOutcomeText,
+  type CliIo,
+  type HumanOutput,
+  type ResultOptions,
+  wantsJson,
+  writeResult,
+} from "./io.js";
 
 /** At most this many findings go in `run --json`; `review --json` has every one. */
 const TOP_FINDINGS = 5;
@@ -70,20 +77,23 @@ function findingsSummary(
   };
 }
 
+/** The end of a run's output: what its analysis left, as a person and a `--json` caller read it. */
+export interface RunReport {
+  /** `automaticAnalysis.message` in `--json`. */
+  message: string;
+  /** `automaticAnalysis.nextCommand` in `--json`. */
+  nextCommand: string | null;
+  /** The human output's last lines. */
+  lines: string[];
+  findings?: RunFindingsSummary;
+}
+
 /** What the run's analysis left: the message, the command, the human lines and any findings. */
-async function readRunReport(
+export async function readRunReport(
   cwd: string,
   result: RunResultShape,
-  deps: FindingsDeps,
-): Promise<
-  | {
-      message: string;
-      nextCommand: string | null;
-      lines: string[];
-      findings?: RunFindingsSummary;
-    }
-  | undefined
-> {
+  deps: FindingsDeps = {},
+): Promise<RunReport | undefined> {
   const outcome = result.automaticAnalysis;
   if (outcome === undefined || result.runId === undefined || result.runId === "not-created")
     return undefined;
@@ -152,13 +162,28 @@ export async function writeRunResult<T extends RunResultShape>(
   formatHuman: (result: T) => HumanOutput,
   deps: FindingsDeps = {},
 ): Promise<void> {
-  const report = await readRunReport(cwd, result, deps);
-  if (report === undefined || result.automaticAnalysis === undefined) {
-    writeResult(command, io, result, formatHuman);
+  writeRunReport(command, io, result, formatHuman, await readRunReport(cwd, result, deps));
+}
+
+/**
+ * Writes a run's result with `report` at its end: its lines after the route's own in the human
+ * output, and in `--json` its message and command on `automaticAnalysis` and its findings. With
+ * no report the result is written as writeResult writes it.
+ */
+export function writeRunReport<T extends RunResultShape>(
+  command: Command,
+  io: CliIo,
+  result: T,
+  formatHuman: (result: T) => HumanOutput,
+  report: RunReport | undefined,
+  options: ResultOptions = {},
+): void {
+  if (report === undefined) {
+    writeResult(command, io, result, formatHuman, undefined, options);
     return;
   }
   if (!wantsJson(command)) {
-    writeResult(command, io, result, formatHuman, report.lines);
+    writeResult(command, io, result, formatHuman, report.lines, options);
     return;
   }
   writeResult(
@@ -166,15 +191,22 @@ export async function writeRunResult<T extends RunResultShape>(
     io,
     {
       ...result,
-      automaticAnalysis: {
-        ...result.automaticAnalysis,
-        message: report.message,
-        nextCommand: report.nextCommand,
-      },
+      // A run with no analysis record has nowhere to carry the message.
+      ...(result.automaticAnalysis === undefined
+        ? {}
+        : {
+            automaticAnalysis: {
+              ...result.automaticAnalysis,
+              message: report.message,
+              nextCommand: report.nextCommand,
+            },
+          }),
       ...(report.findings === undefined ? {} : { findings: report.findings }),
     },
     // JSON output never calls the human formatter.
     () => "",
+    undefined,
+    options,
   );
 }
 

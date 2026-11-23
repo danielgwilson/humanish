@@ -605,5 +605,7 @@ async function observeRemoteRun(
       error: `could not reach its runner: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
-  reportRemoteOutcome(command, io, resolve(cwd), outcome);
+  // A run's study facts ride on the telemetry event of the command that started it, not on the
+  // event of an observe that followed it to its end.
+  await reportRemoteOutcome(command, io, resolve(cwd), outcome, undefined, { runFacts: false });
 }

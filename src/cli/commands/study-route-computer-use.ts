@@ -41,6 +41,13 @@ import type { RouteRun } from "./study-route-run.js";
 import { refusedResult } from "../../run/study-result.js";
 import { declaredParticipantCount } from "../../study/study-fields.js";
 
+/**
+ * The warning a followed computer-use run's result carries about the server that serves it live. A
+ * remote run's result drops it, since that server ran in the runner.
+ */
+export const LIVE_SERVER_WARNING =
+  "The live computer-use server polls observer-data.json with no-store caching.";
+
 interface ComputerUseRouteArgs {
   command: Command;
   io: CliIo;
@@ -358,7 +365,7 @@ async function reportCuaRun(
       observer: withObserverServer(attachedResult, server),
       warnings: [
         ...result.warnings,
-        "The live computer-use server polls observer-data.json with no-store caching.",
+        LIVE_SERVER_WARNING,
         ...(exposeRequested
           ? [
               `Exposed live desktop stream URLs to an edge-authenticated remote viewer${live.tunnel ? ` via ${live.tunnel.url.replace(/\/$/, "")}` : ""}.`,

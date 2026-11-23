@@ -109,23 +109,49 @@ async function run(args: string[]) {
   const out = stdout.join("");
   return {
     exitCode,
+    stdout: out,
     stderr: stderr.join(""),
     json: out.trim().startsWith("{") ? (JSON.parse(out) as Record<string, unknown>) : undefined,
   };
 }
 
-const PASSED = {
-  schema: "humanish.run-result.v1",
+/** A computer-use run that passed, as the runner's route wrote it, with no analysis record. */
+const COMPUTER_USE_PASSED = {
+  schema: "humanish.study-result.v1",
+  route: "computer-use",
+  studyId: "remote-study",
   ok: true,
-  cwd: "/runner/project",
+  cwd: "/home/user/project",
+  actor: "computer-use",
+  appUrl: "https://app.example.com/",
+  dryRun: false,
   runId: "cua-remote",
+  warnings: [],
+};
+
+/** A terminal run that passed, as the runner's route wrote it, with no analysis record. */
+const TERMINAL_PASSED = {
+  schema: "humanish.study-result.v1",
+  route: "terminal",
+  studyId: "remote-study",
+  ok: true,
+  cwd: "/home/user/project",
+  actor: "codex-exec",
+  product: "ledger-cli",
+  dryRun: false,
+  runId: "terminal-remote",
   warnings: [],
 };
 
 describe("humanish run on a study that runs remotely", () => {
   it("launches it on the study's provider and reports the runner's result with the keys sent", async () => {
     const id = await remoteStudy();
-    launches.outcome = { runId: "cua-remote", exitCode: 0, result: PASSED, files: 12 };
+    launches.outcome = {
+      runId: "cua-remote",
+      exitCode: 0,
+      result: COMPUTER_USE_PASSED,
+      files: 12,
+    };
     const { exitCode, stderr, json } = await run([id, "--json"]);
     expect(launches.calls).toEqual([{ study: `humanish/studies/${id}.yaml`, provider: "modal" }]);
     expect(exitCode).toBe(0);
@@ -134,10 +160,44 @@ describe("humanish run on a study that runs remotely", () => {
       runId: "cua-remote",
       cwd: path.resolve(cwd),
       remote: { provider: "modal", keys: expect.arrayContaining(["OPENAI_API_KEY"]) },
+      warnings: [],
     });
     // The command names the keys before the runner starts, and never prints their values.
     expect(stderr).toMatch(/OPENAI_API_KEY/);
     expect(stderr).not.toMatch(/synthetic-/);
+  });
+
+  it("prints the runner's result through the route's lines, then where its evidence is", async () => {
+    const id = await remoteStudy();
+    launches.outcome = {
+      runId: "cua-remote",
+      exitCode: 0,
+      files: 12,
+      result: {
+        ...COMPUTER_USE_PASSED,
+        session: {
+          status: "passed",
+          completionReason: "goal_satisfied",
+          reason: "Done.",
+          screenshots: 3,
+        },
+      },
+    };
+    const { exitCode, stdout, stderr } = await run([id]);
+    expect(exitCode).toBe(0);
+    expect(stdout.split("\n")).toEqual([
+      "humanish run remote-study: live run finished",
+      "route: computer-use",
+      "run: cua-remote",
+      "actor: computer-use",
+      "subject: https://app.example.com/",
+      "session: passed (goal_satisfied) · Done.",
+      "screenshots: 3",
+      "",
+    ]);
+    expect(stderr.split("\n").at(-2)).toBe(
+      "Run cua-remote's evidence (12 files) is in .humanish/runs/cua-remote.",
+    );
   });
 
   it("exits 129 with the detached code when the terminal closes and the run goes on", async () => {
@@ -183,11 +243,16 @@ describe("humanish run on a study that runs remotely", () => {
   it("launches a live terminal study on its shell sandbox's provider", async () => {
     vi.stubEnv("E2B_API_KEY", "synthetic-e2b-key");
     const id = await terminalStudy();
-    launches.outcome = { runId: "terminal-remote", exitCode: 0, result: PASSED, files: 9 };
+    launches.outcome = {
+      runId: "terminal-remote",
+      exitCode: 0,
+      result: TERMINAL_PASSED,
+      files: 9,
+    };
     const { exitCode, json } = await run([id, "--json"]);
     expect(launches.calls).toEqual([{ study: `humanish/studies/${id}.yaml`, provider: "e2b" }]);
     expect(exitCode).toBe(0);
-    expect(json).toMatchObject({ ok: true, remote: { provider: "e2b" } });
+    expect(json).toMatchObject({ ok: true, remote: { provider: "e2b" }, warnings: [] });
   });
 
   it("keeps a dry run here, whatever asked for a remote one", async () => {

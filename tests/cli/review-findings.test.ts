@@ -1,29 +1,17 @@
 // `review`, `analyze show` and the end of a live run print a run's analysis findings. The run is a
 // dry-run bundle marked live, analyzed through the real service with a captured OpenAI wire
 // envelope whose answer is the synthetic analysis result.
-import { cp, readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Command, CommanderError } from "commander";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { runAutomaticAnalysis } from "../../src/analysis/automatic.js";
-import { captureEvidence } from "../../src/analysis/evidence.js";
-import type { AnalysisFetch } from "../../src/analysis/provider.js";
 import { writeRunResult } from "../../src/cli/run-findings.js";
 import { createProgram } from "../../src/cli/program.js";
 import type { RunBundle } from "../../src/run/bundle.js";
-import { runDryRun } from "../../src/run/dry-run.js";
-import { resolveRunPath } from "../../src/run/locate.js";
-import { syntheticResult } from "../analysis/fixtures.js";
+import { analyzedRun, FINDINGS_RUN as RUN, liveRun } from "../helpers/analyzed-run.js";
 import { makeTestTempDir } from "../helpers/temp-dir.js";
-
-const RUN = "findings-run";
-// Real captured wire envelope; only the synthetic analysis answer is replaced.
-// Provenance: fixtures/openai-closing-report/README.md.
-const wirePath = new URL(
-  "../fixtures/openai-closing-report/typed-closing-report.json",
-  import.meta.url,
-);
 
 async function runCli(args: string[]) {
   let exitCode = 0;
@@ -47,41 +35,6 @@ async function runCli(args: string[]) {
     exitCode = error.exitCode;
   }
   return { exitCode, output: stdout.join("") };
-}
-
-/** A finished live run with one completed stream, not yet analyzed. */
-async function liveRun() {
-  const cwd = await makeTestTempDir("humanish-review-findings-");
-  await cp(path.resolve("fixtures/minimal-app"), cwd, { recursive: true });
-  await runDryRun({ cwd, dryRun: true, runId: RUN });
-  const runRoot = path.join(cwd, ".humanish", "runs", RUN);
-  const bundle = JSON.parse(await readFile(path.join(runRoot, "run.json"), "utf8")) as RunBundle;
-  bundle.mode = "live";
-  bundle.streams[0]!.status = "complete";
-  await writeFile(path.join(runRoot, "run.json"), JSON.stringify(bundle, null, 2) + "\n");
-  await rm(path.join(runRoot, "status.json"), { force: true });
-  return { cwd, runRoot };
-}
-
-/** A finished live run with one completed stream and the automatic analysis of it. */
-async function analyzedRun() {
-  const { cwd, runRoot } = await liveRun();
-  const input = await captureEvidence(
-    (await resolveRunPath(cwd, RUN))!,
-    await readFile(path.join(runRoot, "run.json")),
-  );
-  const wire = JSON.parse(await readFile(wirePath, "utf8"));
-  wire.output[0].content[0].text = JSON.stringify(syntheticResult(input));
-  const fetch = vi.fn<AnalysisFetch>(async () => new Response(JSON.stringify(wire)));
-  const outcome = await runAutomaticAnalysis(
-    cwd,
-    RUN,
-    { model: "gpt-5.6-sol", question: null, maxCostUsd: 5, timeoutMs: 1000, maxOutputTokens: 8192 },
-    { apiKey: "synthetic-key", fetch },
-  );
-  // The dry-run bundle's coverage is incomplete, so the analysis is partial; its findings are kept.
-  expect(outcome.state).toBe("partial");
-  return { cwd, outcome };
 }
 
 describe("humanish review on an analyzed live run", () => {

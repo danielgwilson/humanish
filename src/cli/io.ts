@@ -270,6 +270,15 @@ export function writeHuman(command: Command, io: CliIo, human: HumanOutput): voi
   if (human.error) io.writeErr(formatCliError(commandLabel(command), human.error));
 }
 
+/** How writeResult treats a result beyond printing it. */
+export interface ResultOptions {
+  /**
+   * False keeps the result's study facts off this command's telemetry event, for a command that
+   * reports a run another command started: the run's facts belong to that command's event.
+   */
+  runFacts?: boolean;
+}
+
 /**
  * Prints a result: JSON for --json, else the human formatter's text and, for a run, its analysis
  * line. `analysisLines` replaces that line, for a caller that has read what the analysis left.
@@ -280,6 +289,7 @@ export function writeResult<T>(
   result: T,
   formatHuman: (result: T) => HumanOutput,
   analysisLines?: readonly string[],
+  options: ResultOptions = {},
 ): void {
   const output = automaticAnalysisEnvelope(result);
   if (wantsJson(command)) {
@@ -314,7 +324,7 @@ export function writeResult<T>(
   markInvocationEnvelopeWritten(command);
   // Every backend's result passes through here, so this is where a study's facts get read for
   // telemetry. Reading them in each route instead is how they went unreported for two releases.
-  noteRunFacts(command, deriveRunFacts(result));
+  if (options.runFacts !== false) noteRunFacts(command, deriveRunFacts(result));
 }
 
 const runFactsByCommand = new WeakMap<Command, TelemetryProperties>();
