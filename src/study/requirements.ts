@@ -13,8 +13,8 @@ import type { Brain, StudyPlan, Requirement } from "./plan-types.js";
 
 /**
  * Every provider key a `key` requirement can name, in the order the routes name them in a
- * refusal: every participant vendor's first. A key missing here is never refused and never
- * scrubbed from an onEvent warning.
+ * refusal: every participant vendor's first. keysCheck refuses a run only for a missing key on
+ * this list, and knownSecrets scrubs the value of each one from an onEvent warning.
  */
 export const KEY_ORDER = [
   ...Object.values(PARTICIPANT_VENDORS).map((vendor) => vendor.keyName),
@@ -22,6 +22,9 @@ export const KEY_ORDER = [
   "MODAL_TOKEN_ID",
   "MODAL_TOKEN_SECRET",
 ] as const;
+// Fails to compile when a `key` requirement can name a key that KEY_ORDER leaves out.
+type KeyName = Extract<Requirement, { kind: "key" }>["name"];
+({}) satisfies Record<Exclude<KeyName, (typeof KEY_ORDER)[number]>, never>;
 
 const present = (env: Record<string, string | undefined>, name: string): boolean =>
   (env[name]?.trim() ?? "") !== "";
